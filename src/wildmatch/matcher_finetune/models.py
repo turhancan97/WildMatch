@@ -4,9 +4,10 @@ import torch
 
 from rdd_patch.lightglue_masked import LightGlueMasked
 from rdd.RDD.RDD import build
+from rdd.RDD.utils import read_config
 
 def build_rdd(weights: Path, device: torch.device, top_k: int):
-    rdd_conf = None
+    rdd_conf = read_config("rdd/configs/default.yaml")
     model = build(rdd_conf, weights=str(weights))
     model.top_k = top_k
     model.set_softdetect(top_k=top_k)

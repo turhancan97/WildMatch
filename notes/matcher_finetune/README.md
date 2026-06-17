@@ -14,6 +14,7 @@ git checkout 539508b270095969f9934c574cf7026bf37c434c
 cd .. # root directory
 ```
 
+Install packages
 ```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu132
 pip install -r rdd/requirements.txt

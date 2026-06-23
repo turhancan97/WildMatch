@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import random
 from collections import defaultdict
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader, Sampler
 from torchvision.datasets import ImageFolder
+from torchvision.datasets.folder import default_loader
 from torchvision import transforms
 
 class TripletImageFolder(Dataset):
@@ -124,6 +126,85 @@ class FixedTripletDataset(Dataset):
             neg_img = base.transform(neg_img)
 
         return anchor_img, pos_img, neg_img
+
+
+class IndexAssignedTripletDataset(Dataset):
+    """Triplet dataset driven by a pre-built JSON index.
+
+    Each entry in the index describes one query frame together with a pool of
+    positives and a pool of negatives.  At every call to ``__getitem__`` one
+    positive and one negative are drawn at random from their respective pools.
+
+    Expected JSON schema (list of objects)::
+
+        [
+          {
+            "query_frame": "relative/path/to/query.jpg",
+            "positives": ["rel/pos1.jpg", ...],
+            "negatives": ["rel/neg1.jpg", ...]
+          },
+          ...
+        ]
+
+    Args:
+        index_path: Path to the JSON index file.
+        root: Root directory that is prepended to every relative path in the
+            index.  If *None*, paths are used as-is (must then be absolute).
+        transform: Transform applied to all three images (query, positive,
+            negative).
+        query_transform: Optional separate transform for the query image; falls
+            back to *transform* when not provided.
+        loader: Callable that loads a PIL image from a path.
+    """
+
+    def __init__(
+        self,
+        index_path: str | Path,
+        root: str | Path | None = None,
+        transform: transforms.Compose | None = None,
+        query_transform: transforms.Compose | None = None,
+        loader=None,
+    ) -> None:
+        self.root = Path(root) if root is not None else None
+        self.transform = transform
+        self.query_transform = query_transform or transform
+        self._loader = loader or default_loader
+
+        with open(index_path) as f:
+            self._entries: list[dict] = json.load(f)
+
+        for entry in self._entries:
+            if not entry.get("positives"):
+                raise ValueError(f"Entry for {entry['query_frame']} has no positives.")
+            if not entry.get("negatives"):
+                raise ValueError(f"Entry for {entry['query_frame']} has no negatives.")
+
+    def __len__(self) -> int:
+        return len(self._entries)
+
+    def _full_path(self, rel: str) -> Path:
+        return self.root / rel if self.root is not None else Path(rel)
+
+    def __getitem__(
+        self, index: int
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        entry = self._entries[index]
+
+        query_path = self._full_path(entry["query_frame"])
+        pos_path   = self._full_path(random.choice(entry["positives"]))
+        neg_path   = self._full_path(random.choice(entry["negatives"]))
+
+        query_img = self._loader(query_path)
+        pos_img   = self._loader(pos_path)
+        neg_img   = self._loader(neg_path)
+
+        if self.query_transform is not None:
+            query_img = self.query_transform(query_img)
+        if self.transform is not None:
+            pos_img = self.transform(pos_img)
+            neg_img = self.transform(neg_img)
+
+        return query_img, pos_img, neg_img
 
 
 class LabeledImageFolder(ImageFolder):

@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader, Sampler
 from torchvision.datasets import ImageFolder
 from torchvision.datasets.folder import default_loader
 from torchvision import transforms
+from tqdm import tqdm
 
 class TripletImageFolder(Dataset):
     """ImageFolder wrapper that returns (anchor, positive, negative) triplets.

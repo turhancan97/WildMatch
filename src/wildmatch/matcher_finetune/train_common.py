@@ -70,24 +70,35 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument(
         "--neg_grad_scale", type=float, default=1.0,
-        help="Gradient scale applied to the negative-similarity term (1.0 = unchanged; "
-             "<1 weakens the push-apart signal on LG-matched negatives without changing "
-             "the forward loss value)",
+        help="Floor gradient scale for the negative-similarity term (1.0 = disabled). "
+             "Only takes effect once matches/mean_pos is detected dropping below its "
+             "post-warm-up norm (see --match_boost_*): scale is 1.0 (unchanged) while "
+             "matches are normal, and ramps down towards this floor as the drop grows, "
+             "weakening the push-apart signal on LG-matched negatives without changing "
+             "the forward loss value",
     )
     p.add_argument(
         "--match_boost_weight", type=float, default=0.0,
         help="Max weight of the auxiliary full-candidate-set retrieval loss that "
              "encourages unique/confident matches; activated automatically (ramped "
-             "0..weight) when matches/mean_pos trends down (0 disables)",
+             "0..weight) when matches/mean_pos is detected dropping below its "
+             "post-warm-up norm (0 disables)",
+    )
+    p.add_argument(
+        "--match_boost_warmup_epochs", type=float, default=0.5,
+        help="Fraction of an epoch to wait before freezing the matches/mean_pos "
+             "baseline ('norm') that --neg_grad_scale / --match_boost_weight compare "
+             "against; the metric is still ramping up from a cold start before this",
     )
     p.add_argument(
         "--match_boost_window", type=int, default=50,
-        help="Number of steps averaged when tracking the matches/mean_pos trend",
+        help="Number of steps averaged when tracking the matches/mean_pos trend "
+             "(used both to establish the norm and to smooth the ongoing comparison)",
     )
     p.add_argument(
         "--match_boost_drop_frac", type=float, default=0.15,
-        help="Relative drop from the best windowed matches/mean_pos average that "
-             "fully activates the match-boost term",
+        help="Relative drop below the post-warm-up norm that fully activates "
+             "--neg_grad_scale / --match_boost_weight",
     )
     p.add_argument(
         "--match_boost_temperature", type=float, default=0.1,
@@ -97,6 +108,12 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
         "--match_boost_freq_decay", type=float, default=0.98,
         help="EMA decay for matches/boost_activation_freq, the logged fraction of "
              "steps where the match-boost term is active",
+    )
+    p.add_argument(
+        "--wandb_tags", type=str, default="",
+        help="Comma-separated extra wandb tags for this run, appended to the "
+             "auto-generated tags (baseline / ema_teacher / neg_grad_scale / "
+             "match_boost / train_targets_*)",
     )
 
 
@@ -155,38 +172,47 @@ def retrieval_boost_loss(
 
 class MatchTrendMonitor:
     """
-    Tracks a windowed running mean of matches/mean_pos and compares it to the best
-    windowed mean seen so far. `update()` returns a smooth [0, 1] activation that
-    ramps up as the current window falls below the best-ever window by more than
-    `drop_frac` — meant to scale --match_boost_weight dynamically rather than
-    toggling it on/off abruptly.
+    Establishes a fixed baseline ("norm") for matches/mean_pos from a warm-up
+    period at the start of training — the metric is still ramping up from a
+    cold-start then, so comparing against it (or against a running best-ever
+    peak, which just keeps chasing that ramp-up) would trigger prematurely or
+    make the trigger threshold drift indefinitely.
 
-    `best` (the best windowed mean seen so far, None until the window first
-    fills) and `activation_freq` (an EMA, decay=`freq_decay`, of the fraction
-    of steps where activation > 0) are kept as public attributes so the caller
-    can log them — e.g. to see when/how often the boost term is kicking in.
+    After warm-up, `update()` returns a smooth [0, 1] activation that ramps up
+    as the current windowed mean falls more than `drop_frac` below `norm`, and
+    ramps back down as it recovers towards/above `norm` — meant to gate
+    --neg_grad_scale and --match_boost_weight so both only intervene during an
+    actual drop, fading out again once matches/mean_pos returns to normal.
+
+    `norm` (None until warm-up completes, then fixed) and `activation_freq`
+    (an EMA, decay=`freq_decay`, of the fraction of steps where activation > 0)
+    are public attributes so the caller can log them.
     """
 
-    def __init__(self, window: int, drop_frac: float, freq_decay: float = 0.98) -> None:
+    def __init__(
+        self, warmup_steps: int, window: int, drop_frac: float, freq_decay: float = 0.98
+    ) -> None:
+        self.warmup_steps = warmup_steps
         self.window = window
         self.drop_frac = max(drop_frac, 1e-6)
         self.freq_decay = freq_decay
         self._buf: deque[float] = deque(maxlen=window)
-        self.best: float | None = None
+        self._step = 0
+        self.norm: float | None = None
         self.activation_freq: float = 0.0
 
     def update(self, mean_pos_matches: float) -> float:
         self._buf.append(mean_pos_matches)
-        if len(self._buf) < self.window:
+        self._step += 1
+
+        if self._step < self.warmup_steps or len(self._buf) < self.window:
             activation = 0.0
         else:
             current = sum(self._buf) / len(self._buf)
-            if self.best is None or current > self.best:
-                self.best = current
-                activation = 0.0
-            else:
-                drop = (self.best - current) / max(self.best, 1e-6)
-                activation = float(min(max(drop / self.drop_frac, 0.0), 1.0))
+            if self.norm is None:
+                self.norm = current  # freeze the baseline once, right after warm-up
+            drop = (self.norm - current) / max(self.norm, 1e-6)
+            activation = float(min(max(drop / self.drop_frac, 0.0), 1.0))
 
         is_active = 1.0 if activation > 0.0 else 0.0
         self.activation_freq = (
@@ -331,6 +357,29 @@ def extract_teacher_descriptors(
     return [descs_t[b][valid[b]] for b in range(B)]
 
 
+def build_wandb_tags(args: argparse.Namespace) -> list[str]:
+    """
+    Auto-generate wandb tags identifying which anti-collapse mechanism(s) (or
+    alternative training target) a run used, so runs are distinguishable in the
+    wandb UI without having to dig through configs. Falls back to "baseline"
+    when none are active. `--wandb_tags` (comma-separated) appends custom tags.
+    """
+    tags = []
+    if getattr(args, "ema_decay", 0.0) > 0:
+        tags.append("ema_teacher")
+    if getattr(args, "neg_grad_scale", 1.0) != 1.0:
+        tags.append("neg_grad_scale")
+    if getattr(args, "match_boost_weight", 0.0) > 0:
+        tags.append("match_boost")
+    if getattr(args, "train_targets", None):
+        tags.append(f"train_targets_{args.train_targets}")
+    if not tags:
+        tags.append("baseline")
+    extra = getattr(args, "wandb_tags", "") or ""
+    tags.extend(t.strip() for t in extra.split(",") if t.strip())
+    return tags
+
+
 # ── LG matching (shared by all loss_fn's — may be sourced from student or teacher) ─
 def run_lg_matching(
     lg: torch.nn.Module,
@@ -354,6 +403,33 @@ def run_lg_matching(
         pred_pos = lg({"image0": data_a, "image1": data_p})
         pred_neg = lg({"image0": data_a, "image1": data_n})
     return pred_pos["matches"], pred_neg["matches"]
+
+
+def run_lg_matching_grad(
+    lg: torch.nn.Module,
+    feats_match_a: list[dict],
+    feats_match_p: list[dict],
+    feats_match_n: list[dict],
+    image_h: int,
+    image_w: int,
+) -> tuple[dict, dict]:
+    """
+    Like run_lg_matching, but WITHOUT the no_grad wrapper around the LG forward
+    calls, so LG's own parameters receive gradient from any loss computed on
+    the returned `scores` / `matching_scores0`. Returns the full prediction
+    dicts (not just match indices) — used by train_lg_matching_loss.py.
+
+    Note LightGlueMasked always internally `.detach()`s its descriptor
+    *inputs* (see rdd_patch/lightglue_masked.py), so this can never send
+    gradient back into whatever network produced feats_match_* — only into
+    LG's own weights.
+    """
+    data_a = batch_features(feats_match_a, image_h, image_w)
+    data_p = batch_features(feats_match_p, image_h, image_w)
+    data_n = batch_features(feats_match_n, image_h, image_w)
+    pred_pos = lg({"image0": data_a, "image1": data_p})
+    pred_neg = lg({"image0": data_a, "image1": data_n})
+    return pred_pos, pred_neg
 
 
 # ── training epoch ────────────────────────────────────────────────────────────
@@ -383,10 +459,14 @@ def train_epoch(
 
     `teacher` (built via build_ema_teacher when --ema_decay > 0) decouples the
     LG correspondence oracle from the network receiving gradient updates.
-    `match_monitor` (built when --match_boost_weight > 0) tracks the
-    matches/mean_pos trend across steps and dynamically scales the auxiliary
-    match-boost loss term when it drops. Both are independent and combinable
-    with each other and with --neg_grad_scale (passed straight from `args`).
+    `match_monitor` (built when --match_boost_weight > 0 or --neg_grad_scale
+    != 1.0) tracks the matches/mean_pos trend and produces a single [0, 1]
+    activation shared by both mechanisms: --match_boost_weight is scaled up
+    from 0 by it, and --neg_grad_scale is interpolated from 1.0 (unchanged)
+    down towards its configured floor by it — so both only intervene once an
+    actual drop from the post-warm-up norm is detected, and fade back out as
+    matches/mean_pos recovers. All three (teacher, match_monitor-driven boost,
+    match_monitor-driven neg_grad_scale) are independent and combinable.
     """
     rdd.train()
     epoch_loss     = 0.0
@@ -435,10 +515,13 @@ def train_epoch(
             mean_pos_now = sum(len(m) for m in matches_pos) / max(len(matches_pos), 1)
             boost_activation = match_monitor.update(mean_pos_now)
         effective_boost_weight = args.match_boost_weight * boost_activation
+        # 1.0 (unchanged) while matches are normal; ramps towards args.neg_grad_scale
+        # only as a drop from the norm is detected — see MatchTrendMonitor.
+        effective_neg_grad_scale = 1.0 - (1.0 - args.neg_grad_scale) * boost_activation
 
         loss, stats = loss_fn(
             feats_a, feats_p, feats_n, matches_pos, matches_neg, loss_hyperparam,
-            neg_grad_scale=args.neg_grad_scale,
+            neg_grad_scale=effective_neg_grad_scale,
             match_boost_weight=effective_boost_weight,
             match_boost_temperature=args.match_boost_temperature,
         )
@@ -478,20 +561,25 @@ def train_epoch(
                 step=global_step,
             )
             match_log = {
-                "matches/mean_pos":       stats["mean_pos_matches"],
-                "matches/mean_neg":       stats["mean_neg_matches"],
-                "matches/mean_pos_sim":   stats["mean_pos_sim"],
-                "matches/mean_neg_sim":   stats["mean_neg_sim"],
-                "matches/boost_weight":   effective_boost_weight,
-                "matches/boost_activation": boost_activation,
+                "matches/mean_pos":     stats["mean_pos_matches"],
+                "matches/mean_neg":     stats["mean_neg_matches"],
+                "matches/mean_pos_sim": stats["mean_pos_sim"],
+                "matches/mean_neg_sim": stats["mean_neg_sim"],
             }
-            if match_monitor is not None:
-                match_log["matches/boost_activation_freq"] = match_monitor.activation_freq
-                if match_monitor.best is not None:
-                    match_log["matches/boost_best"] = match_monitor.best
             if "retrieval_acc" in stats:
                 match_log["matches/retrieval_acc"] = stats["retrieval_acc"]
             accelerator.log(match_log, step=global_step)
+
+            mechanisms_log = {
+                "mechanisms/boost_weight":     effective_boost_weight,
+                "mechanisms/boost_activation": boost_activation,
+                "mechanisms/neg_grad_scale":   effective_neg_grad_scale,
+            }
+            if match_monitor is not None:
+                mechanisms_log["mechanisms/boost_activation_freq"] = match_monitor.activation_freq
+                if match_monitor.norm is not None:
+                    mechanisms_log["mechanisms/boost_norm"] = match_monitor.norm
+            accelerator.log(mechanisms_log, step=global_step)
 
         if (step + 1) % 100 == 0:
             t_mini_start = time.perf_counter()
@@ -707,14 +795,17 @@ def run_training(args: argparse.Namespace, loss_fn: LossFn, loss_hyperparam: flo
     # initial weights, before accelerator.prepare wraps rdd for DDP.
     teacher = build_ema_teacher(rdd, device) if args.ema_decay > 0 else None
 
-    # Match-count trend monitor: dynamically activates the match-boost loss
-    # term (independent of, and combinable with, the EMA teacher above).
+    # Match-count trend monitor: dynamically activates --match_boost_weight and
+    # --neg_grad_scale only once matches/mean_pos drops below its post-warm-up
+    # norm (independent of, and combinable with, the EMA teacher above).
     match_monitor = (
         MatchTrendMonitor(
-            args.match_boost_window, args.match_boost_drop_frac,
+            warmup_steps=int(args.match_boost_warmup_epochs * len(train_loader)),
+            window=args.match_boost_window,
+            drop_frac=args.match_boost_drop_frac,
             freq_decay=args.match_boost_freq_decay,
         )
-        if args.match_boost_weight > 0 else None
+        if (args.match_boost_weight > 0 or args.neg_grad_scale != 1.0) else None
     )
 
     # Only descriptor parameters are trainable (detector frozen in build_rdd)
@@ -735,7 +826,7 @@ def run_training(args: argparse.Namespace, loss_fn: LossFn, loss_hyperparam: flo
         accelerator.init_trackers(
             args.project,
             config=vars(args),
-            init_kwargs={"wandb": {"name": args.run_name}},
+            init_kwargs={"wandb": {"name": args.run_name, "tags": build_wandb_tags(args)}},
         )
 
     # ── baseline eval (before any training) ──

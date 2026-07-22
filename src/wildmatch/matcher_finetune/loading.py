@@ -208,6 +208,73 @@ class IndexAssignedTripletDataset(Dataset):
         return query_img, pos_img, neg_img
 
 
+class PseudoAccuracyDataset(Dataset):
+    """Query + its FULL candidate pool, for pseudo-accuracy eval.
+
+    Unlike IndexAssignedTripletDataset (one random positive + one random
+    negative per item), pseudo-accuracy needs every positive and every
+    negative for a query to find the best-scoring one. Every entry must carry
+    the same number of positives and the same number of negatives (true for
+    indices built with a fixed top_k/top_m) so candidates stack into a
+    uniform (n_pos + n_neg, C, H, W) tensor per item and batch across queries
+    via the default collate_fn — same DataLoader/num_workers path as
+    training, instead of loading images one at a time in the main process.
+
+    Args:
+        entries: List of index entries (query_frame/positives/negatives dicts).
+        root: Root directory prepended to every relative path in the index.
+        transform: Transform applied to every candidate image.
+        query_transform: Optional separate transform for the query image;
+            falls back to *transform* when not provided.
+        loader: Callable that loads a PIL image from a path.
+    """
+
+    def __init__(
+        self,
+        entries: list[dict],
+        root: str | Path | None = None,
+        transform: transforms.Compose | None = None,
+        query_transform: transforms.Compose | None = None,
+        loader=None,
+    ) -> None:
+        self.root = Path(root) if root is not None else None
+        self.transform = transform
+        self.query_transform = query_transform or transform
+        self._loader = loader or default_loader
+        self.entries = entries
+
+        n_pos = {len(e["positives"]) for e in entries}
+        n_neg = {len(e["negatives"]) for e in entries}
+        if len(n_pos) > 1 or len(n_neg) > 1:
+            raise ValueError(
+                "PseudoAccuracyDataset requires every entry to have the same "
+                f"number of positives/negatives; got positive counts {n_pos} "
+                f"and negative counts {n_neg}"
+            )
+        self.n_pos = next(iter(n_pos)) if n_pos else 0
+        self.n_neg = next(iter(n_neg)) if n_neg else 0
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
+    def _full_path(self, rel: str) -> Path:
+        return self.root / rel if self.root is not None else Path(rel)
+
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, int]:
+        entry = self.entries[index]
+
+        query_img = self._loader(self._full_path(entry["query_frame"]))
+        if self.query_transform is not None:
+            query_img = self.query_transform(query_img)
+
+        cand_paths = list(entry["positives"]) + list(entry["negatives"])
+        cand_imgs = [self._loader(self._full_path(p)) for p in cand_paths]
+        if self.transform is not None:
+            cand_imgs = [self.transform(img) for img in cand_imgs]
+
+        return query_img, torch.stack(cand_imgs), index
+
+
 class LabeledImageFolder(ImageFolder):
     """Plain ImageFolder that returns (image, label) pairs.
 

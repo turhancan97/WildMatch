@@ -369,8 +369,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
     )
-    eval_train_subset = _fixed_subset(train_ds_eval, args.eval_fraction)
-    eval_val_subset   = _fixed_subset(val_ds,        args.eval_fraction)
+    # Video-level pseudo-accuracy needs every video's full set of query
+    # frames present, so no subsetting here (unlike the mini-loaders above).
+    eval_train_subset = train_ds_eval
+    eval_val_subset   = val_ds
 
     # ── models ──
     rdd = build_rdd(args.rdd_weights, device, args.top_k)
@@ -427,8 +429,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
         )
 
         t_eval_start = time.perf_counter()
-        train_eval_metrics = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_subset, args, prefix="train_eval")
-        val_metrics        = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_subset,   args, prefix="val")
+        do_eval = epoch % args.eval_every_epochs == args.eval_every_epochs - 1
+        if do_eval:
+            train_eval_metrics = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_subset, args, prefix="train_eval")
+            val_metrics        = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_subset,   args, prefix="val")
         epoch_eval_time = time.perf_counter() - t_eval_start
         _unwrap(rdd).eval()
         lg.train()
@@ -441,9 +445,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
             "train/epoch_loss":  epoch_loss,
             "train/lr":          lr,
             "time/epoch_eval_s": epoch_eval_time,
-            **train_eval_metrics,
-            **val_metrics,
         }
+        if do_eval:
+            metrics.update(train_eval_metrics)
+            metrics.update(val_metrics)
 
         if accelerator.is_main_process:
             accelerator.log(metrics, step=global_step)

@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 from torch.utils.data import Subset
 
 from rdd.RDD.utils import to_pixel_coords
+from contrastive_finetuning.loading import PseudoAccuracyDataset, get_loader
 from contrastive_finetuning.process import align_tensors_to_max_length
 
 
@@ -40,7 +41,21 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--grad_clip",     type=float, default=1.0)
     p.add_argument("--seed",          type=int,  default=0)
     p.add_argument("--num_workers",   type=int,  default=4)
-    p.add_argument("--eval_fraction", type=float, default=0.1, help="Fraction of dataset used for post-epoch eval")
+    p.add_argument("--eval_every_epochs", type=int, default=10)
+    p.add_argument(
+        "--eval_batch_size", type=int, default=4,
+        help="Queries per DataLoader batch in eval_pseudo_accuracy (controls CPU "
+             "decode/prefetch parallelism, not GPU memory — see --eval_max_gpu_batch "
+             "for that)",
+    )
+    p.add_argument(
+        "--eval_max_gpu_batch", type=int, default=64,
+        help="Max images per RDD forward call in eval_pseudo_accuracy. Candidate "
+             "images (eval_batch_size * (n_pos + n_neg) per DataLoader batch) are "
+             "chunked to this size before RDD's deformable attention, since that "
+             "scales steeply with images-per-call and OOMs on larger top_k/top_m "
+             "indices otherwise",
+    )
     p.add_argument(
         "--wandb_tags", type=str, default="",
         help="Comma-separated wandb tags for this run",
@@ -235,6 +250,29 @@ def eval_epoch(
 
 
 # ── pseudo-accuracy eval ──────────────────────────────────────────────────────
+def _video_id(rel_path: str) -> str:
+    """Index paths look like `{split}/{lynx_id}/{location}/{video_id}/{frame}.jpg`."""
+    return str(Path(rel_path).parent)
+
+
+def _lynx_id(rel_path: str) -> str:
+    return Path(rel_path).parts[1]
+
+
+def _extract_chunked(rdd: torch.nn.Module, images: torch.Tensor, chunk_size: int) -> list[dict]:
+    """extract_train, chunked along the batch dim.
+
+    RDD's deformable attention scales steeply with images-per-forward-call, so
+    peak GPU memory needs to be bounded independent of how many candidate
+    images a DataLoader batch happens to bring along (which varies with the
+    index's top_k/top_m).
+    """
+    feats: list[dict] = []
+    for i in range(0, images.shape[0], chunk_size):
+        feats.extend(extract_train(rdd, images[i:i + chunk_size]))
+    return feats
+
+
 @torch.no_grad()
 def eval_pseudo_accuracy(
     accelerator: Accelerator,
@@ -249,7 +287,19 @@ def eval_pseudo_accuracy(
     negative candidate listed in the JSON index.  The candidate with the most
     matches wins; the prediction is correct when that winner is a positive.
 
-    Also returns mean match counts over all pos/neg pairs as a byproduct.
+    Also returns mean match counts over all pos/neg pairs as a byproduct, and
+    a video-level accuracy: paths look like
+    ``{split}/{lynx_id}/{location}/{video_id}/{frame}.jpg``, so all query
+    frames sharing a parent directory belong to the same video/individual.
+    For each video, the query frame with the single highest-scoring candidate
+    (over its whole pos+neg pool, not just positives) picks that candidate's
+    lynx_id as the video's prediction; correct when it matches the video's
+    own lynx_id.
+
+    Uses a real DataLoader (multiprocess workers, pin_memory — same pattern
+    as the training loop) instead of loading images one at a time in the
+    main process, and batches every query's full candidate pool into a
+    single RDD+LG forward pass instead of scoring candidates individually.
     """
     device = accelerator.device
     _unwrap(rdd).eval()
@@ -261,48 +311,87 @@ def eval_pseudo_accuracy(
         base_ds = dataset_subset
         entries = base_ds._entries
 
+    ds = PseudoAccuracyDataset(
+        entries,
+        root=base_ds.root,
+        transform=base_ds.transform,
+        query_transform=base_ds.query_transform,
+        loader=base_ds._loader,
+    )
+    loader = get_loader(
+        ds, batch_size=args.eval_batch_size, shuffle=False,
+        num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
+    )
+
     accuracies: list[float] = []
     best_pos_scores: list[float] = []
     best_neg_scores: list[float] = []
+    # video_id -> {"true_lynx": str, "best_score": float, "best_lynx": str}
+    videos: dict[str, dict] = {}
 
-    for entry in tqdm(entries, desc=f"{prefix}", leave=False, disable=not accelerator.is_main_process):
-        query_img = base_ds._loader(base_ds._full_path(entry["query_frame"]))
-        if base_ds.query_transform is not None:
-            query_img = base_ds.query_transform(query_img)
-        query_r = resize_long_side(query_img.unsqueeze(0).to(device), args.resize)
+    for query_batch, cand_batch, idx_batch in tqdm(
+        loader, desc=f"{prefix}", leave=False, disable=not accelerator.is_main_process
+    ):
+        query_batch = query_batch.to(device)
+        cand_batch  = cand_batch.to(device)
+        B, n_cand, C, H, W = cand_batch.shape
+
+        query_r = resize_long_side(query_batch, args.resize)
         H_q, W_q = query_r.shape[-2:]
-        feats_q = extract_train(_unwrap(rdd), query_r)
+        feats_q = _extract_chunked(_unwrap(rdd), query_r, args.eval_max_gpu_batch)
 
-        def _score(rel_path: str) -> float:
-            cand_img = base_ds._loader(base_ds._full_path(rel_path))
-            if base_ds.transform is not None:
-                cand_img = base_ds.transform(cand_img)
-            cand_r = resize_long_side(cand_img.unsqueeze(0).to(device), args.resize)
-            H_c, W_c = cand_r.shape[-2:]
-            feats_c = extract_train(_unwrap(rdd), cand_r)
-            pred = lg({
-                "image0": batch_features(feats_q, H_q, W_q),
-                "image1": batch_features(feats_c, H_c, W_c),
-            })
-            s = pred["scores"][0]
-            return s.mean().item() if s.numel() > 0 else 0.0
+        cand_r = resize_long_side(cand_batch.view(B * n_cand, C, H, W), args.resize)
+        H_c, W_c = cand_r.shape[-2:]
+        feats_c = _extract_chunked(_unwrap(rdd), cand_r, args.eval_max_gpu_batch)
 
-        score_pos = max(_score(p) for p in entry["positives"])
-        score_neg = max(_score(n) for n in entry["negatives"])
+        # Each query's features are matched against its own n_cand candidates
+        # positionally, so repeat them to line up as one flat (B * n_cand)
+        # -sized batch for LG.
+        feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
+        pred = lg({
+            "image0": batch_features(feats_q_rep, H_q, W_q),
+            "image1": batch_features(feats_c,     H_c, W_c),
+        })
+        scores = torch.stack([
+            s.mean() if s.numel() > 0 else torch.zeros((), device=device)
+            for s in pred["scores"]
+        ]).view(B, n_cand)
 
-        if score_pos > score_neg:
-            accuracies.append(1.0)
-        elif score_pos == score_neg:
-            accuracies.append(0.5)
-        else:
-            accuracies.append(0.0)
+        score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
+        score_neg, _ = scores[:, ds.n_pos:].max(dim=1)
+        score_best, idx_best = scores.max(dim=1)
 
-        best_pos_scores.append(score_pos)
-        best_neg_scores.append(score_neg)
+        # One sync per batch (instead of one per query, let alone per
+        # candidate) to pull the whole batch's results back to Python.
+        for sp, sn, sb, ib, idx in zip(
+            score_pos.tolist(), score_neg.tolist(), score_best.tolist(),
+            idx_best.tolist(), idx_batch.tolist(),
+        ):
+            if sp > sn:
+                accuracies.append(1.0)
+            elif sp == sn:
+                accuracies.append(0.5)
+            else:
+                accuracies.append(0.0)
+            best_pos_scores.append(sp)
+            best_neg_scores.append(sn)
+
+            entry = ds.entries[idx]
+            video_id  = _video_id(entry["query_frame"])
+            true_lynx = _lynx_id(entry["query_frame"])
+            cand_paths = entry["positives"] + entry["negatives"]
+            best_lynx = _lynx_id(cand_paths[ib])
+
+            rec = videos.setdefault(video_id, {"true_lynx": true_lynx, "best_score": -float("inf"), "best_lynx": None})
+            if sb > rec["best_score"]:
+                rec["best_score"] = sb
+                rec["best_lynx"] = best_lynx
 
     n = len(entries)
+    video_correct = [1.0 if rec["best_lynx"] == rec["true_lynx"] else 0.0 for rec in videos.values()]
     return {
-        f"{prefix}/pseudo_accuracy": sum(accuracies)    / max(n, 1),
+        f"{prefix}/frame_accuracy": sum(accuracies)    / max(n, 1),
         f"{prefix}/mean_score_pos":  sum(best_pos_scores) / max(n, 1),
         f"{prefix}/mean_score_neg":  sum(best_neg_scores) / max(n, 1),
+        f"{prefix}/video_accuracy":  sum(video_correct) / max(len(video_correct), 1),
     }

@@ -71,39 +71,26 @@ def parse_args() -> argparse.Namespace:
         help="EMA decay for LightGlue's weights (0 disables); the EMA copy is used for all "
              "eval/checkpointing instead of the raw live weights (typical 0.999)",
     )
-    p.add_argument(
-        "--coverage_score", action="store_true",
-        help="Score LG match confidence in the training loss as sum(conf) / min(valid "
-             "keypoints per side) instead of mean(conf) — the same normalization "
-             "eval_pseudo_accuracy already always uses (see _lg_scores in train_common.py). "
-             "Off by default, so training stays on the original mean-based loss.",
-    )
     return p.parse_args()
 
 
 # ── loss ──────────────────────────────────────────────────────────────────────
 def lg_confidence_loss(
     pred_pos: dict, pred_neg: dict, margin: float, device: torch.device,
-    data_a: dict | None = None, data_p: dict | None = None, data_n: dict | None = None,
-    coverage_score: bool = False,
+    data_a: dict, data_p: dict, data_n: dict,
 ) -> tuple[torch.Tensor, dict]:
     """
     Margin loss on LightGlue's OWN matching confidence (`scores`):
       loss = relu(margin - pos_conf + neg_conf)
 
-    pos_conf/neg_conf default to mean(match confidence). With
-    `coverage_score` (requires data_a/data_p/data_n, for their keypoint
-    masks) they're sum(confidence) / min(valid keypoints on each side)
-    instead — the same normalization eval_pseudo_accuracy uses (see
+    pos_conf/neg_conf are sum(confidence) / min(valid keypoints on each
+    side) — the same normalization eval_pseudo_accuracy uses (see
     _lg_scores in train_common.py) — which keeps a couple of lucky
     high-confidence matches from dominating the loss for an otherwise
     poorly-matched pair.
     """
-    if coverage_score:
-        if data_a is None or data_p is None or data_n is None:
-            raise ValueError("coverage_score=True requires data_a/data_p/data_n")
-        pos_conf_all = _lg_scores(pred_pos, data_a, data_p, device)  # (B,)
-        neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device)  # (B,)
+    pos_conf_all = _lg_scores(pred_pos, data_a, data_p, device)  # (B,)
+    neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device)  # (B,)
 
     losses = []
     n_skipped = 0
@@ -118,17 +105,15 @@ def lg_confidence_loss(
         pos_match_list.append(s_pos.shape[0])
         neg_match_list.append(s_neg.shape[0])
 
-        pos_conf = pos_conf_all[i] if coverage_score else s_pos.mean()
+        pos_conf = pos_conf_all[i]
         pos_conf_list.append(pos_conf.item())
 
         if s_neg.shape[0] > 0:
-            neg_conf = neg_conf_all[i] if coverage_score else s_neg.mean()
+            neg_conf = neg_conf_all[i]
             neg_conf_list.append(neg_conf.item())
             losses.append(F.relu(margin - pos_conf + neg_conf))
-        elif coverage_score:
-            losses.append(F.relu(margin - pos_conf))
         else:
-            losses.append(F.relu(margin - s_pos).mean())
+            losses.append(F.relu(margin - pos_conf))
 
     def _mean(lst):
         return sum(lst) / len(lst) if lst else 0.0
@@ -294,7 +279,6 @@ def train_epoch_lg(
         loss, stats = lg_confidence_loss(
             pred_pos, pred_neg, args.lg_margin, device,
             data_a=data_a, data_p=data_p, data_n=data_n,
-            coverage_score=args.coverage_score,
         )
 
         epoch_skipped += stats["n_skipped"]

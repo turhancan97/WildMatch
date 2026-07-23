@@ -18,7 +18,7 @@ from torch.utils.data import Subset
 from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
-    _unwrap, add_common_args, build_wandb_tags, eval_epoch, eval_pseudo_accuracy,
+    _lg_scores, _unwrap, add_common_args, build_wandb_tags, eval_epoch, eval_pseudo_accuracy,
     extract_train, resize_long_side, run_lg_matching_grad, seed_all,
 )
 
@@ -71,34 +71,62 @@ def parse_args() -> argparse.Namespace:
         help="EMA decay for LightGlue's weights (0 disables); the EMA copy is used for all "
              "eval/checkpointing instead of the raw live weights (typical 0.999)",
     )
+    p.add_argument(
+        "--coverage_score", action="store_true",
+        help="Score LG match confidence in the training loss as sum(conf) / min(valid "
+             "keypoints per side) instead of mean(conf) — the same normalization "
+             "eval_pseudo_accuracy already always uses (see _lg_scores in train_common.py). "
+             "Off by default, so training stays on the original mean-based loss.",
+    )
     return p.parse_args()
 
 
 # ── loss ──────────────────────────────────────────────────────────────────────
 def lg_confidence_loss(
     pred_pos: dict, pred_neg: dict, margin: float, device: torch.device,
+    data_a: dict | None = None, data_p: dict | None = None, data_n: dict | None = None,
+    coverage_score: bool = False,
 ) -> tuple[torch.Tensor, dict]:
     """
     Margin loss on LightGlue's OWN matching confidence (`scores`):
-      loss = relu(margin - mean(pos_conf) + mean(neg_conf))
+      loss = relu(margin - pos_conf + neg_conf)
+
+    pos_conf/neg_conf default to mean(match confidence). With
+    `coverage_score` (requires data_a/data_p/data_n, for their keypoint
+    masks) they're sum(confidence) / min(valid keypoints on each side)
+    instead — the same normalization eval_pseudo_accuracy uses (see
+    _lg_scores in train_common.py) — which keeps a couple of lucky
+    high-confidence matches from dominating the loss for an otherwise
+    poorly-matched pair.
     """
+    if coverage_score:
+        if data_a is None or data_p is None or data_n is None:
+            raise ValueError("coverage_score=True requires data_a/data_p/data_n")
+        pos_conf_all = _lg_scores(pred_pos, data_a, data_p, device)  # (B,)
+        neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device)  # (B,)
+
     losses = []
     n_skipped = 0
     pos_match_list, neg_match_list = [], []
     pos_conf_list, neg_conf_list = [], []
 
-    for s_pos, s_neg in zip(pred_pos["scores"], pred_neg["scores"]):
+    for i, (s_pos, s_neg) in enumerate(zip(pred_pos["scores"], pred_neg["scores"])):
         if s_pos.shape[0] == 0:
             n_skipped += 1
             continue
 
         pos_match_list.append(s_pos.shape[0])
         neg_match_list.append(s_neg.shape[0])
-        pos_conf_list.append(s_pos.mean().item())
+
+        pos_conf = pos_conf_all[i] if coverage_score else s_pos.mean()
+        pos_conf_list.append(pos_conf.item())
 
         if s_neg.shape[0] > 0:
-            neg_conf_list.append(s_neg.mean().item())
-            losses.append(F.relu(margin - s_pos.mean() + s_neg.mean()))
+            neg_conf = neg_conf_all[i] if coverage_score else s_neg.mean()
+            neg_conf_list.append(neg_conf.item())
+            losses.append(F.relu(margin - pos_conf + neg_conf))
+        elif coverage_score:
+            losses.append(F.relu(margin - pos_conf))
         else:
             losses.append(F.relu(margin - s_pos).mean())
 
@@ -261,9 +289,13 @@ def train_epoch_lg(
             feats_p = extract_train(rdd, positives_r)
             feats_n = extract_train(rdd, negatives_r)
 
-        pred_pos, pred_neg = run_lg_matching_grad(lg, feats_a, feats_p, feats_n, H_r, W_r)
+        pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(lg, feats_a, feats_p, feats_n, H_r, W_r)
 
-        loss, stats = lg_confidence_loss(pred_pos, pred_neg, args.lg_margin, device)
+        loss, stats = lg_confidence_loss(
+            pred_pos, pred_neg, args.lg_margin, device,
+            data_a=data_a, data_p=data_p, data_n=data_n,
+            coverage_score=args.coverage_score,
+        )
 
         epoch_skipped += stats["n_skipped"]
         epoch_images  += len(feats_a)

@@ -174,12 +174,16 @@ def run_lg_matching_grad(
     feats_n: list[dict],
     image_h: int,
     image_w: int,
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict, dict, dict]:
     """
     Run LightGlue WITHOUT a no_grad wrapper, so LG's own parameters receive
     gradient from any loss computed on the returned `scores` /
     `matching_scores0`. Returns the full prediction dicts (not just match
     indices) — used by train_lg_matching_loss.py.
+
+    Also returns the batch_features dicts (data_a/data_p/data_n): callers
+    that want keypoint-coverage-normalized scores (see _lg_scores) need
+    their `masks`.
 
     Note LightGlueMasked always internally `.detach()`s its descriptor
     *inputs* (see rdd_patch/lightglue_masked.py), so this can never send
@@ -191,7 +195,7 @@ def run_lg_matching_grad(
     data_n = batch_features(feats_n, image_h, image_w)
     pred_pos = lg({"image0": data_a, "image1": data_p})
     pred_neg = lg({"image0": data_a, "image1": data_n})
-    return pred_pos, pred_neg
+    return pred_pos, pred_neg, data_a, data_p, data_n
 
 
 # ── validation epoch ──────────────────────────────────────────────────────────
@@ -273,6 +277,27 @@ def _extract_chunked(rdd: torch.nn.Module, images: torch.Tensor, chunk_size: int
     return feats
 
 
+def _lg_scores(pred: dict, q_data: dict, g_data: dict, device: torch.device) -> torch.Tensor:
+    """Per-pair score = sum(match confidence) / min(valid keypoints in query, in candidate).
+
+    Normalizing by keypoint coverage instead of averaging confidence over
+    however many matches were found keeps a couple of lucky high-confidence
+    matches from outscoring a pair that's genuinely well-matched throughout.
+
+    Stays lazy/on-device throughout (no `.item()`) — this is also called from
+    the training loss every step, where a GPU sync per batch element would
+    actually cost something, unlike in eval.
+    """
+    B = q_data["keypoints"].shape[0]
+    sums = torch.stack([
+        pred["scores"][i].sum() if pred["scores"][i].numel() > 0 else torch.zeros((), device=device)
+        for i in range(B)
+    ])
+    n_q = q_data["masks"].squeeze(1).squeeze(-1).sum(dim=1).clamp(min=1)
+    n_g = g_data["masks"].squeeze(1).squeeze(-1).sum(dim=1).clamp(min=1)
+    return sums / torch.minimum(n_q, n_g)
+
+
 @torch.no_grad()
 def eval_pseudo_accuracy(
     accelerator: Accelerator,
@@ -281,6 +306,7 @@ def eval_pseudo_accuracy(
     dataset_subset,
     args: argparse.Namespace,
     prefix: str,
+    verbose: bool = False,
 ) -> dict:
     """
     For each query in the subset, run LG against every positive and every
@@ -300,6 +326,10 @@ def eval_pseudo_accuracy(
     as the training loop) instead of loading images one at a time in the
     main process, and batches every query's full candidate pool into a
     single RDD+LG forward pass instead of scoring candidates individually.
+
+    If `verbose`, prints one line per misclassified video (wrong predicted
+    lynx_id) with the winning query frame, its score, and the matched
+    candidate frame — see contrastive_finetuning/eval_video_accuracy.py.
     """
     device = accelerator.device
     _unwrap(rdd).eval()
@@ -348,14 +378,10 @@ def eval_pseudo_accuracy(
         # positionally, so repeat them to line up as one flat (B * n_cand)
         # -sized batch for LG.
         feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
-        pred = lg({
-            "image0": batch_features(feats_q_rep, H_q, W_q),
-            "image1": batch_features(feats_c,     H_c, W_c),
-        })
-        scores = torch.stack([
-            s.mean() if s.numel() > 0 else torch.zeros((), device=device)
-            for s in pred["scores"]
-        ]).view(B, n_cand)
+        data_q = batch_features(feats_q_rep, H_q, W_q)
+        data_c = batch_features(feats_c,     H_c, W_c)
+        pred = lg({"image0": data_q, "image1": data_c})
+        scores = _lg_scores(pred, data_q, data_c, device).view(B, n_cand)
 
         score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
         score_neg, _ = scores[:, ds.n_pos:].max(dim=1)
@@ -382,13 +408,32 @@ def eval_pseudo_accuracy(
             cand_paths = entry["positives"] + entry["negatives"]
             best_lynx = _lynx_id(cand_paths[ib])
 
-            rec = videos.setdefault(video_id, {"true_lynx": true_lynx, "best_score": -float("inf"), "best_lynx": None})
+            rec = videos.setdefault(video_id, {
+                "true_lynx": true_lynx, "best_score": -float("inf"), "best_lynx": None,
+                "best_query_frame": None, "best_cand_path": None,
+            })
             if sb > rec["best_score"]:
                 rec["best_score"] = sb
                 rec["best_lynx"] = best_lynx
+                rec["best_query_frame"] = entry["query_frame"]
+                rec["best_cand_path"] = cand_paths[ib]
 
     n = len(entries)
     video_correct = [1.0 if rec["best_lynx"] == rec["true_lynx"] else 0.0 for rec in videos.values()]
+
+    if verbose:
+        n_wrong = 0
+        for video_id, rec in sorted(videos.items()):
+            if rec["best_lynx"] == rec["true_lynx"]:
+                continue
+            n_wrong += 1
+            accelerator.print(
+                f"[{prefix}] MISMATCH video={video_id} true_lynx={rec['true_lynx']} "
+                f"predicted_lynx={rec['best_lynx']} score={rec['best_score']:.4f} "
+                f"query_frame={rec['best_query_frame']} matched_candidate={rec['best_cand_path']}"
+            )
+        accelerator.print(f"[{prefix}] {n_wrong}/{len(videos)} videos misclassified")
+
     return {
         f"{prefix}/frame_accuracy": sum(accuracies)    / max(n, 1),
         f"{prefix}/mean_score_pos":  sum(best_pos_scores) / max(n, 1),

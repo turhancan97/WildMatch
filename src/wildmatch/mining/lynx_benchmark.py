@@ -223,6 +223,61 @@ def aggregate_sequence_score(
     avg_matches = float(sum(per_q_matches) / len(per_q_matches))
     return {"score": seq_score, "avg_matches": avg_matches}
 
+def aggregate_sequence_score_v2(
+    lg,
+    q_frames: List[FrameFeat],
+    g_frames: List[FrameFeat],
+    device: torch.device,
+    top_m: int,
+) -> Dict[str, float]:
+    per_q_best: List[float] = []
+    per_q_matches: List[int] = []
+
+    per_frame_scores: List[float] = []
+
+    scores_matrix = []
+    for qf in q_frames:
+        best_score = 0.0
+        best_matches = 0
+
+        scores = []
+        for gf in g_frames:
+            score, nm = score_pair_lightglue(lg, qf, gf, device)
+
+            scores.append(score)
+
+            if score > best_score:
+                best_score = score
+                best_matches = nm
+
+        scores_matrix.append(scores)
+
+        per_q_best.append(best_score)
+        per_q_matches.append(best_matches)
+
+        # zapis score klatki query
+        per_frame_scores.append(best_score)
+
+    scores_matrix = torch.tensor(scores_matrix)
+
+    if not per_q_best:
+        return {
+            "score": 0.0,
+            "avg_matches": 0.0,
+            "frame_scores": []
+        }
+
+    top_vals = sorted(per_q_best, reverse=True)[:top_m]
+    seq_score = float(sum(top_vals) / len(top_vals))
+    avg_matches = float(sum(per_q_matches) / len(per_q_matches))
+
+    return {
+        "score": seq_score,
+        "avg_matches": avg_matches,
+        "frame_scores": per_frame_scores,
+        "scores_matrix": scores_matrix,
+    }
+
 def compute_average_precision(relevance: List[bool]) -> float:
     num_rel = sum(relevance)
     if num_rel == 0:

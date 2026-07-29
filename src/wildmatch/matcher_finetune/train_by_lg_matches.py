@@ -715,7 +715,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
     _unwrap(rdd).train(train_rdd)
     lg.train(train_lg)
     if accelerator.is_main_process:
-        accelerator.log({**baseline_train, **baseline_val, "epoch": -1}, step=global_step)
+        accelerator.log(
+            {**baseline_train, **baseline_val, "epoch": -1, "train/random_negative_prob": train_ds.random_negative_prob},
+            step=global_step,
+        )
 
     # ── loop ──
     for epoch in range(args.epochs):
@@ -761,10 +764,15 @@ def run_training_lg(args: argparse.Namespace) -> None:
         lr = scheduler.get_last_lr()[0]
 
         metrics = {
-            "epoch":             epoch,
-            "train/epoch_loss":  epoch_loss,
-            "train/lr":          lr,
-            "time/epoch_eval_s": epoch_eval_time,
+            "epoch":                      epoch,
+            "train/epoch_loss":           epoch_loss,
+            "train/lr":                   lr,
+            "time/epoch_eval_s":          epoch_eval_time,
+            # Logged unconditionally (not just when moving_neg/* fires) so the
+            # wandb curve stays continuous even on epochs with zero sampled
+            # random negatives, and so --negative_mining alone (static prob,
+            # no --moving_negative_prob) still shows what was actually in use.
+            "train/random_negative_prob": train_ds.random_negative_prob,
         }
         if do_eval:
             metrics.update(train_eval_metrics)

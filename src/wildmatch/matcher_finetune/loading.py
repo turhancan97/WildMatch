@@ -181,12 +181,23 @@ class IndexAssignedTripletDataset(Dataset):
             sampling on the single hardest known candidate lynx.
         negative_mining_decay: EMA decay used by `update_mining_stats` (closer
             to 1 remembers older observations longer).
+        weak_queries: With probability weak_queries_prob, replace the
+            index-driven (query, positive, negative) for an item with a fully
+            random triplet: a random lynx, two distinct random frames of it
+            (query + positive), and a random frame of a different random lynx
+            (negative) — there's no index entry to mine a positive/negative
+            pool from for a random query, so both are plain uniform draws
+            from the candidate pool (independent of negative_mining, which
+            only biases the *index*-query random-negative branch). Requires
+            `root` to be set (same candidate pool as random_negative_prob).
+        weak_queries_prob: Probability of drawing a weak_queries triplet
+            instead of the index-driven one, per `__getitem__` call.
         return_meta: When True, `__getitem__` returns a 4th element: a dict
-            with `neg_source` ("index" | "random"), `query_lynx`, and
-            `neg_lynx`, letting a training loop bucket LG confidence by where
-            each negative came from (used by --moving_negative_prob and
-            --negative_mining). Default False keeps the original 3-tuple for
-            all other callers.
+            with `neg_source` ("index" | "random"), `query_lynx`, `neg_lynx`,
+            and `is_weak_query`, letting a training loop bucket LG confidence
+            by where each sample came from (used by --moving_negative_prob,
+            --negative_mining, and --weak_queries). Default False keeps the
+            original 3-tuple for all other callers.
     """
 
     def __init__(
@@ -200,6 +211,8 @@ class IndexAssignedTripletDataset(Dataset):
         negative_mining: bool = False,
         negative_mining_temperature: float = 1.0,
         negative_mining_decay: float = 0.9,
+        weak_queries: bool = False,
+        weak_queries_prob: float = 0.0,
         return_meta: bool = False,
     ) -> None:
         self.root = Path(root) if root is not None else None
@@ -210,6 +223,8 @@ class IndexAssignedTripletDataset(Dataset):
         self.negative_mining = negative_mining
         self.negative_mining_temperature = negative_mining_temperature
         self.negative_mining_decay = negative_mining_decay
+        self.weak_queries = weak_queries
+        self.weak_queries_prob = weak_queries_prob
         self.return_meta = return_meta
         self._mining_scores: dict[tuple[str, str], float] = {}
 
@@ -224,9 +239,11 @@ class IndexAssignedTripletDataset(Dataset):
 
         self._lynx_pool: dict[str, list[str]] = {}
         self._lynx_ids: list[str] = []
-        if random_negative_prob > 0:
+        if random_negative_prob > 0 or weak_queries:
             if self.root is None:
-                raise ValueError("random_negative_prob > 0 requires `root` to be set")
+                raise ValueError(
+                    "random_negative_prob > 0 or weak_queries=True requires `root` to be set"
+                )
             self._lynx_pool = self._scan_lynx_pool()
             self._lynx_ids = list(self._lynx_pool)
 
@@ -277,9 +294,11 @@ class IndexAssignedTripletDataset(Dataset):
     def update_mining_stats(self, observations: list[tuple[str, str, float]]) -> None:
         """EMA-updates the (query_lynx, candidate_lynx) difficulty matrix used by
         negative_mining. `observations` is a list of (query_lynx, neg_lynx,
-        lg_confidence) triples — typically all of a training epoch's negatives
-        that came from the 'random' branch (see `neg_source` in __getitem__'s
-        meta dict), collected and passed in once per epoch by the training loop.
+        lg_confidence) triples — typically an epoch's negatives that came from
+        the 'random' branch (see `neg_source` in __getitem__'s meta dict) of an
+        *index* query (weak_queries samples are excluded by the training loop,
+        since they don't share the index-query random-negative distribution),
+        collected and passed in once per epoch by the training loop.
         """
         for query_lynx, neg_lynx, conf in observations:
             key = (query_lynx, neg_lynx)
@@ -298,12 +317,47 @@ class IndexAssignedTripletDataset(Dataset):
         neg_path = random.choice(entry["negatives"])
         return neg_path, {"neg_source": "index", "query_lynx": query_lynx, "neg_lynx": self._lynx_id(neg_path)}
 
-    def __getitem__(self, index: int):
-        entry = self._entries[index]
+    def _sample_weak_triplet(self) -> tuple[str, str, str, dict]:
+        """Fully random (query, positive, negative), bypassing the JSON index
+        entirely: a random lynx supplies two distinct frames (query +
+        positive), a different random lynx supplies the negative frame.
+        Deliberately plain `random.choice` throughout, NOT negative_mining-
+        weighted — weak queries are meant as an unbiased exploration signal,
+        independent of the mining curriculum (which only targets the
+        index-query random-negative branch via _sample_negative_lynx).
+        Requires weak_queries=True, which guarantees _lynx_pool is built.
+        """
+        query_lynx = random.choice(self._lynx_ids)
+        pool = self._lynx_pool[query_lynx]
+        query_rel = random.choice(pool)
+        pos_rel = query_rel
+        if len(pool) > 1:
+            while pos_rel == query_rel:
+                pos_rel = random.choice(pool)
 
-        query_path = self._full_path(entry["query_frame"])
-        pos_path   = self._full_path(random.choice(entry["positives"]))
-        neg_rel, neg_meta = self._sample_negative(entry)
+        neg_lynx = query_lynx
+        while neg_lynx == query_lynx:
+            neg_lynx = random.choice(self._lynx_ids)
+        neg_rel = random.choice(self._lynx_pool[neg_lynx])
+
+        meta = {
+            "neg_source": "random", "query_lynx": query_lynx, "neg_lynx": neg_lynx,
+            "is_weak_query": True,
+        }
+        return query_rel, pos_rel, neg_rel, meta
+
+    def __getitem__(self, index: int):
+        if self.weak_queries and random.random() < self.weak_queries_prob:
+            query_rel, pos_rel, neg_rel, meta = self._sample_weak_triplet()
+        else:
+            entry = self._entries[index]
+            query_rel = entry["query_frame"]
+            pos_rel = random.choice(entry["positives"])
+            neg_rel, meta = self._sample_negative(entry)
+            meta["is_weak_query"] = False
+
+        query_path = self._full_path(query_rel)
+        pos_path   = self._full_path(pos_rel)
         neg_path   = self._full_path(neg_rel)
 
         query_img = self._loader(query_path)
@@ -317,7 +371,7 @@ class IndexAssignedTripletDataset(Dataset):
             neg_img = self.transform(neg_img)
 
         if self.return_meta:
-            return query_img, pos_img, neg_img, neg_meta
+            return query_img, pos_img, neg_img, meta
         return query_img, pos_img, neg_img
 
 

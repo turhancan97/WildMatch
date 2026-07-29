@@ -137,6 +137,26 @@ def parse_args() -> argparse.Namespace:
         help="EMA decay for --negative_mining's difficulty matrix (closer to 1 remembers "
              "older observations longer).",
     )
+    p.add_argument(
+        "--weak_queries", action="store_true",
+        help="With probability --weak_queries_prob, replace the index-driven query for a "
+             "sample with a fully random frame from the whole candidate pool (any lynx), "
+             "paired with a random same-lynx positive and a random different-lynx negative "
+             "— there's no index entry to mine a pool from for these, so both are plain "
+             "uniform draws (independent of --negative_mining, which only biases the "
+             "index-query random-negative branch; --random_negative_prob's index-vs-random "
+             "coin flip doesn't apply here either — weak queries are always fully random). "
+             "Because the 'positive' pairing isn't curated, its contribution to the margin "
+             "loss gradient is masked (forward value unchanged, like .detach(), but "
+             "per-sample since a batch mixes weak and index queries — see lg_confidence_loss "
+             "weak_mask); the negative-confidence term still trains normally. Requires "
+             "--weak_queries_prob > 0.",
+    )
+    p.add_argument(
+        "--weak_queries_prob", type=float, default=0.0,
+        help="Probability of drawing a --weak_queries sample instead of the index-driven "
+             "query, per training item.",
+    )
     args = p.parse_args()
     if args.moving_negative_prob is not None:
         if args.random_negative_prob <= 0:
@@ -145,13 +165,15 @@ def parse_args() -> argparse.Namespace:
             p.error("--moving_negative_prob must be in [0, 1]")
     if args.negative_mining and args.random_negative_prob <= 0:
         p.error("--negative_mining requires --random_negative_prob > 0")
+    if args.weak_queries and not (0.0 < args.weak_queries_prob <= 1.0):
+        p.error("--weak_queries requires --weak_queries_prob in (0, 1]")
     return args
 
 
 # ── loss ──────────────────────────────────────────────────────────────────────
 def lg_confidence_loss(
     pred_pos: dict, pred_neg: dict, margin: float, device: torch.device,
-    data_a: dict, data_p: dict, data_n: dict,
+    data_a: dict, data_p: dict, data_n: dict, weak_mask: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict]:
     """
     Margin loss on LightGlue's OWN matching confidence (`scores`):
@@ -162,19 +184,38 @@ def lg_confidence_loss(
     _lg_scores in train_common.py) — which keeps a couple of lucky
     high-confidence matches from dominating the loss for an otherwise
     poorly-matched pair.
+
+    weak_mask: optional (B,) bool tensor from --weak_queries — True marks
+    samples whose query is a random frame (not the curated index), paired
+    with an uncurated random same-lynx "positive". We still want neg_conf to
+    train normally for these (broad, unbiased negative signal), but don't
+    trust that random pairing enough to reinforce it as a positive match, so
+    pos_conf is masked to a constant for just those samples: same forward
+    value (loss magnitude/logging unaffected), zero backward gradient — the
+    per-sample torch.where is necessary because a batch mixes weak and
+    index-query samples, so the whole pos_conf_all tensor can't just be
+    .detach()'d.
     """
     pos_conf_all = _lg_scores(pred_pos, data_a, data_p, device)  # (B,)
     neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device)  # (B,)
 
+    if weak_mask is not None:
+        pos_conf_all = torch.where(weak_mask, pos_conf_all.detach(), pos_conf_all)
+
     losses = []
-    n_skipped = 0
+    pos_skipped: list[bool] = []  # per-sample: this pair had 0 positive matches
+    neg_skipped: list[bool] = []  # per-sample: this pair had 0 negative matches
     pos_match_list, neg_match_list = [], []
     pos_conf_list, neg_conf_list = [], []
 
     for i, (s_pos, s_neg) in enumerate(zip(pred_pos["scores"], pred_neg["scores"])):
-        if s_pos.shape[0] == 0:
-            n_skipped += 1
-            continue
+        pos_empty = s_pos.shape[0] == 0
+        neg_empty = s_neg.shape[0] == 0
+        pos_skipped.append(pos_empty)
+        neg_skipped.append(neg_empty)
+
+        if pos_empty:
+            continue  # no positive matches at all -> sample contributes no loss term
 
         pos_match_list.append(s_pos.shape[0])
         neg_match_list.append(s_neg.shape[0])
@@ -182,7 +223,7 @@ def lg_confidence_loss(
         pos_conf = pos_conf_all[i]
         pos_conf_list.append(pos_conf.item())
 
-        if s_neg.shape[0] > 0:
+        if not neg_empty:
             neg_conf = neg_conf_all[i]
             neg_conf_list.append(neg_conf.item())
             losses.append(F.relu(margin - pos_conf + neg_conf))
@@ -193,14 +234,14 @@ def lg_confidence_loss(
         return sum(lst) / len(lst) if lst else 0.0
 
     stats = {
-        "n_skipped":        n_skipped,
+        "pos_skipped":      pos_skipped,  # list[bool], length B — caller buckets by source
+        "neg_skipped":      neg_skipped,  # list[bool], length B
         "mean_pos_matches": _mean(pos_match_list),
         "mean_neg_matches": _mean(neg_match_list),
         "mean_pos_conf":    _mean(pos_conf_list),
         "mean_neg_conf":    _mean(neg_conf_list),
     }
     if not losses:
-        stats["n_skipped"] += len(pred_pos["scores"])
         return torch.zeros(1, device=device, requires_grad=True).squeeze(), stats
     return torch.stack(losses).mean(), stats
 
@@ -271,8 +312,10 @@ def measure_negative_gap(
     `dataset`, with `dataset.random_negative_prob` temporarily forced to
     `force_prob` so both index-mined and random negatives show up in roughly
     equal numbers regardless of the configured/current schedule — used to
-    establish --moving_negative_prob's pre-training baseline ratio. Restores
-    the dataset's original probability (and return_meta flag) before
+    establish --moving_negative_prob's pre-training baseline ratio. Also
+    temporarily disables weak_queries (if on), since those samples have no
+    index counterpart to compare against and would bias the baseline. Restores
+    the dataset's original probability/return_meta/weak_queries before
     returning. Uses a throwaway, non-persistent-worker loader so it never
     interferes with the main train_loader's worker pool.
 
@@ -281,8 +324,10 @@ def measure_negative_gap(
     """
     prev_prob = dataset.random_negative_prob
     prev_meta = dataset.return_meta
+    prev_weak = dataset.weak_queries
     dataset.random_negative_prob = force_prob
     dataset.return_meta = True
+    dataset.weak_queries = False
     try:
         loader = get_loader(
             dataset, batch_size=args.batch_size, shuffle=True,
@@ -305,11 +350,14 @@ def measure_negative_gap(
             pred_neg = lg({"image0": data_a, "image1": data_n})
             neg_conf = _lg_scores(pred_neg, data_a, data_n, device).tolist()
 
-            for src, conf in zip(neg_meta["neg_source"], neg_conf):
+            for src, is_weak, conf in zip(neg_meta["neg_source"], neg_meta["is_weak_query"], neg_conf):
+                if is_weak:
+                    continue
                 (index_confs if src == "index" else random_confs).append(conf)
     finally:
         dataset.random_negative_prob = prev_prob
         dataset.return_meta = prev_meta
+        dataset.weak_queries = prev_weak
 
     mean_index  = sum(index_confs)  / len(index_confs)  if index_confs  else 0.0
     mean_random = sum(random_confs) / len(random_confs) if random_confs else 0.0
@@ -410,27 +458,49 @@ def train_epoch_lg(
     0, else `lg` itself); `lg` is always what receives gradient. `ema_lg` (same
     object as `eval_lg` when EMA is on, else None) is updated after every step.
 
-    When --moving_negative_prob or --negative_mining is active, `loader`'s
-    dataset was built with return_meta=True, so each batch carries a 4th
-    `neg_meta` element; this opportunistically buckets that epoch's negatives'
-    LG confidence by `neg_source` ("index" vs "random") into the returned
-    dict, for run_training_lg to act on after the epoch — see NEG_GAP_EPS /
-    compute_moving_prob / IndexAssignedTripletDataset.update_mining_stats.
-    Returns None instead when neither flag is set.
+    `loader`'s dataset is always built with return_meta=True, so every batch
+    carries a 4th `neg_meta` element (neg_source, query_lynx, neg_lynx,
+    is_weak_query). This is used for two independent things:
+      - Always: train/skip_rate_{pos,neg}_{index,random} — the fraction of
+        pairs with zero matches, split by pair type (pos/neg) and by whether
+        that pair's query came from the curated index or not (see skip_counts
+        below; "random" here means an --weak_queries query, since only the
+        query side of a *positive* pair has an index/random distinction).
+      - Only when --moving_negative_prob or --negative_mining is active
+        (gap_tracking_active): opportunistically bucket that epoch's
+        *index-query* negatives' LG confidence by `neg_source` ("index" vs
+        "random") into the returned dict, for run_training_lg to act on after
+        the epoch — see NEG_GAP_EPS / compute_moving_prob /
+        IndexAssignedTripletDataset.update_mining_stats. --weak_queries
+        samples are excluded here (see docstring on update_mining_stats) —
+        they don't share the index-query random-negative distribution these
+        two mechanisms compare against. The returned dict's gap-tracking
+        fields are all-empty/zero when gap_tracking_active is False.
     """
     train_rdd, train_lg = resolve_trained_models(args.trained_model)
     _unwrap(rdd).train(train_rdd)
     lg.train(train_lg)
 
-    track_negatives = args.moving_negative_prob is not None or args.negative_mining
-    mining_active   = args.negative_mining
+    gap_tracking_active = args.moving_negative_prob is not None or args.negative_mining
+    mining_active        = args.negative_mining
+    weak_active           = args.weak_queries
     epoch_index_confs:  list[float] = []
     epoch_random_confs: list[float] = []
     epoch_mining_obs:   list[tuple[str, str, float]] = []
 
+    # [n_skipped, n_total] per (pair, query-source) bucket, for
+    # train/skip_rate_{pos,neg}_{index,random}.
+    skip_counts = {
+        "pos_index": [0, 0], "pos_random": [0, 0],
+        "neg_index": [0, 0], "neg_random": [0, 0],
+    }
+
+    def _bump_skip(key: str, skipped: bool) -> None:
+        counts = skip_counts[key]
+        counts[0] += int(skipped)
+        counts[1] += 1
+
     epoch_loss     = 0.0
-    epoch_skipped  = 0
-    epoch_images   = 0
     mini_eval_time = 0.0
     steps_per_epoch = len(loader)
     t_epoch_start = time.perf_counter()
@@ -441,11 +511,7 @@ def train_epoch_lg(
         desc=f"Epoch {epoch:02d}",
         disable=not accelerator.is_main_process,
     )
-    for step, batch in pbar:
-        if track_negatives:
-            anchors, positives, negatives, neg_meta = batch
-        else:
-            anchors, positives, negatives = batch
+    for step, (anchors, positives, negatives, neg_meta) in pbar:
         device = accelerator.device
         anchors_r   = resize_long_side(anchors,   args.resize).to(device)
         positives_r = resize_long_side(positives, args.resize).to(device)
@@ -460,20 +526,31 @@ def train_epoch_lg(
 
         pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(lg, feats_a, feats_p, feats_n, H_r, W_r)
 
+        weak_mask = None
+        if weak_active:
+            weak_mask = torch.as_tensor(neg_meta["is_weak_query"], dtype=torch.bool, device=device)
+
         loss, stats = lg_confidence_loss(
             pred_pos, pred_neg, args.lg_margin, device,
-            data_a=data_a, data_p=data_p, data_n=data_n,
+            data_a=data_a, data_p=data_p, data_n=data_n, weak_mask=weak_mask,
         )
 
-        epoch_skipped += stats["n_skipped"]
-        epoch_images  += len(feats_a)
+        for is_weak, src, pos_skip, neg_skip in zip(
+            neg_meta["is_weak_query"], neg_meta["neg_source"],
+            stats["pos_skipped"], stats["neg_skipped"],
+        ):
+            _bump_skip("pos_random" if is_weak else "pos_index", pos_skip)
+            _bump_skip("neg_random" if src == "random" else "neg_index", neg_skip)
 
-        if track_negatives:
+        if gap_tracking_active:
             with torch.no_grad():
                 neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device).tolist()
-            for src, q_lynx, n_lynx, conf in zip(
-                neg_meta["neg_source"], neg_meta["query_lynx"], neg_meta["neg_lynx"], neg_conf_all,
+            for src, q_lynx, n_lynx, is_weak, conf in zip(
+                neg_meta["neg_source"], neg_meta["query_lynx"], neg_meta["neg_lynx"],
+                neg_meta["is_weak_query"], neg_conf_all,
             ):
+                if is_weak:
+                    continue  # no index counterpart to compare against — see docstring above
                 if src == "index":
                     epoch_index_confs.append(conf)
                 else:
@@ -498,7 +575,11 @@ def train_epoch_lg(
         global_step += 1
 
         progress = (epoch * steps_per_epoch + step + 1) / (total_epochs * steps_per_epoch)
-        pbar.set_postfix(loss=f"{loss_val:.4f}", skip=stats["n_skipped"])
+        pbar.set_postfix(
+            loss=f"{loss_val:.4f}",
+            pos_skip=sum(stats["pos_skipped"]),
+            neg_skip=sum(stats["neg_skipped"]),
+        )
 
         if accelerator.is_main_process:
             accelerator.log(
@@ -525,13 +606,18 @@ def train_epoch_lg(
 
     epoch_total_time = time.perf_counter() - t_epoch_start
     epoch_train_time = epoch_total_time - mini_eval_time
-    skip_rate = epoch_skipped / max(epoch_images, 1)
+
+    def _skip_rate(key: str) -> float:
+        n_skip, n_total = skip_counts[key]
+        return n_skip / n_total if n_total else 0.0
 
     if accelerator.is_main_process:
         accelerator.log(
             {
-                "train/skip_rate":  skip_rate,
-                "train/n_skipped":  epoch_skipped,
+                "train/skip_rate_pos_index":  _skip_rate("pos_index"),
+                "train/skip_rate_pos_random": _skip_rate("pos_random"),
+                "train/skip_rate_neg_index":  _skip_rate("neg_index"),
+                "train/skip_rate_neg_random": _skip_rate("neg_random"),
                 "time/train_s":     epoch_train_time,
                 "time/mini_eval_s": mini_eval_time,
             },
@@ -539,7 +625,7 @@ def train_epoch_lg(
         )
 
     neg_gap_stats = None
-    if track_negatives:
+    if gap_tracking_active:
         neg_gap_stats = {
             "mean_index_conf":  sum(epoch_index_confs)  / len(epoch_index_confs)  if epoch_index_confs  else 0.0,
             "mean_random_conf": sum(epoch_random_confs) / len(epoch_random_confs) if epoch_random_confs else 0.0,
@@ -560,9 +646,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    moving_active   = args.moving_negative_prob is not None
-    mining_active   = args.negative_mining
-    track_negatives = moving_active or mining_active
+    moving_active  = args.moving_negative_prob is not None
+    mining_active  = args.negative_mining
+    weak_active    = args.weak_queries
+    dataset_mutates = moving_active or mining_active  # see persistent_workers note below
 
     # ── data ──
     train_transform, eval_transform = build_transforms(args.augment)
@@ -572,15 +659,21 @@ def run_training_lg(args: argparse.Namespace) -> None:
         negative_mining=mining_active,
         negative_mining_temperature=args.negative_mining_temperature,
         negative_mining_decay=args.negative_mining_decay,
-        return_meta=track_negatives,
+        weak_queries=weak_active,
+        weak_queries_prob=args.weak_queries_prob,
+        # Always on: train_epoch_lg uses neg_source/is_weak_query to split
+        # train/skip_rate_* by pair type regardless of which (if any) of the
+        # adaptive-sampling flags below are active.
+        return_meta=True,
     )
     # Diagnostics/eval on the training split must stay on clean, index-only
-    # negatives, even when the actual training loader is augmented and/or
-    # mixes in random negatives — otherwise train_eval/mini_train metrics
-    # would be noisier than val's and not comparable across epochs.
+    # queries/negatives, even when the actual training loader is augmented
+    # and/or mixes in random negatives or weak queries — otherwise
+    # train_eval/mini_train metrics would be noisier than val's and not
+    # comparable across epochs.
     train_ds_eval = (
         IndexAssignedTripletDataset(args.train_index, root=args.data_root, transform=eval_transform)
-        if (args.augment or args.random_negative_prob > 0) else train_ds
+        if (args.augment or args.random_negative_prob > 0 or weak_active) else train_ds
     )
     val_ds = IndexAssignedTripletDataset(args.val_index, root=args.data_root, transform=eval_transform)
 
@@ -589,11 +682,12 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # --moving_negative_prob/--negative_mining, which mutate train_ds
     # (random_negative_prob, the mining EMA matrix) from the main process
     # between epochs. Disabling it means each epoch's fresh worker spawn
-    # re-pickles the current state instead.
+    # re-pickles the current state instead. (--weak_queries and return_meta
+    # don't mutate anything post-construction, so they don't need this.)
     train_loader = get_loader(
         train_ds, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, seed=args.seed,
-        persistent_workers=(not track_negatives) and args.num_workers > 0,
+        persistent_workers=(not dataset_mutates) and args.num_workers > 0,
     )
 
     _rng = random.Random(args.seed)

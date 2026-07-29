@@ -156,6 +156,13 @@ class IndexAssignedTripletDataset(Dataset):
         query_transform: Optional separate transform for the query image; falls
             back to *transform* when not provided.
         loader: Callable that loads a PIL image from a path.
+        random_negative_prob: Probability of replacing the index-mined
+            negative with a random image of a *different* lynx, drawn from
+            the whole candidate pool (every lynx dir under the same split the
+            index's own positives/negatives come from) instead of just this
+            entry's top_m negatives. 0 (default) keeps the original
+            index-only behavior. Requires `root` to be set, since the
+            candidate pool is built by scanning the filesystem.
     """
 
     def __init__(
@@ -165,11 +172,13 @@ class IndexAssignedTripletDataset(Dataset):
         transform: transforms.Compose | None = None,
         query_transform: transforms.Compose | None = None,
         loader=None,
+        random_negative_prob: float = 0.0,
     ) -> None:
         self.root = Path(root) if root is not None else None
         self.transform = transform
         self.query_transform = query_transform or transform
         self._loader = loader or default_loader
+        self.random_negative_prob = random_negative_prob
 
         with open(index_path) as f:
             self._entries: list[dict] = json.load(f)
@@ -180,11 +189,46 @@ class IndexAssignedTripletDataset(Dataset):
             if not entry.get("negatives"):
                 raise ValueError(f"Entry for {entry['query_frame']} has no negatives.")
 
+        self._lynx_pool: dict[str, list[str]] = {}
+        self._lynx_ids: list[str] = []
+        if random_negative_prob > 0:
+            if self.root is None:
+                raise ValueError("random_negative_prob > 0 requires `root` to be set")
+            self._lynx_pool = self._scan_lynx_pool()
+            self._lynx_ids = list(self._lynx_pool)
+
+    def _scan_lynx_pool(self) -> dict[str, list[str]]:
+        """Every image under the split that positives/negatives are drawn
+        from (e.g. 'train/'), grouped by lynx id — the same split used by
+        every entry's own positives/negatives, whatever the query's split.
+        """
+        cand_split = Path(self._entries[0]["positives"][0]).parts[0]
+        cand_root = self.root / cand_split
+        pool: dict[str, list[str]] = defaultdict(list)
+        for lynx_dir in sorted(cand_root.iterdir()):
+            if not lynx_dir.is_dir():
+                continue
+            for img_path in lynx_dir.rglob("*.jpg"):
+                pool[lynx_dir.name].append(str(img_path.relative_to(self.root)))
+        return dict(pool)
+
+    def _lynx_id(self, rel_path: str) -> str:
+        return Path(rel_path).parts[1]
+
     def __len__(self) -> int:
         return len(self._entries)
 
     def _full_path(self, rel: str) -> Path:
         return self.root / rel if self.root is not None else Path(rel)
+
+    def _sample_negative(self, entry: dict) -> str:
+        if self.random_negative_prob > 0 and random.random() < self.random_negative_prob:
+            query_lynx = self._lynx_id(entry["query_frame"])
+            neg_lynx = query_lynx
+            while neg_lynx == query_lynx:
+                neg_lynx = random.choice(self._lynx_ids)
+            return random.choice(self._lynx_pool[neg_lynx])
+        return random.choice(entry["negatives"])
 
     def __getitem__(
         self, index: int
@@ -193,7 +237,7 @@ class IndexAssignedTripletDataset(Dataset):
 
         query_path = self._full_path(entry["query_frame"])
         pos_path   = self._full_path(random.choice(entry["positives"]))
-        neg_path   = self._full_path(random.choice(entry["negatives"]))
+        neg_path   = self._full_path(self._sample_negative(entry))
 
         query_img = self._loader(query_path)
         pos_img   = self._loader(pos_path)

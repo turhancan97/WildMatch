@@ -60,6 +60,12 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
         "--wandb_tags", type=str, default="",
         help="Comma-separated wandb tags for this run",
     )
+    p.add_argument(
+        "--trained_model", type=str, default="lg", choices=["lg", "rdd", "lg+rdd"],
+        help="Which model(s) are unfrozen and receive gradient: 'lg' (default) "
+             "freezes RDD and trains only LightGlue; 'rdd' freezes LightGlue and "
+             "trains only RDD; 'lg+rdd' trains both.",
+    )
 
 
 # ── utils ─────────────────────────────────────────────────────────────────────
@@ -74,6 +80,12 @@ def seed_all(seed: int) -> None:
 def _unwrap(model: torch.nn.Module) -> torch.nn.Module:
     """Return base model regardless of DDP / Accelerate wrapping."""
     return model.module if hasattr(model, "module") else model
+
+
+def resolve_trained_models(trained_model: str) -> tuple[bool, bool]:
+    """Splits `--trained_model` ('lg' | 'rdd' | 'lg+rdd') into (train_rdd, train_lg)."""
+    models = trained_model.split("+")
+    return "rdd" in models, "lg" in models
 
 
 def resize_long_side(images: torch.Tensor, size: int) -> torch.Tensor:
@@ -125,10 +137,9 @@ def batch_features(feats: list[dict], image_h: int, image_w: int) -> dict:
 # ── training-time feature extraction ─────────────────────────────────────────
 def extract_train(rdd: torch.nn.Module, images: torch.Tensor) -> list[dict]:
     """
-    One RDD forward pass. RDD is always frozen for LG-only training (see
-    train_lg_matching_loss.py), so gradients never flow through it here, but
-    this stays a plain forward — the caller wraps it in torch.no_grad() when
-    it wants to skip building the graph.
+    One RDD forward pass. Whether RDD is frozen is decided by `--trained_model`
+    in train_by_lg_matches.py; this stays a plain forward either way — the
+    caller wraps it in torch.no_grad() when it wants to skip building the graph.
 
     images must be div-by-32 aligned (use resize_long_side first).
 
@@ -179,16 +190,17 @@ def run_lg_matching_grad(
     Run LightGlue WITHOUT a no_grad wrapper, so LG's own parameters receive
     gradient from any loss computed on the returned `scores` /
     `matching_scores0`. Returns the full prediction dicts (not just match
-    indices) — used by train_lg_matching_loss.py.
+    indices) — used by train_by_lg_matches.py.
 
     Also returns the batch_features dicts (data_a/data_p/data_n): callers
     that want keypoint-coverage-normalized scores (see _lg_scores) need
     their `masks`.
 
-    Note LightGlueMasked always internally `.detach()`s its descriptor
-    *inputs* (see rdd_patch/lightglue_masked.py), so this can never send
-    gradient back into the network that produced feats_* — only into LG's
-    own weights.
+    Note LightGlueMasked detaches its descriptor *inputs* by default (see
+    `detach_descriptors` in rdd_patch/lightglue_masked.py), so gradient
+    normally only reaches LG's own weights. train_by_lg_matches.py builds LG
+    with `detach_descriptors=False` when `--trained_model` includes 'rdd', so
+    gradient can also flow back into the network that produced feats_*.
     """
     data_a = batch_features(feats_a, image_h, image_w)
     data_p = batch_features(feats_p, image_h, image_w)

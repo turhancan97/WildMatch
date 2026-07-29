@@ -15,7 +15,10 @@ def build_rdd(weights: Path, device: torch.device, top_k: int):
     model.eval()
     return model
 
-def build_masked_lg(device: torch.device, weights="rdd/weights/RDD_lg-v2.pth", init_threshold=0.01):
+def build_masked_lg(
+    device: torch.device, weights="rdd/weights/RDD_lg-v2.pth", init_threshold=0.01,
+    detach_descriptors=True,
+):
     lg_conf = {
         "name": "lightglue",
         "input_dim": 256,
@@ -29,6 +32,7 @@ def build_masked_lg(device: torch.device, weights="rdd/weights/RDD_lg-v2.pth", i
         "depth_confidence": -1,
         "width_confidence": -1,
         "weights": weights,
+        "detach_descriptors": detach_descriptors,
     }
     lg = LightGlueMasked("rdd", **lg_conf).to(device).eval()
     return lg

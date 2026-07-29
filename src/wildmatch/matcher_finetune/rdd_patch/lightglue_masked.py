@@ -330,6 +330,7 @@ class LightGlueMasked(nn.Module):
         "width_confidence": -1,  # point pruning, disable with -1
         "filter_threshold": 0.01,  # match threshold
         "weights": None,
+        "detach_descriptors": True,  # cut gradient into the descriptor extractor (e.g. RDD)
     }
 
     # Point pruning involves an overhead (gather).
@@ -521,8 +522,12 @@ class LightGlueMasked(nn.Module):
             kpts1 = torch.cat(
                 [kpts1] + [data1[k].unsqueeze(-1) for k in ("scales", "oris")], -1
             )
-        desc0 = data0["descriptors"].detach().contiguous()
-        desc1 = data1["descriptors"].detach().contiguous()
+        if self.conf.detach_descriptors:
+            desc0 = data0["descriptors"].detach().contiguous()
+            desc1 = data1["descriptors"].detach().contiguous()
+        else:
+            desc0 = data0["descriptors"].contiguous()
+            desc1 = data1["descriptors"].contiguous()
 
         assert desc0.shape[-1] == self.conf.input_dim
         assert desc1.shape[-1] == self.conf.input_dim

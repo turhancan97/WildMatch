@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import random
 from collections import defaultdict
 from pathlib import Path
@@ -162,7 +163,30 @@ class IndexAssignedTripletDataset(Dataset):
             index's own positives/negatives come from) instead of just this
             entry's top_m negatives. 0 (default) keeps the original
             index-only behavior. Requires `root` to be set, since the
-            candidate pool is built by scanning the filesystem.
+            candidate pool is built by scanning the filesystem. Mutable at
+            runtime (read fresh on every `__getitem__` call) so a training
+            loop can move it over time — see train_by_lg_matches.py's
+            `--moving_negative_prob`.
+        negative_mining: When drawing a random negative (see
+            random_negative_prob), bias which lynx it's drawn from toward
+            candidates that have produced high LG confidence for that query
+            lynx in the past, instead of picking uniformly. Weights come from
+            an EMA difficulty matrix over (query_lynx, candidate_lynx) pairs
+            that starts uniform (all-zero scores) and is only updated via
+            `update_mining_stats` — nothing here is `torch.no_grad`-implicit,
+            the dataset does no scoring itself. Requires random_negative_prob
+            > 0.
+        negative_mining_temperature: Softmax temperature over the difficulty
+            matrix row when negative_mining is on; lower concentrates
+            sampling on the single hardest known candidate lynx.
+        negative_mining_decay: EMA decay used by `update_mining_stats` (closer
+            to 1 remembers older observations longer).
+        return_meta: When True, `__getitem__` returns a 4th element: a dict
+            with `neg_source` ("index" | "random"), `query_lynx`, and
+            `neg_lynx`, letting a training loop bucket LG confidence by where
+            each negative came from (used by --moving_negative_prob and
+            --negative_mining). Default False keeps the original 3-tuple for
+            all other callers.
     """
 
     def __init__(
@@ -173,12 +197,21 @@ class IndexAssignedTripletDataset(Dataset):
         query_transform: transforms.Compose | None = None,
         loader=None,
         random_negative_prob: float = 0.0,
+        negative_mining: bool = False,
+        negative_mining_temperature: float = 1.0,
+        negative_mining_decay: float = 0.9,
+        return_meta: bool = False,
     ) -> None:
         self.root = Path(root) if root is not None else None
         self.transform = transform
         self.query_transform = query_transform or transform
         self._loader = loader or default_loader
         self.random_negative_prob = random_negative_prob
+        self.negative_mining = negative_mining
+        self.negative_mining_temperature = negative_mining_temperature
+        self.negative_mining_decay = negative_mining_decay
+        self.return_meta = return_meta
+        self._mining_scores: dict[tuple[str, str], float] = {}
 
         with open(index_path) as f:
             self._entries: list[dict] = json.load(f)
@@ -221,23 +254,57 @@ class IndexAssignedTripletDataset(Dataset):
     def _full_path(self, rel: str) -> Path:
         return self.root / rel if self.root is not None else Path(rel)
 
-    def _sample_negative(self, entry: dict) -> str:
-        if self.random_negative_prob > 0 and random.random() < self.random_negative_prob:
-            query_lynx = self._lynx_id(entry["query_frame"])
-            neg_lynx = query_lynx
-            while neg_lynx == query_lynx:
-                neg_lynx = random.choice(self._lynx_ids)
-            return random.choice(self._lynx_pool[neg_lynx])
-        return random.choice(entry["negatives"])
+    def _sample_negative_lynx(self, query_lynx: str) -> str:
+        """Picks a candidate lynx != query_lynx for the 'random negative' branch.
 
-    def __getitem__(
-        self, index: int
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        Uniform unless negative_mining is on, in which case candidates are
+        weighted by softmax(EMA difficulty score / temperature) — untried
+        pairs default to score 0, so sampling starts uniform and only drifts
+        toward historically-hard candidates as `update_mining_stats` feeds it
+        real observations.
+        """
+        candidates = [l for l in self._lynx_ids if l != query_lynx]
+        if not self.negative_mining:
+            return random.choice(candidates)
+
+        scores = [self._mining_scores.get((query_lynx, l), 0.0) for l in candidates]
+        m = max(scores)
+        exps = [math.exp((s - m) / self.negative_mining_temperature) for s in scores]
+        total = sum(exps)
+        weights = [e / total for e in exps]
+        return random.choices(candidates, weights=weights, k=1)[0]
+
+    def update_mining_stats(self, observations: list[tuple[str, str, float]]) -> None:
+        """EMA-updates the (query_lynx, candidate_lynx) difficulty matrix used by
+        negative_mining. `observations` is a list of (query_lynx, neg_lynx,
+        lg_confidence) triples — typically all of a training epoch's negatives
+        that came from the 'random' branch (see `neg_source` in __getitem__'s
+        meta dict), collected and passed in once per epoch by the training loop.
+        """
+        for query_lynx, neg_lynx, conf in observations:
+            key = (query_lynx, neg_lynx)
+            prev = self._mining_scores.get(key)
+            self._mining_scores[key] = (
+                conf if prev is None
+                else self.negative_mining_decay * prev + (1 - self.negative_mining_decay) * conf
+            )
+
+    def _sample_negative(self, entry: dict) -> tuple[str, dict]:
+        query_lynx = self._lynx_id(entry["query_frame"])
+        if self.random_negative_prob > 0 and random.random() < self.random_negative_prob:
+            neg_lynx = self._sample_negative_lynx(query_lynx)
+            neg_path = random.choice(self._lynx_pool[neg_lynx])
+            return neg_path, {"neg_source": "random", "query_lynx": query_lynx, "neg_lynx": neg_lynx}
+        neg_path = random.choice(entry["negatives"])
+        return neg_path, {"neg_source": "index", "query_lynx": query_lynx, "neg_lynx": self._lynx_id(neg_path)}
+
+    def __getitem__(self, index: int):
         entry = self._entries[index]
 
         query_path = self._full_path(entry["query_frame"])
         pos_path   = self._full_path(random.choice(entry["positives"]))
-        neg_path   = self._full_path(self._sample_negative(entry))
+        neg_rel, neg_meta = self._sample_negative(entry)
+        neg_path   = self._full_path(neg_rel)
 
         query_img = self._loader(query_path)
         pos_img   = self._loader(pos_path)
@@ -249,6 +316,8 @@ class IndexAssignedTripletDataset(Dataset):
             pos_img = self.transform(pos_img)
             neg_img = self.transform(neg_img)
 
+        if self.return_meta:
+            return query_img, pos_img, neg_img, neg_meta
         return query_img, pos_img, neg_img
 
 

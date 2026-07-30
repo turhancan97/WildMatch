@@ -71,6 +71,15 @@ Three independent, combinable anti-overfitting mechanisms, each off by default:
                                           model's own parameters and the
                                           reference's — a direct anchor,
                                           independent of any particular batch.
+                                          Applied via direct gradient
+                                          injection after backward(), not as
+                                          part of the batch's autograd graph
+                                          — see accumulate_distill_weights_grad,
+                                          required for multi-GPU DDP safety
+                                          against LightGlue's always-dead
+                                          token_confidence/log_assignment
+                                          parameters (find_unused_parameters,
+                                          below).
       --distill_signal_type activations  L1/L2 distance between LightGlue's
                                           per-layer descriptor embeddings (the
                                           residual stream self_attn/cross_attn
@@ -670,24 +679,58 @@ class ActivationCapture:
         self._handles = []
 
 
-def distill_weights_loss(student: nn.Module, reference: nn.Module, loss_type: str) -> torch.Tensor:
+@torch.no_grad()
+def accumulate_distill_weights_grad(
+    student: nn.Module, reference: nn.Module, loss_type: str, lambda_: float,
+) -> torch.Tensor:
     """
-    Mean L1/L2 distance between `student`'s trainable parameters and
-    `reference`'s (frozen) counterparts, pooled over every element together —
-    so the loss magnitude reflects typical per-weight drift rather than
-    scaling with however many parameters happen to be unfrozen.
+    Adds lambda_ * d(consistency_loss)/d(param) straight into every trainable
+    parameter's `.grad`, instead of building an autograd edge through
+    `student`'s own parameter tensors and routing it through backward().
+    Returns the plain (un-lambda'd) consistency loss as a scalar tensor, for
+    logging only.
+
+    This has to bypass autograd/DDP, not just avoid it for style: with
+    LightGlueForTraining's do_early_stop hardcoded False, every
+    token_confidence layer and all but the last log_assignment layer never
+    run in a normal forward (see the find_unused_parameters=True docstring on
+    run_training_lg) — DDP's reducer, with find_unused_parameters=True,
+    pre-marks exactly those parameters "ready" the moment `lg(...)` returns,
+    based on a reachability scan from *that* output. A plain
+    `student_param - reference_param` edge on those same parameters is
+    invisible to that scan (it never goes through `lg`'s forward at all), so
+    the moment such an edge produces a real backward contribution for one of
+    them, the reducer sees it marked ready a second time and raises "Expected
+    to mark a variable ready only once" — reproducibly, only under multi-GPU
+    DDP, only for this ('weights') signal type; 'activations' distills
+    through LightGlue's actual forward output, which DDP already tracks fine.
+
+    The gradient here is closed-form (2*diff/n for l2, sign(diff)/n for l1),
+    and both sides are already bitwise-identical across ranks — the student's
+    via DDP's own all-reduce on the margin loss, the reference's via
+    update_ema on that same synced student (or an unchanged pretrained
+    snapshot) — so there is nothing to collectively communicate here; adding
+    it locally on every rank is exact, not an approximation.
     """
     student = _unwrap(student)
-    diffs, n_elems = [], 0
-    for (_, s_p), (_, r_p) in zip(student.named_parameters(), reference.named_parameters()):
-        if not s_p.requires_grad:
-            continue
-        diff = s_p - r_p.detach()
-        diffs.append((diff.abs() if loss_type == "l1" else diff.pow(2)).sum())
-        n_elems += diff.numel()
-    if not diffs:
+    pairs = [
+        (s_p, r_p)
+        for (_, s_p), (_, r_p) in zip(student.named_parameters(), reference.named_parameters())
+        if s_p.requires_grad
+    ]
+    if not pairs:
         return next(student.parameters()).new_zeros(())
-    return torch.stack(diffs).sum() / max(n_elems, 1)
+    n_elems = sum(s_p.numel() for s_p, _ in pairs)
+    total = pairs[0][0].new_zeros(())
+    for s_p, r_p in pairs:
+        diff = s_p - r_p
+        total = total + (diff.abs().sum() if loss_type == "l1" else diff.pow(2).sum())
+        grad = (diff.sign() if loss_type == "l1" else 2 * diff) / n_elems
+        if s_p.grad is None:
+            s_p.grad = grad * lambda_
+        else:
+            s_p.grad.add_(grad, alpha=lambda_)
+    return total / n_elems
 
 
 def distill_activation_loss(
@@ -762,8 +805,8 @@ def distill_correspondence_loss(
     gradient even for a sample whose valid0 is currently all-False. That's
     the one thing this loss exists to provide.
 
-    Returns a plain 0.0 (no grad_fn, like distill_weights_loss's empty case
-    — safe under find_unused_parameters=True, see run_training_lg) when no
+    Returns a plain 0.0 (no grad_fn — safe under find_unused_parameters=True,
+    see run_training_lg) when no
     sample is both pos_empty and has at least one reference-matched point to
     learn from.
     """
@@ -833,9 +876,12 @@ def train_epoch_lg(
     `distill_lg_ref`/`distill_rdd_ref` are the --distill_model reference
     models (None unless that model is needed — see run_training_lg), fixed
     for --distill_model pretrained or updated after every step for ema. Used
-    to add a consistency loss to the margin loss; see distill_weights_loss /
-    distill_activation_loss / distill_correspondence_loss and the module
-    docstring.
+    to add a consistency loss to the margin loss; see
+    accumulate_distill_weights_grad / distill_activation_loss /
+    distill_correspondence_loss and the module docstring. Note
+    accumulate_distill_weights_grad doesn't go through backward_loss like the
+    other two — it injects gradient directly after accelerator.backward(),
+    see its own docstring and the comment at that call site below.
 
     `loader`'s dataset is always built with return_meta=True, so every batch
     carries a 4th `neg_meta` element (neg_source, query_lynx, neg_lynx,
@@ -952,12 +998,8 @@ def train_epoch_lg(
         )
 
         consistency_loss = loss.new_zeros(())
-        if distill_weights_active:
-            if train_lg and distill_lg_ref is not None:
-                consistency_loss = consistency_loss + distill_weights_loss(lg, distill_lg_ref, args.distill_loss)
-            if train_rdd and distill_rdd_ref is not None:
-                consistency_loss = consistency_loss + distill_weights_loss(rdd, distill_rdd_ref, args.distill_loss)
-        elif distill_acts_active:
+        backward_loss = loss
+        if distill_acts_active:
             # Reference LG runs on the exact same keypoints/descriptors the
             # student just used (data_a/data_p/data_n), so the two are always
             # shape-compatible even when RDD is also being trained and its
@@ -987,8 +1029,19 @@ def train_epoch_lg(
             consistency_loss = distill_correspondence_loss(
                 pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], pos_empty,
             )
-
-        total_loss = loss + args.distill_model_lambda * consistency_loss if distill_active else loss
+        # distill_weights_active is deliberately *not* handled here — its
+        # consistency_loss is computed after accelerator.backward() below by
+        # accumulate_distill_weights_grad, which injects gradient directly
+        # into .grad instead of joining this autograd graph. See that
+        # function's docstring: an autograd edge straight through the
+        # trained model's own parameter tensors (bypassing its forward())
+        # crashes multi-GPU DDP, because DDP's find_unused_parameters=True
+        # already pre-marks LightGlue's always-dead token_confidence /
+        # non-final log_assignment parameters "ready" from lg()'s own
+        # forward output, and a second, invisible-to-DDP path to those same
+        # parameters trips "Expected to mark a variable ready only once".
+        if distill_acts_active or distill_corr_active:
+            backward_loss = loss + args.distill_model_lambda * consistency_loss
 
         for is_weak, src, pos_skip, neg_skip, q_frame in zip(
             neg_meta["is_weak_query"], neg_meta["neg_source"],
@@ -1020,7 +1073,22 @@ def train_epoch_lg(
             trainable_params += [p for p in _unwrap(rdd).parameters() if p.requires_grad]
 
         optimizer.zero_grad()
-        accelerator.backward(total_loss)
+        accelerator.backward(backward_loss)
+
+        # --distill_signal_type weights: inject its gradient now, straight
+        # into .grad, after the margin/activations/correspondence backward()
+        # (and DDP's all-reduce on it) has already completed — see the
+        # comment above and accumulate_distill_weights_grad's docstring.
+        if distill_weights_active:
+            if train_lg and distill_lg_ref is not None:
+                consistency_loss = consistency_loss + accumulate_distill_weights_grad(
+                    lg, distill_lg_ref, args.distill_loss, args.distill_model_lambda
+                )
+            if train_rdd and distill_rdd_ref is not None:
+                consistency_loss = consistency_loss + accumulate_distill_weights_grad(
+                    rdd, distill_rdd_ref, args.distill_loss, args.distill_model_lambda
+                )
+
         accelerator.clip_grad_norm_(trainable_params, args.grad_clip)
         apply_warmup_lr(optimizer, global_step, args)
         optimizer.step()
@@ -1041,10 +1109,20 @@ def train_epoch_lg(
         # just the all-reduce itself). The four `stats` entries are per-rank
         # means over differing sample counts, so their average is approximate —
         # fine for diagnostics, unlike the loss, which is an exact mean because
-        # every rank contributes one loss value.
+        # every rank contributes one loss value. total_loss is computed here
+        # as plain Python arithmetic (not an autograd tensor) — for
+        # 'weights', consistency_loss never had a graph in the first place
+        # (see accumulate_distill_weights_grad); for the others, loss/
+        # consistency_loss's graphs were already consumed by backward() above,
+        # so reusing their values for a fresh sum is safe but adds nothing.
+        loss_item = loss.item()
+        consistency_loss_item = consistency_loss.item()
+        total_loss_item = (
+            loss_item + args.distill_model_lambda * consistency_loss_item if distill_active else loss_item
+        )
         step_metrics = torch.tensor(
             [
-                loss.item(), consistency_loss.item(), total_loss.item(),
+                loss_item, consistency_loss_item, total_loss_item,
                 stats["mean_pos_matches"], stats["mean_neg_matches"],
                 stats["mean_pos_conf"],    stats["mean_neg_conf"],
             ],

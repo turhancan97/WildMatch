@@ -9,7 +9,9 @@ import time
 
 import torch
 import torch.nn.functional as F
-from accelerate import Accelerator
+from accelerate import Accelerator, DistributedDataParallelKwargs
+from accelerate.data_loader import prepare_data_loader
+from accelerate.utils import gather_object
 from torch import nn
 from tqdm.auto import tqdm
 from torchvision import transforms
@@ -19,9 +21,9 @@ from torch.utils.data import Subset
 from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
-    _lg_scores, _unwrap, add_common_args, batch_features, build_wandb_tags, eval_epoch,
-    eval_pseudo_accuracy, extract_train, resize_long_side, resolve_trained_models,
-    run_lg_matching_grad, seed_all,
+    _lg_scores, _unwrap, add_common_args, batch_features, build_pseudo_accuracy_loader,
+    build_wandb_tags, eval_epoch, eval_pseudo_accuracy, extract_train, resize_long_side,
+    resolve_trained_models, run_lg_matching_grad, seed_all,
 )
 
 """
@@ -317,7 +319,21 @@ def measure_negative_gap(
     index counterpart to compare against and would bias the baseline. Restores
     the dataset's original probability/return_meta/weak_queries before
     returning. Uses a throwaway, non-persistent-worker loader so it never
-    interferes with the main train_loader's worker pool.
+    interferes with the main train_loader's worker pool; that loader is sharded
+    across processes with the standalone `prepare_data_loader` rather than
+    `accelerator.prepare_data_loader`, because both variants of the latter
+    append to `accelerator._dataloaders` and this one-shot loader has no
+    business being in every checkpoint's sampler state. Its sums/counts are
+    reduced afterwards, so every rank ends up with the *same*
+    baseline instead of each computing its own from the same data. The shared
+    value matters: run_training_lg turns it into
+    `train_ds.random_negative_prob`, which would otherwise diverge per rank and
+    give each process a different negative-sampling distribution.
+
+    `n_batches` is per process, so the baseline is measured over
+    n_batches * batch_size * num_processes samples — an N-GPU run gets an
+    N-times larger sample at the same wall-clock cost, rather than the same
+    sample N times over.
 
     Returns (mean_index_conf, mean_random_conf); either is 0.0 if that source
     didn't come up in the sampled batches.
@@ -329,9 +345,13 @@ def measure_negative_gap(
     dataset.return_meta = True
     dataset.weak_queries = False
     try:
-        loader = get_loader(
-            dataset, batch_size=args.batch_size, shuffle=True,
-            num_workers=args.num_workers, persistent_workers=False,
+        loader = prepare_data_loader(
+            get_loader(
+                dataset, batch_size=args.batch_size, shuffle=True,
+                num_workers=args.num_workers, persistent_workers=False,
+            ),
+            num_processes=accelerator.num_processes,
+            process_index=accelerator.process_index,
         )
         device = accelerator.device
         index_confs: list[float] = []
@@ -359,8 +379,16 @@ def measure_negative_gap(
         dataset.return_meta = prev_meta
         dataset.weak_queries = prev_weak
 
-    mean_index  = sum(index_confs)  / len(index_confs)  if index_confs  else 0.0
-    mean_random = sum(random_confs) / len(random_confs) if random_confs else 0.0
+    # Reduce sums and counts (not the two means) so the combined average is
+    # weighted by how many samples each rank actually contributed.
+    totals = torch.tensor(
+        [sum(index_confs), len(index_confs), sum(random_confs), len(random_confs)],
+        device=accelerator.device, dtype=torch.float64,
+    )
+    index_sum, index_n, random_sum, random_n = accelerator.reduce(totals, reduction="sum").tolist()
+
+    mean_index  = index_sum  / index_n  if index_n  else 0.0
+    mean_random = random_sum / random_n if random_n else 0.0
     return mean_index, mean_random
 
 
@@ -570,7 +598,25 @@ def train_epoch_lg(
         if ema_lg is not None:
             update_ema(ema_lg, lg, args.ema_decay)
 
-        loss_val    = loss.item()
+        # Every rank only sees its own shard of the batch, so the logged
+        # scalars would otherwise describe 1/num_processes of the data. All
+        # five go into a single tensor to keep this to one collective per step
+        # (the loss already forced a sync via .item(), so the added cost is
+        # just the all-reduce itself). The four `stats` entries are per-rank
+        # means over differing sample counts, so their average is approximate —
+        # fine for diagnostics, unlike the loss, which is an exact mean because
+        # every rank contributes one loss value.
+        step_metrics = torch.tensor(
+            [
+                loss.item(),
+                stats["mean_pos_matches"], stats["mean_neg_matches"],
+                stats["mean_pos_conf"],    stats["mean_neg_conf"],
+            ],
+            device=device, dtype=torch.float32,
+        )
+        loss_val, mean_pos_matches, mean_neg_matches, mean_pos_conf, mean_neg_conf = (
+            accelerator.reduce(step_metrics, reduction="mean").tolist()
+        )
         epoch_loss += loss_val
         global_step += 1
 
@@ -585,10 +631,10 @@ def train_epoch_lg(
             accelerator.log(
                 {
                     "train/loss":                 loss_val,
-                    "matches/mean_pos":           stats["mean_pos_matches"],
-                    "matches/mean_neg":           stats["mean_neg_matches"],
-                    "lg_confidence/mean_pos_conf": stats["mean_pos_conf"],
-                    "lg_confidence/mean_neg_conf": stats["mean_neg_conf"],
+                    "matches/mean_pos":           mean_pos_matches,
+                    "matches/mean_neg":           mean_neg_matches,
+                    "lg_confidence/mean_pos_conf": mean_pos_conf,
+                    "lg_confidence/mean_neg_conf": mean_neg_conf,
                     "progress":                    progress,
                 },
                 step=global_step,
@@ -606,6 +652,21 @@ def train_epoch_lg(
 
     epoch_total_time = time.perf_counter() - t_epoch_start
     epoch_train_time = epoch_total_time - mini_eval_time
+
+    # Sum the raw [n_skipped, n_total] pairs across ranks before turning them
+    # into rates — each rank only counted its own shard, and a ratio of sums is
+    # not the mean of the per-rank ratios when the buckets are unevenly filled
+    # (which they are: whether a pair is index- or random-sourced is sampled
+    # per item, so bucket sizes differ from rank to rank).
+    skip_keys = ("pos_index", "pos_random", "neg_index", "neg_random")
+    skip_totals = accelerator.reduce(
+        torch.tensor(
+            [c for key in skip_keys for c in skip_counts[key]],
+            device=accelerator.device, dtype=torch.float64,
+        ),
+        reduction="sum",
+    ).tolist()
+    skip_counts = {key: skip_totals[2 * i:2 * i + 2] for i, key in enumerate(skip_keys)}
 
     def _skip_rate(key: str) -> float:
         n_skip, n_total = skip_counts[key]
@@ -626,12 +687,30 @@ def train_epoch_lg(
 
     neg_gap_stats = None
     if gap_tracking_active:
+        # Both consumers of this dict mutate train_ds, which every rank holds
+        # its own copy of — so the inputs have to be made global here or the
+        # ranks drift into different sampling distributions and different
+        # mining matrices. Sums/counts are reduced (means computed after, so
+        # they're sample-weighted); the mining observations are all-gathered as
+        # objects, since they're (str, str, float) triples rather than tensors.
+        # Both are collectives, so they must run on every rank —
+        # gap_tracking_active is derived from args alone, so it always does.
+        totals = accelerator.reduce(
+            torch.tensor(
+                [sum(epoch_index_confs), len(epoch_index_confs),
+                 sum(epoch_random_confs), len(epoch_random_confs)],
+                device=accelerator.device, dtype=torch.float64,
+            ),
+            reduction="sum",
+        ).tolist()
+        index_sum, index_n, random_sum, random_n = totals
+
         neg_gap_stats = {
-            "mean_index_conf":  sum(epoch_index_confs)  / len(epoch_index_confs)  if epoch_index_confs  else 0.0,
-            "mean_random_conf": sum(epoch_random_confs) / len(epoch_random_confs) if epoch_random_confs else 0.0,
-            "n_index":  len(epoch_index_confs),
-            "n_random": len(epoch_random_confs),
-            "mining_observations": epoch_mining_obs,
+            "mean_index_conf":  index_sum  / index_n  if index_n  else 0.0,
+            "mean_random_conf": random_sum / random_n if random_n else 0.0,
+            "n_index":  int(index_n),
+            "n_random": int(random_n),
+            "mining_observations": gather_object(epoch_mining_obs) if mining_active else [],
         }
 
     return epoch_loss / max(steps_per_epoch, 1), global_step, neg_gap_stats
@@ -641,7 +720,20 @@ def train_epoch_lg(
 def run_training_lg(args: argparse.Namespace) -> None:
     seed_all(args.seed)
 
-    accelerator = Accelerator(log_with="wandb" if args.project else None)
+    # find_unused_parameters=True is mandatory here, not a precaution: LightGlue
+    # is instantiated with depth_confidence/width_confidence = -1 (see
+    # build_masked_lg), and LightGlueMasked._forward hardcodes the matching
+    # do_early_stop/do_point_pruning to False. That leaves whole trainable
+    # submodules off the forward graph every step — all 8 `token_confidence`
+    # layers, plus `log_assignment[0..n_layers-2]`, of which only the last is
+    # ever applied. DDP's default (False) makes the reducer wait for gradients
+    # on those parameters that never arrive, and the step after aborts with
+    # "Expected to have finished reduction in the prior iteration before
+    # starting a new one".
+    accelerator = Accelerator(
+        log_with="wandb" if args.project else None,
+        kwargs_handlers=[DistributedDataParallelKwargs(find_unused_parameters=True)],
+    )
     device = accelerator.device
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -708,8 +800,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
     )
     # Video-level pseudo-accuracy needs every video's full set of query
     # frames present, so no subsetting here (unlike the mini-loaders above).
-    eval_train_subset = train_ds_eval
-    eval_val_subset   = val_ds
+    # These two are prepared (and their worker pools spun up) once here rather
+    # than per evaluation — see build_pseudo_accuracy_loader.
+    eval_train_loader = build_pseudo_accuracy_loader(accelerator, train_ds_eval, args)
+    eval_val_loader   = build_pseudo_accuracy_loader(accelerator, val_ds, args)
 
     # ── models ──
     train_rdd, train_lg = resolve_trained_models(args.trained_model)
@@ -753,12 +847,20 @@ def run_training_lg(args: argparse.Namespace) -> None:
     optimizer = torch.optim.Adam(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
-    # DDP-wrapping a module with no trainable parameters is unnecessary and can
-    # error out under some Accelerate/PyTorch versions, so a frozen rdd is left
-    # unprepared; it's only included here when --trained_model unfreezes it.
-    if train_rdd:
+    # DDP-wrapping a module with no trainable parameters is not just
+    # unnecessary, it's a hard error ("DistributedDataParallel is not needed
+    # when a module doesn't have any parameter that requires a gradient"), so
+    # only the model(s) --trained_model actually unfreezes get prepared. The
+    # frozen one stays a plain per-process replica already sitting on
+    # accelerator.device, which is all it needs to be — it's only ever run
+    # forward, identically on every rank.
+    if train_rdd and train_lg:
         rdd, lg, optimizer, train_loader, mini_train_loader, mini_val_loader = accelerator.prepare(
             rdd, lg, optimizer, train_loader, mini_train_loader, mini_val_loader
+        )
+    elif train_rdd:
+        rdd, optimizer, train_loader, mini_train_loader, mini_val_loader = accelerator.prepare(
+            rdd, optimizer, train_loader, mini_train_loader, mini_val_loader
         )
     else:
         lg, optimizer, train_loader, mini_train_loader, mini_val_loader = accelerator.prepare(
@@ -804,8 +906,8 @@ def run_training_lg(args: argparse.Namespace) -> None:
 
     # ── baseline eval (before any training) ──
     global_step = 0
-    baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_subset, args, prefix="train_eval")
-    baseline_val   = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_subset,   args, prefix="val")
+    baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
+    baseline_val   = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_loader,   args, prefix="val")
     _unwrap(rdd).train(train_rdd)
     lg.train(train_lg)
     if accelerator.is_main_process:
@@ -848,8 +950,8 @@ def run_training_lg(args: argparse.Namespace) -> None:
         t_eval_start = time.perf_counter()
         do_eval = epoch % args.eval_every_epochs == args.eval_every_epochs - 1
         if do_eval:
-            train_eval_metrics = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_subset, args, prefix="train_eval")
-            val_metrics        = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_subset,   args, prefix="val")
+            train_eval_metrics = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
+            val_metrics        = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_loader,   args, prefix="val")
         epoch_eval_time = time.perf_counter() - t_eval_start
         _unwrap(rdd).train(train_rdd)
         lg.train(train_lg)
@@ -874,10 +976,20 @@ def run_training_lg(args: argparse.Namespace) -> None:
 
         if accelerator.is_main_process:
             accelerator.log(metrics, step=global_step)
-            ckpt_dir = args.output_dir / f"epoch_{epoch:02d}"
-            accelerator.save_state(str(ckpt_dir))
-            if ema_lg is not None:
-                torch.save(ema_lg.state_dict(), ckpt_dir / "ema_lg.pt")
+
+        # save_state has to run on *every* process, not just the main one: it
+        # writes a per-process random_states_{rank}.pkl (RNG state + step
+        # counter) alongside the shared weights. Under is_main_process only
+        # rank 0's file is written, and load_state swallows the missing ones in
+        # a try/except — so a resume doesn't fail, it silently restarts ranks
+        # 1..N-1 from whatever RNG state they happen to be in. That's the worse
+        # failure mode: quietly non-reproducible, divergent resumes. The EMA
+        # copy is identical on every rank (DDP keeps `lg` in sync), so that one
+        # file is still written once.
+        ckpt_dir = args.output_dir / f"epoch_{epoch:02d}"
+        accelerator.save_state(str(ckpt_dir))
+        if accelerator.is_main_process and ema_lg is not None:
+            torch.save(ema_lg.state_dict(), ckpt_dir / "ema_lg.pt")
 
     if args.project:
         accelerator.end_training()

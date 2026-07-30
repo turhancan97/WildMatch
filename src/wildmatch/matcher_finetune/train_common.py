@@ -304,42 +304,25 @@ def _lg_scores(pred: dict, q_data: dict, g_data: dict, device: torch.device) -> 
     return sums / torch.minimum(n_q, n_g)
 
 
-@torch.no_grad()
-def eval_pseudo_accuracy(
+def build_pseudo_accuracy_loader(
     accelerator: Accelerator,
-    rdd: torch.nn.Module,
-    lg: torch.nn.Module,
     dataset_subset,
     args: argparse.Namespace,
-    prefix: str,
-    verbose: bool = False,
-) -> dict:
+):
     """
-    For each query in the subset, run LG against every positive and every
-    negative candidate listed in the JSON index.  The candidate with the most
-    matches wins; the prediction is correct when that winner is a positive.
+    Build the (Accelerate-prepared) DataLoader that eval_pseudo_accuracy runs on.
 
-    Also returns mean match counts over all pos/neg pairs as a byproduct, and
-    a video-level accuracy: paths look like
-    ``{split}/{lynx_id}/{location}/{video_id}/{frame}.jpg``, so all query
-    frames sharing a parent directory belong to the same video/individual.
-    For each video, the query frame with the single highest-scoring candidate
-    (over its whole pos+neg pool, not just positives) picks that candidate's
-    lynx_id as the video's prediction; correct when it matches the video's
-    own lynx_id.
+    Kept separate from eval_pseudo_accuracy, and called once per split before
+    the training loop, for two reasons: the PseudoAccuracyDataset scan and the
+    worker pool are then paid for once instead of on every evaluation, and —
+    more importantly — `accelerator.prepare` shards the queries across
+    processes, so an N-GPU run actually splits the work N ways instead of every
+    rank redundantly scoring the whole index.
 
-    Uses a real DataLoader (multiprocess workers, pin_memory — same pattern
-    as the training loop) instead of loading images one at a time in the
-    main process, and batches every query's full candidate pool into a
-    single RDD+LG forward pass instead of scoring candidates individually.
-
-    If `verbose`, prints one line per misclassified video (wrong predicted
-    lynx_id) with the winning query frame, its score, and the matched
-    candidate frame — see contrastive_finetuning/eval_video_accuracy.py.
+    `dataset_subset` is an IndexAssignedTripletDataset or a Subset of one; the
+    returned loader's `.dataset` is the derived PseudoAccuracyDataset (which
+    eval_pseudo_accuracy reads `n_pos`/`entries` off).
     """
-    device = accelerator.device
-    _unwrap(rdd).eval()
-
     if isinstance(dataset_subset, Subset):
         base_ds = dataset_subset.dataset
         entries = [base_ds._entries[i] for i in dataset_subset.indices]
@@ -358,6 +341,49 @@ def eval_pseudo_accuracy(
         ds, batch_size=args.eval_batch_size, shuffle=False,
         num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
     )
+    return accelerator.prepare(loader)
+
+
+@torch.no_grad()
+def eval_pseudo_accuracy(
+    accelerator: Accelerator,
+    rdd: torch.nn.Module,
+    lg: torch.nn.Module,
+    loader,
+    args: argparse.Namespace,
+    prefix: str,
+    verbose: bool = False,
+) -> dict:
+    """
+    For each query in the subset, run LG against every positive and every
+    negative candidate listed in the JSON index.  The candidate with the most
+    matches wins; the prediction is correct when that winner is a positive.
+
+    Also returns mean match counts over all pos/neg pairs as a byproduct, and
+    a video-level accuracy: paths look like
+    ``{split}/{lynx_id}/{location}/{video_id}/{frame}.jpg``, so all query
+    frames sharing a parent directory belong to the same video/individual.
+    For each video, the query frame with the single highest-scoring candidate
+    (over its whole pos+neg pool, not just positives) picks that candidate's
+    lynx_id as the video's prediction; correct when it matches the video's
+    own lynx_id.
+
+    `loader` comes from build_pseudo_accuracy_loader — a prepared DataLoader
+    over a PseudoAccuracyDataset, so each process only scores its own shard of
+    the queries and every query's full candidate pool goes through a single
+    RDD+LG forward pass instead of being scored candidate by candidate. Every
+    batch's results are gathered across processes (see gather_for_metrics
+    below), so all ranks return identical, whole-split metrics.
+
+    If `verbose`, prints one line per misclassified video (wrong predicted
+    lynx_id) with the winning query frame, its score, and the matched
+    candidate frame — see contrastive_finetuning/eval_video_accuracy.py.
+    """
+    device = accelerator.device
+    _unwrap(rdd).eval()
+
+    ds = loader.dataset
+    entries = ds.entries
 
     accuracies: list[float] = []
     best_pos_scores: list[float] = []
@@ -392,6 +418,16 @@ def eval_pseudo_accuracy(
         score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
         score_neg, _ = scores[:, ds.n_pos:].max(dim=1)
         score_best, idx_best = scores.max(dim=1)
+
+        # Collect this batch's results from every process before touching
+        # Python: the loader is sharded, so a rank only ever sees a slice of
+        # the queries, and the frame/video aggregation below needs the whole
+        # split. gather_for_metrics (rather than plain gather) drops the
+        # duplicate samples Accelerate pads the last batches with to keep
+        # shard sizes equal.
+        score_pos, score_neg, score_best, idx_best, idx_batch = accelerator.gather_for_metrics(
+            (score_pos, score_neg, score_best, idx_best, idx_batch.to(device))
+        )
 
         # One sync per batch (instead of one per query, let alone per
         # candidate) to pull the whole batch's results back to Python.

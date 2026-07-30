@@ -53,6 +53,43 @@ Three independent, combinable anti-overfitting mechanisms, each off by default:
   --ema_decay  exponential moving average of LightGlue's weights, used for all
                evaluation/checkpointing instead of the raw (noisier) live
                weights — smooths over late-training variance/overfitting.
+
+--distill_model / --distill_model_lambda / --distill_signal_type / --distill_loss
+    Adds a consistency loss pulling whichever model(s) --trained_model unfreezes
+    back toward a reference, added to the margin loss as
+    `total_loss = loss + distill_model_lambda * consistency_loss`.
+      --distill_model pretrained  anchors to a frozen snapshot of the model(s)
+                                   as they are at the start of this run.
+      --distill_model ema         anchors to an exponential moving average of
+                                   the student's own weights instead, which
+                                   drifts slowly away from the pretrained start
+                                   rather than staying fixed there; its decay
+                                   (see compute_distill_ema_decay) is chosen
+                                   from --epochs so it always has room to move
+                                   by the end of training, however long that is.
+      --distill_signal_type weights      L1/L2 distance between the trained
+                                          model's own parameters and the
+                                          reference's — a direct anchor,
+                                          independent of any particular batch.
+      --distill_signal_type activations  L1/L2 distance between LightGlue's
+                                          per-layer descriptor embeddings (the
+                                          residual stream self_attn/cross_attn
+                                          write into and log_assignment reads
+                                          to score matches) computed by the
+                                          student vs. the reference LightGlue
+                                          on the exact same input keypoints/
+                                          descriptors this step already
+                                          extracted — a check on the
+                                          *matching-relevant* representation,
+                                          not on attention weights or Q/K/V,
+                                          which have no stable shape/pairing to
+                                          compare across a training run and
+                                          don't directly feed the loss the way
+                                          the embeddings LightGlue leaves
+                                          behind at each layer do. Because both
+                                          sides see the same input, this is
+                                          only meaningful when 'lg' is in
+                                          --trained_model (validated below).
 """
 
 
@@ -159,6 +196,41 @@ def parse_args() -> argparse.Namespace:
         help="Probability of drawing a --weak_queries sample instead of the index-driven "
              "query, per training item.",
     )
+    p.add_argument(
+        "--distill_model", type=str, default="none", choices=["none", "pretrained", "ema"],
+        help="Adds a consistency loss pulling the trained model(s) (per --trained_model) "
+             "back toward a reference: 'pretrained' anchors to a frozen snapshot taken at "
+             "the start of this run; 'ema' anchors to an exponential moving average of the "
+             "student's own weights (decay from --distill_ema_decay, auto-derived from "
+             "--epochs if unset). 'none' (default) disables distillation. See module "
+             "docstring for the full picture and --distill_signal_type for what's compared.",
+    )
+    p.add_argument(
+        "--distill_model_lambda", type=float, default=0.0,
+        help="Weight of the distillation consistency loss: "
+             "total_loss = loss + distill_model_lambda * consistency_loss. Required > 0 "
+             "when --distill_model is not 'none'.",
+    )
+    p.add_argument(
+        "--distill_signal_type", type=str, default="weights", choices=["weights", "activations"],
+        help="What the consistency loss is computed on: 'weights' is an L1/L2 distance "
+             "between the trained model's parameters and the reference's; 'activations' "
+             "matches LightGlue's per-layer descriptor embeddings between student and "
+             "reference on this step's own keypoints/descriptors (requires 'lg' in "
+             "--trained_model — see module docstring).",
+    )
+    p.add_argument(
+        "--distill_loss", type=str, default="l2", choices=["l1", "l2"],
+        help="Distance function for the distillation consistency loss (weights or "
+             "activations).",
+    )
+    p.add_argument(
+        "--distill_ema_decay", type=float, default=None,
+        help="EMA decay for --distill_model ema's reference. Defaults to a value derived "
+             "from --epochs and the training set size so the reference's memory of the "
+             "pretrained starting point decays to ~1%% of its original weight by the end "
+             "of training (see compute_distill_ema_decay); set explicitly to override.",
+    )
     args = p.parse_args()
     if args.moving_negative_prob is not None:
         if args.random_negative_prob <= 0:
@@ -169,6 +241,19 @@ def parse_args() -> argparse.Namespace:
         p.error("--negative_mining requires --random_negative_prob > 0")
     if args.weak_queries and not (0.0 < args.weak_queries_prob <= 1.0):
         p.error("--weak_queries requires --weak_queries_prob in (0, 1]")
+    if args.distill_model != "none":
+        if args.distill_model_lambda <= 0:
+            p.error("--distill_model requires --distill_model_lambda > 0")
+        if args.distill_signal_type == "activations" and "lg" not in args.trained_model.split("+"):
+            p.error(
+                "--distill_signal_type activations requires --trained_model to include "
+                "'lg': with only 'rdd' trained, LightGlue's own weights never change, so "
+                "its activations on a fixed input would never drift from the reference"
+            )
+    elif args.distill_model_lambda > 0:
+        p.error("--distill_model_lambda requires --distill_model to be 'pretrained' or 'ema'")
+    if args.distill_ema_decay is not None and not (0.0 < args.distill_ema_decay < 1.0):
+        p.error("--distill_ema_decay must be in (0, 1)")
     return args
 
 
@@ -472,6 +557,110 @@ def update_ema(ema: nn.Module, model: nn.Module, decay: float) -> None:
         e_b.copy_(m_b)
 
 
+# ── distillation ──────────────────────────────────────────────────────────────
+def compute_distill_ema_decay(total_steps: int, target_weight: float = 0.01) -> float:
+    """
+    Decay for the --distill_model ema reference, picked relative to how long
+    this run actually is rather than a fixed constant like --ema_decay's usual
+    0.999: after `total_steps` EMA updates, the pretrained starting point's
+    remaining weight in the reference (decay ** total_steps) is
+    `target_weight`. A short run (few epochs / small dataset) gets a smaller
+    decay so the reference still moves meaningfully before training ends; a
+    long run gets a decay close to 1 so it drifts slowly and keeps anchoring
+    the student for most of training instead of collapsing onto it early.
+    """
+    total_steps = max(total_steps, 1)
+    return target_weight ** (1.0 / total_steps)
+
+
+class ActivationCapture:
+    """
+    Hooks every TransformerLayer in an LG's `transformers` ModuleList and
+    records its (desc0, desc1) output, in call order, while active.
+
+    desc0/desc1 are the per-keypoint embeddings LightGlue refines at each
+    layer — the residual stream self_attn/cross_attn write into and the value
+    log_assignment reads to score matches — so comparing them layer-by-layer
+    between student and reference is a direct check on the representation
+    that actually drives matching, independent of which internal attention
+    mechanics produced it. If the wrapped model's forward is called more than
+    once while a single capture is active (e.g. once for the positive pair,
+    once for the negative), activations from every call are appended to the
+    same list back-to-back — callers that need to tell them apart slice by
+    `len(model.transformers)`.
+    """
+
+    def __init__(self, model: torch.nn.Module) -> None:
+        self.model = _unwrap(model)
+        self.activations: list[tuple[torch.Tensor, torch.Tensor]] = []
+        self._handles: list = []
+
+    def __enter__(self) -> "ActivationCapture":
+        self.activations = []
+        for layer in self.model.transformers:
+            self._handles.append(layer.register_forward_hook(self._hook))
+        return self
+
+    def _hook(self, module, inputs, output) -> None:
+        desc0, desc1 = output
+        self.activations.append((desc0, desc1))
+
+    def __exit__(self, *exc) -> None:
+        for h in self._handles:
+            h.remove()
+        self._handles = []
+
+
+def distill_weights_loss(student: nn.Module, reference: nn.Module, loss_type: str) -> torch.Tensor:
+    """
+    Mean L1/L2 distance between `student`'s trainable parameters and
+    `reference`'s (frozen) counterparts, pooled over every element together —
+    so the loss magnitude reflects typical per-weight drift rather than
+    scaling with however many parameters happen to be unfrozen.
+    """
+    student = _unwrap(student)
+    diffs, n_elems = [], 0
+    for (_, s_p), (_, r_p) in zip(student.named_parameters(), reference.named_parameters()):
+        if not s_p.requires_grad:
+            continue
+        diff = s_p - r_p.detach()
+        diffs.append((diff.abs() if loss_type == "l1" else diff.pow(2)).sum())
+        n_elems += diff.numel()
+    if not diffs:
+        return next(student.parameters()).new_zeros(())
+    return torch.stack(diffs).sum() / max(n_elems, 1)
+
+
+def distill_activation_loss(
+    student_acts: list,
+    reference_acts: list,
+    mask0: torch.Tensor,
+    mask1: torch.Tensor,
+    loss_type: str,
+) -> torch.Tensor:
+    """
+    Mean L1/L2 distance between student and reference per-layer descriptor
+    embeddings (see ActivationCapture), over valid (non-padding) keypoints
+    only — padded slots are masked out of attention and carry whatever the
+    FFN does to arbitrary padding content, so matching them would just be
+    matching noise. Averaged within each side/layer first (so layers and the
+    two sides contribute equally regardless of keypoint count), then over
+    layers.
+    """
+    def _masked_diff(a: torch.Tensor, b: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        mask = mask.to(a.dtype)  # (B, M, 1), broadcasts over the descriptor dim
+        diff = a - b.detach()
+        per_elem = diff.abs() if loss_type == "l1" else diff.pow(2)
+        denom = (mask.sum() * a.shape[-1]).clamp(min=1)
+        return (per_elem * mask).sum() / denom
+
+    layer_losses = [
+        _masked_diff(s0, r0, mask0) + _masked_diff(s1, r1, mask1)
+        for (s0, s1), (r0, r1) in zip(student_acts, reference_acts)
+    ]
+    return torch.stack(layer_losses).mean()
+
+
 # ── training epoch ────────────────────────────────────────────────────────────
 def train_epoch_lg(
     accelerator: Accelerator,
@@ -487,11 +676,19 @@ def train_epoch_lg(
     args: argparse.Namespace,
     global_step: int,
     ema_lg: torch.nn.Module | None = None,
+    distill_lg_ref: torch.nn.Module | None = None,
+    distill_rdd_ref: torch.nn.Module | None = None,
 ) -> tuple[float, int, dict | None]:
     """
     `eval_lg` is what mini-evals run against (the EMA shadow when --ema_decay >
     0, else `lg` itself); `lg` is always what receives gradient. `ema_lg` (same
     object as `eval_lg` when EMA is on, else None) is updated after every step.
+
+    `distill_lg_ref`/`distill_rdd_ref` are the --distill_model reference
+    models (None unless that model is needed — see run_training_lg), fixed
+    for --distill_model pretrained or updated after every step for ema. Used
+    to add a consistency loss to the margin loss; see distill_weights_loss /
+    distill_activation_loss and the module docstring.
 
     `loader`'s dataset is always built with return_meta=True, so every batch
     carries a 4th `neg_meta` element (neg_source, query_lynx, neg_lynx,
@@ -515,6 +712,10 @@ def train_epoch_lg(
     train_rdd, train_lg = resolve_trained_models(args.trained_model)
     _unwrap(rdd).train(train_rdd)
     lg.train(train_lg)
+
+    distill_active         = args.distill_model != "none"
+    distill_weights_active = distill_active and args.distill_signal_type == "weights"
+    distill_acts_active    = distill_active and args.distill_signal_type == "activations"
 
     gap_tracking_active = args.moving_negative_prob is not None or args.negative_mining
     mining_active        = args.negative_mining
@@ -559,7 +760,19 @@ def train_epoch_lg(
             feats_p = extract_train(rdd, positives_r)
             feats_n = extract_train(rdd, negatives_r)
 
-        pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(lg, feats_a, feats_p, feats_n, H_r, W_r)
+        if distill_acts_active:
+            # ActivationCapture accumulates hooks fired during *every* forward
+            # call made while it's active — run_lg_matching_grad calls lg()
+            # twice (pos, then neg) in one context, so the flat list is
+            # sliced by n_layers below instead of using two separate captures.
+            with ActivationCapture(lg) as stu_cap:
+                pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(
+                    lg, feats_a, feats_p, feats_n, H_r, W_r
+                )
+            n_layers = len(_unwrap(lg).transformers)
+            stu_acts_pos, stu_acts_neg = stu_cap.activations[:n_layers], stu_cap.activations[n_layers:]
+        else:
+            pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(lg, feats_a, feats_p, feats_n, H_r, W_r)
 
         weak_mask = None
         if weak_active:
@@ -569,6 +782,35 @@ def train_epoch_lg(
             pred_pos, pred_neg, args.lg_margin,
             data_a=data_a, data_p=data_p, data_n=data_n, weak_mask=weak_mask,
         )
+
+        consistency_loss = loss.new_zeros(())
+        if distill_weights_active:
+            if train_lg and distill_lg_ref is not None:
+                consistency_loss = consistency_loss + distill_weights_loss(lg, distill_lg_ref, args.distill_loss)
+            if train_rdd and distill_rdd_ref is not None:
+                consistency_loss = consistency_loss + distill_weights_loss(rdd, distill_rdd_ref, args.distill_loss)
+        elif distill_acts_active:
+            # Reference LG runs on the exact same keypoints/descriptors the
+            # student just used (data_a/data_p/data_n), so the two are always
+            # shape-compatible even when RDD is also being trained and its
+            # descriptors/keypoint set have drifted from the reference RDD's —
+            # this isolates how much LightGlue's own transform of a given
+            # input has moved, which is what --trained_model requiring 'lg'
+            # for this mode (see parse_args) is there to make meaningful.
+            with torch.no_grad():
+                with ActivationCapture(distill_lg_ref) as ref_cap:
+                    distill_lg_ref({"image0": data_a, "image1": data_p})
+                    distill_lg_ref({"image0": data_a, "image1": data_n})
+            ref_acts_pos, ref_acts_neg = ref_cap.activations[:n_layers], ref_cap.activations[n_layers:]
+            mask_a = data_a["masks"].squeeze(1)
+            mask_p = data_p["masks"].squeeze(1)
+            mask_n = data_n["masks"].squeeze(1)
+            consistency_loss = 0.5 * (
+                distill_activation_loss(stu_acts_pos, ref_acts_pos, mask_a, mask_p, args.distill_loss)
+                + distill_activation_loss(stu_acts_neg, ref_acts_neg, mask_a, mask_n, args.distill_loss)
+            )
+
+        total_loss = loss + args.distill_model_lambda * consistency_loss if distill_active else loss
 
         for is_weak, src, pos_skip, neg_skip in zip(
             neg_meta["is_weak_query"], neg_meta["neg_source"],
@@ -598,16 +840,21 @@ def train_epoch_lg(
             trainable_params += [p for p in _unwrap(rdd).parameters() if p.requires_grad]
 
         optimizer.zero_grad()
-        accelerator.backward(loss)
+        accelerator.backward(total_loss)
         accelerator.clip_grad_norm_(trainable_params, args.grad_clip)
         optimizer.step()
 
         if ema_lg is not None:
             update_ema(ema_lg, lg, args.ema_decay)
+        if distill_active and args.distill_model == "ema":
+            if train_lg and distill_lg_ref is not None:
+                update_ema(distill_lg_ref, lg, args.distill_ema_decay)
+            if train_rdd and distill_rdd_ref is not None:
+                update_ema(distill_rdd_ref, rdd, args.distill_ema_decay)
 
         # Every rank only sees its own shard of the batch, so the logged
         # scalars would otherwise describe 1/num_processes of the data. All
-        # five go into a single tensor to keep this to one collective per step
+        # seven go into a single tensor to keep this to one collective per step
         # (the loss already forced a sync via .item(), so the added cost is
         # just the all-reduce itself). The four `stats` entries are per-rank
         # means over differing sample counts, so their average is approximate —
@@ -615,15 +862,16 @@ def train_epoch_lg(
         # every rank contributes one loss value.
         step_metrics = torch.tensor(
             [
-                loss.item(),
+                loss.item(), consistency_loss.item(), total_loss.item(),
                 stats["mean_pos_matches"], stats["mean_neg_matches"],
                 stats["mean_pos_conf"],    stats["mean_neg_conf"],
             ],
             device=device, dtype=torch.float32,
         )
-        loss_val, mean_pos_matches, mean_neg_matches, mean_pos_conf, mean_neg_conf = (
-            accelerator.reduce(step_metrics, reduction="mean").tolist()
-        )
+        (
+            loss_val, consistency_loss_val, total_loss_val,
+            mean_pos_matches, mean_neg_matches, mean_pos_conf, mean_neg_conf,
+        ) = accelerator.reduce(step_metrics, reduction="mean").tolist()
         epoch_loss += loss_val
         global_step += 1
 
@@ -638,6 +886,8 @@ def train_epoch_lg(
             accelerator.log(
                 {
                     "train/loss":                 loss_val,
+                    "train/consistency_loss":     consistency_loss_val,
+                    "train/total_loss":           total_loss_val,
                     "matches/mean_pos":           mean_pos_matches,
                     "matches/mean_neg":           mean_neg_matches,
                     "lg_confidence/mean_pos_conf": mean_pos_conf,
@@ -848,6 +1098,28 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # state, before accelerator.prepare wraps lg for DDP. Used for all eval below.
     ema_lg = build_ema(lg, device) if args.ema_decay > 0 else None
 
+    # ── --distill_model reference(s) ──
+    # Snapshotting here (after LoRA/freeze_confidence_head, before
+    # accelerator.prepare) means the reference always has the same structure
+    # as the student it's compared against — the 'pretrained' case just never
+    # updates it afterwards, while 'ema' updates it every step in
+    # train_epoch_lg. Only built when actually needed: for 'weights', student
+    # and a *frozen* reference are trivially identical, so lg_ref/rdd_ref are
+    # only built for the model(s) --trained_model actually unfreezes. For
+    # 'activations', train_epoch_lg always feeds the reference LG the
+    # student's own already-extracted descriptors (not a separately-extracted
+    # reference RDD pass), so the comparison is only ever non-trivial when LG
+    # itself is being trained — parse_args enforces 'lg' in --trained_model
+    # for this mode, which is exactly why `train_lg` is guaranteed True here.
+    distill_active   = args.distill_model != "none"
+    distill_lg_ref  = None
+    distill_rdd_ref = None
+    if distill_active:
+        if args.distill_signal_type == "activations" or train_lg:
+            distill_lg_ref = build_ema(lg, device)
+        if args.distill_signal_type == "weights" and train_rdd:
+            distill_rdd_ref = build_ema(rdd, device)
+
     trainable_params = [p for p in lg.parameters() if p.requires_grad]
     if train_rdd:
         trainable_params += [p for p in rdd.parameters() if p.requires_grad]
@@ -874,6 +1146,18 @@ def run_training_lg(args: argparse.Namespace) -> None:
             lg, optimizer, train_loader, mini_train_loader, mini_val_loader
         )
     eval_lg = ema_lg if ema_lg is not None else lg
+
+    # Computed only now (post-prepare) so len(train_loader) reflects each
+    # process's actual per-rank step count, not the pre-shard full dataset —
+    # using the latter would understate how many EMA updates each rank really
+    # performs per epoch on a multi-GPU run and leave the reference decaying
+    # slower than --epochs was meant to produce.
+    if distill_active and args.distill_model == "ema" and args.distill_ema_decay is None:
+        args.distill_ema_decay = compute_distill_ema_decay(args.epochs * len(train_loader))
+        accelerator.print(
+            f"[distill] auto distill_ema_decay={args.distill_ema_decay:.6f} "
+            f"(epochs={args.epochs}, steps/epoch={len(train_loader)})"
+        )
 
     if args.project:
         accelerator.init_trackers(
@@ -930,6 +1214,8 @@ def run_training_lg(args: argparse.Namespace) -> None:
             mini_train_loader, mini_val_loader,
             epoch, args.epochs, args, global_step,
             ema_lg=ema_lg,
+            distill_lg_ref=distill_lg_ref,
+            distill_rdd_ref=distill_rdd_ref,
         )
 
         if moving_active and neg_gap_stats is not None and neg_gap_stats["n_random"] > 0:

@@ -45,16 +45,10 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--eval_batch_size", type=int, default=4,
         help="Queries per DataLoader batch in eval_pseudo_accuracy (controls CPU "
-             "decode/prefetch parallelism, not GPU memory — see --eval_max_gpu_batch "
-             "for that)",
-    )
-    p.add_argument(
-        "--eval_max_gpu_batch", type=int, default=64,
-        help="Max images per RDD forward call in eval_pseudo_accuracy. Candidate "
-             "images (eval_batch_size * (n_pos + n_neg) per DataLoader batch) are "
-             "chunked to this size before RDD's deformable attention, since that "
-             "scales steeply with images-per-call and OOMs on larger top_k/top_m "
-             "indices otherwise",
+             "decode/prefetch parallelism). Candidate images (eval_batch_size * "
+             "(n_pos + n_neg) per DataLoader batch) are chunked to --batch_size "
+             "before RDD's deformable attention, since that scales steeply with "
+             "images-per-call and OOMs on larger top_k/top_m indices otherwise",
     )
     p.add_argument(
         "--wandb_tags", type=str, default="",
@@ -380,11 +374,11 @@ def eval_pseudo_accuracy(
 
         query_r = resize_long_side(query_batch, args.resize)
         H_q, W_q = query_r.shape[-2:]
-        feats_q = _extract_chunked(_unwrap(rdd), query_r, args.eval_max_gpu_batch)
+        feats_q = _extract_chunked(_unwrap(rdd), query_r, args.batch_size)
 
         cand_r = resize_long_side(cand_batch.view(B * n_cand, C, H, W), args.resize)
         H_c, W_c = cand_r.shape[-2:]
-        feats_c = _extract_chunked(_unwrap(rdd), cand_r, args.eval_max_gpu_batch)
+        feats_c = _extract_chunked(_unwrap(rdd), cand_r, args.batch_size)
 
         # Each query's features are matched against its own n_cand candidates
         # positionally, so repeat them to line up as one flat (B * n_cand)

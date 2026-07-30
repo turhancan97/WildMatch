@@ -194,10 +194,14 @@ class IndexAssignedTripletDataset(Dataset):
             instead of the index-driven one, per `__getitem__` call.
         return_meta: When True, `__getitem__` returns a 4th element: a dict
             with `neg_source` ("index" | "random"), `query_lynx`, `neg_lynx`,
-            and `is_weak_query`, letting a training loop bucket LG confidence
+            `is_weak_query`, and `query_frame` (the actual query path drawn —
+            entry["query_frame"] for an index sample, the random one for a
+            weak_queries sample), letting a training loop bucket LG confidence
             by where each sample came from (used by --moving_negative_prob,
-            --negative_mining, and --weak_queries). Default False keeps the
-            original 3-tuple for all other callers.
+            --negative_mining, --weak_queries) or track a specific query's
+            outcome across epochs (used by train_by_lg_matches.py's
+            pos-index dead-candidate recurrence tracking). Default False
+            keeps the original 3-tuple for all other callers.
     """
 
     def __init__(
@@ -342,7 +346,7 @@ class IndexAssignedTripletDataset(Dataset):
 
         meta = {
             "neg_source": "random", "query_lynx": query_lynx, "neg_lynx": neg_lynx,
-            "is_weak_query": True,
+            "is_weak_query": True, "query_frame": query_rel,
         }
         return query_rel, pos_rel, neg_rel, meta
 
@@ -355,6 +359,7 @@ class IndexAssignedTripletDataset(Dataset):
             pos_rel = random.choice(entry["positives"])
             neg_rel, meta = self._sample_negative(entry)
             meta["is_weak_query"] = False
+            meta["query_frame"] = query_rel
 
         query_path = self._full_path(query_rel)
         pos_path   = self._full_path(pos_rel)

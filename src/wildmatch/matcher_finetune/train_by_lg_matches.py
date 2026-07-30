@@ -102,6 +102,16 @@ def parse_args() -> argparse.Namespace:
     add_common_args(p)
     p.add_argument("--lg_margin", type=float, default=0.5, help="Margin for the LightGlue match-confidence loss")
     p.add_argument(
+        "--warmup_steps", type=int, default=0,
+        help="Linearly ramp the LR from 0 to --lr over this many optimizer steps "
+             "at the start of training (0, the default, disables warmup). Applied "
+             "per-step inside train_epoch_lg (see apply_warmup_lr), overriding "
+             "whatever the per-epoch CosineAnnealingLR scheduler set for that step "
+             "— without this, epoch 0 runs at the full --lr from step 0. Once "
+             "warmup_steps optimizer steps have elapsed, the cosine schedule "
+             "(unchanged, still stepped once per epoch) takes over uninterrupted.",
+    )
+    p.add_argument(
         "--augment", action="store_true",
         help="Apply photometric-only augmentation (color jitter, light blur) to training images",
     )
@@ -254,6 +264,8 @@ def parse_args() -> argparse.Namespace:
         p.error("--distill_model_lambda requires --distill_model to be 'pretrained' or 'ema'")
     if args.distill_ema_decay is not None and not (0.0 < args.distill_ema_decay < 1.0):
         p.error("--distill_ema_decay must be in (0, 1)")
+    if args.warmup_steps < 0:
+        p.error("--warmup_steps must be >= 0")
     return args
 
 
@@ -661,6 +673,32 @@ def distill_activation_loss(
     return torch.stack(layer_losses).mean()
 
 
+# ── LR warmup ─────────────────────────────────────────────────────────────────
+def apply_warmup_lr(
+    optimizer: torch.optim.Optimizer, global_step: int, args: argparse.Namespace,
+) -> float | None:
+    """
+    Linearly ramps every param group's LR from ~0 to args.lr over
+    args.warmup_steps optimizer steps (global_step is the count of steps
+    already completed *before* this one, so the first call uses global_step=0
+    and the last uses global_step=warmup_steps-1, landing exactly on args.lr).
+
+    Called once per step, right before optimizer.step() — see train_epoch_lg.
+    Needed because CosineAnnealingLR (run_training_lg) is only stepped once
+    per *epoch*, so without this, epoch 0 would run at the full --lr for its
+    entire duration; this override simply wins for any step where it's
+    active, regardless of what the epoch-level scheduler set beforehand.
+    Returns None (no-op, param groups untouched) once warmup_steps have
+    elapsed or when --warmup_steps is 0 (the default).
+    """
+    if args.warmup_steps <= 0 or global_step >= args.warmup_steps:
+        return None
+    warmup_lr = args.lr * (global_step + 1) / args.warmup_steps
+    for group in optimizer.param_groups:
+        group["lr"] = warmup_lr
+    return warmup_lr
+
+
 # ── training epoch ────────────────────────────────────────────────────────────
 def train_epoch_lg(
     accelerator: Accelerator,
@@ -678,7 +716,8 @@ def train_epoch_lg(
     ema_lg: torch.nn.Module | None = None,
     distill_lg_ref: torch.nn.Module | None = None,
     distill_rdd_ref: torch.nn.Module | None = None,
-) -> tuple[float, int, dict | None]:
+    prev_dead_pos_index: set[str] | None = None,
+) -> tuple[float, int, dict | None, set[str]]:
     """
     `eval_lg` is what mini-evals run against (the EMA shadow when --ema_decay >
     0, else `lg` itself); `lg` is always what receives gradient. `ema_lg` (same
@@ -708,6 +747,25 @@ def train_epoch_lg(
         they don't share the index-query random-negative distribution these
         two mechanisms compare against. The returned dict's gap-tracking
         fields are all-empty/zero when gap_tracking_active is False.
+
+    Always (independent of gap_tracking_active): index-query positive skips
+    are also tracked by identity via `neg_meta["query_frame"]`, giving
+    `dead_this_epoch` — the set of query_frames whose pos_index pair was
+    empty at least once this epoch, returned as the 4th tuple element (fed
+    back in next epoch as `prev_dead_pos_index` — see run_training_lg). When
+    a previous epoch's set is available, two extra metrics are logged
+    alongside the skip rates below:
+      train/skip_rate_pos_index_dead_count   len(dead_this_epoch) — how many
+                                              distinct index queries had a
+                                              zero-match positive this epoch.
+      train/skip_rate_pos_index_recurrence   what fraction of dead_this_epoch
+                                              was *also* in prev_dead_pos_index
+                                              — i.e. of today's dead
+                                              candidates, how many were
+                                              already dead last epoch, as
+                                              opposed to newly dead this
+                                              epoch. Absent on the first
+                                              epoch (no previous set yet).
     """
     train_rdd, train_lg = resolve_trained_models(args.trained_model)
     _unwrap(rdd).train(train_rdd)
@@ -723,6 +781,7 @@ def train_epoch_lg(
     epoch_index_confs:  list[float] = []
     epoch_random_confs: list[float] = []
     epoch_mining_obs:   list[tuple[str, str, float]] = []
+    epoch_dead_pos_index_frames: list[str] = []
 
     # [n_skipped, n_total] per (pair, query-source) bucket, for
     # train/skip_rate_{pos,neg}_{index,random}.
@@ -812,12 +871,14 @@ def train_epoch_lg(
 
         total_loss = loss + args.distill_model_lambda * consistency_loss if distill_active else loss
 
-        for is_weak, src, pos_skip, neg_skip in zip(
+        for is_weak, src, pos_skip, neg_skip, q_frame in zip(
             neg_meta["is_weak_query"], neg_meta["neg_source"],
-            stats["pos_skipped"], stats["neg_skipped"],
+            stats["pos_skipped"], stats["neg_skipped"], neg_meta["query_frame"],
         ):
             _bump_skip("pos_random" if is_weak else "pos_index", pos_skip)
             _bump_skip("neg_random" if src == "random" else "neg_index", neg_skip)
+            if not is_weak and pos_skip:
+                epoch_dead_pos_index_frames.append(q_frame)
 
         if gap_tracking_active:
             with torch.no_grad():
@@ -842,7 +903,9 @@ def train_epoch_lg(
         optimizer.zero_grad()
         accelerator.backward(total_loss)
         accelerator.clip_grad_norm_(trainable_params, args.grad_clip)
+        apply_warmup_lr(optimizer, global_step, args)
         optimizer.step()
+        current_lr = optimizer.param_groups[0]["lr"]
 
         if ema_lg is not None:
             update_ema(ema_lg, lg, args.ema_decay)
@@ -888,6 +951,7 @@ def train_epoch_lg(
                     "train/loss":                 loss_val,
                     "train/consistency_loss":     consistency_loss_val,
                     "train/total_loss":           total_loss_val,
+                    "train/lr_step":               current_lr,
                     "matches/mean_pos":           mean_pos_matches,
                     "matches/mean_neg":           mean_neg_matches,
                     "lg_confidence/mean_pos_conf": mean_pos_conf,
@@ -929,18 +993,27 @@ def train_epoch_lg(
         n_skip, n_total = skip_counts[key]
         return n_skip / n_total if n_total else 0.0
 
+    # Collective (gather_object flattens a list input across ranks — same
+    # pattern as epoch_mining_obs below), so this must run on every rank
+    # unconditionally, same as the skip_totals reduce above.
+    dead_this_epoch = set(gather_object(epoch_dead_pos_index_frames))
+    recurrence = None
+    if prev_dead_pos_index is not None and dead_this_epoch:
+        recurrence = len(dead_this_epoch & prev_dead_pos_index) / len(dead_this_epoch)
+
     if accelerator.is_main_process:
-        accelerator.log(
-            {
-                "train/skip_rate_pos_index":  _skip_rate("pos_index"),
-                "train/skip_rate_pos_random": _skip_rate("pos_random"),
-                "train/skip_rate_neg_index":  _skip_rate("neg_index"),
-                "train/skip_rate_neg_random": _skip_rate("neg_random"),
-                "time/train_s":     epoch_train_time,
-                "time/mini_eval_s": mini_eval_time,
-            },
-            step=global_step,
-        )
+        skip_log = {
+            "train/skip_rate_pos_index":  _skip_rate("pos_index"),
+            "train/skip_rate_pos_random": _skip_rate("pos_random"),
+            "train/skip_rate_neg_index":  _skip_rate("neg_index"),
+            "train/skip_rate_neg_random": _skip_rate("neg_random"),
+            "train/skip_rate_pos_index_dead_count": len(dead_this_epoch),
+            "time/train_s":     epoch_train_time,
+            "time/mini_eval_s": mini_eval_time,
+        }
+        if recurrence is not None:
+            skip_log["train/skip_rate_pos_index_recurrence"] = recurrence
+        accelerator.log(skip_log, step=global_step)
 
     neg_gap_stats = None
     if gap_tracking_active:
@@ -970,7 +1043,7 @@ def train_epoch_lg(
             "mining_observations": gather_object(epoch_mining_obs) if mining_active else [],
         }
 
-    return epoch_loss / max(steps_per_epoch, 1), global_step, neg_gap_stats
+    return epoch_loss / max(steps_per_epoch, 1), global_step, neg_gap_stats, dead_this_epoch
 
 
 # ── full training run ─────────────────────────────────────────────────────────
@@ -1208,14 +1281,16 @@ def run_training_lg(args: argparse.Namespace) -> None:
         )
 
     # ── loop ──
+    prev_dead_pos_index: set[str] | None = None
     for epoch in range(args.epochs):
-        epoch_loss, global_step, neg_gap_stats = train_epoch_lg(
+        epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index = train_epoch_lg(
             accelerator, rdd, lg, eval_lg, optimizer, train_loader,
             mini_train_loader, mini_val_loader,
             epoch, args.epochs, args, global_step,
             ema_lg=ema_lg,
             distill_lg_ref=distill_lg_ref,
             distill_rdd_ref=distill_rdd_ref,
+            prev_dead_pos_index=prev_dead_pos_index,
         )
 
         if moving_active and neg_gap_stats is not None and neg_gap_stats["n_random"] > 0:

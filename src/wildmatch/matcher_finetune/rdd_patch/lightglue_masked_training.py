@@ -30,6 +30,23 @@ every parameter, which is precisely what keeps DDP's hooks firing.
 
 `matches`/`scores` are still returned unchanged, so eval code that counts
 matches per pair keeps working.
+
+A third field, `assignment_scores`, goes one layer further: it's the dense
+(B, M+1, N+1) log-assignment matrix `MatchAssignment`/
+`sigmoid_log_double_softmax` produce, returned *before* `filter_matches`
+touches it at all. `matching_scores0`/`valid0` survive an empty pair only in
+aggregate (the all-False mask still has a grad_fn); a single entry that fails
+`filter_matches`' mutual-nearest-neighbor check is a hard, gradient-free zero
+(`torch.where(mutual0, max0_exp, zero)` with `zero` a fresh constant) no
+matter what consumes it downstream. `assignment_scores[b, i, j]` isn't
+gated by that check at all — indexing a specific (i, j) is a plain read of an
+already-differentiable tensor. That's what
+contrastive_finetuning/train_by_lg_matches.py's `distill_correspondence_loss`
+needs: a way to push a *specific* currently-unmatched query point toward a
+*specific* candidate (from a frozen reference model's own matches, used as a
+pseudo-label) even when every point in the pair currently loses the mutual
+check — i.e. even when matching_scores0/valid0 alone would give zero
+gradient for that pair, full stop.
 """
 
 import warnings
@@ -529,6 +546,8 @@ class LightGlueForTraining(nn.Module):
             valid1: [B x N]
             matches: List[[Si x 2]]    ragged, threshold-filtered (legacy)
             scores: List[[Si]]         ragged, threshold-filtered (legacy)
+            assignment_scores: [B x (M+1) x (N+1)]  dense log-assignment,
+                                pre-filter_matches — see module docstring
             stop: int
             prune0: [B x M]
             prune1: [B x N]
@@ -654,6 +673,13 @@ class LightGlueForTraining(nn.Module):
             valid1 = torch.zeros((b, n), dtype=torch.bool, device=device)
             matches = desc0.new_empty((b, 0, 2), dtype=torch.long)
             mscores = desc0.new_empty((b, 0))
+            # Same anchor trick as mscores0/1 above — no assignment matrix
+            # was computed on this branch, so this is a same-shape zero
+            # rather than a real log-assignment; distill_correspondence_loss
+            # never indexes into it for real, since ref_valid0 for this same
+            # (RDD-frozen, hence identical-input) pair is empty too whenever
+            # this branch fires — see its docstring.
+            assignment_scores = desc0.new_zeros((b, m + 1, n + 1)) + anchor.to(desc0.dtype)
             if not do_point_pruning:
                 prune0 = torch.ones_like(mscores0) * self.conf.n_layers
                 prune1 = torch.ones_like(mscores1) * self.conf.n_layers
@@ -667,6 +693,7 @@ class LightGlueForTraining(nn.Module):
                 "stop": i + 1,
                 "matches": matches,
                 "scores": mscores,
+                "assignment_scores": assignment_scores,
                 "prune0": prune0,
                 "prune1": prune1,
             }
@@ -721,6 +748,7 @@ class LightGlueForTraining(nn.Module):
             "stop": i + 1,
             "matches": matches,
             "scores": mscores,
+            "assignment_scores": scores,
             "prune0": prune0,
             "prune1": prune1,
         }

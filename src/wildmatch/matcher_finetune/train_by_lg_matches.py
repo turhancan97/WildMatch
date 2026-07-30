@@ -90,6 +90,44 @@ Three independent, combinable anti-overfitting mechanisms, each off by default:
                                           sides see the same input, this is
                                           only meaningful when 'lg' is in
                                           --trained_model (validated below).
+      --distill_signal_type correspondence
+                                          Targeted rescue, not a general
+                                          regularizer: only touches samples
+                                          the student currently reports zero
+                                          positive matches for (pos_empty —
+                                          see lg_confidence_loss). For those
+                                          samples only, the reference's own
+                                          matches0/valid0 on the exact same
+                                          (anchor, positive) pair become
+                                          pseudo-labels, and an NLL loss pulls
+                                          the student's raw, pre-filter
+                                          assignment_scores (added to
+                                          LightGlueForTraining's output dict
+                                          specifically for this — see
+                                          rdd_patch/lightglue_masked_training.py)
+                                          toward those positions. This reaches
+                                          the actual matching decision
+                                          (log_assignment) the way
+                                          'activations' cannot (that mode only
+                                          touches the transformer backbone,
+                                          upstream of log_assignment), while
+                                          staying per-sample the way 'weights'
+                                          cannot (that mode is pure parameter
+                                          distance, blind to which pair is
+                                          dead). A healthy pair's gradient is
+                                          untouched by this. --distill_loss
+                                          doesn't apply (NLL, not a distance).
+                                          Also requires 'lg' in
+                                          --trained_model. Works with either
+                                          --distill_model, but 'pretrained' is
+                                          the better fit for rescuing dead
+                                          pairs specifically: 'ema' drifts
+                                          toward the student's own live
+                                          trajectory — the same one that
+                                          produced the collapse — while
+                                          'pretrained' stays fixed at the
+                                          point where every index positive
+                                          matched.
 """
 
 
@@ -219,15 +257,21 @@ def parse_args() -> argparse.Namespace:
         "--distill_model_lambda", type=float, default=0.0,
         help="Weight of the distillation consistency loss: "
              "total_loss = loss + distill_model_lambda * consistency_loss. Required > 0 "
-             "when --distill_model is not 'none'.",
+             "when --distill_model is not 'none'. Tune separately per --distill_signal_type "
+             "— 'correspondence' is an NLL over assignment log-probabilities, a different "
+             "scale than the L1/L2 distances 'weights'/'activations' produce.",
     )
     p.add_argument(
-        "--distill_signal_type", type=str, default="weights", choices=["weights", "activations"],
+        "--distill_signal_type", type=str, default="weights",
+        choices=["weights", "activations", "correspondence"],
         help="What the consistency loss is computed on: 'weights' is an L1/L2 distance "
              "between the trained model's parameters and the reference's; 'activations' "
              "matches LightGlue's per-layer descriptor embeddings between student and "
-             "reference on this step's own keypoints/descriptors (requires 'lg' in "
-             "--trained_model — see module docstring).",
+             "reference on this step's own keypoints/descriptors; 'correspondence' is a "
+             "targeted rescue that only fires for samples whose positive pair the student "
+             "currently matches nothing on, pulling it towards the reference's own matches "
+             "for that pair (requires 'lg' in --trained_model — see module docstring for "
+             "all three).",
     )
     p.add_argument(
         "--distill_loss", type=str, default="l2", choices=["l1", "l2"],
@@ -254,11 +298,14 @@ def parse_args() -> argparse.Namespace:
     if args.distill_model != "none":
         if args.distill_model_lambda <= 0:
             p.error("--distill_model requires --distill_model_lambda > 0")
-        if args.distill_signal_type == "activations" and "lg" not in args.trained_model.split("+"):
+        if (
+            args.distill_signal_type in ("activations", "correspondence")
+            and "lg" not in args.trained_model.split("+")
+        ):
             p.error(
-                "--distill_signal_type activations requires --trained_model to include "
-                "'lg': with only 'rdd' trained, LightGlue's own weights never change, so "
-                "its activations on a fixed input would never drift from the reference"
+                f"--distill_signal_type {args.distill_signal_type} requires --trained_model "
+                "to include 'lg': with only 'rdd' trained, LightGlue's own weights never "
+                "change, so its output on a fixed input would never drift from the reference"
             )
     elif args.distill_model_lambda > 0:
         p.error("--distill_model_lambda requires --distill_model to be 'pretrained' or 'ema'")
@@ -673,6 +720,66 @@ def distill_activation_loss(
     return torch.stack(layer_losses).mean()
 
 
+def distill_correspondence_loss(
+    live_scores: torch.Tensor,
+    ref_matches0: torch.Tensor,
+    ref_valid0: torch.Tensor,
+    pos_empty: torch.Tensor,
+) -> torch.Tensor:
+    """
+    NLL of the reference's own matched correspondences under the student's
+    raw (pre-filter) assignment scores, for --distill_signal_type
+    correspondence — restricted to samples the student currently reports
+    zero positive matches for (pos_empty; see lg_confidence_loss).
+
+    live_scores: (B, M+1, N+1) dense log-assignment from the STUDENT —
+        LightGlueForTraining's `assignment_scores` output (see
+        rdd_patch/lightglue_masked_training.py). live_scores[b, i, j] moves
+        together with the three things filter_matches actually checks: the
+        row-softmax (is j point i's best candidate), the column-softmax (is
+        i point j's best candidate — mutual agreement), and both points'
+        matchability certainty (dustbin preference). So pushing it up at a
+        specific (i, j) isn't just "differentiable" — it's the right
+        direction to eventually clear filter_matches' mutual-nearest-
+        neighbor-plus-threshold gate, not merely a proxy for it.
+    ref_matches0/ref_valid0: (B, M) each, from a frozen REFERENCE LightGlue
+        (--distill_model's distill_lg_ref) run on the exact same (anchor,
+        positive) descriptors — pseudo-labels, not ground truth. RDD is
+        frozen, so keypoint index i means the same point for student and
+        reference; only ref_valid0[b, i]=True rows contribute. Deliberately
+        one-sided: we assert "point i matches ref_matches0[i]" but never
+        assert "point i matches nothing" for a reference-unmatched point —
+        this is a rescue signal, so it should only ever push a pair towards
+        more matches, never towards fewer.
+    pos_empty: (B,) bool, from the student's own pred_pos["valid0"] this
+        step. Samples the student still matches fine are untouched — same
+        training as before this loss existed.
+
+    Reading live_scores at a specific (i, j) is a plain index into an
+    already-differentiable tensor — unlike matching_scores0 * valid0 (used
+    everywhere else, e.g. _lg_scores), it never passes through
+    filter_matches' torch.where(mutual0, ..., zero), so it carries nonzero
+    gradient even for a sample whose valid0 is currently all-False. That's
+    the one thing this loss exists to provide.
+
+    Returns a plain 0.0 (no grad_fn, like distill_weights_loss's empty case
+    — safe under find_unused_parameters=True, see run_training_lg) when no
+    sample is both pos_empty and has at least one reference-matched point to
+    learn from.
+    """
+    weight = ref_valid0.to(live_scores.dtype) * pos_empty[:, None].to(live_scores.dtype)
+    if weight.sum() == 0:
+        return live_scores.new_zeros(())
+
+    M = ref_matches0.shape[1]
+    j_idx = ref_matches0.clamp(min=0)  # dummy index for unmatched rows; zeroed out by `weight`
+    nll = -live_scores[:, :M, :].gather(2, j_idx.unsqueeze(-1)).squeeze(-1)  # (B, M)
+
+    per_sample = (nll * weight).sum(dim=1) / weight.sum(dim=1).clamp(min=1)
+    sample_weight = (weight.sum(dim=1) > 0).to(per_sample.dtype)
+    return (per_sample * sample_weight).sum() / sample_weight.sum().clamp(min=1)
+
+
 # ── LR warmup ─────────────────────────────────────────────────────────────────
 def apply_warmup_lr(
     optimizer: torch.optim.Optimizer, global_step: int, args: argparse.Namespace,
@@ -727,7 +834,8 @@ def train_epoch_lg(
     models (None unless that model is needed — see run_training_lg), fixed
     for --distill_model pretrained or updated after every step for ema. Used
     to add a consistency loss to the margin loss; see distill_weights_loss /
-    distill_activation_loss and the module docstring.
+    distill_activation_loss / distill_correspondence_loss and the module
+    docstring.
 
     `loader`'s dataset is always built with return_meta=True, so every batch
     carries a 4th `neg_meta` element (neg_source, query_lynx, neg_lynx,
@@ -774,6 +882,7 @@ def train_epoch_lg(
     distill_active         = args.distill_model != "none"
     distill_weights_active = distill_active and args.distill_signal_type == "weights"
     distill_acts_active    = distill_active and args.distill_signal_type == "activations"
+    distill_corr_active    = distill_active and args.distill_signal_type == "correspondence"
 
     gap_tracking_active = args.moving_negative_prob is not None or args.negative_mining
     mining_active        = args.negative_mining
@@ -867,6 +976,16 @@ def train_epoch_lg(
             consistency_loss = 0.5 * (
                 distill_activation_loss(stu_acts_pos, ref_acts_pos, mask_a, mask_p, args.distill_loss)
                 + distill_activation_loss(stu_acts_neg, ref_acts_neg, mask_a, mask_n, args.distill_loss)
+            )
+        elif distill_corr_active:
+            # Only the positive pair — there's nothing to "rescue" on the
+            # negative side (an empty negative is the desired outcome, not a
+            # problem; see lg_confidence_loss's neg_empty handling).
+            with torch.no_grad():
+                ref_pred_pos = distill_lg_ref({"image0": data_a, "image1": data_p})
+            pos_empty = pred_pos["valid0"].sum(dim=1) == 0
+            consistency_loss = distill_correspondence_loss(
+                pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], pos_empty,
             )
 
         total_loss = loss + args.distill_model_lambda * consistency_loss if distill_active else loss
@@ -1179,16 +1298,17 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # train_epoch_lg. Only built when actually needed: for 'weights', student
     # and a *frozen* reference are trivially identical, so lg_ref/rdd_ref are
     # only built for the model(s) --trained_model actually unfreezes. For
-    # 'activations', train_epoch_lg always feeds the reference LG the
-    # student's own already-extracted descriptors (not a separately-extracted
-    # reference RDD pass), so the comparison is only ever non-trivial when LG
-    # itself is being trained — parse_args enforces 'lg' in --trained_model
-    # for this mode, which is exactly why `train_lg` is guaranteed True here.
+    # 'activations'/'correspondence', train_epoch_lg always feeds the
+    # reference LG the student's own already-extracted descriptors (not a
+    # separately-extracted reference RDD pass), so the comparison is only
+    # ever non-trivial when LG itself is being trained — parse_args enforces
+    # 'lg' in --trained_model for both modes, which is exactly why
+    # `train_lg` is guaranteed True here.
     distill_active   = args.distill_model != "none"
     distill_lg_ref  = None
     distill_rdd_ref = None
     if distill_active:
-        if args.distill_signal_type == "activations" or train_lg:
+        if args.distill_signal_type in ("activations", "correspondence") or train_lg:
             distill_lg_ref = build_ema(lg, device)
         if args.distill_signal_type == "weights" and train_rdd:
             distill_rdd_ref = build_ema(rdd, device)

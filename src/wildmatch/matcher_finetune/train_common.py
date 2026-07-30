@@ -100,7 +100,7 @@ def build_wandb_tags(args: argparse.Namespace) -> list[str]:
 
 def batch_features(feats: list[dict], image_h: int, image_w: int) -> dict:
     """
-    Pack variable-length feature dicts into tensors for LightGlueMasked.
+    Pack variable-length feature dicts into tensors for LightGlueForTraining.
 
     Args:
         feats: list of B dicts with 'keypoints' (N_i, 2) and 'descriptors' (N_i, D)
@@ -190,8 +190,8 @@ def run_lg_matching_grad(
     that want keypoint-coverage-normalized scores (see _lg_scores) need
     their `masks`.
 
-    Note LightGlueMasked detaches its descriptor *inputs* by default (see
-    `detach_descriptors` in rdd_patch/lightglue_masked.py), so gradient
+    Note LightGlueForTraining detaches its descriptor *inputs* by default (see
+    `detach_descriptors` in rdd_patch/lightglue_masked_training.py), so gradient
     normally only reaches LG's own weights. train_by_lg_matches.py builds LG
     with `detach_descriptors=False` when `--trained_model` includes 'rdd', so
     gradient can also flow back into the network that produced feats_*.
@@ -242,8 +242,10 @@ def eval_epoch(
         pred_pos = lg({"image0": data_a, "image1": data_p})
         pred_neg = lg({"image0": data_a, "image1": data_n})
 
-        total_pos += sum(len(m) for m in pred_pos["matches"])
-        total_neg += sum(len(m) for m in pred_neg["matches"])
+        # valid0 is the dense form of the ragged `matches` list — same count,
+        # no per-batch-item Python loop.
+        total_pos += pred_pos["valid0"].sum()
+        total_neg += pred_neg["valid0"].sum()
         n += len(feats_a)
 
     # Sum counts across all processes before computing means
@@ -283,22 +285,29 @@ def _extract_chunked(rdd: torch.nn.Module, images: torch.Tensor, chunk_size: int
     return feats
 
 
-def _lg_scores(pred: dict, q_data: dict, g_data: dict, device: torch.device) -> torch.Tensor:
+def _lg_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
     """Per-pair score = sum(match confidence) / min(valid keypoints in query, in candidate).
 
     Normalizing by keypoint coverage instead of averaging confidence over
     however many matches were found keeps a couple of lucky high-confidence
     matches from outscoring a pair that's genuinely well-matched throughout.
 
+    Reads the dense `matching_scores0` / `valid0` that LightGlueForTraining
+    exposes (see rdd_patch/lightglue_masked_training.py), so `pred` must come
+    from that class — everything is built through models.build_masked_lg, which
+    does. `matching_scores0 * valid0` selects exactly the entries LightGlue puts
+    in its ragged `scores` list, so the value is unchanged, but it stays
+    attached to the graph when a pair matched nothing: masking with all-False
+    still propagates zeros back to every parameter, whereas the ragged list's
+    empty tensor used to be replaced by a detached `torch.zeros(())` and cut the
+    loss off from the model entirely.
+
     Stays lazy/on-device throughout (no `.item()`) — this is also called from
     the training loss every step, where a GPU sync per batch element would
     actually cost something, unlike in eval.
     """
-    B = q_data["keypoints"].shape[0]
-    sums = torch.stack([
-        pred["scores"][i].sum() if pred["scores"][i].numel() > 0 else torch.zeros((), device=device)
-        for i in range(B)
-    ])
+    mscores = pred["matching_scores0"]
+    sums = (mscores * pred["valid0"].to(mscores.dtype)).sum(dim=1)
     n_q = q_data["masks"].squeeze(1).squeeze(-1).sum(dim=1).clamp(min=1)
     n_g = g_data["masks"].squeeze(1).squeeze(-1).sum(dim=1).clamp(min=1)
     return sums / torch.minimum(n_q, n_g)
@@ -413,7 +422,7 @@ def eval_pseudo_accuracy(
         data_q = batch_features(feats_q_rep, H_q, W_q)
         data_c = batch_features(feats_c,     H_c, W_c)
         pred = lg({"image0": data_q, "image1": data_c})
-        scores = _lg_scores(pred, data_q, data_c, device).view(B, n_cand)
+        scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
 
         score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
         score_neg, _ = scores[:, ds.n_pos:].max(dim=1)

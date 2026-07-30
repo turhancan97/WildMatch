@@ -34,9 +34,9 @@ signal instead of a fixed, external oracle for evaluating matches (as a
 descriptor-training setup would).
 
 `--trained_model` (lg / rdd / lg+rdd) decides which model(s) are unfrozen and
-receive gradient; the other stays frozen. LightGlueMasked detaches its
+receive gradient; the other stays frozen. LightGlueForTraining detaches its
 descriptor *inputs* by default (see `detach_descriptors` in
-rdd_patch/lightglue_masked.py), which is what normally keeps this loss from
+rdd_patch/lightglue_masked_training.py), which is what normally keeps this loss from
 backpropagating into RDD; when `--trained_model` includes 'rdd', LG is built
 with `detach_descriptors=False` so gradient can reach RDD too.
 
@@ -173,12 +173,18 @@ def parse_args() -> argparse.Namespace:
 
 
 # ── loss ──────────────────────────────────────────────────────────────────────
+def _masked_mean(x: torch.Tensor, mask: torch.Tensor) -> float:
+    """Mean of `x` over `mask`, 0.0 when the mask selects nothing."""
+    n = int(mask.sum())
+    return float((x * mask).sum() / n) if n else 0.0
+
+
 def lg_confidence_loss(
-    pred_pos: dict, pred_neg: dict, margin: float, device: torch.device,
+    pred_pos: dict, pred_neg: dict, margin: float,
     data_a: dict, data_p: dict, data_n: dict, weak_mask: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict]:
     """
-    Margin loss on LightGlue's OWN matching confidence (`scores`):
+    Margin loss on LightGlue's OWN matching confidence:
       loss = relu(margin - pos_conf + neg_conf)
 
     pos_conf/neg_conf are sum(confidence) / min(valid keypoints on each
@@ -186,6 +192,26 @@ def lg_confidence_loss(
     _lg_scores in train_common.py) — which keeps a couple of lucky
     high-confidence matches from dominating the loss for an otherwise
     poorly-matched pair.
+
+    Fully vectorized over the batch, reading LightGlueForTraining's dense
+    `valid0` rather than looping over its ragged `scores` list. Two things that
+    used to be control flow are now arithmetic:
+
+      - A sample whose *positive* pair found no match contributes no loss term.
+        That `continue` is now a 0/1 weight, so such a sample adds exactly 0 to
+        both numerator and denominator. Same value, but it stays in the graph
+        instead of dropping out of it — which is what makes the all-empty batch
+        safe: `w.sum().clamp(min=1)` turns 0/0 into a plain 0.0 that still has a
+        grad_fn. The old code returned a fresh `torch.zeros(requires_grad=True)`
+        there, disconnected from every parameter, so backward fired no gradient
+        hook at all and DDP's reducer never finished the iteration.
+      - A *negative* pair with no match used to take a separate
+        `relu(margin - pos_conf)` branch. An empty negative scores exactly 0, so
+        that is the same expression as the general one; the branch is gone.
+
+    Equivalence with the previous per-sample implementation (confidences, match
+    counts, loss, and every logged stat) is pinned by
+    tests/test_dense_matching.py.
 
     weak_mask: optional (B,) bool tensor from --weak_queries — True marks
     samples whose query is a random frame (not the curated index), paired
@@ -198,54 +224,35 @@ def lg_confidence_loss(
     index-query samples, so the whole pos_conf_all tensor can't just be
     .detach()'d.
     """
-    pos_conf_all = _lg_scores(pred_pos, data_a, data_p, device)  # (B,)
-    neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device)  # (B,)
+    pos_conf_all = _lg_scores(pred_pos, data_a, data_p)  # (B,)
+    neg_conf_all = _lg_scores(pred_neg, data_a, data_n)  # (B,)
 
     if weak_mask is not None:
         pos_conf_all = torch.where(weak_mask, pos_conf_all.detach(), pos_conf_all)
 
-    losses = []
-    pos_skipped: list[bool] = []  # per-sample: this pair had 0 positive matches
-    neg_skipped: list[bool] = []  # per-sample: this pair had 0 negative matches
-    pos_match_list, neg_match_list = [], []
-    pos_conf_list, neg_conf_list = [], []
+    pos_matches = pred_pos["valid0"].sum(dim=1)  # (B,)
+    neg_matches = pred_neg["valid0"].sum(dim=1)  # (B,)
+    pos_empty = pos_matches == 0
+    neg_empty = neg_matches == 0
 
-    for i, (s_pos, s_neg) in enumerate(zip(pred_pos["scores"], pred_neg["scores"])):
-        pos_empty = s_pos.shape[0] == 0
-        neg_empty = s_neg.shape[0] == 0
-        pos_skipped.append(pos_empty)
-        neg_skipped.append(neg_empty)
+    per_sample = F.relu(margin - pos_conf_all + neg_conf_all)  # (B,)
+    kept = (~pos_empty).to(per_sample.dtype)
+    loss = (per_sample * kept).sum() / kept.sum().clamp(min=1)
 
-        if pos_empty:
-            continue  # no positive matches at all -> sample contributes no loss term
-
-        pos_match_list.append(s_pos.shape[0])
-        neg_match_list.append(s_neg.shape[0])
-
-        pos_conf = pos_conf_all[i]
-        pos_conf_list.append(pos_conf.item())
-
-        if not neg_empty:
-            neg_conf = neg_conf_all[i]
-            neg_conf_list.append(neg_conf.item())
-            losses.append(F.relu(margin - pos_conf + neg_conf))
-        else:
-            losses.append(F.relu(margin - pos_conf))
-
-    def _mean(lst):
-        return sum(lst) / len(lst) if lst else 0.0
-
-    stats = {
-        "pos_skipped":      pos_skipped,  # list[bool], length B — caller buckets by source
-        "neg_skipped":      neg_skipped,  # list[bool], length B
-        "mean_pos_matches": _mean(pos_match_list),
-        "mean_neg_matches": _mean(neg_match_list),
-        "mean_pos_conf":    _mean(pos_conf_list),
-        "mean_neg_conf":    _mean(neg_conf_list),
-    }
-    if not losses:
-        return torch.zeros(1, device=device, requires_grad=True).squeeze(), stats
-    return torch.stack(losses).mean(), stats
+    # Under no_grad so the float() conversions below don't drag detach() calls
+    # (or a warning) along; these are diagnostics only. Four syncs per step
+    # instead of the ~2*batch_size the per-sample .item() calls used to cost.
+    with torch.no_grad():
+        keep = ~pos_empty
+        stats = {
+            "pos_skipped":      pos_empty.tolist(),  # list[bool], length B — caller buckets by source
+            "neg_skipped":      neg_empty.tolist(),  # list[bool], length B
+            "mean_pos_matches": _masked_mean(pos_matches.to(per_sample.dtype), keep),
+            "mean_neg_matches": _masked_mean(neg_matches.to(per_sample.dtype), keep),
+            "mean_pos_conf":    _masked_mean(pos_conf_all, keep),
+            "mean_neg_conf":    _masked_mean(neg_conf_all, keep & ~neg_empty),
+        }
+    return loss, stats
 
 
 # ── augmentation ──────────────────────────────────────────────────────────────
@@ -368,7 +375,7 @@ def measure_negative_gap(
             data_a = batch_features(feats_a, H_r, W_r)
             data_n = batch_features(feats_n, H_r, W_r)
             pred_neg = lg({"image0": data_a, "image1": data_n})
-            neg_conf = _lg_scores(pred_neg, data_a, data_n, device).tolist()
+            neg_conf = _lg_scores(pred_neg, data_a, data_n).tolist()
 
             for src, is_weak, conf in zip(neg_meta["neg_source"], neg_meta["is_weak_query"], neg_conf):
                 if is_weak:
@@ -559,7 +566,7 @@ def train_epoch_lg(
             weak_mask = torch.as_tensor(neg_meta["is_weak_query"], dtype=torch.bool, device=device)
 
         loss, stats = lg_confidence_loss(
-            pred_pos, pred_neg, args.lg_margin, device,
+            pred_pos, pred_neg, args.lg_margin,
             data_a=data_a, data_p=data_p, data_n=data_n, weak_mask=weak_mask,
         )
 
@@ -572,7 +579,7 @@ def train_epoch_lg(
 
         if gap_tracking_active:
             with torch.no_grad():
-                neg_conf_all = _lg_scores(pred_neg, data_a, data_n, device).tolist()
+                neg_conf_all = _lg_scores(pred_neg, data_a, data_n).tolist()
             for src, q_lynx, n_lynx, is_weak, conf in zip(
                 neg_meta["neg_source"], neg_meta["query_lynx"], neg_meta["neg_lynx"],
                 neg_meta["is_weak_query"], neg_conf_all,
@@ -722,7 +729,7 @@ def run_training_lg(args: argparse.Namespace) -> None:
 
     # find_unused_parameters=True is mandatory here, not a precaution: LightGlue
     # is instantiated with depth_confidence/width_confidence = -1 (see
-    # build_masked_lg), and LightGlueMasked._forward hardcodes the matching
+    # build_masked_lg), and LightGlueForTraining._forward hardcodes the matching
     # do_early_stop/do_point_pruning to False. That leaves whole trainable
     # submodules off the forward graph every step — all 8 `token_confidence`
     # layers, plus `log_assignment[0..n_layers-2]`, of which only the last is

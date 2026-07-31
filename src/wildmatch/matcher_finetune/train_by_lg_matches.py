@@ -124,7 +124,14 @@ Three independent, combinable anti-overfitting mechanisms, each off by default:
                                           cannot (that mode is pure parameter
                                           distance, blind to which pair is
                                           dead). A healthy pair's gradient is
-                                          untouched by this. --distill_loss
+                                          untouched by this, and so is a
+                                          --weak_queries sample even with an
+                                          empty match set — same distrust as
+                                          lg_confidence_loss's weak_mask,
+                                          since the "pretrained matched every
+                                          index positive" premise doesn't
+                                          extend to weak_queries' uncurated
+                                          pairing. --distill_loss
                                           doesn't apply (NLL, not a distance).
                                           Also requires 'lg' in
                                           --trained_model. Works with either
@@ -1026,6 +1033,14 @@ def train_epoch_lg(
             with torch.no_grad():
                 ref_pred_pos = distill_lg_ref({"image0": data_a, "image1": data_p})
             pos_empty = pred_pos["valid0"].sum(dim=1) == 0
+            if weak_mask is not None:
+                # Same distrust as lg_confidence_loss's weak_mask: a
+                # --weak_queries "positive" is an uncurated random same-lynx
+                # frame pair, not a curated index entry — the "pretrained
+                # matched every index positive" premise this loss rests on
+                # doesn't extend to it, so a weak query never counts as
+                # rescuable here, however empty its match set is.
+                pos_empty = pos_empty & ~weak_mask
             consistency_loss = distill_correspondence_loss(
                 pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], pos_empty,
             )

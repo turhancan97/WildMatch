@@ -21,9 +21,9 @@ from torch.utils.data import Subset
 from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
-    _lg_scores, _unwrap, add_common_args, batch_features, build_pseudo_accuracy_loader,
-    build_wandb_tags, eval_epoch, eval_pseudo_accuracy, extract_train, resize_long_side,
-    resolve_trained_models, run_lg_matching_grad, seed_all,
+    _extract_chunked, _lg_scores, _unwrap, add_common_args, batch_features,
+    build_pseudo_accuracy_loader, build_wandb_tags, eval_epoch, eval_pseudo_accuracy,
+    extract_train, resize_long_side, resolve_trained_models, seed_all,
 )
 
 """
@@ -40,10 +40,49 @@ rdd_patch/lightglue_masked_training.py), which is what normally keeps this loss 
 backpropagating into RDD; when `--trained_model` includes 'rdd', LG is built
 with `detach_descriptors=False` so gradient can reach RDD too.
 
-Three independent, combinable anti-overfitting mechanisms, each off by default:
+Independent, combinable anti-overfitting mechanisms, each off by default:
   --augment    photometric-only data augmentation on the training images
                (never on val — keypoint geometry is untouched, detection runs
-               after augmentation, so correspondences stay valid).
+               after augmentation, so correspondences stay valid). Note that
+               with RDD frozen (--trained_model lg, the usual case) a
+               photometric-augmentation-invariant RDD absorbs most of this
+               before LightGlue ever sees it — the feature-space perturbations
+               below (--keypoint_dropout, --multi_scale_*) are the ones that
+               are guaranteed to reach the matcher.
+  --margin_activation softplus
+               replaces the hinge's relu with softplus(beta*z)/beta so
+               triplets already past the margin keep a small, exponentially-
+               decaying gradient instead of dropping out of the loss — the
+               direct counter to the signal saturating once train accuracy
+               approaches 1. train/active_frac (logged always) is the gauge:
+               the fraction of triplets still inside the margin.
+  --adaptive_margin
+               raises the margin between epochs to track the model's own
+               measured pos/neg separation gap (clamped to
+               [--lg_margin, --adaptive_margin_max]), so the margin recedes
+               ahead of the model instead of being cleared once and forever.
+  --num_negatives K
+               K independently-sampled negatives per triplet, combined with a
+               smooth max — each step effectively trains against the hardest
+               negative it sampled, which keeps the negative term alive long
+               after the average negative is solved.
+  --keypoint_dropout / --multi_scale_min/--multi_scale_max
+               training-only perturbations of LightGlue's actual input space
+               (random keypoint deletion; per-step random resize target) —
+               regularization that cannot be absorbed by a frozen RDD, unlike
+               image-level photometric jitter.
+  --hard_positive_sampling / --hard_negative_sampling
+               replace uniform draws from each entry's fixed positive/negative
+               pools with draws weighted toward historically hard pairs (low
+               positive confidence / high negative confidence), using
+               confidences the training loss already computes — a cheap,
+               forward-pass-free stand-in for re-mining the index as the model
+               solves the easy candidates.
+  --negative_mining_frame_prob
+               frame-level sharpening of --negative_mining's lynx-level
+               matrix: remembers specific frames that produced high negative
+               confidence and re-serves them, again at zero extra forward
+               cost.
   --lora / --lora_rank
                freeze LightGlue's own pretrained weights and train only
                low-rank adapters injected into its attention/assignment
@@ -99,6 +138,20 @@ Three independent, combinable anti-overfitting mechanisms, each off by default:
                                           sides see the same input, this is
                                           only meaningful when 'lg' is in
                                           --trained_model (validated below).
+                                          By default both the (anchor,
+                                          positive) and (anchor, negative)
+                                          pair are matched against the
+                                          reference, which spends half the
+                                          anchor's budget holding the
+                                          *negative* pair's representation
+                                          where the pretrained model had it —
+                                          directly opposing the margin loss's
+                                          negative term, the one part of the
+                                          objective that is supposed to move.
+                                          --activations_on_positives narrows
+                                          the comparison to the positive pair
+                                          alone, and skips the reference's
+                                          negative forward entirely.
       --distill_signal_type correspondence
                                           Targeted rescue, not a general
                                           regularizer: only touches samples
@@ -144,6 +197,52 @@ Three independent, combinable anti-overfitting mechanisms, each off by default:
                                           'pretrained' stays fixed at the
                                           point where every index positive
                                           matched.
+      --distill_signal_type healing_on_positives
+                                          A wider-gated variant of
+                                          'correspondence': same pseudo-labels
+                                          (the reference's matches0/valid0 on
+                                          the same (anchor, positive) pair),
+                                          same NLL on the student's
+                                          assignment_scores, same exemption
+                                          for --weak_queries samples. What
+                                          changes is *when* it fires. Instead
+                                          of waiting for a positive pair to
+                                          match nothing at all, it fires as
+                                          soon as the student's live
+                                          confidence for that pair (_lg_scores,
+                                          the same number eval ranks on) drops
+                                          below what the PRETRAINED model
+                                          scored for that exact (query,
+                                          positive) pair. Zero matches is just
+                                          the far end of that condition, so
+                                          this is a strict superset of
+                                          'correspondence' — it starts pulling
+                                          a pair back while it is merely
+                                          degrading rather than after it has
+                                          died, which is also when the pull is
+                                          small enough not to be a shock.
+                                          The per-pair reference scores are
+                                          measured once, before training, by
+                                          measure_pretrained_positive_scores;
+                                          a run revisits each (query, positive)
+                                          pair on the order of
+                                          epochs/n_positives times, so one
+                                          clean pass up front is both far
+                                          cheaper than re-scoring it every step
+                                          and a *fixed* target rather than a
+                                          moving one. That target is the
+                                          pretrained model's regardless of
+                                          --distill_model (which still chooses
+                                          where the pseudo-label matches come
+                                          from): the gate asks "am I worse than
+                                          where I started", which an EMA
+                                          reference — drifting along with the
+                                          student — cannot answer. Note with
+                                          --augment the reference is measured
+                                          on clean images while training sees
+                                          jittered ones, which biases the gate
+                                          slightly towards firing. Requires
+                                          'lg' in --trained_model.
 """
 
 
@@ -155,6 +254,111 @@ def parse_args() -> argparse.Namespace:
     )
     add_common_args(p)
     p.add_argument("--lg_margin", type=float, default=0.5, help="Margin for the LightGlue match-confidence loss")
+    p.add_argument(
+        "--margin_activation", type=str, default="relu", choices=["relu", "softplus"],
+        help="Activation over the margin violation z = margin - pos_conf + neg_conf: "
+             "'relu' (default) is the classic hinge — exactly zero gradient for every "
+             "triplet already past the margin, so the training signal dies off as the "
+             "training set gets solved; 'softplus' (softplus(beta*z)/beta, see "
+             "--softplus_beta) keeps an exponentially-decaying but never-zero gradient "
+             "on solved triplets, so they keep anchoring the model instead of dropping "
+             "out of the loss entirely.",
+    )
+    p.add_argument(
+        "--softplus_beta", type=float, default=10.0,
+        help="Sharpness of --margin_activation softplus; higher hugs relu more closely "
+             "(smaller gradient leak on solved triplets).",
+    )
+    p.add_argument(
+        "--adaptive_margin", action="store_true",
+        help="Raise the margin between epochs as the model separates positives from "
+             "negatives: next epoch's margin = clamp(mean(pos_conf - neg_conf) + "
+             "--adaptive_margin_offset, --lg_margin, --adaptive_margin_max), where the "
+             "mean separation gap is measured over this epoch's training batches "
+             "(kept samples only, all ranks). Keeps roughly the below-average half of "
+             "triplets active instead of letting the whole set clear a fixed margin. "
+             "Logged as train/margin and train/sep_gap.",
+    )
+    p.add_argument(
+        "--adaptive_margin_max", type=float, default=0.9,
+        help="Ceiling for --adaptive_margin (confidences live in [0, 1], so a margin "
+             "close to 1 is unreachable by construction).",
+    )
+    p.add_argument(
+        "--adaptive_margin_offset", type=float, default=0.0,
+        help="Added to the measured separation gap before clamping (--adaptive_margin). "
+             "Positive keeps more triplets active; negative fewer.",
+    )
+    p.add_argument(
+        "--num_negatives", type=int, default=1,
+        help="Negatives sampled per triplet (each drawn independently through the full "
+             "sampling stack: index/random mix, mining, hard sampling). With K > 1 the "
+             "loss trains against a smooth max (tau*logsumexp(conf/tau), see "
+             "--multi_neg_tau) of the K negatives' confidences — effectively always "
+             "the hardest negative sampled this step, which saturates far slower than "
+             "one random negative. Multiplies the negative-side forward cost by K.",
+    )
+    p.add_argument(
+        "--multi_neg_tau", type=float, default=0.1,
+        help="Smooth-max temperature over the K negatives' confidences "
+             "(--num_negatives > 1); lower approaches a hard max.",
+    )
+    p.add_argument(
+        "--keypoint_dropout", type=float, default=0.0,
+        help="Training-only probability of dropping each detected keypoint (with its "
+             "descriptor) before matching. Perturbs LightGlue's actual input space — "
+             "unlike photometric image augmentation, which a frozen, "
+             "augmentation-invariant RDD largely absorbs before LG ever sees it — so "
+             "the matcher can't lean on memorized keypoint constellations. Never "
+             "applied in eval.",
+    )
+    p.add_argument(
+        "--multi_scale_min", type=int, default=0,
+        help="Training-only multi-scale: per step, the resize target is drawn "
+             "uniformly from [--multi_scale_min, --multi_scale_max] snapped to /32, "
+             "instead of the fixed --resize (which eval always keeps). 0 (default) "
+             "disables. Varies keypoint count/density and detection scale per step.",
+    )
+    p.add_argument(
+        "--multi_scale_max", type=int, default=0,
+        help="Upper bound for --multi_scale_min's range; both must be set together.",
+    )
+    p.add_argument(
+        "--hard_positive_sampling", action="store_true",
+        help="Sample each entry's positive weighted toward historically LOW LG "
+             "confidence (hard positives) instead of uniformly, from a per-"
+             "(query_frame, candidate_frame) EMA fed once per epoch with the "
+             "confidences the training loss already computed — no extra forward "
+             "passes (see --hard_pair_temperature / --hard_pair_decay).",
+    )
+    p.add_argument(
+        "--hard_negative_sampling", action="store_true",
+        help="Same for the entry's index-mined negatives, weighted toward "
+             "historically HIGH LG confidence — the cheap substitute for re-mining "
+             "the index: the fixed top_m negatives stop being drawn uniformly once "
+             "some are solved. Only affects the index branch; the random branch "
+             "stays --negative_mining's territory.",
+    )
+    p.add_argument(
+        "--hard_pair_temperature", type=float, default=0.1,
+        help="Softmax temperature over EMA confidences for --hard_positive_sampling / "
+             "--hard_negative_sampling / --negative_mining_frame_prob; lower "
+             "concentrates on the hardest known candidate.",
+    )
+    p.add_argument(
+        "--hard_pair_decay", type=float, default=0.9,
+        help="EMA decay for the per-pair confidence memory behind "
+             "--hard_positive_sampling / --hard_negative_sampling.",
+    )
+    p.add_argument(
+        "--negative_mining_frame_prob", type=float, default=0.0,
+        help="Frame-level upgrade to --negative_mining (required): probability that, "
+             "after the mined lynx is chosen, the specific frame is drawn from a "
+             "per-frame EMA confidence memory (softmax toward historically-confusing "
+             "frames) instead of uniformly from that lynx's pool. Fed opportunistically "
+             "from training batches, so it costs no extra forwards — addresses "
+             "lynx-level mining being too coarse to surface strong candidates.",
+    )
     p.add_argument(
         "--warmup_steps", type=int, default=0,
         help="Linearly ramp the LR from 0 to --lr over this many optimizer steps "
@@ -279,15 +483,27 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--distill_signal_type", type=str, default="weights",
-        choices=["weights", "activations", "correspondence"],
+        choices=["weights", "activations", "correspondence", "healing_on_positives"],
         help="What the consistency loss is computed on: 'weights' is an L1/L2 distance "
              "between the trained model's parameters and the reference's; 'activations' "
              "matches LightGlue's per-layer descriptor embeddings between student and "
              "reference on this step's own keypoints/descriptors; 'correspondence' is a "
              "targeted rescue that only fires for samples whose positive pair the student "
              "currently matches nothing on, pulling it towards the reference's own matches "
-             "for that pair (requires 'lg' in --trained_model — see module docstring for "
-             "all three).",
+             "for that pair; 'healing_on_positives' is the same rescue on a wider gate — "
+             "it fires for any index positive the student now scores below the pretrained "
+             "model's score for that same pair, of which a zero-match pair is the extreme "
+             "case. The last two require 'lg' in --trained_model — see module docstring "
+             "for all four.",
+    )
+    p.add_argument(
+        "--activations_on_positives", action="store_true",
+        help="With --distill_signal_type activations, match only the (anchor, positive) "
+             "pair's embeddings against the reference instead of averaging positive and "
+             "negative pairs. The default (both) spends half the anchor's budget pinning "
+             "the negative pair's representation to the pretrained model, which works "
+             "against the margin loss's negative term; this also skips the reference's "
+             "negative forward pass.",
     )
     p.add_argument(
         "--distill_loss", type=str, default="l2", choices=["l1", "l2"],
@@ -315,7 +531,7 @@ def parse_args() -> argparse.Namespace:
         if args.distill_model_lambda <= 0:
             p.error("--distill_model requires --distill_model_lambda > 0")
         if (
-            args.distill_signal_type in ("activations", "correspondence")
+            args.distill_signal_type in ("activations", "correspondence", "healing_on_positives")
             and "lg" not in args.trained_model.split("+")
         ):
             p.error(
@@ -325,10 +541,34 @@ def parse_args() -> argparse.Namespace:
             )
     elif args.distill_model_lambda > 0:
         p.error("--distill_model_lambda requires --distill_model to be 'pretrained' or 'ema'")
+    if args.activations_on_positives and args.distill_signal_type != "activations":
+        p.error("--activations_on_positives only applies to --distill_signal_type activations")
     if args.distill_ema_decay is not None and not (0.0 < args.distill_ema_decay < 1.0):
         p.error("--distill_ema_decay must be in (0, 1)")
     if args.warmup_steps < 0:
         p.error("--warmup_steps must be >= 0")
+    if args.num_negatives < 1:
+        p.error("--num_negatives must be >= 1")
+    if args.multi_neg_tau <= 0:
+        p.error("--multi_neg_tau must be > 0")
+    if args.softplus_beta <= 0:
+        p.error("--softplus_beta must be > 0")
+    if not (0.0 <= args.keypoint_dropout < 1.0):
+        p.error("--keypoint_dropout must be in [0, 1)")
+    if (args.multi_scale_min > 0) != (args.multi_scale_max > 0):
+        p.error("--multi_scale_min and --multi_scale_max must be set together")
+    if args.multi_scale_max > 0 and not (32 <= args.multi_scale_min <= args.multi_scale_max):
+        p.error("--multi_scale_min must be >= 32 and <= --multi_scale_max")
+    if args.adaptive_margin and args.adaptive_margin_max < args.lg_margin:
+        p.error("--adaptive_margin_max must be >= --lg_margin")
+    if not (0.0 <= args.negative_mining_frame_prob <= 1.0):
+        p.error("--negative_mining_frame_prob must be in [0, 1]")
+    if args.negative_mining_frame_prob > 0 and not args.negative_mining:
+        p.error("--negative_mining_frame_prob requires --negative_mining")
+    if args.hard_pair_temperature <= 0:
+        p.error("--hard_pair_temperature must be > 0")
+    if not (0.0 < args.hard_pair_decay < 1.0):
+        p.error("--hard_pair_decay must be in (0, 1)")
     return args
 
 
@@ -342,10 +582,22 @@ def _masked_mean(x: torch.Tensor, mask: torch.Tensor) -> float:
 def lg_confidence_loss(
     pred_pos: dict, pred_neg: dict, margin: float,
     data_a: dict, data_p: dict, data_n: dict, weak_mask: torch.Tensor | None = None,
+    data_a_neg: dict | None = None, num_negatives: int = 1, multi_neg_tau: float = 0.1,
+    margin_activation: str = "relu", softplus_beta: float = 10.0,
 ) -> tuple[torch.Tensor, dict]:
     """
     Margin loss on LightGlue's OWN matching confidence:
-      loss = relu(margin - pos_conf + neg_conf)
+      loss = act(margin - pos_conf + neg_conf)
+    where act is relu (default) or a scaled softplus (--margin_activation:
+    softplus(beta*z)/beta keeps a small, exponentially-decaying gradient on
+    triplets already past the margin instead of relu's exact zero — the
+    anti-saturation escape hatch for a mostly-solved training set).
+
+    With num_negatives=K > 1, pred_neg/data_n cover a flat (B*K) batch of
+    negative pairs (data_a_neg is the anchor features repeated per negative;
+    defaults to data_a for K == 1) and neg_conf is a smooth max —
+    tau*logsumexp(conf/tau) — over each sample's K negatives, so the margin is
+    enforced against (approximately) the hardest negative sampled this step.
 
     pos_conf/neg_conf are sum(confidence) / min(valid keypoints on each
     side) — the same normalization eval_pseudo_accuracy uses (see
@@ -383,34 +635,71 @@ def lg_confidence_loss(
     per-sample torch.where is necessary because a batch mixes weak and
     index-query samples, so the whole pos_conf_all tensor can't just be
     .detach()'d.
+
+    A weak sample is also exempt from the pos_empty drop below. Dropping is
+    there to keep a *trusted* positive that found nothing from contributing a
+    meaningless term; a weak sample's positive was never trusted (it is
+    already detached), so the only thing its term carries is neg_conf — which
+    is exactly the signal --weak_queries exists to provide, and which is
+    unaffected by whatever the random same-lynx pairing did. Dropping those
+    samples would silently discard the broad negative signal on precisely the
+    hardest, least index-like queries. Note this raises the reported loss for
+    a --weak_queries run: a pos-empty weak sample contributes
+    relu(margin + neg_conf) >= margin instead of nothing.
     """
-    pos_conf_all = _lg_scores(pred_pos, data_a, data_p)  # (B,)
-    neg_conf_all = _lg_scores(pred_neg, data_a, data_n)  # (B,)
+    pos_conf_all  = _lg_scores(pred_pos, data_a, data_p)  # (B,)
+    neg_conf_flat = _lg_scores(pred_neg, data_a_neg if data_a_neg is not None else data_a, data_n)  # (B*K,)
 
     if weak_mask is not None:
         pos_conf_all = torch.where(weak_mask, pos_conf_all.detach(), pos_conf_all)
 
+    if num_negatives > 1:
+        neg_conf_all = multi_neg_tau * torch.logsumexp(
+            neg_conf_flat.view(-1, num_negatives) / multi_neg_tau, dim=1
+        )  # (B,) smooth max over each sample's K negatives
+    else:
+        neg_conf_all = neg_conf_flat
+
     pos_matches = pred_pos["valid0"].sum(dim=1)  # (B,)
-    neg_matches = pred_neg["valid0"].sum(dim=1)  # (B,)
+    neg_matches = pred_neg["valid0"].sum(dim=1)  # (B*K,)
     pos_empty = pos_matches == 0
     neg_empty = neg_matches == 0
 
-    per_sample = F.relu(margin - pos_conf_all + neg_conf_all)  # (B,)
-    kept = (~pos_empty).to(per_sample.dtype)
+    violation = margin - pos_conf_all + neg_conf_all  # (B,)
+    if margin_activation == "softplus":
+        per_sample = F.softplus(violation * softplus_beta) / softplus_beta
+    else:
+        per_sample = F.relu(violation)
+    keep_mask = ~pos_empty if weak_mask is None else (~pos_empty | weak_mask)
+    kept = keep_mask.to(per_sample.dtype)
     loss = (per_sample * kept).sum() / kept.sum().clamp(min=1)
 
     # Under no_grad so the float() conversions below don't drag detach() calls
-    # (or a warning) along; these are diagnostics only. Four syncs per step
-    # instead of the ~2*batch_size the per-sample .item() calls used to cost.
+    # (or a warning) along; these are diagnostics only. A handful of syncs per
+    # step instead of the ~2*batch_size the per-sample .item() calls used to
+    # cost. The per-sample pos_conf/neg_conf lists exist so the caller can
+    # feed the hard-pair / mining / gap statistics without re-running
+    # _lg_scores on its own.
     with torch.no_grad():
+        # Deliberately ~pos_empty, not keep_mask: these describe pairs that
+        # actually produced matches, so a pos-empty weak sample has no
+        # positive match count / confidence to average in even though its
+        # term now counts towards the loss.
         keep = ~pos_empty
+        keep_neg = keep.repeat_interleave(num_negatives) if num_negatives > 1 else keep
         stats = {
             "pos_skipped":      pos_empty.tolist(),  # list[bool], length B — caller buckets by source
-            "neg_skipped":      neg_empty.tolist(),  # list[bool], length B
+            "neg_skipped":      neg_empty.tolist(),  # list[bool], length B*K, row-major (sample, negative)
+            "pos_conf":         pos_conf_all.tolist(),   # list[float], length B
+            "neg_conf":         neg_conf_flat.tolist(),  # list[float], length B*K (per negative, pre-smooth-max)
             "mean_pos_matches": _masked_mean(pos_matches.to(per_sample.dtype), keep),
-            "mean_neg_matches": _masked_mean(neg_matches.to(per_sample.dtype), keep),
+            "mean_neg_matches": _masked_mean(neg_matches.to(per_sample.dtype), keep_neg),
             "mean_pos_conf":    _masked_mean(pos_conf_all, keep),
-            "mean_neg_conf":    _masked_mean(neg_conf_all, keep & ~neg_empty),
+            "mean_neg_conf":    _masked_mean(neg_conf_flat, keep_neg & ~neg_empty),
+            # Fraction of loss-contributing samples still inside the margin —
+            # the direct gauge of how saturated the training signal is (relu:
+            # exactly the fraction with nonzero gradient).
+            "active_frac":      _masked_mean((violation > 0).to(per_sample.dtype), keep_mask),
         }
     return loss, stats
 
@@ -433,6 +722,32 @@ def build_transforms(augment: bool) -> tuple[transforms.Compose, transforms.Comp
         transforms.ToTensor(),
     ])
     return train_transform, eval_transform
+
+
+def drop_keypoints(feats: list[dict], p: float) -> list[dict]:
+    """
+    --keypoint_dropout: independently drops each detected keypoint (with its
+    descriptor) with probability p. Training-only — eval paths never call this.
+
+    Operates on extract_train's output rather than the image, i.e. in
+    LightGlue's actual input space: a frozen RDD largely absorbs photometric
+    image-level augmentation before LG ever sees it, but LG cannot be
+    invariant to which subset of keypoints exists, so this perturbation always
+    lands. Plain tensor indexing, so when RDD is being trained the surviving
+    descriptors keep their autograd path. At least one keypoint is always kept
+    (batch_features/LG assume non-empty keypoint sets).
+    """
+    out = []
+    for f in feats:
+        n = f["keypoints"].shape[0]
+        if n <= 1:
+            out.append(f)
+            continue
+        keep = torch.rand(n, device=f["keypoints"].device) >= p
+        if not keep.any():
+            keep[int(torch.randint(n, (1,)))] = True
+        out.append({"keypoints": f["keypoints"][keep], "descriptors": f["descriptors"][keep]})
+    return out
 
 
 # ── adaptive random-negative mixing ─────────────────────────────────────────────
@@ -508,9 +823,16 @@ def measure_negative_gap(
     prev_prob = dataset.random_negative_prob
     prev_meta = dataset.return_meta
     prev_weak = dataset.weak_queries
+    prev_k    = dataset.num_negatives
+    prev_hard = dataset.hard_negative_sampling
     dataset.random_negative_prob = force_prob
     dataset.return_meta = True
     dataset.weak_queries = False
+    # One negative per sample (this loop unpacks single-image negatives) and
+    # uniform index-negative choice — the baseline should describe the index's
+    # natural difficulty, not a hard-sampling-skewed slice of it.
+    dataset.num_negatives = 1
+    dataset.hard_negative_sampling = False
     try:
         loader = prepare_data_loader(
             get_loader(
@@ -545,6 +867,8 @@ def measure_negative_gap(
         dataset.random_negative_prob = prev_prob
         dataset.return_meta = prev_meta
         dataset.weak_queries = prev_weak
+        dataset.num_negatives = prev_k
+        dataset.hard_negative_sampling = prev_hard
 
     # Reduce sums and counts (not the two means) so the combined average is
     # weighted by how many samples each rank actually contributed.
@@ -718,6 +1042,28 @@ def accumulate_distill_weights_grad(
     update_ema on that same synced student (or an unchanged pretrained
     snapshot) — so there is nothing to collectively communicate here; adding
     it locally on every rank is exact, not an approximation.
+
+    Parameters whose `.grad` is still None after backward are skipped rather
+    than having one created for them. That is not an optimization, it is what
+    keeps this anchor from causing the very drift it exists to prevent:
+
+      - The always-dead parameters (all 9 token_confidence layers plus
+        log_assignment[0..n_layers-2], see the find_unused_parameters=True
+        docstring on run_training_lg) never take part in a backward, so under
+        both single-GPU and DDP their .grad stays None. Verified: DDP with
+        find_unused_parameters=True leaves it None rather than writing zeros.
+      - torch.optim.Adam skips `p.grad is None` outright, so such a parameter
+        is also exempt from --weight_decay. Materializing a .grad for it
+        enrols it: from then on Adam's own L2 term (weight_decay * p) is its
+        ONLY gradient, and after Adam's adaptive rescaling that is a step of
+        ~lr per iteration straight towards zero, every step, forever. Over a
+        300-epoch run at lr=1e-5 that is enough to zero those weights out
+        completely — a drift with no data behind it at all, which then shows
+        up as a large (and entirely spurious) consistency_loss.
+      - Skipping is exact, not an approximation: with nothing else writing to
+        these parameters they never leave the reference, so their diff stays 0
+        and their true anchor gradient is 0 too. The loss below still sums
+        over them for the same reason — they contribute exactly 0.
     """
     student = _unwrap(student)
     pairs = [
@@ -732,11 +1078,10 @@ def accumulate_distill_weights_grad(
     for s_p, r_p in pairs:
         diff = s_p - r_p
         total = total + (diff.abs().sum() if loss_type == "l1" else diff.pow(2).sum())
-        grad = (diff.sign() if loss_type == "l1" else 2 * diff) / n_elems
         if s_p.grad is None:
-            s_p.grad = grad * lambda_
-        else:
-            s_p.grad.add_(grad, alpha=lambda_)
+            continue  # took no part in this backward — see the docstring
+        grad = (diff.sign() if loss_type == "l1" else 2 * diff) / n_elems
+        s_p.grad.add_(grad, alpha=lambda_)
     return total / n_elems
 
 
@@ -774,13 +1119,13 @@ def distill_correspondence_loss(
     live_scores: torch.Tensor,
     ref_matches0: torch.Tensor,
     ref_valid0: torch.Tensor,
-    pos_empty: torch.Tensor,
+    sample_mask: torch.Tensor,
 ) -> torch.Tensor:
     """
     NLL of the reference's own matched correspondences under the student's
-    raw (pre-filter) assignment scores, for --distill_signal_type
-    correspondence — restricted to samples the student currently reports
-    zero positive matches for (pos_empty; see lg_confidence_loss).
+    raw (pre-filter) assignment scores, restricted to the samples
+    `sample_mask` selects. Shared by --distill_signal_type correspondence and
+    healing_on_positives, which differ only in that mask.
 
     live_scores: (B, M+1, N+1) dense log-assignment from the STUDENT —
         LightGlueForTraining's `assignment_scores` output (see
@@ -801,9 +1146,14 @@ def distill_correspondence_loss(
         assert "point i matches nothing" for a reference-unmatched point —
         this is a rescue signal, so it should only ever push a pair towards
         more matches, never towards fewer.
-    pos_empty: (B,) bool, from the student's own pred_pos["valid0"] this
-        step. Samples the student still matches fine are untouched — same
-        training as before this loss existed.
+    sample_mask: (B,) bool — which samples this loss applies to at all.
+        Everything else is untouched, i.e. trains exactly as it would if this
+        loss didn't exist. --distill_signal_type correspondence passes
+        pos_empty (the student's own pred_pos["valid0"] is all-False this
+        step); healing_on_positives passes the wider "the student now scores
+        this pair below the pretrained model did" mask, of which pos_empty is
+        the extreme case. Either way the mask is computed by the caller, so
+        this function stays agnostic to which gate produced it.
 
     Reading live_scores at a specific (i, j) is a plain index into an
     already-differentiable tensor — unlike matching_scores0 * valid0 (used
@@ -814,10 +1164,10 @@ def distill_correspondence_loss(
 
     Returns a plain 0.0 (no grad_fn — safe under find_unused_parameters=True,
     see run_training_lg) when no
-    sample is both pos_empty and has at least one reference-matched point to
-    learn from.
+    sample is both selected by sample_mask and has at least one
+    reference-matched point to learn from.
     """
-    weight = ref_valid0.to(live_scores.dtype) * pos_empty[:, None].to(live_scores.dtype)
+    weight = ref_valid0.to(live_scores.dtype) * sample_mask[:, None].to(live_scores.dtype)
     if weight.sum() == 0:
         return live_scores.new_zeros(())
 
@@ -828,6 +1178,80 @@ def distill_correspondence_loss(
     per_sample = (nll * weight).sum(dim=1) / weight.sum(dim=1).clamp(min=1)
     sample_weight = (weight.sum(dim=1) > 0).to(per_sample.dtype)
     return (per_sample * sample_weight).sum() / sample_weight.sum().clamp(min=1)
+
+
+@torch.no_grad()
+def measure_pretrained_positive_scores(
+    accelerator: Accelerator,
+    rdd: torch.nn.Module,
+    lg_ref: torch.nn.Module,
+    loader,
+    args: argparse.Namespace,
+) -> dict[tuple[str, str], float]:
+    """
+    Scores every (query_frame, positive) pair in the training index with the
+    pretrained LightGlue, once, before training — the fixed reference
+    --distill_signal_type healing_on_positives gates on. Returns
+    {(query_rel, positive_rel): _lg_scores confidence}.
+
+    Precomputed rather than recomputed per step because the same pair comes
+    back on the order of epochs/n_positives times over a run (~60 for a
+    300-epoch run on a top_k=5 index), and because a fixed target is the point:
+    the gate asks whether the student has fallen below where training *started*
+    on this specific pair.
+
+    `loader` is the training split's eval_pseudo_accuracy loader (see
+    build_pseudo_accuracy_loader): already constructed, already sharded across
+    processes, and already carrying each query's whole candidate pool in one
+    batch. Reusing it means not standing up a second dataset or duplicating the
+    chunked-extraction logic; the cost is scoring that pool's negatives too and
+    discarding them, a constant factor on a one-time pass.
+
+    Uses the same _lg_scores the margin loss and eval use, on the same clean
+    (never augmented) eval transform, so the gate compares like with like — see
+    the --augment caveat in the module docstring.
+
+    The observations are all-gathered, so every rank ends up with the same
+    complete table. That matters: the gate has to agree across ranks, or the
+    same pair would heal on one GPU and not on another and the two would
+    disagree about what the loss even is. Accelerate pads the last shard by
+    repeating samples; the duplicates re-score identically and collapse onto
+    the same dict key.
+    """
+    device = accelerator.device
+    _unwrap(rdd).eval()
+    ds = loader.dataset
+
+    observations: list[tuple[str, str, float]] = []
+    for query_batch, cand_batch, idx_batch in tqdm(
+        loader, desc="healing-ref", leave=False, disable=not accelerator.is_main_process
+    ):
+        query_batch = query_batch.to(device)
+        cand_batch  = cand_batch.to(device)
+        B, n_cand, C, H, W = cand_batch.shape
+
+        query_r = resize_long_side(query_batch, args.resize)
+        H_q, W_q = query_r.shape[-2:]
+        feats_q = _extract_chunked(_unwrap(rdd), query_r, args.batch_size)
+
+        cand_r = resize_long_side(cand_batch.view(B * n_cand, C, H, W), args.resize)
+        H_c, W_c = cand_r.shape[-2:]
+        feats_c = _extract_chunked(_unwrap(rdd), cand_r, args.batch_size)
+
+        feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
+        data_q = batch_features(feats_q_rep, H_q, W_q)
+        data_c = batch_features(feats_c,     H_c, W_c)
+        pred = lg_ref({"image0": data_q, "image1": data_c})
+        # Candidates are stacked positives-then-negatives (PseudoAccuracyDataset),
+        # so the leading n_pos columns are what this table is about.
+        pos_scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)[:, :ds.n_pos]
+
+        for row, idx in zip(pos_scores.tolist(), idx_batch.tolist()):
+            entry = ds.entries[idx]
+            for pos_rel, score in zip(entry["positives"], row):
+                observations.append((entry["query_frame"], pos_rel, score))
+
+    return {(q, p): s for q, p, s in gather_object(observations)}
 
 
 # ── LR warmup ─────────────────────────────────────────────────────────────────
@@ -874,7 +1298,9 @@ def train_epoch_lg(
     distill_lg_ref: torch.nn.Module | None = None,
     distill_rdd_ref: torch.nn.Module | None = None,
     prev_dead_pos_index: set[str] | None = None,
-) -> tuple[float, int, dict | None, set[str]]:
+    pretrained_pos_scores: dict[tuple[str, str], float] | None = None,
+    margin: float | None = None,
+) -> tuple[float, int, dict | None, set[str], dict]:
     """
     `eval_lg` is what mini-evals run against (the EMA shadow when --ema_decay >
     0, else `lg` itself); `lg` is always what receives gradient. `ema_lg` (same
@@ -927,23 +1353,59 @@ def train_epoch_lg(
                                               opposed to newly dead this
                                               epoch. Absent on the first
                                               epoch (no previous set yet).
+
+    `pretrained_pos_scores` is --distill_signal_type healing_on_positives'
+    lookup table, {(query_frame, pos_frame): pretrained confidence}, built once
+    before training by measure_pretrained_positive_scores; None for every other
+    signal type. When it is in use one more metric is logged:
+      train/heal_rate    of the index-query samples this epoch (weak queries
+                          have no reference score and are excluded), the
+                          fraction whose positive pair the student now scores
+                          below the pretrained model — i.e. how much of the
+                          traffic the healing loss actually fired on. 0 means
+                          the signal is inert; near 1 means the whole positive
+                          side has regressed.
+
+    `margin` overrides args.lg_margin for this epoch (--adaptive_margin's
+    live value; None keeps the configured constant). The 5th return element
+    is a dict with `pair_observations` (all-gathered (query, candidate, conf)
+    triples for train_ds.update_pair_stats — empty unless
+    --hard_positive_sampling/--hard_negative_sampling) and `sep_gap` (the
+    epoch's mean pos/neg confidence separation, identical on every rank —
+    --adaptive_margin's input).
     """
     train_rdd, train_lg = resolve_trained_models(args.trained_model)
     _unwrap(rdd).train(train_rdd)
     lg.train(train_lg)
 
+    # --adaptive_margin passes the live (per-epoch) margin; everything else
+    # runs at the configured constant.
+    margin = args.lg_margin if margin is None else margin
+    K = args.num_negatives
+
     distill_active         = args.distill_model != "none"
     distill_weights_active = distill_active and args.distill_signal_type == "weights"
     distill_acts_active    = distill_active and args.distill_signal_type == "activations"
     distill_corr_active    = distill_active and args.distill_signal_type == "correspondence"
+    distill_heal_active    = distill_active and args.distill_signal_type == "healing_on_positives"
 
     gap_tracking_active = args.moving_negative_prob is not None or args.negative_mining
     mining_active        = args.negative_mining
     weak_active           = args.weak_queries
+    hard_pair_active      = args.hard_positive_sampling or args.hard_negative_sampling
     epoch_index_confs:  list[float] = []
     epoch_random_confs: list[float] = []
-    epoch_mining_obs:   list[tuple[str, str, float]] = []
+    epoch_mining_obs:   list[tuple[str, str, str, float]] = []
     epoch_dead_pos_index_frames: list[str] = []
+    # (query_frame, candidate_frame, conf) for --hard_positive_sampling /
+    # --hard_negative_sampling — fed to train_ds.update_pair_stats once per
+    # epoch by run_training_lg. Positives and index negatives share one list
+    # (their keys can't collide — a candidate is never both for one query).
+    epoch_pair_obs: list[tuple[str, str, float]] = []
+    # Mean (pos_conf - neg_conf) separation gap over the epoch, from the
+    # already-all-reduced per-step means — identical on every rank, which
+    # --adaptive_margin relies on to keep the margin in sync across processes.
+    epoch_gap_sum = 0.0
 
     # [n_skipped, n_total] per (pair, query-source) bucket, for
     # train/skip_rate_{pos,neg}_{index,random}.
@@ -951,6 +1413,12 @@ def train_epoch_lg(
         "pos_index": [0, 0], "pos_random": [0, 0],
         "neg_index": [0, 0], "neg_random": [0, 0],
     }
+    # [n_healed, n_eligible] for train/heal_rate — how much of the index
+    # positive traffic --distill_signal_type healing_on_positives actually
+    # fires on. Eligible means "has a pretrained reference score", i.e. every
+    # index-query sample and no --weak_queries one. Accumulated on-device so
+    # counting costs no per-step GPU sync; read once at the end of the epoch.
+    heal_counts = torch.zeros(2, device=accelerator.device, dtype=torch.float64)
 
     def _bump_skip(key: str, skipped: bool) -> None:
         counts = skip_counts[key]
@@ -970,9 +1438,19 @@ def train_epoch_lg(
     )
     for step, (anchors, positives, negatives, neg_meta) in pbar:
         device = accelerator.device
-        anchors_r   = resize_long_side(anchors,   args.resize).to(device)
-        positives_r = resize_long_side(positives, args.resize).to(device)
-        negatives_r = resize_long_side(negatives, args.resize).to(device)
+        # --multi_scale_min/max: per-step random resize target (train only —
+        # every eval path keeps the fixed args.resize).
+        step_resize = args.resize
+        if args.multi_scale_max > 0:
+            step_resize = random.choice(range(args.multi_scale_min, args.multi_scale_max + 1, 32))
+        if K > 1:
+            # (B, K, C, H, W) from the dataset -> one flat (B*K) negative
+            # batch, row-major (sample, negative) — the layout every flat
+            # per-negative structure below (stats/meta/confs) shares.
+            negatives = negatives.reshape(-1, *negatives.shape[2:])
+        anchors_r   = resize_long_side(anchors,   step_resize).to(device)
+        positives_r = resize_long_side(positives, step_resize).to(device)
+        negatives_r = resize_long_side(negatives, step_resize).to(device)
         H_r, W_r = anchors_r.shape[-2:]
 
         # When RDD isn't being trained, no_grad purely skips building an unused graph.
@@ -981,27 +1459,43 @@ def train_epoch_lg(
             feats_p = extract_train(rdd, positives_r)
             feats_n = extract_train(rdd, negatives_r)
 
+        if args.keypoint_dropout > 0:
+            feats_a = drop_keypoints(feats_a, args.keypoint_dropout)
+            feats_p = drop_keypoints(feats_p, args.keypoint_dropout)
+            feats_n = drop_keypoints(feats_n, args.keypoint_dropout)
+
+        data_a = batch_features(feats_a, H_r, W_r)
+        data_p = batch_features(feats_p, H_r, W_r)
+        data_n = batch_features(feats_n, H_r, W_r)
+        # Anchor features repeated per negative, so the negative pass stays a
+        # single flat (B*K)-pair LG call — the same repeat-the-query pattern
+        # eval_pseudo_accuracy uses. Same object as data_a when K == 1.
+        data_a_neg = (
+            data_a if K == 1
+            else batch_features([f for f in feats_a for _ in range(K)], H_r, W_r)
+        )
+
+        # ActivationCapture accumulates hooks fired during *every* forward
+        # call made while it's active — both lg() calls below run in one
+        # context, so the flat list is sliced by n_layers below instead of
+        # using two separate captures.
+        cap_ctx = ActivationCapture(lg) if distill_acts_active else contextlib.nullcontext()
+        with cap_ctx as stu_cap:
+            pred_pos = lg({"image0": data_a,     "image1": data_p})
+            pred_neg = lg({"image0": data_a_neg, "image1": data_n})
         if distill_acts_active:
-            # ActivationCapture accumulates hooks fired during *every* forward
-            # call made while it's active — run_lg_matching_grad calls lg()
-            # twice (pos, then neg) in one context, so the flat list is
-            # sliced by n_layers below instead of using two separate captures.
-            with ActivationCapture(lg) as stu_cap:
-                pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(
-                    lg, feats_a, feats_p, feats_n, H_r, W_r
-                )
             n_layers = len(_unwrap(lg).transformers)
             stu_acts_pos, stu_acts_neg = stu_cap.activations[:n_layers], stu_cap.activations[n_layers:]
-        else:
-            pred_pos, pred_neg, data_a, data_p, data_n = run_lg_matching_grad(lg, feats_a, feats_p, feats_n, H_r, W_r)
 
         weak_mask = None
         if weak_active:
             weak_mask = torch.as_tensor(neg_meta["is_weak_query"], dtype=torch.bool, device=device)
 
         loss, stats = lg_confidence_loss(
-            pred_pos, pred_neg, args.lg_margin,
+            pred_pos, pred_neg, margin,
             data_a=data_a, data_p=data_p, data_n=data_n, weak_mask=weak_mask,
+            data_a_neg=data_a_neg, num_negatives=K, multi_neg_tau=args.multi_neg_tau,
+            margin_activation=args.margin_activation, softplus_beta=args.softplus_beta,
         )
 
         consistency_loss = loss.new_zeros(())
@@ -1017,15 +1511,26 @@ def train_epoch_lg(
             with torch.no_grad():
                 with ActivationCapture(distill_lg_ref) as ref_cap:
                     distill_lg_ref({"image0": data_a, "image1": data_p})
-                    distill_lg_ref({"image0": data_a, "image1": data_n})
+                    if not args.activations_on_positives:
+                        distill_lg_ref({"image0": data_a_neg, "image1": data_n})
+            # ref_acts_neg is an empty list under --activations_on_positives —
+            # the forward that would have filled it never ran, and nothing
+            # below reads it. (The student's negative activations are captured
+            # either way: the margin loss needs that forward regardless, so
+            # there is nothing to save there.)
             ref_acts_pos, ref_acts_neg = ref_cap.activations[:n_layers], ref_cap.activations[n_layers:]
             mask_a = data_a["masks"].squeeze(1)
             mask_p = data_p["masks"].squeeze(1)
-            mask_n = data_n["masks"].squeeze(1)
-            consistency_loss = 0.5 * (
-                distill_activation_loss(stu_acts_pos, ref_acts_pos, mask_a, mask_p, args.distill_loss)
-                + distill_activation_loss(stu_acts_neg, ref_acts_neg, mask_a, mask_n, args.distill_loss)
+            consistency_loss = distill_activation_loss(
+                stu_acts_pos, ref_acts_pos, mask_a, mask_p, args.distill_loss
             )
+            if not args.activations_on_positives:
+                mask_an = data_a_neg["masks"].squeeze(1)
+                mask_n  = data_n["masks"].squeeze(1)
+                consistency_loss = 0.5 * (
+                    consistency_loss
+                    + distill_activation_loss(stu_acts_neg, ref_acts_neg, mask_an, mask_n, args.distill_loss)
+                )
         elif distill_corr_active:
             # Only the positive pair — there's nothing to "rescue" on the
             # negative side (an empty negative is the desired outcome, not a
@@ -1044,6 +1549,39 @@ def train_epoch_lg(
             consistency_loss = distill_correspondence_loss(
                 pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], pos_empty,
             )
+        elif distill_heal_active:
+            # Same rescue as 'correspondence' above (positive pair only, same
+            # pseudo-labels), on a wider gate: fire wherever the student now
+            # scores this exact (query, positive) pair below what the
+            # pretrained model scored for it before training started.
+            with torch.no_grad():
+                ref_pred_pos = distill_lg_ref({"image0": data_a, "image1": data_p})
+                live_pos_conf = _lg_scores(pred_pos, data_a, data_p)
+            # -inf for any pair the pre-training pass didn't score, so `live <
+            # ref` is False for it and it simply never heals.
+            ref_pos_conf = torch.tensor(
+                [
+                    pretrained_pos_scores.get((q_frame, p_frame), -math.inf)
+                    for q_frame, p_frame in zip(neg_meta["query_frame"], neg_meta["pos_frame"])
+                ],
+                device=device, dtype=live_pos_conf.dtype,
+            )
+            eligible = torch.isfinite(ref_pos_conf)
+            if weak_mask is not None:
+                # Same distrust as lg_confidence_loss's weak_mask and as the
+                # 'correspondence' branch above. Masked explicitly rather than
+                # left to the -inf default: a weak triplet draws its query and
+                # positive from the same pool the index was built over, so it
+                # can land on a (query, positive) pair that *does* have a
+                # reference score by coincidence, and that pair is still an
+                # uncurated random pairing this loss has no business enforcing.
+                eligible = eligible & ~weak_mask
+            heal_mask = (live_pos_conf < ref_pos_conf) & eligible
+            heal_counts[0] += heal_mask.sum()
+            heal_counts[1] += eligible.sum()
+            consistency_loss = distill_correspondence_loss(
+                pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], heal_mask,
+            )
         # distill_weights_active is deliberately *not* handled here — its
         # consistency_loss is computed after accelerator.backward() below by
         # accumulate_distill_weights_grad, which injects gradient directly
@@ -1055,33 +1593,54 @@ def train_epoch_lg(
         # non-final log_assignment parameters "ready" from lg()'s own
         # forward output, and a second, invisible-to-DDP path to those same
         # parameters trips "Expected to mark a variable ready only once".
-        if distill_acts_active or distill_corr_active:
+        if distill_acts_active or distill_corr_active or distill_heal_active:
             backward_loss = loss + args.distill_model_lambda * consistency_loss
 
-        for is_weak, src, pos_skip, neg_skip, q_frame in zip(
-            neg_meta["is_weak_query"], neg_meta["neg_source"],
-            stats["pos_skipped"], stats["neg_skipped"], neg_meta["query_frame"],
-        ):
+        def _per_negative(key: str) -> list[list]:
+            # Meta fields that are per-negative: scalars for K == 1 (collated
+            # to a flat length-B sequence), K-length lists for K > 1 (collated
+            # to K sequences of B — transposed back here). Either way the
+            # result is indexed [sample][negative].
+            v = neg_meta[key]
+            if K == 1:
+                return [[x] for x in v]
+            return [list(col) for col in zip(*v)]
+
+        neg_sources = _per_negative("neg_source")
+        neg_lynxes  = _per_negative("neg_lynx")
+        neg_frames  = _per_negative("neg_frame")
+
+        # One pass over the batch for every per-sample/per-negative statistic:
+        # skip buckets, dead-positive tracking, hard-pair observations
+        # (--hard_positive_sampling / --hard_negative_sampling), and the
+        # index/random confidence buckets + mining observations
+        # (gap_tracking_active). Confidences come from the loss's own stats,
+        # so nothing is recomputed.
+        for b, (is_weak, pos_skip, q_frame, q_lynx, pos_frame) in enumerate(zip(
+            neg_meta["is_weak_query"], stats["pos_skipped"],
+            neg_meta["query_frame"], neg_meta["query_lynx"], neg_meta["pos_frame"],
+        )):
+            is_weak = bool(is_weak)
             _bump_skip("pos_random" if is_weak else "pos_index", pos_skip)
-            _bump_skip("neg_random" if src == "random" else "neg_index", neg_skip)
             if not is_weak and pos_skip:
                 epoch_dead_pos_index_frames.append(q_frame)
-
-        if gap_tracking_active:
-            with torch.no_grad():
-                neg_conf_all = _lg_scores(pred_neg, data_a, data_n).tolist()
-            for src, q_lynx, n_lynx, is_weak, conf in zip(
-                neg_meta["neg_source"], neg_meta["query_lynx"], neg_meta["neg_lynx"],
-                neg_meta["is_weak_query"], neg_conf_all,
-            ):
+            if args.hard_positive_sampling and not is_weak:
+                epoch_pair_obs.append((q_frame, pos_frame, stats["pos_conf"][b]))
+            for k in range(K):
+                src  = neg_sources[b][k]
+                conf = stats["neg_conf"][b * K + k]
+                _bump_skip("neg_random" if src == "random" else "neg_index", stats["neg_skipped"][b * K + k])
                 if is_weak:
                     continue  # no index counterpart to compare against — see docstring above
                 if src == "index":
-                    epoch_index_confs.append(conf)
-                else:
+                    if args.hard_negative_sampling:
+                        epoch_pair_obs.append((q_frame, neg_frames[b][k], conf))
+                    if gap_tracking_active:
+                        epoch_index_confs.append(conf)
+                elif gap_tracking_active:
                     epoch_random_confs.append(conf)
                     if mining_active:
-                        epoch_mining_obs.append((q_lynx, n_lynx, conf))
+                        epoch_mining_obs.append((q_lynx, neg_lynxes[b][k], neg_frames[b][k], conf))
 
         trainable_params = [p for p in _unwrap(lg).parameters() if p.requires_grad]
         if train_rdd:
@@ -1140,14 +1699,17 @@ def train_epoch_lg(
                 loss_item, consistency_loss_item, total_loss_item,
                 stats["mean_pos_matches"], stats["mean_neg_matches"],
                 stats["mean_pos_conf"],    stats["mean_neg_conf"],
+                stats["active_frac"],
             ],
             device=device, dtype=torch.float32,
         )
         (
             loss_val, consistency_loss_val, total_loss_val,
             mean_pos_matches, mean_neg_matches, mean_pos_conf, mean_neg_conf,
+            active_frac_val,
         ) = accelerator.reduce(step_metrics, reduction="mean").tolist()
         epoch_loss += loss_val
+        epoch_gap_sum += mean_pos_conf - mean_neg_conf
         global_step += 1
 
         progress = (epoch * steps_per_epoch + step + 1) / (total_epochs * steps_per_epoch)
@@ -1164,6 +1726,10 @@ def train_epoch_lg(
                     "train/consistency_loss":     consistency_loss_val,
                     "train/total_loss":           total_loss_val,
                     "train/lr_step":               current_lr,
+                    # Fraction of loss-contributing triplets still violating
+                    # the margin — the saturation gauge: near 0 means almost
+                    # no sample produces gradient any more.
+                    "train/active_frac":           active_frac_val,
                     "matches/mean_pos":           mean_pos_matches,
                     "matches/mean_neg":           mean_neg_matches,
                     "lg_confidence/mean_pos_conf": mean_pos_conf,
@@ -1213,6 +1779,13 @@ def train_epoch_lg(
     if prev_dead_pos_index is not None and dead_this_epoch:
         recurrence = len(dead_this_epoch & prev_dead_pos_index) / len(dead_this_epoch)
 
+    # Same reduce-then-divide as the skip rates above, and same reason it can be
+    # guarded: distill_heal_active comes from args alone, so every rank agrees.
+    heal_rate = None
+    if distill_heal_active:
+        n_healed, n_eligible = accelerator.reduce(heal_counts, reduction="sum").tolist()
+        heal_rate = n_healed / n_eligible if n_eligible else 0.0
+
     if accelerator.is_main_process:
         skip_log = {
             "train/skip_rate_pos_index":  _skip_rate("pos_index"),
@@ -1225,6 +1798,8 @@ def train_epoch_lg(
         }
         if recurrence is not None:
             skip_log["train/skip_rate_pos_index_recurrence"] = recurrence
+        if heal_rate is not None:
+            skip_log["train/heal_rate"] = heal_rate
         accelerator.log(skip_log, step=global_step)
 
     neg_gap_stats = None
@@ -1234,7 +1809,7 @@ def train_epoch_lg(
         # ranks drift into different sampling distributions and different
         # mining matrices. Sums/counts are reduced (means computed after, so
         # they're sample-weighted); the mining observations are all-gathered as
-        # objects, since they're (str, str, float) triples rather than tensors.
+        # objects, since they're (str, str, str, float) tuples rather than tensors.
         # Both are collectives, so they must run on every rank —
         # gap_tracking_active is derived from args alone, so it always does.
         totals = accelerator.reduce(
@@ -1255,7 +1830,18 @@ def train_epoch_lg(
             "mining_observations": gather_object(epoch_mining_obs) if mining_active else [],
         }
 
-    return epoch_loss / max(steps_per_epoch, 1), global_step, neg_gap_stats, dead_this_epoch
+    epoch_extras = {
+        # All-gathered for the same reason as mining_observations above: every
+        # rank's train_ds copy must apply the identical update_pair_stats or
+        # the ranks drift into different sampling distributions. A collective,
+        # so guarded by hard_pair_active, which is derived from args alone and
+        # agrees across ranks.
+        "pair_observations": gather_object(epoch_pair_obs) if hard_pair_active else [],
+        # Built from per-step all-reduced means, so already identical on every
+        # rank — --adaptive_margin turns this into next epoch's margin.
+        "sep_gap": epoch_gap_sum / max(steps_per_epoch, 1),
+    }
+    return epoch_loss / max(steps_per_epoch, 1), global_step, neg_gap_stats, dead_this_epoch, epoch_extras
 
 
 # ── full training run ─────────────────────────────────────────────────────────
@@ -1283,7 +1869,9 @@ def run_training_lg(args: argparse.Namespace) -> None:
     moving_active  = args.moving_negative_prob is not None
     mining_active  = args.negative_mining
     weak_active    = args.weak_queries
-    dataset_mutates = moving_active or mining_active  # see persistent_workers note below
+    hard_pair_active = args.hard_positive_sampling or args.hard_negative_sampling
+    # see persistent_workers note below
+    dataset_mutates = moving_active or mining_active or hard_pair_active
 
     # ── data ──
     train_transform, eval_transform = build_transforms(args.augment)
@@ -1293,31 +1881,37 @@ def run_training_lg(args: argparse.Namespace) -> None:
         negative_mining=mining_active,
         negative_mining_temperature=args.negative_mining_temperature,
         negative_mining_decay=args.negative_mining_decay,
+        negative_mining_frame_prob=args.negative_mining_frame_prob,
         weak_queries=weak_active,
         weak_queries_prob=args.weak_queries_prob,
+        num_negatives=args.num_negatives,
+        hard_positive_sampling=args.hard_positive_sampling,
+        hard_negative_sampling=args.hard_negative_sampling,
+        hard_pair_temperature=args.hard_pair_temperature,
+        hard_pair_decay=args.hard_pair_decay,
         # Always on: train_epoch_lg uses neg_source/is_weak_query to split
         # train/skip_rate_* by pair type regardless of which (if any) of the
         # adaptive-sampling flags below are active.
         return_meta=True,
     )
-    # Diagnostics/eval on the training split must stay on clean, index-only
-    # queries/negatives, even when the actual training loader is augmented
-    # and/or mixes in random negatives or weak queries — otherwise
-    # train_eval/mini_train metrics would be noisier than val's and not
-    # comparable across epochs.
-    train_ds_eval = (
-        IndexAssignedTripletDataset(args.train_index, root=args.data_root, transform=eval_transform)
-        if (args.augment or args.random_negative_prob > 0 or weak_active) else train_ds
-    )
+    # Diagnostics/eval on the training split must stay on clean, index-only,
+    # uniformly-sampled single-negative queries, even when the actual training
+    # loader is augmented and/or mixes in random negatives, weak queries, hard
+    # sampling, or K negatives — otherwise train_eval/mini_train metrics would
+    # be noisier than val's and not comparable across epochs. Always a
+    # separate dataset: train_ds carries return_meta=True (4-tuples), which
+    # eval_epoch's 3-tuple unpack can't consume.
+    train_ds_eval = IndexAssignedTripletDataset(args.train_index, root=args.data_root, transform=eval_transform)
     val_ds = IndexAssignedTripletDataset(args.val_index, root=args.data_root, transform=eval_transform)
 
     # persistent_workers=True (get_loader's default) would pickle train_ds into
     # long-lived worker processes once and never see it again — fatal for
-    # --moving_negative_prob/--negative_mining, which mutate train_ds
-    # (random_negative_prob, the mining EMA matrix) from the main process
-    # between epochs. Disabling it means each epoch's fresh worker spawn
-    # re-pickles the current state instead. (--weak_queries and return_meta
-    # don't mutate anything post-construction, so they don't need this.)
+    # --moving_negative_prob/--negative_mining/--hard_*_sampling, which mutate
+    # train_ds (random_negative_prob, the mining EMA matrix, the pair-stats
+    # EMA) from the main process between epochs. Disabling it means each
+    # epoch's fresh worker spawn re-pickles the current state instead.
+    # (--weak_queries and return_meta don't mutate anything post-construction,
+    # so they don't need this.)
     train_loader = get_loader(
         train_ds, batch_size=args.batch_size, shuffle=True,
         num_workers=args.num_workers, seed=args.seed,
@@ -1391,17 +1985,17 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # train_epoch_lg. Only built when actually needed: for 'weights', student
     # and a *frozen* reference are trivially identical, so lg_ref/rdd_ref are
     # only built for the model(s) --trained_model actually unfreezes. For
-    # 'activations'/'correspondence', train_epoch_lg always feeds the
-    # reference LG the student's own already-extracted descriptors (not a
-    # separately-extracted reference RDD pass), so the comparison is only
-    # ever non-trivial when LG itself is being trained — parse_args enforces
-    # 'lg' in --trained_model for both modes, which is exactly why
-    # `train_lg` is guaranteed True here.
+    # 'activations'/'correspondence'/'healing_on_positives', train_epoch_lg
+    # always feeds the reference LG the student's own already-extracted
+    # descriptors (not a separately-extracted reference RDD pass), so the
+    # comparison is only ever non-trivial when LG itself is being trained —
+    # parse_args enforces 'lg' in --trained_model for all three, which is
+    # exactly why `train_lg` is guaranteed True here.
     distill_active   = args.distill_model != "none"
     distill_lg_ref  = None
     distill_rdd_ref = None
     if distill_active:
-        if args.distill_signal_type in ("activations", "correspondence") or train_lg:
+        if args.distill_signal_type in ("activations", "correspondence", "healing_on_positives") or train_lg:
             distill_lg_ref = build_ema(lg, device)
         if args.distill_signal_type == "weights" and train_rdd:
             distill_rdd_ref = build_ema(rdd, device)
@@ -1481,6 +2075,25 @@ def run_training_lg(args: argparse.Namespace) -> None:
                 step=0,
             )
 
+    # ── healing_on_positives reference scores (before any training) ──
+    # Has to run here, before the first optimizer step, for distill_lg_ref to
+    # still be the pretrained model — under --distill_model ema it starts
+    # drifting towards the student as soon as training begins, and the gate
+    # this table feeds is specifically "worse than where I started".
+    pretrained_pos_scores: dict[tuple[str, str], float] | None = None
+    if distill_active and args.distill_signal_type == "healing_on_positives":
+        accelerator.print(
+            "[healing] scoring every (query, positive) pair in the train index "
+            "with the pretrained LightGlue..."
+        )
+        pretrained_pos_scores = measure_pretrained_positive_scores(
+            accelerator, rdd, distill_lg_ref, eval_train_loader, args
+        )
+        accelerator.print(
+            f"[healing] reference confidence for {len(pretrained_pos_scores)} "
+            f"(query, positive) pairs"
+        )
+
     # ── baseline eval (before any training) ──
     global_step = 0
     baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
@@ -1495,8 +2108,9 @@ def run_training_lg(args: argparse.Namespace) -> None:
 
     # ── loop ──
     prev_dead_pos_index: set[str] | None = None
+    live_margin = args.lg_margin
     for epoch in range(args.epochs):
-        epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index = train_epoch_lg(
+        epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index, epoch_extras = train_epoch_lg(
             accelerator, rdd, lg, eval_lg, optimizer, train_loader,
             mini_train_loader, mini_val_loader,
             epoch, args.epochs, args, global_step,
@@ -1504,7 +2118,25 @@ def run_training_lg(args: argparse.Namespace) -> None:
             distill_lg_ref=distill_lg_ref,
             distill_rdd_ref=distill_rdd_ref,
             prev_dead_pos_index=prev_dead_pos_index,
+            pretrained_pos_scores=pretrained_pos_scores,
+            margin=live_margin,
         )
+
+        # --hard_positive_sampling / --hard_negative_sampling: fold this
+        # epoch's observed pair confidences into the sampling EMA. Same
+        # every-rank-identical-update contract as update_mining_stats below.
+        if epoch_extras["pair_observations"]:
+            train_ds.update_pair_stats(epoch_extras["pair_observations"])
+
+        # --adaptive_margin: track the model's own separation gap so the
+        # margin keeps a meaningful fraction of triplets active as the easy
+        # ones get solved. epoch_extras["sep_gap"] is identical on every rank
+        # (built from all-reduced step means), so live_margin stays in sync.
+        if args.adaptive_margin:
+            live_margin = min(
+                max(epoch_extras["sep_gap"] + args.adaptive_margin_offset, args.lg_margin),
+                args.adaptive_margin_max,
+            )
 
         if moving_active and neg_gap_stats is not None and neg_gap_stats["n_random"] > 0:
             nc_index  = neg_gap_stats["mean_index_conf"]
@@ -1550,6 +2182,11 @@ def run_training_lg(args: argparse.Namespace) -> None:
             # random negatives, and so --negative_mining alone (static prob,
             # no --moving_negative_prob) still shows what was actually in use.
             "train/random_negative_prob": train_ds.random_negative_prob,
+            # Same logic: constant without --adaptive_margin, but always
+            # logged so runs stay comparable. train/margin is the value the
+            # NEXT epoch will train at; sep_gap is what this epoch measured.
+            "train/margin":               live_margin,
+            "train/sep_gap":              epoch_extras["sep_gap"],
         }
         if do_eval:
             metrics.update(train_eval_metrics)

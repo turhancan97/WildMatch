@@ -181,6 +181,40 @@ class IndexAssignedTripletDataset(Dataset):
             sampling on the single hardest known candidate lynx.
         negative_mining_decay: EMA decay used by `update_mining_stats` (closer
             to 1 remembers older observations longer).
+        negative_mining_frame_prob: Frame-level upgrade to negative_mining's
+            lynx-level matrix: once the mined lynx is chosen, this is the
+            probability of drawing the specific frame from a per-frame EMA
+            confidence memory (softmax-weighted toward frames that have
+            historically produced high LG confidence, temperature
+            hard_pair_temperature) instead of uniformly from the lynx's whole
+            pool. Only frames actually observed during training enter the
+            memory (fed by `update_mining_stats`), so this costs no extra
+            forward passes — it recycles confidences the training loss already
+            computed. 0 (default) keeps frame choice uniform. Requires
+            negative_mining.
+        num_negatives: Negatives drawn per __getitem__ call (default 1). With
+            K > 1 the negative element of the returned tuple is a stacked
+            (K, C, H, W) tensor and the meta dict's neg_source/neg_lynx/
+            neg_frame become K-length lists; each negative is sampled
+            independently through the full stack (random_negative_prob coin
+            flip, mining, hard_negative_sampling). K == 1 keeps the original
+            single-image / scalar-meta format.
+        hard_positive_sampling: Sample the positive from entry["positives"]
+            weighted toward pairs with historically LOW LG confidence (hard
+            positives), from a per-(query_frame, candidate_frame) EMA fed by
+            `update_pair_stats`. Unseen pairs default to confidence 0.0
+            (assumed hard), so sampling starts near-uniform and every
+            candidate gets observed. Uniform choice when off (default).
+        hard_negative_sampling: Same, for the entry's index-mined negatives:
+            weighted toward historically HIGH LG confidence. Unseen pairs
+            default to confidence 1.0 (assumed hard). Only affects the index
+            branch of _sample_negative — the random branch is
+            negative_mining's territory.
+        hard_pair_temperature: Softmax temperature over EMA confidences for
+            hard_positive_sampling / hard_negative_sampling /
+            negative_mining_frame_prob; lower concentrates on the single
+            hardest known candidate.
+        hard_pair_decay: EMA decay for `update_pair_stats`.
         weak_queries: With probability weak_queries_prob, replace the
             index-driven (query, positive, negative) for an item with a fully
             random triplet: a random lynx, two distinct random frames of it
@@ -194,14 +228,17 @@ class IndexAssignedTripletDataset(Dataset):
             instead of the index-driven one, per `__getitem__` call.
         return_meta: When True, `__getitem__` returns a 4th element: a dict
             with `neg_source` ("index" | "random"), `query_lynx`, `neg_lynx`,
-            `is_weak_query`, and `query_frame` (the actual query path drawn —
+            `is_weak_query`, `query_frame` (the actual query path drawn —
             entry["query_frame"] for an index sample, the random one for a
-            weak_queries sample), letting a training loop bucket LG confidence
-            by where each sample came from (used by --moving_negative_prob,
-            --negative_mining, --weak_queries) or track a specific query's
-            outcome across epochs (used by train_by_lg_matches.py's
-            pos-index dead-candidate recurrence tracking). Default False
-            keeps the original 3-tuple for all other callers.
+            weak_queries sample) and `pos_frame` (the positive path drawn),
+            letting a training loop bucket LG confidence by where each sample
+            came from (used by --moving_negative_prob, --negative_mining,
+            --weak_queries), track a specific query's outcome across epochs
+            (used by train_by_lg_matches.py's pos-index dead-candidate
+            recurrence tracking), or look this exact (query, positive) pair up
+            in a table precomputed before training (used by
+            --distill_signal_type healing_on_positives). Default False keeps
+            the original 3-tuple for all other callers.
     """
 
     def __init__(
@@ -215,8 +252,14 @@ class IndexAssignedTripletDataset(Dataset):
         negative_mining: bool = False,
         negative_mining_temperature: float = 1.0,
         negative_mining_decay: float = 0.9,
+        negative_mining_frame_prob: float = 0.0,
         weak_queries: bool = False,
         weak_queries_prob: float = 0.0,
+        num_negatives: int = 1,
+        hard_positive_sampling: bool = False,
+        hard_negative_sampling: bool = False,
+        hard_pair_temperature: float = 0.1,
+        hard_pair_decay: float = 0.9,
         return_meta: bool = False,
     ) -> None:
         self.root = Path(root) if root is not None else None
@@ -227,10 +270,22 @@ class IndexAssignedTripletDataset(Dataset):
         self.negative_mining = negative_mining
         self.negative_mining_temperature = negative_mining_temperature
         self.negative_mining_decay = negative_mining_decay
+        self.negative_mining_frame_prob = negative_mining_frame_prob
         self.weak_queries = weak_queries
         self.weak_queries_prob = weak_queries_prob
+        self.num_negatives = num_negatives
+        self.hard_positive_sampling = hard_positive_sampling
+        self.hard_negative_sampling = hard_negative_sampling
+        self.hard_pair_temperature = hard_pair_temperature
+        self.hard_pair_decay = hard_pair_decay
         self.return_meta = return_meta
         self._mining_scores: dict[tuple[str, str], float] = {}
+        # (query_frame, candidate_frame) -> EMA of observed LG confidence,
+        # fed by update_pair_stats; used by hard_{positive,negative}_sampling.
+        self._pair_scores: dict[tuple[str, str], float] = {}
+        # neg_lynx -> {frame -> EMA confidence}, fed by update_mining_stats;
+        # used by negative_mining_frame_prob.
+        self._frame_scores: dict[str, dict[str, float]] = {}
 
         with open(index_path) as f:
             self._entries: list[dict] = json.load(f)
@@ -295,41 +350,109 @@ class IndexAssignedTripletDataset(Dataset):
         weights = [e / total for e in exps]
         return random.choices(candidates, weights=weights, k=1)[0]
 
-    def update_mining_stats(self, observations: list[tuple[str, str, float]]) -> None:
+    def update_mining_stats(self, observations: list[tuple[str, str, str, float]]) -> None:
         """EMA-updates the (query_lynx, candidate_lynx) difficulty matrix used by
-        negative_mining. `observations` is a list of (query_lynx, neg_lynx,
-        lg_confidence) triples — typically an epoch's negatives that came from
-        the 'random' branch (see `neg_source` in __getitem__'s meta dict) of an
-        *index* query (weak_queries samples are excluded by the training loop,
-        since they don't share the index-query random-negative distribution),
-        collected and passed in once per epoch by the training loop.
+        negative_mining, and the per-frame confidence memory used by
+        negative_mining_frame_prob. `observations` is a list of (query_lynx,
+        neg_lynx, neg_frame, lg_confidence) tuples — typically an epoch's
+        negatives that came from the 'random' branch (see `neg_source` in
+        __getitem__'s meta dict) of an *index* query (weak_queries samples are
+        excluded by the training loop, since they don't share the index-query
+        random-negative distribution), collected and passed in once per epoch
+        by the training loop.
         """
-        for query_lynx, neg_lynx, conf in observations:
+        for query_lynx, neg_lynx, neg_frame, conf in observations:
+            if not math.isfinite(conf):
+                # A non-finite confidence (a diverged training step) would
+                # poison the EMA and crash the softmax sampling later.
+                continue
             key = (query_lynx, neg_lynx)
             prev = self._mining_scores.get(key)
             self._mining_scores[key] = (
                 conf if prev is None
                 else self.negative_mining_decay * prev + (1 - self.negative_mining_decay) * conf
             )
+            frames = self._frame_scores.setdefault(neg_lynx, {})
+            prev_f = frames.get(neg_frame)
+            frames[neg_frame] = (
+                conf if prev_f is None
+                else self.negative_mining_decay * prev_f + (1 - self.negative_mining_decay) * conf
+            )
+
+    def update_pair_stats(self, observations: list[tuple[str, str, float]]) -> None:
+        """EMA-updates the (query_frame, candidate_frame) confidence memory used
+        by hard_positive_sampling / hard_negative_sampling. `observations` is a
+        list of (query_frame, candidate_frame, lg_confidence) triples —
+        positive and index-negative pairs share one dict, since a candidate is
+        never both for the same query. Confidences come from the training
+        loss's own forward passes, so keeping these stats costs nothing extra.
+        """
+        for q_frame, cand_frame, conf in observations:
+            if not math.isfinite(conf):
+                continue  # same guard as update_mining_stats
+            key = (q_frame, cand_frame)
+            prev = self._pair_scores.get(key)
+            self._pair_scores[key] = (
+                conf if prev is None
+                else self.hard_pair_decay * prev + (1 - self.hard_pair_decay) * conf
+            )
+
+    def _softmax_choice(self, pool: list[str], scores: list[float]) -> str:
+        """Draw one item from `pool` with softmax(scores / hard_pair_temperature)."""
+        t = self.hard_pair_temperature
+        m = max(scores)
+        weights = [math.exp((s - m) / t) for s in scores]
+        return random.choices(pool, weights=weights, k=1)[0]
+
+    def _sample_positive(self, entry: dict) -> str:
+        pool = entry["positives"]
+        if not self.hard_positive_sampling:
+            return random.choice(pool)
+        q = entry["query_frame"]
+        # Negated confidence: low observed confidence = hard positive = high
+        # weight. Unseen pairs default to 0.0 (assumed hard) so they keep
+        # getting drawn until observed.
+        scores = [-self._pair_scores.get((q, p), 0.0) for p in pool]
+        return self._softmax_choice(pool, scores)
+
+    def _sample_negative_frame(self, neg_lynx: str) -> str:
+        """Frame within the already-chosen random-branch negative lynx: uniform,
+        or (with prob negative_mining_frame_prob) softmax-weighted over the
+        frames of that lynx observed so far, toward historically-confusing ones.
+        """
+        frames = self._frame_scores.get(neg_lynx)
+        if frames and random.random() < self.negative_mining_frame_prob:
+            paths = list(frames)
+            return self._softmax_choice(paths, [frames[p] for p in paths])
+        return random.choice(self._lynx_pool[neg_lynx])
 
     def _sample_negative(self, entry: dict) -> tuple[str, dict]:
         query_lynx = self._lynx_id(entry["query_frame"])
         if self.random_negative_prob > 0 and random.random() < self.random_negative_prob:
             neg_lynx = self._sample_negative_lynx(query_lynx)
-            neg_path = random.choice(self._lynx_pool[neg_lynx])
+            neg_path = self._sample_negative_frame(neg_lynx)
             return neg_path, {"neg_source": "random", "query_lynx": query_lynx, "neg_lynx": neg_lynx}
-        neg_path = random.choice(entry["negatives"])
+        pool = entry["negatives"]
+        if self.hard_negative_sampling:
+            # High observed confidence = hard negative = high weight. Unseen
+            # pairs default to 1.0 (assumed hard) so they keep getting drawn
+            # until observed.
+            q = entry["query_frame"]
+            neg_path = self._softmax_choice(pool, [self._pair_scores.get((q, n), 1.0) for n in pool])
+        else:
+            neg_path = random.choice(pool)
         return neg_path, {"neg_source": "index", "query_lynx": query_lynx, "neg_lynx": self._lynx_id(neg_path)}
 
-    def _sample_weak_triplet(self) -> tuple[str, str, str, dict]:
-        """Fully random (query, positive, negative), bypassing the JSON index
+    def _sample_weak_triplet(self) -> tuple[str, str, list[str], dict]:
+        """Fully random (query, positive, negatives), bypassing the JSON index
         entirely: a random lynx supplies two distinct frames (query +
-        positive), a different random lynx supplies the negative frame.
-        Deliberately plain `random.choice` throughout, NOT negative_mining-
-        weighted — weak queries are meant as an unbiased exploration signal,
-        independent of the mining curriculum (which only targets the
-        index-query random-negative branch via _sample_negative_lynx).
-        Requires weak_queries=True, which guarantees _lynx_pool is built.
+        positive), a different random lynx supplies each negative frame
+        (num_negatives of them, lynxes drawn independently). Deliberately
+        plain `random.choice` throughout, NOT negative_mining- or
+        hard-pair-weighted — weak queries are meant as an unbiased exploration
+        signal, independent of the mining/hard-sampling curriculum (which only
+        targets the index-query branches via _sample_negative). Requires
+        weak_queries=True, which guarantees _lynx_pool is built.
         """
         query_lynx = random.choice(self._lynx_ids)
         pool = self._lynx_pool[query_lynx]
@@ -339,41 +462,62 @@ class IndexAssignedTripletDataset(Dataset):
             while pos_rel == query_rel:
                 pos_rel = random.choice(pool)
 
-        neg_lynx = query_lynx
-        while neg_lynx == query_lynx:
-            neg_lynx = random.choice(self._lynx_ids)
-        neg_rel = random.choice(self._lynx_pool[neg_lynx])
+        neg_rels: list[str] = []
+        neg_lynxes: list[str] = []
+        for _ in range(self.num_negatives):
+            neg_lynx = query_lynx
+            while neg_lynx == query_lynx:
+                neg_lynx = random.choice(self._lynx_ids)
+            neg_rels.append(random.choice(self._lynx_pool[neg_lynx]))
+            neg_lynxes.append(neg_lynx)
 
         meta = {
-            "neg_source": "random", "query_lynx": query_lynx, "neg_lynx": neg_lynx,
+            "neg_source": ["random"] * self.num_negatives,
+            "query_lynx": query_lynx, "neg_lynx": neg_lynxes,
             "is_weak_query": True, "query_frame": query_rel,
         }
-        return query_rel, pos_rel, neg_rel, meta
+        return query_rel, pos_rel, neg_rels, meta
 
     def __getitem__(self, index: int):
         if self.weak_queries and random.random() < self.weak_queries_prob:
-            query_rel, pos_rel, neg_rel, meta = self._sample_weak_triplet()
+            query_rel, pos_rel, neg_rels, meta = self._sample_weak_triplet()
         else:
             entry = self._entries[index]
             query_rel = entry["query_frame"]
-            pos_rel = random.choice(entry["positives"])
-            neg_rel, meta = self._sample_negative(entry)
-            meta["is_weak_query"] = False
-            meta["query_frame"] = query_rel
+            pos_rel = self._sample_positive(entry)
+            neg_rels, srcs, neg_lynxes = [], [], []
+            for _ in range(self.num_negatives):
+                neg_rel, m = self._sample_negative(entry)
+                neg_rels.append(neg_rel)
+                srcs.append(m["neg_source"])
+                neg_lynxes.append(m["neg_lynx"])
+            meta = {
+                "neg_source": srcs, "query_lynx": self._lynx_id(query_rel),
+                "neg_lynx": neg_lynxes, "is_weak_query": False, "query_frame": query_rel,
+            }
+        # Set for both branches: a weak triplet's "positive" is a random
+        # same-lynx frame rather than an index candidate, but consumers still
+        # need to know which frame it was (and to be able to tell that it has
+        # no entry in an index-derived lookup table).
+        meta["pos_frame"] = pos_rel
+        meta["neg_frame"] = list(neg_rels)
+        if self.num_negatives == 1:
+            # Scalar meta fields keep the original single-negative format (and
+            # collate shape) for existing consumers.
+            for key in ("neg_source", "neg_lynx", "neg_frame"):
+                meta[key] = meta[key][0]
 
-        query_path = self._full_path(query_rel)
-        pos_path   = self._full_path(pos_rel)
-        neg_path   = self._full_path(neg_rel)
-
-        query_img = self._loader(query_path)
-        pos_img   = self._loader(pos_path)
-        neg_img   = self._loader(neg_path)
+        query_img = self._loader(self._full_path(query_rel))
+        pos_img   = self._loader(self._full_path(pos_rel))
+        neg_imgs  = [self._loader(self._full_path(r)) for r in neg_rels]
 
         if self.query_transform is not None:
             query_img = self.query_transform(query_img)
         if self.transform is not None:
             pos_img = self.transform(pos_img)
-            neg_img = self.transform(neg_img)
+            neg_imgs = [self.transform(i) for i in neg_imgs]
+
+        neg_img = neg_imgs[0] if self.num_negatives == 1 else torch.stack(neg_imgs)
 
         if self.return_meta:
             return query_img, pos_img, neg_img, meta

@@ -138,6 +138,28 @@ class TokenConfidence(nn.Module):
         )
 
 
+def _pad_safe_attn_mask(mask: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    A query row whose mask allows no key at all (only padded slots are ever in
+    that state) makes the attention softmax run over an empty set: NaN in the
+    forward and — the real problem — NaN in scaled_dot_product_attention's
+    *backward*, which survives any downstream fixup because 0 * nan = nan
+    inside the softmax gradient. The nan_to_num calls this helper pairs with
+    only ever repaired the forward, so a batch with any keypoint-count
+    imbalance (padding) silently poisoned every gradient; with uniform
+    keypoint counts (e.g. top_k always saturated) the dead rows never occurred,
+    which is why training worked.
+
+    Returns (safe_mask, dead): `safe_mask` opens dead rows to every key so the
+    softmax is well-defined end to end; `dead` marks those rows so the caller
+    can zero their output — the exact 0.0 the old nan_to_num produced, now
+    with an exactly-zero (instead of NaN) gradient. Real rows are untouched:
+    `mask | dead` changes nothing where the row already allows a key.
+    """
+    dead = ~mask.any(dim=-1, keepdim=True)
+    return mask | dead, dead
+
+
 class Attention(nn.Module):
     def __init__(self, allow_flash: bool) -> None:
         super().__init__()
@@ -157,12 +179,17 @@ class Attention(nn.Module):
     def forward(self, q, k, v, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         if q.shape[-2] == 0 or k.shape[-2] == 0:
             return q.new_zeros((*q.shape[:-1], v.shape[-1]))
+        safe_mask = dead = None
+        if mask is not None:
+            # See _pad_safe_attn_mask: fully-masked (padded) rows would NaN
+            # the softmax backward; open them here, zero their output below.
+            safe_mask, dead = _pad_safe_attn_mask(mask)
         if self.enable_flash and q.device.type == "cuda":
             # use torch 2.0 scaled_dot_product_attention with flash
             if self.has_sdp:
                 args = [x.half().contiguous() for x in [q, k, v]]
-                v = F.scaled_dot_product_attention(*args, attn_mask=mask).to(q.dtype)
-                return v if mask is None else v.nan_to_num()
+                v = F.scaled_dot_product_attention(*args, attn_mask=safe_mask).to(q.dtype)
+                return v if mask is None else v.masked_fill(dead, 0.0)
             else:
                 assert mask is None
                 q, k, v = [x.transpose(-2, -3).contiguous() for x in [q, k, v]]
@@ -170,15 +197,16 @@ class Attention(nn.Module):
                 return m.transpose(-2, -3).to(q.dtype).clone()
         elif self.has_sdp:
             args = [x.contiguous() for x in [q, k, v]]
-            v = F.scaled_dot_product_attention(*args, attn_mask=mask)
-            return v if mask is None else v.nan_to_num()
+            v = F.scaled_dot_product_attention(*args, attn_mask=safe_mask)
+            return v if mask is None else v.masked_fill(dead, 0.0)
         else:
             s = q.shape[-1] ** -0.5
             sim = torch.einsum("...id,...jd->...ij", q, k) * s
             if mask is not None:
-                sim.masked_fill(~mask, -float("inf"))
+                sim = sim.masked_fill(~safe_mask, -float("inf"))
             attn = F.softmax(sim, -1)
-            return torch.einsum("...ij,...jd->...id", attn, v)
+            out = torch.einsum("...ij,...jd->...id", attn, v)
+            return out if mask is None else out.masked_fill(dead, 0.0)
 
 
 class SelfBlock(nn.Module):
@@ -260,13 +288,23 @@ class CrossBlock(nn.Module):
             qk0, qk1 = qk0 * self.scale**0.5, qk1 * self.scale**0.5
             sim = torch.einsum("bhid, bhjd -> bhij", qk0, qk1)
             if mask is not None:
-                sim = sim.masked_fill(~mask, -float("inf"))
-            attn01 = F.softmax(sim, dim=-1)
-            attn10 = F.softmax(sim.transpose(-2, -1).contiguous(), dim=-1)
+                # Two separately-masked views of `sim`: opening a dead row for
+                # one softmax direction must not leak those entries into the
+                # other direction's normalization (see _pad_safe_attn_mask).
+                safe01, dead0 = _pad_safe_attn_mask(mask)
+                safe10, dead1 = _pad_safe_attn_mask(mask.transpose(-1, -2))
+                attn01 = F.softmax(sim.masked_fill(~safe01, -float("inf")), dim=-1)
+                attn10 = F.softmax(
+                    sim.transpose(-2, -1).contiguous().masked_fill(~safe10, -float("inf")),
+                    dim=-1,
+                )
+            else:
+                attn01 = F.softmax(sim, dim=-1)
+                attn10 = F.softmax(sim.transpose(-2, -1).contiguous(), dim=-1)
             m0 = torch.einsum("bhij, bhjd -> bhid", attn01, v1)
             m1 = torch.einsum("bhji, bhjd -> bhid", attn10.transpose(-2, -1), v0)
             if mask is not None:
-                m0, m1 = m0.nan_to_num(), m1.nan_to_num()
+                m0, m1 = m0.masked_fill(dead0, 0.0), m1.masked_fill(dead1, 0.0)
         m0, m1 = self.map_(lambda t: t.transpose(1, 2).flatten(start_dim=-2), m0, m1)
         m0, m1 = self.map_(self.to_out, m0, m1)
         x0 = x0 + self.ffn(torch.cat([x0, m0], -1))

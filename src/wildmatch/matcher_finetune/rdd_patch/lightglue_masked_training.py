@@ -344,16 +344,35 @@ class TransformerLayer(nn.Module):
         return self.cross_attn(desc0, desc1, mask)
 
 
+def double_softmax(sim: torch.Tensor) -> torch.Tensor:
+    """The pair-specific half of the log assignment: the row- and column-wise
+    log-softmax of the descriptor similarity, WITHOUT the matchability
+    certainties `sigmoid_log_double_softmax` adds on top.
+
+    Split out because the two halves do different jobs and a loss may want to
+    address only one of them. This half depends on both images' descriptors, so
+    it encodes *which* keypoint prefers which — the correspondence structure.
+    The certainties half is a per-keypoint gate that multiplies into every
+    candidate equally, so it encodes *how willing to match at all* the model is
+    for this pair. See --distill_signal_type assignment_hinge in
+    train_by_lg_matches.py, which distils this half alone precisely so that the
+    distillation cannot buy assignment score by opening that gate — the gate is
+    what the margin loss uses to suppress negatives.
+    """
+    return (
+        F.log_softmax(sim, 2)
+        + F.log_softmax(sim.transpose(-1, -2).contiguous(), 2).transpose(-1, -2)
+    )
+
+
 def sigmoid_log_double_softmax(
     sim: torch.Tensor, z0: torch.Tensor, z1: torch.Tensor
 ) -> torch.Tensor:
     """create the log assignment matrix from logits and similarity"""
     b, m, n = sim.shape
     certainties = F.logsigmoid(z0) + F.logsigmoid(z1).transpose(1, 2)
-    scores0 = F.log_softmax(sim, 2)
-    scores1 = F.log_softmax(sim.transpose(-1, -2).contiguous(), 2).transpose(-1, -2)
     scores = sim.new_full((b, m + 1, n + 1), 0)
-    scores[:, :m, :n] = scores0 + scores1 + certainties
+    scores[:, :m, :n] = double_softmax(sim) + certainties
     scores[:, :-1, -1] = F.logsigmoid(-z0.squeeze(-1))
     scores[:, -1, :-1] = F.logsigmoid(-z1.squeeze(-1))
     return scores
@@ -586,6 +605,8 @@ class LightGlueForTraining(nn.Module):
             scores: List[[Si]]         ragged, threshold-filtered (legacy)
             assignment_scores: [B x (M+1) x (N+1)]  dense log-assignment,
                                 pre-filter_matches — see module docstring
+            assignment_scores_nogate: [B x M x N]  the same, minus the
+                                matchability certainties — see double_softmax
             stop: int
             prune0: [B x M]
             prune1: [B x N]
@@ -718,6 +739,7 @@ class LightGlueForTraining(nn.Module):
             # (RDD-frozen, hence identical-input) pair is empty too whenever
             # this branch fires — see its docstring.
             assignment_scores = desc0.new_zeros((b, m + 1, n + 1)) + anchor.to(desc0.dtype)
+            assignment_scores_nogate = desc0.new_zeros((b, m, n)) + anchor.to(desc0.dtype)
             if not do_point_pruning:
                 prune0 = torch.ones_like(mscores0) * self.conf.n_layers
                 prune1 = torch.ones_like(mscores1) * self.conf.n_layers
@@ -732,12 +754,13 @@ class LightGlueForTraining(nn.Module):
                 "matches": matches,
                 "scores": mscores,
                 "assignment_scores": assignment_scores,
+                "assignment_scores_nogate": assignment_scores_nogate,
                 "prune0": prune0,
                 "prune1": prune1,
             }
 
         desc0, desc1 = desc0[..., :m, :], desc1[..., :n, :]  # remove padding
-        scores, _ = self.log_assignment[i](desc0, desc1)
+        scores, sim = self.log_assignment[i](desc0, desc1)
         m0, m1, mscores0, mscores1, valid0, valid1 = filter_matches(
             scores, self.conf.filter_threshold
         )
@@ -787,6 +810,10 @@ class LightGlueForTraining(nn.Module):
             "matches": matches,
             "scores": mscores,
             "assignment_scores": scores,
+            # Same matrix minus the matchability certainties — the pair-specific
+            # half only, (B, M, N) with no dustbin row/column. See
+            # double_softmax() and --distill_signal_type assignment_hinge.
+            "assignment_scores_nogate": double_softmax(sim),
             "prune0": prune0,
             "prune1": prune1,
         }

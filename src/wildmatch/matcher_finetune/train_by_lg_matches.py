@@ -258,7 +258,101 @@ Independent, combinable anti-overfitting mechanisms, each off by default:
                                           jittered ones, which biases the gate
                                           slightly towards firing. Requires
                                           'lg' in --trained_model.
+      --distill_signal_type assignment_hinge / assignment_healing
+                                          Same pseudo-labels again (the
+                                          reference's matches on the (anchor,
+                                          positive) pair), but asking only that
+                                          they SURVIVE, and asking it where the
+                                          negative side cannot overhear.
+
+                                          'correspondence' and
+                                          'healing_on_positives' maximize an
+                                          NLL on assignment_scores, which is
+                                          unbounded — there is no score at
+                                          which the loss is satisfied, so it
+                                          keeps pushing. LightGlue's assignment
+                                          is
+                                            D + logsigmoid(z0) + logsigmoid(z1)
+                                          where D (double_softmax of the
+                                          descriptor similarity, see
+                                          rdd_patch/lightglue_masked_training.py)
+                                          says WHICH keypoint prefers which,
+                                          and the two logsigmoid terms are a
+                                          per-keypoint matchability gate that
+                                          scales every candidate alike. The
+                                          cheapest way to keep raising the NLL
+                                          is to open that gate — and the gate
+                                          is shared with the negative pair the
+                                          same anchor takes part in, so the
+                                          margin loss loses the very lever it
+                                          uses to reject negatives. Measured on
+                                          the finished 300-epoch runs: mean
+                                          gate 0.51 pretrained -> 0.95
+                                          (correspondence) -> 1.00
+                                          (activations, where it stops
+                                          discriminating entirely), while the
+                                          plain baseline drives it to 0.92 on a
+                                          positive pair and 0.017 on a negative
+                                          one — the gate alone then contributes
+                                          -8.2 nats to a negative against a
+                                          filter threshold of log(0.01) = -4.6,
+                                          i.e. it rejects negatives by itself.
+
+                                          These two modes fix both halves:
+                                            * ONE-SIDED with a target. Per
+                                              reference-matched point,
+                                              relu(min(reference's own score,
+                                              log(filter_threshold) +
+                                              --assignment_hinge_slack) -
+                                              student's score). Zero gradient
+                                              once the match clears the filter
+                                              (or reaches the reference, for
+                                              matches the reference itself
+                                              barely made) — literally "don't
+                                              ask for more certainty than the
+                                              reference had".
+                                            * GATE-FREE. Computed on D alone
+                                              (--assignment_hinge_target
+                                              nogate, the default), so the loss
+                                              cannot buy score by opening the
+                                              gate and has to sharpen the
+                                              correspondence structure instead.
+                                              The gate stays entirely the
+                                              margin loss's to spend on
+                                              negatives.
+                                          Per-point rather than per-pair, so it
+                                          acts as individual matches approach
+                                          the threshold instead of after the
+                                          pair has already died.
+                                          --assignment_ranking_weight adds an
+                                          optional margin-ranking term
+                                          asserting only that the reference's
+                                          partner wins its row, with no
+                                          reference to magnitude at all.
+                                          The two differ only in which samples
+                                          they touch: 'assignment_hinge' every
+                                          index positive, 'assignment_healing'
+                                          only those the student now scores
+                                          below their pretrained level (the
+                                          healing_on_positives gate, so it
+                                          shares that mode's pre-training
+                                          measurement pass and its
+                                          train/heal_rate metric). Both require
+                                          'lg' in --trained_model.
 """
+
+
+# Signal types whose consistency loss runs LightGlue's own forward (student vs
+# reference) rather than comparing parameters, so they are only meaningful when
+# LightGlue itself is being trained — see parse_args and run_training_lg.
+LG_FORWARD_SIGNALS = (
+    "activations", "correspondence", "healing_on_positives",
+    "assignment_hinge", "assignment_healing",
+)
+# Signal types that gate on how the student now scores an index positive
+# compared with the pretrained model, so they need the reference score table
+# measure_pretrained_positive_scores builds before training.
+PRETRAINED_SCORE_SIGNALS = ("healing_on_positives", "assignment_healing")
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -525,7 +619,8 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--distill_signal_type", type=str, default="weights",
-        choices=["weights", "activations", "correspondence", "healing_on_positives"],
+        choices=["weights", "activations", "correspondence", "healing_on_positives",
+                 "assignment_hinge", "assignment_healing"],
         help="What the consistency loss is computed on: 'weights' is an L1/L2 distance "
              "between the trained model's parameters and the reference's; 'activations' "
              "matches LightGlue's per-layer descriptor embeddings between student and "
@@ -535,8 +630,41 @@ def parse_args() -> argparse.Namespace:
              "for that pair; 'healing_on_positives' is the same rescue on a wider gate — "
              "it fires for any index positive the student now scores below the pretrained "
              "model's score for that same pair, of which a zero-match pair is the extreme "
-             "case. The last two require 'lg' in --trained_model — see module docstring "
-             "for all four.",
+             "case; 'assignment_hinge' keeps those same reference matches alive but stops "
+             "the moment they survive filter_matches (one-sided, and computed on the "
+             "gate-free half of the assignment so it cannot push the matchability gate the "
+             "margin loss needs for suppressing negatives); 'assignment_healing' is "
+             "assignment_hinge restricted to the weakened positives healing_on_positives "
+             "identifies, instead of every index positive. All but 'weights' require 'lg' "
+             "in --trained_model — see module docstring for all six.",
+    )
+    p.add_argument(
+        "--assignment_hinge_slack", type=float, default=1.0,
+        help="Nats of headroom above log(filter_threshold) that "
+             "--distill_signal_type assignment_hinge/assignment_healing asks a "
+             "reference match to keep (target = min(reference's own score, "
+             "log(filter_threshold) + slack)). 0 targets the survival boundary exactly; "
+             "larger keeps a bigger safety margin before a match can die.",
+    )
+    p.add_argument(
+        "--assignment_hinge_target", type=str, default="nogate", choices=["nogate", "scores"],
+        help="Which assignment matrix the hinge is computed on. 'nogate' (default) uses "
+             "LightGlue's assignment_scores_nogate — the double log-softmax of the "
+             "descriptor similarity with the matchability certainties removed — so the "
+             "loss can only sharpen the correspondence structure and never buys score by "
+             "opening the gate. 'scores' uses the full assignment_scores (gate included), "
+             "reproducing the coupling the correspondence mode has; for comparison only.",
+    )
+    p.add_argument(
+        "--assignment_ranking_weight", type=float, default=0.0,
+        help="Weight of an optional margin-ranking term added to the assignment hinge: "
+             "the reference's partner must beat the runner-up in its row by "
+             "--assignment_ranking_margin. Asserts only *which* assignment wins, with no "
+             "reference to magnitude. 0 (default) disables.",
+    )
+    p.add_argument(
+        "--assignment_ranking_margin", type=float, default=1.0,
+        help="Margin (nats) for --assignment_ranking_weight.",
     )
     p.add_argument(
         "--activations_on_positives", action="store_true",
@@ -573,7 +701,7 @@ def parse_args() -> argparse.Namespace:
         if args.distill_model_lambda <= 0:
             p.error("--distill_model requires --distill_model_lambda > 0")
         if (
-            args.distill_signal_type in ("activations", "correspondence", "healing_on_positives")
+            args.distill_signal_type in LG_FORWARD_SIGNALS
             and "lg" not in args.trained_model.split("+")
         ):
             p.error(
@@ -585,6 +713,10 @@ def parse_args() -> argparse.Namespace:
         p.error("--distill_model_lambda requires --distill_model to be 'pretrained' or 'ema'")
     if args.activations_on_positives and args.distill_signal_type != "activations":
         p.error("--activations_on_positives only applies to --distill_signal_type activations")
+    if args.assignment_ranking_weight < 0:
+        p.error("--assignment_ranking_weight must be >= 0")
+    if args.assignment_hinge_slack < 0:
+        p.error("--assignment_hinge_slack must be >= 0")
     if args.distill_ema_decay is not None and not (0.0 < args.distill_ema_decay < 1.0):
         p.error("--distill_ema_decay must be in (0, 1)")
     if args.warmup_steps < 0:
@@ -1233,6 +1365,101 @@ def distill_correspondence_loss(
     return (per_sample * sample_weight).sum() / sample_weight.sum().clamp(min=1)
 
 
+def distill_assignment_hinge_loss(
+    live_scores: torch.Tensor,
+    ref_scores: torch.Tensor,
+    ref_matches0: torch.Tensor,
+    ref_valid0: torch.Tensor,
+    sample_mask: torch.Tensor,
+    ceiling: float,
+    ranking_weight: float = 0.0,
+    ranking_margin: float = 1.0,
+) -> torch.Tensor:
+    """
+    Keeps the reference's own matches alive under `filter_matches` without
+    asking for any more confidence than that — the loss behind
+    --distill_signal_type assignment_hinge / assignment_healing.
+
+    Same pseudo-labels as distill_correspondence_loss (the reference's
+    matches0/valid0 on the same (anchor, positive) pair), but three things
+    differ, each fixing a way the NLL leaks into the negative side:
+
+      - ONE-SIDED, WITH A TARGET. Per reference-matched point i -> j*,
+            relu(target_i - live_scores[i, j*]),  target_i = min(ref_i, ceiling)
+        so the gradient vanishes as soon as the student's score reaches either
+        the reference's own level or `ceiling` (log(filter_threshold) + slack,
+        i.e. "survives the match filter with a margin"), whichever is lower.
+        The NLL has no notion of "enough" and keeps pushing forever; measured
+        on the finished runs, that pressure lands on the matchability gate,
+        which rises from 0.51 (pretrained) to 0.95 (correspondence) or 1.00
+        (activations). `min` with the reference is what implements "don't
+        demand more certainty than the reference had" for pairs the reference
+        itself barely matched.
+
+      - GATE-FREE BY DEFAULT. Caller passes LightGlue's
+        `assignment_scores_nogate` (see double_softmax in
+        rdd_patch/lightglue_masked_training.py), i.e. the double log-softmax of
+        the descriptor similarity with the matchability certainties removed.
+        The student then cannot satisfy this loss by opening that gate — it has
+        to sharpen the actual correspondence structure — and the gate stays
+        free for the margin loss, which is what actually suppresses negatives
+        (measured: the gate alone contributes -8.2 nats to a negative and -0.2
+        to a positive on train, -4.9 / -0.9 on val, against a filter threshold
+        of log(0.01) = -4.6). Passing the full `assignment_scores` instead
+        (--assignment_hinge_target scores) restores the coupling and is only
+        there for comparison.
+
+        Because the gate is dropped, `ceiling` is compared against the
+        pair-specific half alone. That is a deliberate, slightly loose proxy:
+        the true survival condition is D + gate > log(threshold), and the gate
+        term is only a few hundredths of a nat at a point that genuinely
+        matches, so the two differ by little exactly where it matters.
+
+      - PER-POINT, NOT PER-PAIR. distill_correspondence_loss fires only for
+        samples that already match nothing; a hinge fires per individual match
+        as it approaches the threshold, so the correction arrives while it is
+        still small. `sample_mask` still gates whole samples on top of that
+        (all index positives for assignment_hinge, only the ones scoring below
+        their pretrained level for assignment_healing).
+
+    ranking_weight > 0 adds a margin-ranking term on the same positions,
+        relu(ranking_margin - (live[i, j*] - max_{j != j*} live[i, j])),
+    which asserts only that the reference's partner wins its row, with no
+    reference to magnitude at all — the purest form of "reproduce the
+    assignments, not the activations". Off by default.
+
+    live_scores / ref_scores: (B, M, N) dense assignment for the student and
+        the (detached) reference. ref_scores must come from the same forward
+        that produced ref_matches0/ref_valid0.
+    Returns a plain 0.0 (no grad_fn — safe under find_unused_parameters=True)
+    when nothing is selected.
+    """
+    weight = ref_valid0.to(live_scores.dtype) * sample_mask[:, None].to(live_scores.dtype)
+    if weight.sum() == 0:
+        return live_scores.new_zeros(())
+
+    M = min(ref_matches0.shape[1], live_scores.shape[1])
+    weight = weight[:, :M]
+    j_idx = ref_matches0[:, :M].clamp(min=0).unsqueeze(-1)  # dummy for unmatched rows; zeroed by `weight`
+    live_at = live_scores[:, :M, :].gather(2, j_idx).squeeze(-1)          # (B, M)
+    ref_at = ref_scores[:, :M, :].gather(2, j_idx).squeeze(-1).detach()   # (B, M)
+
+    target = torch.clamp(ref_at, max=ceiling)
+    per_point = F.relu(target - live_at)
+
+    if ranking_weight > 0:
+        # Runner-up in each row, with the reference's own partner masked out.
+        masked = live_scores[:, :M, :].scatter(2, j_idx, -float("inf"))
+        runner_up = masked.max(dim=2).values
+        per_point = per_point + ranking_weight * F.relu(
+            ranking_margin - (live_at - runner_up)
+        )
+
+    per_sample = (per_point * weight).sum(dim=1) / weight.sum(dim=1).clamp(min=1)
+    sample_weight = (weight.sum(dim=1) > 0).to(per_sample.dtype)
+    return (per_sample * sample_weight).sum() / sample_weight.sum().clamp(min=1)
+
+
 @torch.no_grad()
 def measure_pretrained_positive_scores(
     accelerator: Accelerator,
@@ -1407,10 +1634,11 @@ def train_epoch_lg(
                                               epoch. Absent on the first
                                               epoch (no previous set yet).
 
-    `pretrained_pos_scores` is --distill_signal_type healing_on_positives'
-    lookup table, {(query_frame, pos_frame): pretrained confidence}, built once
-    before training by measure_pretrained_positive_scores; None for every other
-    signal type. When it is in use one more metric is logged:
+    `pretrained_pos_scores` is the lookup table both healing gates read,
+    {(query_frame, pos_frame): pretrained confidence}, built once before
+    training by measure_pretrained_positive_scores; None for every signal type
+    outside PRETRAINED_SCORE_SIGNALS. When it is in use one more metric is
+    logged:
       train/heal_rate    of the index-query samples this epoch (weak queries
                           have no reference score and are excluded), the
                           fraction whose positive pair the student now scores
@@ -1441,6 +1669,15 @@ def train_epoch_lg(
     distill_acts_active    = distill_active and args.distill_signal_type == "activations"
     distill_corr_active    = distill_active and args.distill_signal_type == "correspondence"
     distill_heal_active    = distill_active and args.distill_signal_type == "healing_on_positives"
+    distill_asg_active     = distill_active and args.distill_signal_type in (
+        "assignment_hinge", "assignment_healing")
+    # Both healing variants narrow their sample set with the pretrained-score
+    # gate; assignment_hinge applies to every index positive instead.
+    heal_gate_active = distill_active and args.distill_signal_type in PRETRAINED_SCORE_SIGNALS
+    # "survives filter_matches with --assignment_hinge_slack nats to spare" —
+    # the cap on what the assignment hinge ever asks for. Read off the live
+    # model so it tracks build_masked_lg's threshold rather than restating it.
+    hinge_ceiling = math.log(_unwrap(lg).conf.filter_threshold) + args.assignment_hinge_slack
 
     gap_tracking_active = args.moving_negative_prob is not None or args.negative_mining
     mining_active        = args.negative_mining
@@ -1602,39 +1839,58 @@ def train_epoch_lg(
             consistency_loss = distill_correspondence_loss(
                 pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], pos_empty,
             )
-        elif distill_heal_active:
-            # Same rescue as 'correspondence' above (positive pair only, same
-            # pseudo-labels), on a wider gate: fire wherever the student now
-            # scores this exact (query, positive) pair below what the
-            # pretrained model scored for it before training started.
+        elif distill_heal_active or distill_asg_active:
+            # All three share the same pseudo-labels: the reference's own
+            # matches on this exact (anchor, positive) pair. They differ in
+            # WHICH samples they apply to, and in what they then ask for.
             with torch.no_grad():
                 ref_pred_pos = distill_lg_ref({"image0": data_a, "image1": data_p})
-                live_pos_conf = _lg_scores(pred_pos, data_a, data_p)
-            # -inf for any pair the pre-training pass didn't score, so `live <
-            # ref` is False for it and it simply never heals.
-            ref_pos_conf = torch.tensor(
-                [
-                    pretrained_pos_scores.get((q_frame, p_frame), -math.inf)
-                    for q_frame, p_frame in zip(neg_meta["query_frame"], neg_meta["pos_frame"])
-                ],
-                device=device, dtype=live_pos_conf.dtype,
-            )
-            eligible = torch.isfinite(ref_pos_conf)
+
+            # Index positives only, in every mode — same distrust of
+            # --weak_queries' uncurated pairing as lg_confidence_loss's
+            # weak_mask and the 'correspondence' branch above.
+            sample_mask = torch.ones(len(neg_meta["query_frame"]), dtype=torch.bool, device=device)
             if weak_mask is not None:
-                # Same distrust as lg_confidence_loss's weak_mask and as the
-                # 'correspondence' branch above. Masked explicitly rather than
-                # left to the -inf default: a weak triplet draws its query and
-                # positive from the same pool the index was built over, so it
-                # can land on a (query, positive) pair that *does* have a
-                # reference score by coincidence, and that pair is still an
-                # uncurated random pairing this loss has no business enforcing.
-                eligible = eligible & ~weak_mask
-            heal_mask = (live_pos_conf < ref_pos_conf) & eligible
-            heal_counts[0] += heal_mask.sum()
-            heal_counts[1] += eligible.sum()
-            consistency_loss = distill_correspondence_loss(
-                pred_pos["assignment_scores"], ref_pred_pos["matches0"], ref_pred_pos["valid0"], heal_mask,
-            )
+                sample_mask = sample_mask & ~weak_mask
+
+            if heal_gate_active:
+                # Narrow the mask to positives the student now scores below
+                # what the PRETRAINED model scored for that same pair before
+                # training started — a zero-match pair is the extreme case, but
+                # a merely degrading one is caught too, while the correction is
+                # still small.
+                with torch.no_grad():
+                    live_pos_conf = _lg_scores(pred_pos, data_a, data_p)
+                # -inf for a pair the pre-training pass didn't score (e.g. one
+                # a weak triplet happened to draw), so `live < ref` is False
+                # for it and it simply never heals.
+                ref_pos_conf = torch.tensor(
+                    [
+                        pretrained_pos_scores.get((q_frame, p_frame), -math.inf)
+                        for q_frame, p_frame in zip(neg_meta["query_frame"], neg_meta["pos_frame"])
+                    ],
+                    device=device, dtype=live_pos_conf.dtype,
+                )
+                eligible = sample_mask & torch.isfinite(ref_pos_conf)
+                sample_mask = (live_pos_conf < ref_pos_conf) & eligible
+                heal_counts[0] += sample_mask.sum()
+                heal_counts[1] += eligible.sum()
+
+            if distill_asg_active:
+                key = "assignment_scores" if args.assignment_hinge_target == "scores" \
+                    else "assignment_scores_nogate"
+                consistency_loss = distill_assignment_hinge_loss(
+                    pred_pos[key], ref_pred_pos[key],
+                    ref_pred_pos["matches0"], ref_pred_pos["valid0"], sample_mask,
+                    ceiling=hinge_ceiling,
+                    ranking_weight=args.assignment_ranking_weight,
+                    ranking_margin=args.assignment_ranking_margin,
+                )
+            else:
+                consistency_loss = distill_correspondence_loss(
+                    pred_pos["assignment_scores"], ref_pred_pos["matches0"],
+                    ref_pred_pos["valid0"], sample_mask,
+                )
         # distill_weights_active is deliberately *not* handled here — its
         # consistency_loss is computed after accelerator.backward() below by
         # accumulate_distill_weights_grad, which injects gradient directly
@@ -1646,7 +1902,7 @@ def train_epoch_lg(
         # non-final log_assignment parameters "ready" from lg()'s own
         # forward output, and a second, invisible-to-DDP path to those same
         # parameters trips "Expected to mark a variable ready only once".
-        if distill_acts_active or distill_corr_active or distill_heal_active:
+        if distill_acts_active or distill_corr_active or distill_heal_active or distill_asg_active:
             backward_loss = loss + args.distill_model_lambda * consistency_loss
 
         def _per_negative(key: str) -> list[list]:
@@ -1833,9 +2089,9 @@ def train_epoch_lg(
         recurrence = len(dead_this_epoch & prev_dead_pos_index) / len(dead_this_epoch)
 
     # Same reduce-then-divide as the skip rates above, and same reason it can be
-    # guarded: distill_heal_active comes from args alone, so every rank agrees.
+    # guarded: heal_gate_active comes from args alone, so every rank agrees.
     heal_rate = None
-    if distill_heal_active:
+    if heal_gate_active:
         n_healed, n_eligible = accelerator.reduce(heal_counts, reduction="sum").tolist()
         heal_rate = n_healed / n_eligible if n_eligible else 0.0
 
@@ -2051,7 +2307,7 @@ def run_training_lg(args: argparse.Namespace) -> None:
     distill_lg_ref  = None
     distill_rdd_ref = None
     if distill_active:
-        if args.distill_signal_type in ("activations", "correspondence", "healing_on_positives") or train_lg:
+        if args.distill_signal_type in LG_FORWARD_SIGNALS or train_lg:
             distill_lg_ref = build_ema(lg, device)
         if args.distill_signal_type == "weights" and train_rdd:
             distill_rdd_ref = build_ema(rdd, device)
@@ -2131,13 +2387,14 @@ def run_training_lg(args: argparse.Namespace) -> None:
                 step=0,
             )
 
-    # ── healing_on_positives reference scores (before any training) ──
+    # ── healing reference scores (before any training) ──
     # Has to run here, before the first optimizer step, for distill_lg_ref to
     # still be the pretrained model — under --distill_model ema it starts
     # drifting towards the student as soon as training begins, and the gate
-    # this table feeds is specifically "worse than where I started".
+    # this table feeds is specifically "worse than where I started". Shared by
+    # healing_on_positives and assignment_healing.
     pretrained_pos_scores: dict[tuple[str, str], float] | None = None
-    if distill_active and args.distill_signal_type == "healing_on_positives":
+    if distill_active and args.distill_signal_type in PRETRAINED_SCORE_SIGNALS:
         accelerator.print(
             "[healing] scoring every (query, positive) pair in the train index "
             "with the pretrained LightGlue..."

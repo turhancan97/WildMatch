@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import json
 import math
 import random
@@ -215,6 +216,46 @@ class IndexAssignedTripletDataset(Dataset):
             negative_mining_frame_prob; lower concentrates on the single
             hardest known candidate.
         hard_pair_decay: EMA decay for `update_pair_stats`.
+        frame_jitter_query / frame_jitter_db: Temporal augmentation. The index
+            samples ~20 frames per video, but every frame of those videos is
+            on disk (~32x more material), and neighbouring frames are the same
+            individual by construction — free, exactly-labelled augmentation
+            the index simply doesn't reach. With probability frame_jitter_prob
+            an index-drawn frame is replaced by one up to this many positions
+            away in its own video (uniform over [-k, k], clamped to the
+            video's own frame range); otherwise the index frame is used
+            as-is. `_query` applies to the query, `_db` to the candidate side
+            (positive and index-mined negatives) — set both for two-sided
+            jitter. 0 (default) disables that side.
+
+            Deliberately offsets by POSITION in the video's sorted frame list
+            rather than by frame number, so a video with gaps in its numbering
+            still moves by k real frames. Clamping (rather than wrapping or
+            resampling) means frames near a video's start/end jitter less far
+            and slightly over-sample the endpoints — a negligible bias for
+            k << video length, and the only variant that cannot leave the
+            video.
+
+            Only ever applied to frames that came from the index: a
+            random-branch negative (random_negative_prob) and every part of a
+            weak_queries triplet are already uniform draws over the whole
+            frame pool, so jittering them would be a no-op dressed up as
+            augmentation.
+
+            The meta dict keeps reporting the INDEX frame, not the jittered
+            one, which is what keeps the pair-level memories keyed on the
+            pair's identity: hard_positive_sampling / hard_negative_sampling
+            accumulate their EMA per (query_frame, candidate_frame), and
+            train_by_lg_matches' healing_on_positives looks its reference
+            score up by the same key. With jittered frames as keys each key
+            would be seen about once and both mechanisms would quietly stop
+            working; keyed on the index pair, the observed confidence simply
+            becomes an average over that pair's jitter neighbourhood.
+        frame_jitter_prob: Probability that an eligible frame is jittered at
+            all (1.0, the default, always jitters when a magnitude is set).
+            Below 1 the batch mixes exact index pairs with jittered ones,
+            which keeps some of the index's curated difficulty — and the
+            pair-level EMAs' feed — intact.
         weak_queries: With probability weak_queries_prob, replace the
             index-driven (query, positive, negative) for an item with a fully
             random triplet: a random lynx, two distinct random frames of it
@@ -260,6 +301,9 @@ class IndexAssignedTripletDataset(Dataset):
         hard_negative_sampling: bool = False,
         hard_pair_temperature: float = 0.1,
         hard_pair_decay: float = 0.9,
+        frame_jitter_query: int = 0,
+        frame_jitter_db: int = 0,
+        frame_jitter_prob: float = 1.0,
         return_meta: bool = False,
     ) -> None:
         self.root = Path(root) if root is not None else None
@@ -278,6 +322,9 @@ class IndexAssignedTripletDataset(Dataset):
         self.hard_negative_sampling = hard_negative_sampling
         self.hard_pair_temperature = hard_pair_temperature
         self.hard_pair_decay = hard_pair_decay
+        self.frame_jitter_query = frame_jitter_query
+        self.frame_jitter_db = frame_jitter_db
+        self.frame_jitter_prob = frame_jitter_prob
         self.return_meta = return_meta
         self._mining_scores: dict[tuple[str, str], float] = {}
         # (query_frame, candidate_frame) -> EMA of observed LG confidence,
@@ -305,6 +352,59 @@ class IndexAssignedTripletDataset(Dataset):
                 )
             self._lynx_pool = self._scan_lynx_pool()
             self._lynx_ids = list(self._lynx_pool)
+
+        # video dir -> that video's frames, sorted. Only the videos the index
+        # actually references, since only index-drawn frames are ever jittered.
+        self._video_frames: dict[str, list[str]] = {}
+        if frame_jitter_query > 0 or frame_jitter_db > 0:
+            if self.root is None:
+                raise ValueError("frame_jitter_query/frame_jitter_db require `root` to be set")
+            self._video_frames = self._scan_video_frames()
+
+    def _scan_video_frames(self) -> dict[str, list[str]]:
+        """Every frame on disk in each video the index references, sorted.
+
+        Frame filenames are zero-padded (`frame_0007.jpg`), so a lexicographic
+        sort is also the temporal one and `bisect` can find a frame's position
+        in its own video without a second lookup table. Videos are listed from
+        the index rather than by walking the whole split, because only
+        index-drawn frames are jitter candidates (see the frame_jitter_*
+        docstring).
+        """
+        videos = {
+            str(Path(rel).parent)
+            for entry in self._entries
+            for rel in (entry["query_frame"], *entry["positives"], *entry["negatives"])
+        }
+        out: dict[str, list[str]] = {}
+        for video in sorted(videos):
+            frames = sorted(
+                str(p.relative_to(self.root)) for p in (self.root / video).glob("*.jpg")
+            )
+            if frames:
+                out[video] = frames
+        return out
+
+    def _jitter_frame(self, rel: str, magnitude: int) -> str:
+        """`rel` moved up to `magnitude` positions within its own video.
+
+        Uniform over [-magnitude, magnitude] (0 included — that's just the
+        index frame) with probability frame_jitter_prob, clamped to the
+        video's own range so the result is always the same individual in the
+        same video. Returns `rel` unchanged when jitter is off, doesn't fire,
+        or the frame isn't in the scanned set (a random-pool frame, which has
+        no index identity to jitter around).
+        """
+        if magnitude <= 0 or random.random() >= self.frame_jitter_prob:
+            return rel
+        frames = self._video_frames.get(str(Path(rel).parent))
+        if not frames:
+            return rel
+        i = bisect.bisect_left(frames, rel)
+        if i >= len(frames) or frames[i] != rel:
+            return rel
+        j = min(max(i + random.randint(-magnitude, magnitude), 0), len(frames) - 1)
+        return frames[j]
 
     def _scan_lynx_pool(self) -> dict[str, list[str]]:
         """Every image under the split that positives/negatives are drawn
@@ -481,6 +581,9 @@ class IndexAssignedTripletDataset(Dataset):
     def __getitem__(self, index: int):
         if self.weak_queries and random.random() < self.weak_queries_prob:
             query_rel, pos_rel, neg_rels, meta = self._sample_weak_triplet()
+            # A weak triplet is already a uniform draw over the whole frame
+            # pool, so there is nothing for temporal jitter to add.
+            load_query, load_pos, load_negs = query_rel, pos_rel, list(neg_rels)
         else:
             entry = self._entries[index]
             query_rel = entry["query_frame"]
@@ -495,6 +598,17 @@ class IndexAssignedTripletDataset(Dataset):
                 "neg_source": srcs, "query_lynx": self._lynx_id(query_rel),
                 "neg_lynx": neg_lynxes, "is_weak_query": False, "query_frame": query_rel,
             }
+            # Temporal jitter, index-drawn frames only — a random-branch
+            # negative already comes from the whole pool. What gets LOADED
+            # moves; what gets REPORTED in `meta` stays the index frame, so
+            # the pair-level memories keyed on it keep working (see the
+            # frame_jitter_* docstring).
+            load_query = self._jitter_frame(query_rel, self.frame_jitter_query)
+            load_pos   = self._jitter_frame(pos_rel,   self.frame_jitter_db)
+            load_negs  = [
+                self._jitter_frame(r, self.frame_jitter_db) if src == "index" else r
+                for r, src in zip(neg_rels, srcs)
+            ]
         # Set for both branches: a weak triplet's "positive" is a random
         # same-lynx frame rather than an index candidate, but consumers still
         # need to know which frame it was (and to be able to tell that it has
@@ -507,9 +621,9 @@ class IndexAssignedTripletDataset(Dataset):
             for key in ("neg_source", "neg_lynx", "neg_frame"):
                 meta[key] = meta[key][0]
 
-        query_img = self._loader(self._full_path(query_rel))
-        pos_img   = self._loader(self._full_path(pos_rel))
-        neg_imgs  = [self._loader(self._full_path(r)) for r in neg_rels]
+        query_img = self._loader(self._full_path(load_query))
+        pos_img   = self._loader(self._full_path(load_pos))
+        neg_imgs  = [self._loader(self._full_path(r)) for r in load_negs]
 
         if self.query_transform is not None:
             query_img = self.query_transform(query_img)

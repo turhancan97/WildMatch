@@ -78,6 +78,21 @@ Independent, combinable anti-overfitting mechanisms, each off by default:
                confidences the training loss already computes — a cheap,
                forward-pass-free stand-in for re-mining the index as the model
                solves the easy candidates.
+  --frame_jitter_query / --frame_jitter_db (+ --frame_jitter_prob)
+               temporal augmentation: substitute an index frame with a
+               neighbour from the same video. The index samples ~20 frames per
+               video while every frame is on disk, so this reaches ~32x more
+               material at zero extra compute, and a neighbouring frame is the
+               same individual by construction — no gradient masking needed,
+               unlike --weak_queries' uncurated cross-video pairing. Aimed at
+               the positive term specifically: the negative side already draws
+               from the whole frame pool via --random_negative_prob, while the
+               positive stays locked to the index's handful of candidates,
+               which is where the saturation concentrates. Costs a raised
+               zero-match rate (a neighbour was never retrieval-verified —
+               watch train/skip_rate_pos_index), which is what the
+               correspondence / healing_on_positives distillation modes exist
+               to catch.
   --negative_mining_frame_prob
                frame-level sharpening of --negative_mining's lynx-level
                matrix: remembers specific frames that produced high negative
@@ -351,6 +366,33 @@ def parse_args() -> argparse.Namespace:
              "--hard_positive_sampling / --hard_negative_sampling.",
     )
     p.add_argument(
+        "--frame_jitter_query", type=int, default=0,
+        help="Temporal augmentation on the QUERY side: with probability "
+             "--frame_jitter_prob, replace the index's query frame with one up to this "
+             "many positions away in its own video (uniform over [-k, k], clamped to "
+             "the video's frame range). The index samples ~20 frames per video but "
+             "every frame is on disk (~32x more), and a neighbouring frame is the same "
+             "individual by construction — free, exactly-labelled data the index never "
+             "reaches. 0 (default) disables. Never applied to eval, nor to "
+             "--weak_queries samples (already uniform draws over the whole pool).",
+    )
+    p.add_argument(
+        "--frame_jitter_db", type=int, default=0,
+        help="Same, for the candidate/database side: the positive and any index-mined "
+             "negative (a --random_negative_prob negative is already drawn from the "
+             "whole pool, so it's left alone). Combine with --frame_jitter_query for "
+             "two-sided jitter.",
+    )
+    p.add_argument(
+        "--frame_jitter_prob", type=float, default=1.0,
+        help="Probability that an eligible frame is jittered at all; otherwise the "
+             "index frame is used unchanged. Below 1 the batch mixes exact index pairs "
+             "with jittered ones, which preserves part of the index's curated "
+             "difficulty (positives are top_k retrieved, negatives top_m hard-mined — "
+             "a neighbour was never retrieved and is on average easier) and keeps "
+             "feeding the pair-level EMAs real index-pair observations.",
+    )
+    p.add_argument(
         "--negative_mining_frame_prob", type=float, default=0.0,
         help="Frame-level upgrade to --negative_mining (required): probability that, "
              "after the mined lynx is chosen, the specific frame is drawn from a "
@@ -569,6 +611,12 @@ def parse_args() -> argparse.Namespace:
         p.error("--hard_pair_temperature must be > 0")
     if not (0.0 < args.hard_pair_decay < 1.0):
         p.error("--hard_pair_decay must be in (0, 1)")
+    if args.frame_jitter_query < 0 or args.frame_jitter_db < 0:
+        p.error("--frame_jitter_query/--frame_jitter_db must be >= 0")
+    if not (0.0 <= args.frame_jitter_prob <= 1.0):
+        p.error("--frame_jitter_prob must be in [0, 1]")
+    if (args.frame_jitter_query > 0 or args.frame_jitter_db > 0) and args.frame_jitter_prob == 0:
+        p.error("--frame_jitter_prob 0 silently disables --frame_jitter_query/--frame_jitter_db")
     return args
 
 
@@ -825,14 +873,18 @@ def measure_negative_gap(
     prev_weak = dataset.weak_queries
     prev_k    = dataset.num_negatives
     prev_hard = dataset.hard_negative_sampling
+    prev_jq, prev_jd = dataset.frame_jitter_query, dataset.frame_jitter_db
     dataset.random_negative_prob = force_prob
     dataset.return_meta = True
     dataset.weak_queries = False
-    # One negative per sample (this loop unpacks single-image negatives) and
-    # uniform index-negative choice — the baseline should describe the index's
-    # natural difficulty, not a hard-sampling-skewed slice of it.
+    # One negative per sample (this loop unpacks single-image negatives),
+    # uniform index-negative choice, and exact index frames — the baseline
+    # should describe the index's natural difficulty, not a hard-sampling- or
+    # jitter-skewed slice of it (temporal jitter lowers index-negative
+    # confidence specifically, which is exactly the ratio being measured).
     dataset.num_negatives = 1
     dataset.hard_negative_sampling = False
+    dataset.frame_jitter_query = dataset.frame_jitter_db = 0
     try:
         loader = prepare_data_loader(
             get_loader(
@@ -869,6 +921,7 @@ def measure_negative_gap(
         dataset.weak_queries = prev_weak
         dataset.num_negatives = prev_k
         dataset.hard_negative_sampling = prev_hard
+        dataset.frame_jitter_query, dataset.frame_jitter_db = prev_jq, prev_jd
 
     # Reduce sums and counts (not the two means) so the combined average is
     # weighted by how many samples each rank actually contributed.
@@ -1889,6 +1942,9 @@ def run_training_lg(args: argparse.Namespace) -> None:
         hard_negative_sampling=args.hard_negative_sampling,
         hard_pair_temperature=args.hard_pair_temperature,
         hard_pair_decay=args.hard_pair_decay,
+        frame_jitter_query=args.frame_jitter_query,
+        frame_jitter_db=args.frame_jitter_db,
+        frame_jitter_prob=args.frame_jitter_prob,
         # Always on: train_epoch_lg uses neg_source/is_weak_query to split
         # train/skip_rate_* by pair type regardless of which (if any) of the
         # adaptive-sampling flags below are active.

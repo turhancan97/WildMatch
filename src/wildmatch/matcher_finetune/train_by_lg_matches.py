@@ -18,12 +18,13 @@ from torchvision import transforms
 
 from torch.utils.data import Subset
 
+from contrastive_finetuning.keypoint_cache import is_cached_batch, open_cache_for_run
 from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
-    _extract_chunked, _lg_scores, _unwrap, add_common_args, batch_features,
-    build_pseudo_accuracy_loader, build_wandb_tags, eval_epoch, eval_pseudo_accuracy,
-    extract_train, resize_long_side, resolve_trained_models, seed_all,
+    _flatten_candidates, _lg_scores, _pseudo_batch_dims, _unwrap, add_common_args,
+    batch_features, build_pseudo_accuracy_loader, build_wandb_tags, eval_epoch,
+    eval_pseudo_accuracy, features_from_batch, resolve_trained_models, seed_all,
 )
 
 """
@@ -299,18 +300,34 @@ Independent, combinable anti-overfitting mechanisms, each off by default:
                                           i.e. it rejects negatives by itself.
 
                                           These two modes fix both halves:
-                                            * ONE-SIDED with a target. Per
-                                              reference-matched point,
-                                              relu(min(reference's own score,
+                                            * ONE-SIDED with a target, on the
+                                              row's OWN best match. Per row the
+                                              reference matched,
+                                              relu(min(reference's best,
                                               log(filter_threshold) +
-                                              --assignment_hinge_slack) -
-                                              student's score). Zero gradient
-                                              once the match clears the filter
-                                              (or reaches the reference, for
-                                              matches the reference itself
-                                              barely made) — literally "don't
-                                              ask for more certainty than the
-                                              reference had".
+                                              --assignment_hinge_slack,
+                                              student's best +
+                                              --assignment_hinge_cap) -
+                                              student's best). Defends that the
+                                              row still matches something,
+                                              never which keypoint — scoring
+                                              the student at the REFERENCE's
+                                              partner instead (the first
+                                              version of this loss) turned out
+                                              to be a demand to revert the
+                                              matching structure wholesale: a
+                                              trained student agrees with the
+                                              pretrained partner on only 47.5%
+                                              of those rows and sits ~33 nats
+                                              below target on the rest, and
+                                              since D is mass-conserving per
+                                              row, complying can only take mass
+                                              off the student's own match. That
+                                              raised skip_rate_pos instead of
+                                              lowering it. Zero gradient once
+                                              survival is reached — literally
+                                              "don't ask for more certainty
+                                              than the reference had".
                                             * GATE-FREE. Computed on D alone
                                               (--assignment_hinge_target
                                               nogate, the default), so the loss
@@ -320,15 +337,18 @@ Independent, combinable anti-overfitting mechanisms, each off by default:
                                               The gate stays entirely the
                                               margin loss's to spend on
                                               negatives.
-                                          Per-point rather than per-pair, so it
-                                          acts as individual matches approach
-                                          the threshold instead of after the
-                                          pair has already died.
+                                          Per-row rather than per-pair, so it
+                                          acts as individual rows approach the
+                                          threshold instead of after the pair
+                                          has already died.
                                           --assignment_ranking_weight adds an
                                           optional margin-ranking term
-                                          asserting only that the reference's
-                                          partner wins its row, with no
-                                          reference to magnitude at all.
+                                          asserting that the reference's own
+                                          partner wins its row — which
+                                          reintroduces exactly the
+                                          identity-dictating conflict above, so
+                                          it is off by default and only useful
+                                          for isolating that effect.
                                           The two differ only in which samples
                                           they touch: 'assignment_hinge' every
                                           index positive, 'assignment_healing'
@@ -630,13 +650,16 @@ def parse_args() -> argparse.Namespace:
              "for that pair; 'healing_on_positives' is the same rescue on a wider gate — "
              "it fires for any index positive the student now scores below the pretrained "
              "model's score for that same pair, of which a zero-match pair is the extreme "
-             "case; 'assignment_hinge' keeps those same reference matches alive but stops "
-             "the moment they survive filter_matches (one-sided, and computed on the "
-             "gate-free half of the assignment so it cannot push the matchability gate the "
-             "margin loss needs for suppressing negatives); 'assignment_healing' is "
-             "assignment_hinge restricted to the weakened positives healing_on_positives "
-             "identifies, instead of every index positive. All but 'weights' require 'lg' "
-             "in --trained_model — see module docstring for all six.",
+             "case; 'assignment_hinge' asks only that each row the reference could match "
+             "still matches SOMETHING well enough to survive filter_matches — best "
+             "against best, so it never dictates which keypoint wins, one-sided so it "
+             "stops once survival is reached, bounded by --assignment_hinge_cap, and "
+             "computed on the gate-free half of the assignment so it cannot push the "
+             "matchability gate the margin loss needs for suppressing negatives; "
+             "'assignment_healing' is assignment_hinge restricted to the weakened "
+             "positives healing_on_positives identifies, instead of every index positive. "
+             "All but 'weights' require 'lg' in --trained_model — see module docstring "
+             "for all six.",
     )
     p.add_argument(
         "--assignment_hinge_slack", type=float, default=1.0,
@@ -645,6 +668,15 @@ def parse_args() -> argparse.Namespace:
              "reference match to keep (target = min(reference's own score, "
              "log(filter_threshold) + slack)). 0 targets the survival boundary exactly; "
              "larger keeps a bigger safety margin before a match can die.",
+    )
+    p.add_argument(
+        "--assignment_hinge_cap", type=float, default=2.0,
+        help="Bounds how far above its current value a row can be asked to move in one "
+             "step by --distill_signal_type assignment_hinge/assignment_healing, so a row "
+             "that is far gone contributes at most this many nats instead of tens. "
+             "Applied to the target, not to the loss value, so the gradient stays "
+             "full-strength on exactly the rows that need it (a trust region, not a dead "
+             "zone). Keeps the consistency term the same order as the margin loss.",
     )
     p.add_argument(
         "--assignment_hinge_target", type=str, default="nogate", choices=["nogate", "scores"],
@@ -717,8 +749,27 @@ def parse_args() -> argparse.Namespace:
         p.error("--assignment_ranking_weight must be >= 0")
     if args.assignment_hinge_slack < 0:
         p.error("--assignment_hinge_slack must be >= 0")
+    if args.assignment_hinge_cap <= 0:
+        p.error("--assignment_hinge_cap must be > 0")
     if args.distill_ema_decay is not None and not (0.0 < args.distill_ema_decay < 1.0):
         p.error("--distill_ema_decay must be in (0, 1)")
+    if args.keypoint_cache is not None:
+        # The cache holds one fixed feature set per frame, so anything that
+        # would make RDD see a different image — or make RDD itself move —
+        # invalidates it. Rejected rather than silently ignored: both would
+        # otherwise train on features that don't match the configuration.
+        if args.trained_model != "lg":
+            p.error(
+                "--keypoint_cache requires --trained_model lg: with RDD unfrozen its "
+                "features change every step, so cached ones would be stale after the "
+                "first optimizer step"
+            )
+        if args.augment:
+            p.error("--keypoint_cache is incompatible with --augment (the cache was built "
+                    "on clean images; photometric jitter changes what RDD detects)")
+        if args.multi_scale_max > 0:
+            p.error("--keypoint_cache is incompatible with --multi_scale_min/--multi_scale_max "
+                    "(the cache holds features at one --resize only)")
     if args.warmup_steps < 0:
         p.error("--warmup_steps must be >= 0")
     if args.num_negatives < 1:
@@ -1032,12 +1083,8 @@ def measure_negative_gap(
         for step, (anchors, positives, negatives, neg_meta) in enumerate(loader):
             if step >= n_batches:
                 break
-            anchors_r   = resize_long_side(anchors,   args.resize).to(device)
-            negatives_r = resize_long_side(negatives, args.resize).to(device)
-            H_r, W_r = anchors_r.shape[-2:]
-
-            feats_a = extract_train(rdd, anchors_r)
-            feats_n = extract_train(rdd, negatives_r)
+            feats_a, H_r, W_r = features_from_batch(anchors,   rdd, args.resize, device)
+            feats_n, _,   _   = features_from_batch(negatives, rdd, args.resize, device)
             data_a = batch_features(feats_a, H_r, W_r)
             data_n = batch_features(feats_n, H_r, W_r)
             pred_neg = lg({"image0": data_a, "image1": data_n})
@@ -1372,65 +1419,96 @@ def distill_assignment_hinge_loss(
     ref_valid0: torch.Tensor,
     sample_mask: torch.Tensor,
     ceiling: float,
+    cap: float,
+    col_mask: torch.Tensor | None = None,
     ranking_weight: float = 0.0,
     ranking_margin: float = 1.0,
 ) -> torch.Tensor:
     """
-    Keeps the reference's own matches alive under `filter_matches` without
-    asking for any more confidence than that — the loss behind
+    Keeps the rows the reference could match from going dark, without dictating
+    WHOM they match and without asking for more than survival — the loss behind
     --distill_signal_type assignment_hinge / assignment_healing.
 
-    Same pseudo-labels as distill_correspondence_loss (the reference's
-    matches0/valid0 on the same (anchor, positive) pair), but three things
-    differ, each fixing a way the NLL leaks into the negative side:
+    Per row i that the reference matched, comparing best against best:
 
-      - ONE-SIDED, WITH A TARGET. Per reference-matched point i -> j*,
-            relu(target_i - live_scores[i, j*]),  target_i = min(ref_i, ceiling)
-        so the gradient vanishes as soon as the student's score reaches either
-        the reference's own level or `ceiling` (log(filter_threshold) + slack,
-        i.e. "survives the match filter with a margin"), whichever is lower.
-        The NLL has no notion of "enough" and keeps pushing forever; measured
-        on the finished runs, that pressure lands on the matchability gate,
-        which rises from 0.51 (pretrained) to 0.95 (correspondence) or 1.00
-        (activations). `min` with the reference is what implements "don't
-        demand more certainty than the reference had" for pairs the reference
-        itself barely matched.
+        L_i = relu( target_i - max_j live[i, j] )
+        target_i = min( max_j ref[i, j],  ceiling,  max_j live[i, j] + cap )
+
+    Four properties, each answering a way the earlier variants misbehaved:
+
+      - DEFENDS SURVIVAL, NOT IDENTITY. The first version of this loss scored
+        the student at the reference's own partner, live[i, ref_matches0[i]].
+        That looked like "reproduce the matches" but is a much stronger demand,
+        and a measured disaster: a trained student agrees with the pretrained
+        reference's partner on only 47.5% of reference-matched rows, and at the
+        other rows its score there sits ~33 nats below target — so the loss
+        stopped being maintenance and became a demand to revert the whole
+        matching structure, at ~66x the magnitude of the margin loss it was
+        supposed to accompany. Worse, it is a direct fight rather than a nudge:
+        `D` is a double log-softmax, so its mass is conserved per row and
+        column, and raising the reference's position can only take mass off the
+        student's own — leaving rows bimodal, their best score lower, and MORE
+        pairs under the filter threshold (measured: skip_rate_pos went up, not
+        down). Scoring best-against-best removes the conflict entirely: the
+        quantity being defended is the one the student is already trying to
+        raise, and it is exactly what filter_matches (hence skip_rate_pos)
+        looks at.
+
+      - ONE-SIDED, WITH A TARGET. Gradient vanishes once the row's best reaches
+        either the reference's own best or `ceiling` (log(filter_threshold) +
+        slack, i.e. "survives the filter with a margin"), whichever is lower.
+        The NLL modes have no notion of "enough" and keep pushing forever;
+        measured on the finished runs, that pressure lands on the matchability
+        gate, which rises from 0.51 (pretrained) to 0.95 (correspondence) or
+        1.00 (activations, where it stops discriminating at all). The `min`
+        with the reference is what implements "don't demand more certainty than
+        the reference had".
+
+      - BOUNDED DEMAND. `cap` limits how far above its current value a row can
+        be asked to move in one step, so a row that is far gone contributes
+        `cap` rather than tens of nats. Deliberately applied to the TARGET and
+        not to the loss value: clamping the value would zero the gradient
+        exactly on the rows that need it most, whereas clamping the target
+        keeps a full-strength gradient and merely bounds the magnitude — a
+        trust region, not a dead zone.
 
       - GATE-FREE BY DEFAULT. Caller passes LightGlue's
         `assignment_scores_nogate` (see double_softmax in
-        rdd_patch/lightglue_masked_training.py), i.e. the double log-softmax of
-        the descriptor similarity with the matchability certainties removed.
-        The student then cannot satisfy this loss by opening that gate — it has
-        to sharpen the actual correspondence structure — and the gate stays
-        free for the margin loss, which is what actually suppresses negatives
-        (measured: the gate alone contributes -8.2 nats to a negative and -0.2
-        to a positive on train, -4.9 / -0.9 on val, against a filter threshold
-        of log(0.01) = -4.6). Passing the full `assignment_scores` instead
-        (--assignment_hinge_target scores) restores the coupling and is only
-        there for comparison.
+        rdd_patch/lightglue_masked_training.py): the double log-softmax of the
+        descriptor similarity with the matchability certainties removed. The
+        student cannot satisfy this loss by opening that gate, so the gate
+        stays free for the margin loss, which is what actually suppresses
+        negatives — measured, the gate alone contributes -8.2 nats to a
+        negative and -0.2 to a positive on train (-4.9 / -0.9 on val) against a
+        filter threshold of log(0.01) = -4.6. This part did work: the finished
+        assignment runs kept a conditional gate (ratio 35) and their negatives
+        stayed rejected (90% zero-match), where correspondence dropped to 4.6
+        and 0%. Passing the full `assignment_scores` instead
+        (--assignment_hinge_target scores) restores the coupling, for
+        comparison only.
 
         Because the gate is dropped, `ceiling` is compared against the
         pair-specific half alone. That is a deliberate, slightly loose proxy:
         the true survival condition is D + gate > log(threshold), and the gate
-        term is only a few hundredths of a nat at a point that genuinely
-        matches, so the two differ by little exactly where it matters.
+        term is only a few hundredths of a nat at a row that genuinely matches,
+        so the two differ by little exactly where it matters.
 
-      - PER-POINT, NOT PER-PAIR. distill_correspondence_loss fires only for
-        samples that already match nothing; a hinge fires per individual match
-        as it approaches the threshold, so the correction arrives while it is
-        still small. `sample_mask` still gates whole samples on top of that
-        (all index positives for assignment_hinge, only the ones scoring below
-        their pretrained level for assignment_healing).
+    `sample_mask` gates whole samples on top of the per-row selection: every
+    index positive for assignment_hinge, only those scoring below their
+    pretrained level for assignment_healing.
 
-    ranking_weight > 0 adds a margin-ranking term on the same positions,
-        relu(ranking_margin - (live[i, j*] - max_{j != j*} live[i, j])),
-    which asserts only that the reference's partner wins its row, with no
-    reference to magnitude at all — the purest form of "reproduce the
-    assignments, not the activations". Off by default.
+    ranking_weight > 0 adds a margin-ranking term asserting that the
+    reference's own partner wins its row. Note this reintroduces exactly the
+    identity-dictating conflict the main term was changed to avoid, so it is
+    off by default and is only useful for isolating that effect.
 
     live_scores / ref_scores: (B, M, N) dense assignment for the student and
-        the (detached) reference. ref_scores must come from the same forward
-        that produced ref_matches0/ref_valid0.
+        the (detached) reference, from the same forward that produced
+        ref_matches0/ref_valid0.
+    col_mask: (B, N) bool marking real (non-padding) keypoints in image1.
+        Padded columns carry whatever the FFN did to padding, so they must not
+        be allowed to win the max — unlike a gather at a fixed index, a max is
+        exposed to them.
     Returns a plain 0.0 (no grad_fn — safe under find_unused_parameters=True)
     when nothing is selected.
     """
@@ -1438,19 +1516,27 @@ def distill_assignment_hinge_loss(
     if weight.sum() == 0:
         return live_scores.new_zeros(())
 
-    M = min(ref_matches0.shape[1], live_scores.shape[1])
+    M = min(ref_valid0.shape[1], live_scores.shape[1])
     weight = weight[:, :M]
-    j_idx = ref_matches0[:, :M].clamp(min=0).unsqueeze(-1)  # dummy for unmatched rows; zeroed by `weight`
-    live_at = live_scores[:, :M, :].gather(2, j_idx).squeeze(-1)          # (B, M)
-    ref_at = ref_scores[:, :M, :].gather(2, j_idx).squeeze(-1).detach()   # (B, M)
+    live = live_scores[:, :M, :]
+    ref = ref_scores[:, :M, :].detach()
+    if col_mask is not None:
+        keep = col_mask[:, None, :live.shape[2]]
+        live = live.masked_fill(~keep, torch.finfo(live.dtype).min)
+        ref = ref.masked_fill(~keep, torch.finfo(ref.dtype).min)
 
-    target = torch.clamp(ref_at, max=ceiling)
-    per_point = F.relu(target - live_at)
+    live_best = live.max(dim=2).values            # (B, M) — the student's own choice
+    ref_best = ref.max(dim=2).values              # (B, M) — already detached
+    target = torch.minimum(
+        torch.clamp(ref_best, max=ceiling), live_best.detach() + cap
+    )
+    per_point = F.relu(target - live_best)
 
     if ranking_weight > 0:
-        # Runner-up in each row, with the reference's own partner masked out.
-        masked = live_scores[:, :M, :].scatter(2, j_idx, -float("inf"))
-        runner_up = masked.max(dim=2).values
+        # Identity-dictating term — see the docstring's warning.
+        j_idx = ref_matches0[:, :M].clamp(min=0).unsqueeze(-1)
+        live_at = live.gather(2, j_idx).squeeze(-1)
+        runner_up = live.scatter(2, j_idx, torch.finfo(live.dtype).min).max(dim=2).values
         per_point = per_point + ranking_weight * F.relu(
             ranking_margin - (live_at - runner_up)
         )
@@ -1506,17 +1592,15 @@ def measure_pretrained_positive_scores(
     for query_batch, cand_batch, idx_batch in tqdm(
         loader, desc="healing-ref", leave=False, disable=not accelerator.is_main_process
     ):
-        query_batch = query_batch.to(device)
-        cand_batch  = cand_batch.to(device)
-        B, n_cand, C, H, W = cand_batch.shape
-
-        query_r = resize_long_side(query_batch, args.resize)
-        H_q, W_q = query_r.shape[-2:]
-        feats_q = _extract_chunked(_unwrap(rdd), query_r, args.batch_size)
-
-        cand_r = resize_long_side(cand_batch.view(B * n_cand, C, H, W), args.resize)
-        H_c, W_c = cand_r.shape[-2:]
-        feats_c = _extract_chunked(_unwrap(rdd), cand_r, args.batch_size)
+        if not is_cached_batch(query_batch):
+            query_batch = query_batch.to(device)
+            cand_batch  = cand_batch.to(device)
+        B, n_cand = _pseudo_batch_dims(cand_batch)
+        feats_q, H_q, W_q = features_from_batch(
+            query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
+        feats_c, H_c, W_c = features_from_batch(
+            _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
+            chunk_size=args.batch_size)
 
         feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
         data_q = batch_features(feats_q_rep, H_q, W_q)
@@ -1733,21 +1817,22 @@ def train_epoch_lg(
         step_resize = args.resize
         if args.multi_scale_max > 0:
             step_resize = random.choice(range(args.multi_scale_min, args.multi_scale_max + 1, 32))
-        if K > 1:
+        if K > 1 and not is_cached_batch(negatives):
             # (B, K, C, H, W) from the dataset -> one flat (B*K) negative
             # batch, row-major (sample, negative) — the layout every flat
-            # per-negative structure below (stats/meta/confs) shares.
+            # per-negative structure below (stats/meta/confs) shares. Cached
+            # features carry the same (B, K, ...) layout and are flattened the
+            # same way inside features_from_batch.
             negatives = negatives.reshape(-1, *negatives.shape[2:])
-        anchors_r   = resize_long_side(anchors,   step_resize).to(device)
-        positives_r = resize_long_side(positives, step_resize).to(device)
-        negatives_r = resize_long_side(negatives, step_resize).to(device)
-        H_r, W_r = anchors_r.shape[-2:]
 
-        # When RDD isn't being trained, no_grad purely skips building an unused graph.
+        # When RDD isn't being trained, no_grad purely skips building an unused
+        # graph. With --keypoint_cache there is no forward to skip at all:
+        # features_from_batch returns the precomputed features for the frames
+        # the dataset actually loaded.
         with contextlib.nullcontext() if train_rdd else torch.no_grad():
-            feats_a = extract_train(rdd, anchors_r)
-            feats_p = extract_train(rdd, positives_r)
-            feats_n = extract_train(rdd, negatives_r)
+            feats_a, H_r, W_r = features_from_batch(anchors,   rdd, step_resize, device)
+            feats_p, _,   _   = features_from_batch(positives, rdd, step_resize, device)
+            feats_n, _,   _   = features_from_batch(negatives, rdd, step_resize, device)
 
         if args.keypoint_dropout > 0:
             feats_a = drop_keypoints(feats_a, args.keypoint_dropout)
@@ -1882,7 +1967,10 @@ def train_epoch_lg(
                 consistency_loss = distill_assignment_hinge_loss(
                     pred_pos[key], ref_pred_pos[key],
                     ref_pred_pos["matches0"], ref_pred_pos["valid0"], sample_mask,
-                    ceiling=hinge_ceiling,
+                    ceiling=hinge_ceiling, cap=args.assignment_hinge_cap,
+                    # Real keypoints of the positive image: the loss maximizes
+                    # over columns, so padding must not be allowed to win.
+                    col_mask=data_p["masks"].squeeze(1).squeeze(-1).bool(),
                     ranking_weight=args.assignment_ranking_weight,
                     ranking_margin=args.assignment_ranking_margin,
                 )
@@ -2182,6 +2270,21 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # see persistent_workers note below
     dataset_mutates = moving_active or mining_active or hard_pair_active
 
+    # ── keypoint cache ──
+    # Opened before the datasets so a stale/mismatched cache fails here, on
+    # every rank, rather than at the first batch of the first epoch. The spec
+    # check covers the RDD weights (by hash), --resize, --top_k and the
+    # detection threshold; parse_args has already rejected the flags that would
+    # change the image RDD sees.
+    feature_cache = None
+    if args.keypoint_cache is not None:
+        feature_cache = open_cache_for_run(
+            args.keypoint_cache, args.rdd_weights, args.resize, args.top_k)
+        if accelerator.is_main_process:
+            print(f"keypoint cache: {args.keypoint_cache} "
+                  f"({feature_cache.manifest.get('n_frames_enumerated', '?')} frames, "
+                  f"built {feature_cache.manifest.get('built_at', '?')}) — RDD detection disabled")
+
     # ── data ──
     train_transform, eval_transform = build_transforms(args.augment)
     train_ds = IndexAssignedTripletDataset(
@@ -2201,6 +2304,7 @@ def run_training_lg(args: argparse.Namespace) -> None:
         frame_jitter_query=args.frame_jitter_query,
         frame_jitter_db=args.frame_jitter_db,
         frame_jitter_prob=args.frame_jitter_prob,
+        feature_cache=feature_cache,
         # Always on: train_epoch_lg uses neg_source/is_weak_query to split
         # train/skip_rate_* by pair type regardless of which (if any) of the
         # adaptive-sampling flags below are active.
@@ -2213,8 +2317,14 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # be noisier than val's and not comparable across epochs. Always a
     # separate dataset: train_ds carries return_meta=True (4-tuples), which
     # eval_epoch's 3-tuple unpack can't consume.
-    train_ds_eval = IndexAssignedTripletDataset(args.train_index, root=args.data_root, transform=eval_transform)
-    val_ds = IndexAssignedTripletDataset(args.val_index, root=args.data_root, transform=eval_transform)
+    train_ds_eval = IndexAssignedTripletDataset(
+        args.train_index, root=args.data_root, transform=eval_transform,
+        feature_cache=feature_cache,
+    )
+    val_ds = IndexAssignedTripletDataset(
+        args.val_index, root=args.data_root, transform=eval_transform,
+        feature_cache=feature_cache,
+    )
 
     # persistent_workers=True (get_loader's default) would pickle train_ds into
     # long-lived worker processes once and never see it again — fatal for

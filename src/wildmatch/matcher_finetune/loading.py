@@ -267,6 +267,17 @@ class IndexAssignedTripletDataset(Dataset):
             `root` to be set (same candidate pool as random_negative_prob).
         weak_queries_prob: Probability of drawing a weak_queries triplet
             instead of the index-driven one, per `__getitem__` call.
+        feature_cache: Optional `KeypointCache`. When set, the dataset returns
+            RDD's precomputed keypoints/descriptors for each frame instead of
+            the decoded image, so a frozen-RDD run skips both the JPEG decode
+            and the detection forward (see
+            contrastive_finetuning/keypoint_cache.py). The lookup uses the
+            frame that is actually LOADED — i.e. the temporally jittered one
+            when frame_jitter_* is on, not the index frame `meta` reports —
+            so the features always describe the image the model would have
+            seen. `transform`/`query_transform` are not applied in this mode
+            (there is no image to transform); the training script rejects
+            --augment and --multi_scale_* for the same reason.
         return_meta: When True, `__getitem__` returns a 4th element: a dict
             with `neg_source` ("index" | "random"), `query_lynx`, `neg_lynx`,
             `is_weak_query`, `query_frame` (the actual query path drawn —
@@ -304,9 +315,11 @@ class IndexAssignedTripletDataset(Dataset):
         frame_jitter_query: int = 0,
         frame_jitter_db: int = 0,
         frame_jitter_prob: float = 1.0,
+        feature_cache=None,
         return_meta: bool = False,
     ) -> None:
         self.root = Path(root) if root is not None else None
+        self.feature_cache = feature_cache
         self.transform = transform
         self.query_transform = query_transform or transform
         self._loader = loader or default_loader
@@ -621,17 +634,29 @@ class IndexAssignedTripletDataset(Dataset):
             for key in ("neg_source", "neg_lynx", "neg_frame"):
                 meta[key] = meta[key][0]
 
-        query_img = self._loader(self._full_path(load_query))
-        pos_img   = self._loader(self._full_path(load_pos))
-        neg_imgs  = [self._loader(self._full_path(r)) for r in load_negs]
+        if self.feature_cache is not None:
+            # Keyed on the frame actually loaded (post-jitter), never on the
+            # index frame `meta` reports — those diverge exactly when
+            # frame_jitter_* is on, and using the wrong one would silently
+            # feed the model a neighbour's features.
+            query_img = self.feature_cache.load_padded(load_query)
+            pos_img   = self.feature_cache.load_padded(load_pos)
+            neg_img = (
+                self.feature_cache.load_padded(load_negs[0]) if self.num_negatives == 1
+                else self.feature_cache.load_padded_stack(load_negs)
+            )
+        else:
+            query_img = self._loader(self._full_path(load_query))
+            pos_img   = self._loader(self._full_path(load_pos))
+            neg_imgs  = [self._loader(self._full_path(r)) for r in load_negs]
 
-        if self.query_transform is not None:
-            query_img = self.query_transform(query_img)
-        if self.transform is not None:
-            pos_img = self.transform(pos_img)
-            neg_imgs = [self.transform(i) for i in neg_imgs]
+            if self.query_transform is not None:
+                query_img = self.query_transform(query_img)
+            if self.transform is not None:
+                pos_img = self.transform(pos_img)
+                neg_imgs = [self.transform(i) for i in neg_imgs]
 
-        neg_img = neg_imgs[0] if self.num_negatives == 1 else torch.stack(neg_imgs)
+            neg_img = neg_imgs[0] if self.num_negatives == 1 else torch.stack(neg_imgs)
 
         if self.return_meta:
             return query_img, pos_img, neg_img, meta
@@ -657,6 +682,13 @@ class PseudoAccuracyDataset(Dataset):
         query_transform: Optional separate transform for the query image;
             falls back to *transform* when not provided.
         loader: Callable that loads a PIL image from a path.
+        feature_cache: Optional `KeypointCache` — same deal as
+            IndexAssignedTripletDataset's, and worth as much here: a
+            pseudo-accuracy round runs RDD on (1 + n_pos + n_neg) frames per
+            query, which for a top_k=10 index is ~21 detections per query
+            against 20 LightGlue pairs, i.e. the eval is even more
+            detection-bound than the training step. No jitter is involved on
+            this path, so the cache key is just the index's own frame.
     """
 
     def __init__(
@@ -666,8 +698,10 @@ class PseudoAccuracyDataset(Dataset):
         transform: transforms.Compose | None = None,
         query_transform: transforms.Compose | None = None,
         loader=None,
+        feature_cache=None,
     ) -> None:
         self.root = Path(root) if root is not None else None
+        self.feature_cache = feature_cache
         self.transform = transform
         self.query_transform = query_transform or transform
         self._loader = loader or default_loader
@@ -692,12 +726,19 @@ class PseudoAccuracyDataset(Dataset):
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, int]:
         entry = self.entries[index]
+        cand_paths = list(entry["positives"]) + list(entry["negatives"])
+
+        if self.feature_cache is not None:
+            return (
+                self.feature_cache.load_padded(entry["query_frame"]),
+                self.feature_cache.load_padded_stack(cand_paths),
+                index,
+            )
 
         query_img = self._loader(self._full_path(entry["query_frame"]))
         if self.query_transform is not None:
             query_img = self.query_transform(query_img)
 
-        cand_paths = list(entry["positives"]) + list(entry["negatives"])
         cand_imgs = [self._loader(self._full_path(p)) for p in cand_paths]
         if self.transform is not None:
             cand_imgs = [self.transform(img) for img in cand_imgs]

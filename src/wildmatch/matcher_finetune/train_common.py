@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 from torch.utils.data import Subset
 
 from rdd.RDD.utils import to_pixel_coords
+from contrastive_finetuning.keypoint_cache import is_cached_batch, unpad_cached_features
 from contrastive_finetuning.loading import PseudoAccuracyDataset, get_loader
 from contrastive_finetuning.process import align_tensors_to_max_length
 
@@ -49,6 +50,20 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
              "(n_pos + n_neg) per DataLoader batch) are chunked to --batch_size "
              "before RDD's deformable attention, since that scales steeply with "
              "images-per-call and OOMs on larger top_k/top_m indices otherwise",
+    )
+    p.add_argument(
+        "--keypoint_cache", type=Path, default=None,
+        help="Directory holding a prebuilt RDD keypoint cache (see "
+             "`python -m contrastive_finetuning.build_keypoint_cache`). When set, "
+             "every RDD detection — training steps, both eval paths, and the "
+             "pre-training measurement passes — is replaced by a lookup of "
+             "precomputed keypoints/descriptors, and no image is decoded at all. "
+             "Only valid with a FROZEN RDD (--trained_model lg) and a fixed input: "
+             "--augment and --multi_scale_* are rejected, since both change the "
+             "image RDD would have seen. The cache records the RDD weights hash, "
+             "--resize, --top_k and the detection threshold it was built with, and "
+             "refuses to open against a run that disagrees. Measured ~2.6x faster "
+             "training steps and ~5x faster pseudo-accuracy eval.",
     )
     p.add_argument(
         "--wandb_tags", type=str, default="",
@@ -226,14 +241,9 @@ def eval_epoch(
     n         = torch.zeros(1, device=device)
 
     for anchors, positives, negatives in loader:
-        anchors_r   = resize_long_side(anchors,   args.resize).to(device)
-        positives_r = resize_long_side(positives, args.resize).to(device)
-        negatives_r = resize_long_side(negatives, args.resize).to(device)
-        H_r, W_r = anchors_r.shape[-2:]
-
-        feats_a = extract_train(_unwrap(rdd), anchors_r)
-        feats_p = extract_train(_unwrap(rdd), positives_r)
-        feats_n = extract_train(_unwrap(rdd), negatives_r)
+        feats_a, H_r, W_r = features_from_batch(anchors,   _unwrap(rdd), args.resize, device)
+        feats_p, _,   _   = features_from_batch(positives, _unwrap(rdd), args.resize, device)
+        feats_n, _,   _   = features_from_batch(negatives, _unwrap(rdd), args.resize, device)
 
         data_a = batch_features(feats_a, H_r, W_r)
         data_p = batch_features(feats_p, H_r, W_r)
@@ -269,6 +279,39 @@ def _video_id(rel_path: str) -> str:
 
 def _lynx_id(rel_path: str) -> str:
     return Path(rel_path).parts[1]
+
+
+def features_from_batch(
+    batch,
+    rdd: torch.nn.Module,
+    resize: int,
+    device: torch.device,
+    chunk_size: int | None = None,
+) -> tuple[list[dict], int, int]:
+    """Features for one DataLoader element, from the cache or from RDD.
+
+    Returns `(feats, H, W)` where `feats` is the list-of-dicts shape
+    `extract_train` produces and `batch_features` consumes, and `(H, W)` is the
+    resized image size those keypoint coordinates live in.
+
+    `batch` is either a stacked image tensor (the normal path, resized here and
+    pushed through RDD) or the collated output of `KeypointCache.load_padded`
+    (`--keypoint_cache`, where RDD never runs and no image was ever decoded).
+    Every extraction site goes through this, so the two paths cannot drift
+    apart — in particular the cached branch flattens leading batch dims the
+    same way the image branch's explicit `.view(B * n, ...)` does, so a K>1
+    negative stack or a pseudo-accuracy candidate pool lines up identically.
+
+    Pass `chunk_size` to bound images-per-RDD-call (see `_extract_chunked`); it
+    is irrelevant to the cached branch, which has no such forward.
+    """
+    if is_cached_batch(batch):
+        return unpad_cached_features(batch, device)
+    images = resize_long_side(batch, resize).to(device)
+    h, w = images.shape[-2:]
+    if chunk_size is None:
+        return extract_train(rdd, images), h, w
+    return _extract_chunked(rdd, images, chunk_size), h, w
 
 
 def _extract_chunked(rdd: torch.nn.Module, images: torch.Tensor, chunk_size: int) -> list[dict]:
@@ -313,6 +356,26 @@ def _lg_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
     return sums / torch.minimum(n_q, n_g)
 
 
+def _pseudo_batch_dims(cand_batch) -> tuple[int, int]:
+    """(queries, candidates per query) for a PseudoAccuracyDataset batch."""
+    if is_cached_batch(cand_batch):
+        return tuple(cand_batch["n_keypoints"].shape[:2])
+    return int(cand_batch.shape[0]), int(cand_batch.shape[1])
+
+
+def _flatten_candidates(cand_batch):
+    """Fold the per-query candidate dim into the batch dim, for either payload.
+
+    Images need an explicit view; cached features are flattened downstream by
+    `unpad_cached_features`, which handles any number of leading dims, so they
+    pass through untouched.
+    """
+    if is_cached_batch(cand_batch):
+        return cand_batch
+    B, n_cand, C, H, W = cand_batch.shape
+    return cand_batch.view(B * n_cand, C, H, W)
+
+
 def build_pseudo_accuracy_loader(
     accelerator: Accelerator,
     dataset_subset,
@@ -345,6 +408,7 @@ def build_pseudo_accuracy_loader(
         transform=base_ds.transform,
         query_transform=base_ds.query_transform,
         loader=base_ds._loader,
+        feature_cache=base_ds.feature_cache,
     )
     loader = get_loader(
         ds, batch_size=args.eval_batch_size, shuffle=False,
@@ -403,17 +467,19 @@ def eval_pseudo_accuracy(
     for query_batch, cand_batch, idx_batch in tqdm(
         loader, desc=f"{prefix}", leave=False, disable=not accelerator.is_main_process
     ):
-        query_batch = query_batch.to(device)
-        cand_batch  = cand_batch.to(device)
-        B, n_cand, C, H, W = cand_batch.shape
-
-        query_r = resize_long_side(query_batch, args.resize)
-        H_q, W_q = query_r.shape[-2:]
-        feats_q = _extract_chunked(_unwrap(rdd), query_r, args.batch_size)
-
-        cand_r = resize_long_side(cand_batch.view(B * n_cand, C, H, W), args.resize)
-        H_c, W_c = cand_r.shape[-2:]
-        feats_c = _extract_chunked(_unwrap(rdd), cand_r, args.batch_size)
+        if not is_cached_batch(query_batch):
+            # Moved before the resize, as this path always has: interpolating
+            # this many candidate images is worth doing on the GPU. The cached
+            # path has nothing to resize and moves its tensors in
+            # unpad_cached_features.
+            query_batch = query_batch.to(device)
+            cand_batch  = cand_batch.to(device)
+        B, n_cand = _pseudo_batch_dims(cand_batch)
+        feats_q, H_q, W_q = features_from_batch(
+            query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
+        feats_c, H_c, W_c = features_from_batch(
+            _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
+            chunk_size=args.batch_size)
 
         # Each query's features are matched against its own n_cand candidates
         # positionally, so repeat them to line up as one flat (B * n_cand)

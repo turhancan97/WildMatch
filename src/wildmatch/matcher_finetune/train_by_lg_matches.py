@@ -382,6 +382,19 @@ def parse_args() -> argparse.Namespace:
                      "--trained_model picks which of LG/RDD are unfrozen."
     )
     add_common_args(p)
+    p.add_argument(
+        "--eval_only", action="store_true",
+        help="Run the pre-training val pseudo-accuracy eval — the exact eval_pseudo_accuracy "
+             "call every epoch's val/video_accuracy is computed with, including RDD's "
+             "candidate pool being chunked to --batch_size (see --eval_batch_size in "
+             "add_common_args) — against --lg_weights, print per-video mismatches, and exit "
+             "before the training loop starts: no optimizer step, no checkpoint written. "
+             "Unlike contrastive_finetuning.eval_video_accuracy's standalone "
+             "reimplementation, this reuses train_by_lg_matches' own code path end to end, so "
+             "it reproduces a training run's logged val/video_accuracy exactly instead of "
+             "approximating it. --train_index is still required (the model/optimizer are "
+             "still built the normal way) but its eval pass is skipped as pure overhead here.",
+    )
     p.add_argument("--lg_margin", type=float, default=0.5, help="Margin for the LightGlue match-confidence loss")
     p.add_argument(
         "--margin_activation", type=str, default="relu", choices=["relu", "softplus"],
@@ -2519,8 +2532,14 @@ def run_training_lg(args: argparse.Namespace) -> None:
 
     # ── baseline eval (before any training) ──
     global_step = 0
-    baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
-    baseline_val   = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_loader,   args, prefix="val")
+    # --eval_only: the train-split pass only exists to track the train/val gap
+    # during training, so it's pure overhead here; baseline_train stays {} and
+    # drops out of the merged dict below.
+    baseline_train = {}
+    if not args.eval_only:
+        baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
+    baseline_val = eval_pseudo_accuracy(
+        accelerator, rdd, eval_lg, eval_val_loader, args, prefix="val", verbose=args.eval_only)
     _unwrap(rdd).train(train_rdd)
     lg.train(train_lg)
     if accelerator.is_main_process:
@@ -2528,6 +2547,14 @@ def run_training_lg(args: argparse.Namespace) -> None:
             {**baseline_train, **baseline_val, "epoch": -1, "train/random_negative_prob": train_ds.random_negative_prob},
             step=global_step,
         )
+
+    if args.eval_only:
+        if accelerator.is_main_process:
+            for k, v in baseline_val.items():
+                accelerator.print(f"{k}: {v:.4f}")
+        if args.project:
+            accelerator.end_training()
+        return
 
     # ── loop ──
     prev_dead_pos_index: set[str] | None = None

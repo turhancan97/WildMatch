@@ -25,6 +25,7 @@ import cv2
 import kornia
 import numpy as np
 import torch
+import torch.nn.functional as F
 from tqdm import tqdm
 import sys
 from PIL import Image
@@ -117,6 +118,28 @@ def _load_image_exreid(
     return torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).to(device)
 
 
+def _load_train_approach(
+    image_path,
+    resize_max,
+    device,
+) -> torch.Tensor:
+    """Matches contrastive_finetuning.train_common exactly: PIL decode +
+    ToTensor (float [0,1]) + resize_long_side — plain F.interpolate
+    bilinear, NO antialiasing, target rounded down to a multiple of 32.
+    Swapped in here (see main()) so this repo's cache is built with the same
+    preprocessing lynx-finetuning-lg's own eval uses, instead of
+    parse_input's cv2-decode + antialiased-kornia-resize, which measurably
+    changes RDD's keypoints/descriptors relative to fresh extraction on the
+    training side (see debug_cross_pipeline.py / debug_preprocessing.py)."""
+    img = Image.open(image_path).convert("RGB")
+    arr = np.asarray(img).astype(np.float32) / 255.0
+    x = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0).to(device)
+    _, _, h, w = x.shape
+    scale = resize_max / max(h, w)
+    new_h, new_w = int(h * scale) // 32 * 32, int(w * scale) // 32 * 32
+    return F.interpolate(x, (new_h, new_w), mode="bilinear", align_corners=False)
+
+
 def main():
     args = parse_args()
     device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
@@ -145,8 +168,9 @@ def main():
             if cp.exists():
                 warnings.warn(f"{cp} is already in cache", UserWarning)
                 continue
-            img_torch, _ = parse_input(fp, resize=args.resize_max, device=device)
+            # img_torch, _ = parse_input(fp, resize=args.resize_max, device=device)
             # img_torch = _load_image_exreid(fp, resize_max=args.resize_max, device=device)
+            img_torch = _load_train_approach(fp, resize_max=args.resize_max, device=device)
             feat = extract_frame(rdd_model, img_torch, device, args.top_k)
             ensure_cache(cp, feat)
 

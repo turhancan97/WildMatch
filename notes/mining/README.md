@@ -86,12 +86,6 @@ sbatch helios_scripts/install_packages.sh   # after the first one finishes
 contents with your own site's activation (e.g. `conda activate rdd`); nothing else needs to
 change.
 
-> **Note:** `create_env.sh` and `_activate.sh` do not currently agree, on two points:
-> the env name (`$SCRATCH/rdd` vs `$SCRATCH/lynx-finetuning`, the latter shared with the
-> `contrastive_finetuning` repo) and the Python module (`Python/3.11.5` vs `Python/3.13.5` —
-> a venv built under one will not import under the other). Make `env_name` and the `ml
-> Python/...` line match in both before running the setup.
-
 All SLURM headers currently target Helios (`--account=plgittossl2-gpu-gh200`,
 `--partition=plgrid-gpu-gh200`); change them if you run elsewhere.
 

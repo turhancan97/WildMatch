@@ -204,7 +204,7 @@ the per-query reports into `<dump_report>_<split>_combined.json`, with frame pat
 | `top_k` | `512` | RDD keypoints per frame (cache build only) |
 | `resize_max` | `512` | long side before extraction |
 | `sample` | `20` | frames per video |
-| `top_k_frames` | `5` | positives **and** negatives kept per query frame (passed as `--top_k`) |
+| `top_k_frames` | `5` | positives **and** negatives kept per query frame |
 | `top_m` | `10` | query frames kept per video, ranked by their best score |
 
 LightGlue weights are **not** configurable here: `build_masked_lg(device)` is called without a
@@ -373,22 +373,12 @@ why `spawn_two_stage.sh` keeps two cache directories and only ever passes the st
 `build_cache.sh`.
 
 ## Known inconsistencies / gotchas
-
-- **`helios_scripts/_activate.sh` and `create_env.sh` disagree on the env name** (`lynx-finetuning`
-  vs `rdd`) — see [Cluster environment](#cluster-environment-helios_scripts).
-- **`find_strong_matches_in_parallel.sh`'s `top_k` is not the keypoint count.** The spawn script
-  passes `top_k_frames=5` in that slot, and `lynx_find_strong_matches_in_parallel.py --top_k`
-  means "candidate frames kept per query frame". Two different meanings of `top_k` live in this
-  repo; the cache-building one is the only one that means keypoints.
 - **Each spawn script uses its own cache directory** (`eval-Jul29/...`, `lynx_cache_Jul20-...`,
   `eval-Aug03/...`) even though the cache hyperparameters are identical, so the same features
   can be extracted several times. Intentional for the two-stage preselect cache (different
   preprocessing), incidental for the rest.
 - **`spawn_two_stage.sh` names the preselect cache after `${score_weights}`** (with a leading
   `_` to distinguish it) although it belongs to the preselect checkpoint. Path naming only.
-- **`spawn_evaluation.sh` both `sbatch`es and `source`s `aggregate.sh`.** The `source` runs the
-  aggregation immediately on the submit node, before the query array has produced anything;
-  only the `sbatch`ed one (dependent on the array) sees complete results.
 - **`sample=20` is a maximum.** `sample_frames` returns all frames of shorter sequences, so
   videos contribute unequal numbers of frames.
 

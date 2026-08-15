@@ -402,3 +402,34 @@ Upstream RDD builds on [ALIKE](https://github.com/Shiaoming/ALIKE),
 [XFeat](https://github.com/verlab/accelerated_features),
 [LightGlue](https://github.com/cvg/LightGlue), [Kornia](https://github.com/kornia/kornia) and
 [Deformable DETR](https://github.com/fundamentalvision/Deformable-DETR).
+## LoMa backend
+
+The two-stage evaluator supports an additive `loma` backend. Build a cache
+with the same frame sampling, resize, and keypoint budget used by the run:
+
+```bash
+conda activate loma
+python -m scripts.lynx_build_loma_cache \
+  --dataset_root /shared/sets/datasets/confidential/lynx/processed_frames/segmented/lynx-ds-Jul-20 \
+  --cache_dir outputs/loma-cache-big-512-512-20 \
+  --weights /path/to/pretrained/loma_B.pt \
+  --variant loma-b \
+  --frames_per_seq 20 \
+  --resize_max 512 \
+  --num_keypoints 512
+```
+
+Then run pretrained-LoMa candidate selection followed by fine-tuned LoMa
+scoring. `B` is the 15-frame-style diverse pool when `--top_m 1` and
+`--top_k_frames 15`; `D` is fine-tuned full-gallery retrieval:
+
+```bash
+LOMA_PRETRAINED_WEIGHTS=/path/to/pretrained/loma_B.pt \
+LOMA_SCORE_WEIGHTS=/path/to/loma-finetuning/latest \
+LOMA_MODE=B,D \
+bash slurm_scripts/spawn_loma_two_stage.sh
+```
+
+The LoMa cache contains detector/descriptor features only. Stage 1 and stage
+2 use the same cache because the detector and descriptor are frozen; only the
+matcher checkpoint changes.

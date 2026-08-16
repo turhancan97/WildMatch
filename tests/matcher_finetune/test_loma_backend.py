@@ -9,6 +9,7 @@ from contrastive_finetuning.loma_backend import (
     freeze_loma_backbone,
     train_pair_score,
 )
+from contrastive_finetuning.train_loma_matches import resize_long_side
 
 
 class FakeLoMa(nn.Module):
@@ -48,3 +49,10 @@ def test_checkpoint_bundle_resolution(tmp_path: Path):
     assert base_path is None
     assert metadata["base_weights"] is None
 
+
+def test_loma_resize_aligns_both_dimensions_to_dinov2_patch_size():
+    images = torch.zeros(1, 3, 240, 960)
+    resized = resize_long_side(images, 512)
+    assert resized.shape[-1] == 504
+    assert resized.shape[-2] % 14 == 0
+    assert resized.shape[-1] % 14 == 0

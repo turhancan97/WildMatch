@@ -171,6 +171,32 @@ def train_pair_score(model: nn.Module, keypoints0: torch.Tensor, descriptors0: t
     return 0.5 * (row_best + col_best)
 
 
+def train_pair_score_with_matches(
+    model: nn.Module,
+    keypoints0: torch.Tensor,
+    descriptors0: torch.Tensor,
+    keypoints1: torch.Tensor,
+    descriptors1: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return the differentiable score and detached mutual-match counts.
+
+    The score is the same objective as :func:`train_pair_score`.  The counts
+    are only diagnostics, matching the ``matches/mean_*`` metrics logged by
+    the RDD/LightGlue trainer; they do not participate in backpropagation.
+    """
+    from loma.loma import filter_matches
+
+    scores = model(keypoints0, keypoints1, descriptors0, descriptors1)["scores"]
+    pair_scores = scores[:, :-1, :-1].exp()
+    row_best = pair_scores.max(dim=-1).values.mean(dim=-1)
+    col_best = pair_scores.max(dim=-2).values.mean(dim=-1)
+    pair_score = 0.5 * (row_best + col_best)
+    with torch.no_grad():
+        _, _, matching_scores0, _ = filter_matches(scores.detach(), model.cfg.filter_threshold)
+        match_counts = (matching_scores0 > 0).sum(dim=-1).float()
+    return pair_score, match_counts
+
+
 @torch.inference_mode()
 def eval_pair_scores(model: nn.Module, keypoints0: torch.Tensor, descriptors0: torch.Tensor,
                      keypoints1: torch.Tensor, descriptors1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

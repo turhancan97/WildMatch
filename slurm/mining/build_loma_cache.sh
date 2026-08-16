@@ -1,4 +1,4 @@
-#!/usr/bin/env bash -l
+#!/bin/bash -l
 #SBATCH --job-name=lynx-loma-cache
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G

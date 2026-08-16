@@ -12,6 +12,9 @@ import torch
 from PIL import Image
 
 
+LOMA_PATCH_SIZE = 14
+
+
 def _load_state(path: Path) -> dict[str, torch.Tensor]:
     if path.suffix == ".safetensors":
         from safetensors.torch import load_file
@@ -84,12 +87,13 @@ def build_loma(device: torch.device, weights: Path, variant: str = "loma-b"):
 
 
 def resize_image(image: torch.Tensor, resize_max: int) -> torch.Tensor:
+    """Resize LoMa inputs for DeDoDe's DINOv2 ViT-L/14 descriptor."""
     if resize_max <= 0:
         return image
     _, _, height, width = image.shape
     scale = resize_max / max(height, width)
-    new_height = max(32, int(height * scale) // 32 * 32)
-    new_width = max(32, int(width * scale) // 32 * 32)
+    new_height = max(LOMA_PATCH_SIZE, int(height * scale) // LOMA_PATCH_SIZE * LOMA_PATCH_SIZE)
+    new_width = max(LOMA_PATCH_SIZE, int(width * scale) // LOMA_PATCH_SIZE * LOMA_PATCH_SIZE)
     return torch.nn.functional.interpolate(image.float(), (new_height, new_width), mode="bilinear", align_corners=False)
 
 

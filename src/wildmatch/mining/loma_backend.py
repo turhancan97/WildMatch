@@ -111,6 +111,24 @@ def extract_frame(model, path: Path, device: torch.device, num_keypoints: int, r
     }
 
 
+@torch.inference_mode()
+def extract_batch(model, images: torch.Tensor, num_keypoints: int):
+    """Extract benchmark-format features for a same-shaped image batch."""
+    keypoints, descriptors, _, _ = model.detect_and_describe(
+        images, num_keypoints=num_keypoints
+    )
+    image_size = np.asarray(images.shape[-2:], dtype=np.int32)
+    return [
+        {
+            "keypoints": keypoints[index].cpu().numpy(),
+            "descriptors": descriptors[index].cpu().numpy(),
+            "scores": np.ones(keypoints.shape[1], dtype=np.float32),
+            "image_size": image_size,
+        }
+        for index in range(images.shape[0])
+    ]
+
+
 def _feature_tensors(features, device):
     keypoints = torch.from_numpy(np.stack([feature.keypoints for feature in features])).to(device)
     descriptors = torch.from_numpy(np.stack([feature.descriptors for feature in features])).to(device)

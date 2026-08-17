@@ -191,8 +191,9 @@ def train_pair_score_with_matches(
     row_best = pair_scores.max(dim=-1).values.mean(dim=-1)
     col_best = pair_scores.max(dim=-2).values.mean(dim=-1)
     pair_score = 0.5 * (row_best + col_best)
+    base_model = model.module if hasattr(model, "module") else model
     with torch.no_grad():
-        _, _, matching_scores0, _ = filter_matches(scores.detach(), model.cfg.filter_threshold)
+        _, _, matching_scores0, _ = filter_matches(scores.detach(), base_model.cfg.filter_threshold)
         match_counts = (matching_scores0 > 0).sum(dim=-1).float()
     return pair_score, match_counts
 
@@ -204,7 +205,8 @@ def eval_pair_scores(model: nn.Module, keypoints0: torch.Tensor, descriptors0: t
     from loma.loma import filter_matches
 
     scores = model(keypoints0, keypoints1, descriptors0, descriptors1)["scores"]
-    _, _, matching_scores0, _ = filter_matches(scores, model.cfg.filter_threshold)
+    base_model = model.module if hasattr(model, "module") else model
+    _, _, matching_scores0, _ = filter_matches(scores, base_model.cfg.filter_threshold)
     confidence = matching_scores0.sum(dim=-1)
     denominator = min(keypoints0.shape[1], keypoints1.shape[1])
     confidence = confidence / max(1, denominator)

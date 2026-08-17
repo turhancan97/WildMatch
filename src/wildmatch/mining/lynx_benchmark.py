@@ -150,12 +150,38 @@ def ensure_cache(path: Path, feat: FrameFeat):
 
 
 def load_cached_feat(path: Path) -> FrameFeat:
-    data = np.load(path)
+    """Load either the benchmark or fine-tuning RDD cache format.
+
+    The benchmark cache stores descriptive field names, while the
+    fine-tuning cache uses compact names: k (keypoints), d (descriptors),
+    and hw (image height/width). RDD matching does not need detector scores,
+    so the compact format gets unit scores for compatibility.
+    """
+    with np.load(path, allow_pickle=False) as data:
+        fields = set(data.files)
+        if {"keypoints", "descriptors", "scores", "image_size"}.issubset(fields):
+            keypoints = data["keypoints"]
+            descriptors = data["descriptors"]
+            scores = data["scores"]
+            image_size = data["image_size"]
+        elif {"k", "d", "hw"}.issubset(fields):
+            keypoints = data["k"]
+            descriptors = data["d"]
+            image_size = data["hw"]
+            scores = np.ones(keypoints.shape[0], dtype=np.float32)
+        else:
+            raise ValueError(
+                f"unsupported feature cache schema in {path}: "
+                f"found {sorted(fields)}; expected either "
+                "keypoints/descriptors/scores/image_size or k/d/hw"
+            )
+    # LightGlue weights are float32. Normalize cached arrays here so both
+    # benchmark caches and the compact fine-tuning cache are safe to match.
     return FrameFeat(
-        keypoints=data["keypoints"],
-        descriptors=data["descriptors"],
-        scores=data["scores"],
-        image_size=data["image_size"],
+        keypoints=np.asarray(keypoints, dtype=np.float32),
+        descriptors=np.asarray(descriptors, dtype=np.float32),
+        scores=np.asarray(scores, dtype=np.float32),
+        image_size=np.asarray(image_size, dtype=np.int32),
     )
 
 

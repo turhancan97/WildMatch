@@ -1,0 +1,158 @@
+"""Mine CzechLynx positive/negative frame pairs with RDD+LightGlue."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from collections import defaultdict
+from pathlib import Path
+from time import time
+
+import torch
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from RDD.matchers.lightglue_masked import LightGlueMasked
+from scripts.batched_processing import sequence_score_per_video_and_per_frame
+from scripts.czechlynx_dataset import CzechLynxCollection
+from scripts.lynx_benchmark import FrameFeat, load_cached_feat, sample_frames
+
+
+def list_collections(root: Path, split: str) -> list[CzechLynxCollection]:
+    split_dir = root / split
+    if not split_dir.is_dir():
+        raise FileNotFoundError(f"split {split!r} not found under {root}")
+    output = []
+    for identity_dir in sorted(p for p in split_dir.iterdir() if p.is_dir()):
+        for source_dir in sorted(p for p in identity_dir.iterdir() if p.is_dir()):
+            frames = sorted(source_dir.rglob("frame_*.jpg"))
+            if frames:
+                output.append(CzechLynxCollection(split, identity_dir.name, source_dir.name, frames))
+    return output
+
+
+def build_masked_lg(device: torch.device, weights: Path):
+    config = {
+        "name": "lightglue", "input_dim": 256, "descriptor_dim": 256,
+        "add_scale_ori": False, "n_layers": 9, "num_heads": 4,
+        "flash": True, "mp": False, "filter_threshold": 0.01,
+        "depth_confidence": -1, "width_confidence": -1, "weights": str(weights),
+    }
+    return LightGlueMasked("rdd", **config).to(device).eval()
+
+
+def select_diverse_topk(candidates: list[dict], k: int) -> list[dict]:
+    by_collection: dict[str, list[dict]] = defaultdict(list)
+    for candidate in candidates:
+        by_collection[candidate["collection"]].append(candidate)
+    for values in by_collection.values():
+        values.sort(key=lambda item: item["score"], reverse=True)
+    order = sorted(by_collection, key=lambda name: by_collection[name][0]["score"], reverse=True)
+    selected = []
+    rank = 0
+    while len(selected) < k:
+        added = False
+        for name in order:
+            if rank < len(by_collection[name]):
+                selected.append(by_collection[name][rank])
+                added = True
+                if len(selected) == k:
+                    break
+        if not added:
+            break
+        rank += 1
+    return selected
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dataset_root", type=Path, required=True)
+    parser.add_argument("--cache_dir", type=Path, required=True)
+    parser.add_argument("--rdd_weights", type=Path, required=True)
+    parser.add_argument("--split", choices=["train", "val", "test"], required=True)
+    parser.add_argument("--query_id", type=int, required=True)
+    parser.add_argument("--frames_per_collection", type=int, default=20)
+    parser.add_argument("--top_k_frames", type=int, default=5)
+    parser.add_argument("--top_m", type=int, default=10)
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--dump_report", type=Path, required=True)
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
+    gallery = list_collections(args.dataset_root, "train")
+    queries = list_collections(args.dataset_root, args.split)
+    if not gallery:
+        raise RuntimeError("no training gallery collections found")
+    if not 0 <= args.query_id < len(queries):
+        raise ValueError(f"query_id={args.query_id} out of range 0..{len(queries)-1}")
+    model = build_masked_lg(device, args.rdd_weights)
+
+    def cache_path(path: Path) -> Path:
+        return args.cache_dir / path.relative_to(args.dataset_root).with_suffix(".npz")
+
+    def load_collection(collection):
+        paths = sample_frames(collection.frame_paths, args.frames_per_collection)
+        return paths, [load_cached_feat(cache_path(path)) for path in paths]
+
+    query = queries[args.query_id]
+    query_paths, query_features = load_collection(query)
+    query_path_set = set(query_paths)
+    gallery_paths, gallery_features, gallery_names, gallery_ids = [], [], [], []
+    started = time()
+    for collection in gallery:
+        paths, features = load_collection(collection)
+        for path, feature in zip(paths, features):
+            if args.split == "train" and path in query_path_set:
+                continue
+            gallery_paths.append(path)
+            gallery_features.append(feature)
+            gallery_names.append(collection.name)
+            gallery_ids.append(collection.identity)
+    if not gallery_features:
+        raise RuntimeError("gallery is empty after exact-frame exclusion")
+
+    chunks = []
+    for start in range(0, len(gallery_features), 32):
+        chunks.append(sequence_score_per_video_and_per_frame(
+            model, query_features, gallery_features[start:start + 32], device
+        ))
+    scores = torch.cat(chunks, dim=1)
+    frames = []
+    for query_index, query_path in enumerate(query_paths):
+        positives, negatives = [], []
+        for column, score in enumerate(scores[query_index].tolist()):
+            candidate = {
+                "score": float(score), "frame": str(gallery_paths[column]),
+                "identity": gallery_ids[column], "collection": gallery_names[column],
+            }
+            (positives if candidate["identity"] == query.identity else negatives).append(candidate)
+        selected_pos = select_diverse_topk(positives, args.top_k_frames)
+        selected_neg = select_diverse_topk(negatives, args.top_k_frames)
+        values = [item["score"] for item in selected_pos + selected_neg]
+        frames.append({
+            "query_frame": str(query_path), "query_frame_index": query_index,
+            "selection_score": max(values) if values else 0.0,
+            "positives": selected_pos, "negatives": selected_neg,
+        })
+    selected = sorted(frames, key=lambda item: item["selection_score"], reverse=True)[:args.top_m]
+    selected.sort(key=lambda item: item["query_frame_index"])
+    output = {
+        "dataset": "CzechLynx", "query": query.name, "query_identity": query.identity,
+        "query_source": query.source, "query_split": args.split, "query_id": args.query_id,
+        "frames_per_collection": args.frames_per_collection, "top_k_frames": args.top_k_frames,
+        "top_m": args.top_m, "gallery_collections": len(gallery),
+        "selected_frames": selected, "all_frames": frames, "elapsed_s": time() - started,
+    }
+    args.dump_report.parent.mkdir(parents=True, exist_ok=True)
+    output_path = Path(f"{args.dump_report}_{args.split}_{args.query_id}.json")
+    output_path.write_text(json.dumps(output, indent=2))
+    print(f"Saved {output_path} ({len(selected)} selected query frames)")
+
+
+if __name__ == "__main__":
+    main()

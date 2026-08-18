@@ -261,27 +261,21 @@ def is_cached_batch(item) -> bool:
 
 def unpad_cached_features(
     batched: dict[str, torch.Tensor], device: torch.device,
-) -> tuple[list[dict], int, int]:
-    """Collated `load_padded` output -> (list of ragged feature dicts, H, W).
+) -> tuple[list[dict], list[int], list[int]]:
+    """Collated cache output -> features and per-frame H/W lists.
 
     Accepts any number of leading batch dims — (B, ...) for query/positive and
     (B, K, ...) for the K-negative and pseudo-accuracy-candidate stacks — and
     flattens them row-major, which is the same layout the image path produces
     via `negatives.reshape(-1, *shape[2:])`.
 
-    The returned (H, W) is the resized image size the cached coordinates live
-    in. `batch_features` takes one size for the whole batch, so this asserts
-    the batch agrees rather than silently normalizing keypoints against the
-    wrong frame's dimensions.
+    Cached frames can have different aspect ratios, so one DataLoader batch
+    may contain several resized image sizes. Keep the dimensions per frame;
+    the LightGlue wrapper partitions pair batches by their two image sizes
+    before forwarding them.
     """
     n = batched["n_keypoints"].reshape(-1)
     hw = batched["image_hw"].reshape(-1, 2)
-    if not bool((hw == hw[0]).all()):
-        raise ValueError(
-            "cached frames in one batch have different resized sizes "
-            f"({hw.unique(dim=0).tolist()}); batch_features normalizes the whole "
-            "batch against a single image size"
-        )
     d_dim = batched["descriptors"].shape[-1]
     kpts = batched["keypoints"].reshape(-1, batched["keypoints"].shape[-2], 2).to(device, non_blocking=True)
     desc = batched["descriptors"].reshape(-1, batched["descriptors"].shape[-2], d_dim).to(device, non_blocking=True)
@@ -292,5 +286,4 @@ def unpad_cached_features(
         {"keypoints": kpts[i, :c], "descriptors": desc[i, :c]}
         for i, c in enumerate(counts)
     ]
-    h, w = int(hw[0, 0]), int(hw[0, 1])
-    return feats, h, w
+    return feats, hw[:, 0].tolist(), hw[:, 1].tolist()

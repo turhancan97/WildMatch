@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import random
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -113,34 +114,114 @@ def build_wandb_tags(args: argparse.Namespace) -> list[str]:
     return tags or ["run"]
 
 
-def batch_features(feats: list[dict], image_h: int, image_w: int) -> dict:
-    """
-    Pack variable-length feature dicts into tensors for LightGlueForTraining.
+def _image_size_rows(image_h, image_w, n: int) -> list[tuple[int, int]]:
+    """Normalize scalar or per-frame H/W values to ``(H, W)`` rows."""
+    if isinstance(image_h, (list, tuple)):
+        heights = [int(v) for v in image_h]
+        widths = [int(v) for v in image_w]
+        if len(heights) != n or len(widths) != n:
+            raise ValueError(
+                f"per-frame image sizes have lengths {len(heights)} and {len(widths)} "
+                f"for a feature batch of {n}"
+            )
+        return list(zip(heights, widths))
+    return [(int(image_h), int(image_w))] * n
 
-    Args:
-        feats: list of B dicts with 'keypoints' (N_i, 2) and 'descriptors' (N_i, D)
-        image_h, image_w: image dimensions for keypoint normalisation
 
-    Returns dict with keypoints, descriptors, masks, image_size ready for LG.
-    """
+def _repeat_image_sizes(image_h, image_w, repeats: int):
+    """Repeat per-frame sizes in the same row-major order as repeated features."""
+    if isinstance(image_h, list):
+        return (
+            [h for h in image_h for _ in range(repeats)],
+            [w for w in image_w for _ in range(repeats)],
+        )
+    return image_h, image_w
+
+
+def batch_features(feats: list[dict], image_h, image_w) -> dict:
+    """Pack variable-length features with scalar or per-frame image sizes."""
     ks = [f["keypoints"]   for f in feats]
     ds = [f["descriptors"] for f in feats]
     device = ks[0].device
 
-    ks_pad, masks = align_tensors_to_max_length(ks)   # (B, M, 2), (B, M, 1)
-    ds_pad, _     = align_tensors_to_max_length(ds)   # (B, M, D)
-
-    # image_size as [W, H] — LightGlue normalize_keypoints convention
+    ks_pad, masks = align_tensors_to_max_length(ks)
+    ds_pad, _     = align_tensors_to_max_length(ds)
     sizes = torch.tensor(
-        [image_w, image_h], device=device
-    ).unsqueeze(0).expand(len(feats), -1).contiguous()
+        [[w, h] for h, w in _image_size_rows(image_h, image_w, len(feats))],
+        device=device,
+    ).contiguous()
 
     return {
         "keypoints":   ks_pad,
         "descriptors": ds_pad,
         "image_size":  sizes,
-        "masks":       masks.unsqueeze(1),  # (B, 1, M, 1) for masked attention
+        "masks":       masks.unsqueeze(1),
     }
+
+
+def _select_batch_rows(data: dict[str, torch.Tensor], indices: torch.Tensor) -> dict:
+    """Select feature-batch rows while keeping the tensors on their device."""
+    return {key: value.index_select(0, indices) for key, value in data.items()}
+
+
+def run_lg_partitioned(lg: torch.nn.Module, data0: dict, data1: dict) -> dict:
+    """Run LightGlue separately for each pair of image dimensions.
+
+    Cached RDD coordinates are expressed in each frame's resized image space.
+    This partitions mixed cached pair batches by
+    ``(image0_h, image0_w, image1_h, image1_w)`` and merges dense outputs back
+    into the original order. Uniform image batches take one unchanged forward.
+    """
+    size0 = data0["image_size"]
+    size1 = data1["image_size"]
+    if size0.shape[0] != size1.shape[0]:
+        raise ValueError(
+            f"LightGlue pair batches have different lengths: {size0.shape[0]} and {size1.shape[0]}"
+        )
+
+    groups: dict[tuple[int, int, int, int], list[int]] = defaultdict(list)
+    for row, (s0, s1) in enumerate(zip(size0.tolist(), size1.tolist())):
+        groups[(*map(int, s0), *map(int, s1))].append(row)
+    if len(groups) == 1:
+        return lg({"image0": data0, "image1": data1})
+
+    grouped_outputs = []
+    for rows in groups.values():
+        indices = torch.tensor(rows, dtype=torch.long, device=size0.device)
+        grouped_outputs.append((indices, lg({
+            "image0": _select_batch_rows(data0, indices),
+            "image1": _select_batch_rows(data1, indices),
+        })))
+
+    batch_size = size0.shape[0]
+    merged: dict = {}
+    for key in grouped_outputs[0][1]:
+        values = [output[key] for _, output in grouped_outputs]
+        if torch.is_tensor(values[0]):
+            target_shape = [batch_size] + [
+                max(value.shape[dim] for value in values)
+                for dim in range(1, values[0].dim())
+            ]
+            fill = -1 if key.startswith("matches") else 0
+            result = values[0].new_full(target_shape, fill)
+            for indices, output in grouped_outputs:
+                value = output[key]
+                padding = []
+                for dim in reversed(range(1, value.dim())):
+                    padding.extend((0, target_shape[dim] - value.shape[dim]))
+                if padding:
+                    value = F.pad(value, padding, value=fill)
+                result = result.index_copy(0, indices, value)
+            merged[key] = result
+        elif isinstance(values[0], list):
+            result = [None] * batch_size
+            for indices, output in grouped_outputs:
+                for row, value in zip(indices.tolist(), output[key]):
+                    result[row] = value
+            merged[key] = result
+        else:
+            merged[key] = max(values)
+    return merged
 
 
 # ── training-time feature extraction ─────────────────────────────────────────
@@ -214,8 +295,8 @@ def run_lg_matching_grad(
     data_a = batch_features(feats_a, image_h, image_w)
     data_p = batch_features(feats_p, image_h, image_w)
     data_n = batch_features(feats_n, image_h, image_w)
-    pred_pos = lg({"image0": data_a, "image1": data_p})
-    pred_neg = lg({"image0": data_a, "image1": data_n})
+    pred_pos = run_lg_partitioned(lg, data_a, data_p)
+    pred_neg = run_lg_partitioned(lg, data_a, data_n)
     return pred_pos, pred_neg, data_a, data_p, data_n
 
 
@@ -241,16 +322,16 @@ def eval_epoch(
     n         = torch.zeros(1, device=device)
 
     for anchors, positives, negatives in loader:
-        feats_a, H_r, W_r = features_from_batch(anchors,   _unwrap(rdd), args.resize, device)
-        feats_p, _,   _   = features_from_batch(positives, _unwrap(rdd), args.resize, device)
-        feats_n, _,   _   = features_from_batch(negatives, _unwrap(rdd), args.resize, device)
+        feats_a, H_a, W_a = features_from_batch(anchors,   _unwrap(rdd), args.resize, device)
+        feats_p, H_p, W_p = features_from_batch(positives, _unwrap(rdd), args.resize, device)
+        feats_n, H_n, W_n = features_from_batch(negatives, _unwrap(rdd), args.resize, device)
 
-        data_a = batch_features(feats_a, H_r, W_r)
-        data_p = batch_features(feats_p, H_r, W_r)
-        data_n = batch_features(feats_n, H_r, W_r)
+        data_a = batch_features(feats_a, H_a, W_a)
+        data_p = batch_features(feats_p, H_p, W_p)
+        data_n = batch_features(feats_n, H_n, W_n)
 
-        pred_pos = lg({"image0": data_a, "image1": data_p})
-        pred_neg = lg({"image0": data_a, "image1": data_n})
+        pred_pos = run_lg_partitioned(lg, data_a, data_p)
+        pred_neg = run_lg_partitioned(lg, data_a, data_n)
 
         # valid0 is the dense form of the ragged `matches` list — same count,
         # no per-batch-item Python loop.
@@ -287,20 +368,17 @@ def features_from_batch(
     resize: int,
     device: torch.device,
     chunk_size: int | None = None,
-) -> tuple[list[dict], int, int]:
+) -> tuple[list[dict], int | list[int], int | list[int]]:
     """Features for one DataLoader element, from the cache or from RDD.
 
-    Returns `(feats, H, W)` where `feats` is the list-of-dicts shape
-    `extract_train` produces and `batch_features` consumes, and `(H, W)` is the
-    resized image size those keypoint coordinates live in.
+    Returns `(feats, H, W)` where cached inputs provide per-frame H/W lists
+    and live image inputs provide scalar dimensions.
 
     `batch` is either a stacked image tensor (the normal path, resized here and
     pushed through RDD) or the collated output of `KeypointCache.load_padded`
     (`--keypoint_cache`, where RDD never runs and no image was ever decoded).
-    Every extraction site goes through this, so the two paths cannot drift
-    apart — in particular the cached branch flattens leading batch dims the
-    same way the image branch's explicit `.view(B * n, ...)` does, so a K>1
-    negative stack or a pseudo-accuracy candidate pool lines up identically.
+    Every extraction site goes through this, and cached leading batch dims are
+    flattened in the same row-major order as the live image path.
 
     Pass `chunk_size` to bound images-per-RDD-call (see `_extract_chunked`); it
     is irrelevant to the cached branch, which has no such forward.
@@ -376,24 +454,27 @@ def _flatten_candidates(cand_batch):
     return cand_batch.view(B * n_cand, C, H, W)
 
 
+def group_pseudo_accuracy_entries(entries: list[dict]) -> list[list[dict]]:
+    """Group entries by positive/negative candidate counts deterministically."""
+    buckets: dict[tuple[int, int], list[dict]] = defaultdict(list)
+    for entry in entries:
+        shape = (len(entry["positives"]), len(entry["negatives"]))
+        buckets[shape].append(entry)
+    return [buckets[shape] for shape in sorted(buckets)]
+
+
 def build_pseudo_accuracy_loader(
     accelerator: Accelerator,
     dataset_subset,
     args: argparse.Namespace,
 ):
-    """
-    Build the (Accelerate-prepared) DataLoader that eval_pseudo_accuracy runs on.
+    """Build prepared pseudo-evaluation loaders grouped by candidate shape.
 
-    Kept separate from eval_pseudo_accuracy, and called once per split before
-    the training loop, for two reasons: the PseudoAccuracyDataset scan and the
-    worker pool are then paid for once instead of on every evaluation, and —
-    more importantly — `accelerator.prepare` shards the queries across
-    processes, so an N-GPU run actually splits the work N ways instead of every
-    rank redundantly scoring the whole index.
-
-    `dataset_subset` is an IndexAssignedTripletDataset or a Subset of one; the
-    returned loader's `.dataset` is the derived PseudoAccuracyDataset (which
-    eval_pseudo_accuracy reads `n_pos`/`entries` off).
+    The original Lynx indices have a fixed number of positives and negatives,
+    but CzechLynx collections can have different positive counts. Entries are
+    bucketed by ``(n_pos, n_neg)`` so each DataLoader remains stackable without
+    padding or duplicating candidates. The return value is a list of
+    ``(prepared_loader, dataset)`` pairs.
     """
     if isinstance(dataset_subset, Subset):
         base_ds = dataset_subset.dataset
@@ -402,19 +483,30 @@ def build_pseudo_accuracy_loader(
         base_ds = dataset_subset
         entries = base_ds._entries
 
-    ds = PseudoAccuracyDataset(
-        entries,
-        root=base_ds.root,
-        transform=base_ds.transform,
-        query_transform=base_ds.query_transform,
-        loader=base_ds._loader,
-        feature_cache=base_ds.feature_cache,
-    )
-    loader = get_loader(
-        ds, batch_size=args.eval_batch_size, shuffle=False,
-        num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
-    )
-    return accelerator.prepare(loader)
+    prepared = []
+    for bucket in group_pseudo_accuracy_entries(entries):
+        ds = PseudoAccuracyDataset(
+            bucket,
+            root=base_ds.root,
+            transform=base_ds.transform,
+            query_transform=base_ds.query_transform,
+            loader=base_ds._loader,
+            feature_cache=base_ds.feature_cache,
+        )
+        loader = get_loader(
+            ds, batch_size=args.eval_batch_size, shuffle=False,
+            num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
+        )
+        prepared.append((accelerator.prepare(loader), ds))
+
+    if accelerator.is_main_process and len(prepared) > 1:
+        accelerator.print(
+            "pseudo-eval candidate buckets: "
+            + ", ".join(
+                f"{ds.n_pos}+{ds.n_neg}={len(ds)}" for _, ds in prepared
+            )
+        )
+    return prepared
 
 
 @torch.no_grad()
@@ -427,116 +519,79 @@ def eval_pseudo_accuracy(
     prefix: str,
     verbose: bool = False,
 ) -> dict:
-    """
-    For each query in the subset, run LG against every positive and every
-    negative candidate listed in the JSON index.  The candidate with the most
-    matches wins; the prediction is correct when that winner is a positive.
+    """Evaluate every query against its complete variable-size candidate pool.
 
-    Also returns mean match counts over all pos/neg pairs as a byproduct, and
-    a video-level accuracy: paths look like
-    ``{split}/{lynx_id}/{location}/{video_id}/{frame}.jpg``, so all query
-    frames sharing a parent directory belong to the same video/individual.
-    For each video, the query frame with the single highest-scoring candidate
-    (over its whole pos+neg pool, not just positives) picks that candidate's
-    lynx_id as the video's prediction; correct when it matches the video's
-    own lynx_id.
-
-    `loader` comes from build_pseudo_accuracy_loader — a prepared DataLoader
-    over a PseudoAccuracyDataset, so each process only scores its own shard of
-    the queries and every query's full candidate pool goes through a single
-    RDD+LG forward pass instead of being scored candidate by candidate. Every
-    batch's results are gathered across processes (see gather_for_metrics
-    below), so all ranks return identical, whole-split metrics.
-
-    If `verbose`, prints one line per misclassified video (wrong predicted
-    lynx_id) with the winning query frame, its score, and the matched
-    candidate frame — see contrastive_finetuning/eval_video_accuracy.py.
+    ``loader`` is the list returned by build_pseudo_accuracy_loader. Each
+    bucket has a fixed candidate shape internally, while metrics are combined
+    over all queries exactly once.
     """
     device = accelerator.device
     _unwrap(rdd).eval()
 
-    ds = loader.dataset
-    entries = ds.entries
-
+    entries = [entry for _, ds in loader for entry in ds.entries]
     accuracies: list[float] = []
     best_pos_scores: list[float] = []
     best_neg_scores: list[float] = []
-    # video_id -> {"true_lynx": str, "best_score": float, "best_lynx": str}
     videos: dict[str, dict] = {}
 
-    for query_batch, cand_batch, idx_batch in tqdm(
-        loader, desc=f"{prefix}", leave=False, disable=not accelerator.is_main_process
-    ):
-        if not is_cached_batch(query_batch):
-            # Moved before the resize, as this path always has: interpolating
-            # this many candidate images is worth doing on the GPU. The cached
-            # path has nothing to resize and moves its tensors in
-            # unpad_cached_features.
-            query_batch = query_batch.to(device)
-            cand_batch  = cand_batch.to(device)
-        B, n_cand = _pseudo_batch_dims(cand_batch)
-        feats_q, H_q, W_q = features_from_batch(
-            query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
-        feats_c, H_c, W_c = features_from_batch(
-            _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
-            chunk_size=args.batch_size)
-
-        # Each query's features are matched against its own n_cand candidates
-        # positionally, so repeat them to line up as one flat (B * n_cand)
-        # -sized batch for LG.
-        feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
-        data_q = batch_features(feats_q_rep, H_q, W_q)
-        data_c = batch_features(feats_c,     H_c, W_c)
-        pred = lg({"image0": data_q, "image1": data_c})
-        scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
-
-        score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
-        score_neg, _ = scores[:, ds.n_pos:].max(dim=1)
-        score_best, idx_best = scores.max(dim=1)
-
-        # Collect this batch's results from every process before touching
-        # Python: the loader is sharded, so a rank only ever sees a slice of
-        # the queries, and the frame/video aggregation below needs the whole
-        # split. gather_for_metrics (rather than plain gather) drops the
-        # duplicate samples Accelerate pads the last batches with to keep
-        # shard sizes equal.
-        score_pos, score_neg, score_best, idx_best, idx_batch = accelerator.gather_for_metrics(
-            (score_pos, score_neg, score_best, idx_best, idx_batch.to(device))
-        )
-
-        # One sync per batch (instead of one per query, let alone per
-        # candidate) to pull the whole batch's results back to Python.
-        for sp, sn, sb, ib, idx in zip(
-            score_pos.tolist(), score_neg.tolist(), score_best.tolist(),
-            idx_best.tolist(), idx_batch.tolist(),
+    for group_loader, ds in loader:
+        for query_batch, cand_batch, idx_batch in tqdm(
+            group_loader, desc=f"{prefix}[{ds.n_pos}+{ds.n_neg}]", leave=False,
+            disable=not accelerator.is_main_process
         ):
-            if sp > sn:
-                accuracies.append(1.0)
-            elif sp == sn:
-                accuracies.append(0.5)
-            else:
-                accuracies.append(0.0)
-            best_pos_scores.append(sp)
-            best_neg_scores.append(sn)
+            if not is_cached_batch(query_batch):
+                query_batch = query_batch.to(device)
+                cand_batch = cand_batch.to(device)
+            B, n_cand = _pseudo_batch_dims(cand_batch)
+            feats_q, H_q, W_q = features_from_batch(
+                query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
+            feats_c, H_c, W_c = features_from_batch(
+                _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
+                chunk_size=args.batch_size)
 
-            entry = ds.entries[idx]
-            video_id  = _video_id(entry["query_frame"])
-            true_lynx = _lynx_id(entry["query_frame"])
-            cand_paths = entry["positives"] + entry["negatives"]
-            best_lynx = _lynx_id(cand_paths[ib])
+            feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
+            H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
+            data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
+            data_c = batch_features(feats_c, H_c, W_c)
+            pred = run_lg_partitioned(lg, data_q, data_c)
+            scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
 
-            rec = videos.setdefault(video_id, {
-                "true_lynx": true_lynx, "best_score": -float("inf"), "best_lynx": None,
-                "best_query_frame": None, "best_cand_path": None,
-            })
-            if sb > rec["best_score"]:
-                rec["best_score"] = sb
-                rec["best_lynx"] = best_lynx
-                rec["best_query_frame"] = entry["query_frame"]
-                rec["best_cand_path"] = cand_paths[ib]
+            score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
+            score_neg, _ = scores[:, ds.n_pos:].max(dim=1)
+            score_best, idx_best = scores.max(dim=1)
+            score_pos, score_neg, score_best, idx_best, idx_batch = accelerator.gather_for_metrics(
+                (score_pos, score_neg, score_best, idx_best, idx_batch.to(device))
+            )
+
+            for sp, sn, sb, ib, idx in zip(
+                score_pos.tolist(), score_neg.tolist(), score_best.tolist(),
+                idx_best.tolist(), idx_batch.tolist(),
+            ):
+                accuracies.append(1.0 if sp > sn else 0.5 if sp == sn else 0.0)
+                best_pos_scores.append(sp)
+                best_neg_scores.append(sn)
+
+                entry = ds.entries[idx]
+                video_id = _video_id(entry["query_frame"])
+                true_lynx = _lynx_id(entry["query_frame"])
+                cand_paths = entry["positives"] + entry["negatives"]
+                best_lynx = _lynx_id(cand_paths[ib])
+                rec = videos.setdefault(video_id, {
+                    "true_lynx": true_lynx, "best_score": -float("inf"),
+                    "best_lynx": None, "best_query_frame": None,
+                    "best_cand_path": None,
+                })
+                if sb > rec["best_score"]:
+                    rec["best_score"] = sb
+                    rec["best_lynx"] = best_lynx
+                    rec["best_query_frame"] = entry["query_frame"]
+                    rec["best_cand_path"] = cand_paths[ib]
 
     n = len(entries)
-    video_correct = [1.0 if rec["best_lynx"] == rec["true_lynx"] else 0.0 for rec in videos.values()]
+    video_correct = [
+        1.0 if rec["best_lynx"] == rec["true_lynx"] else 0.0
+        for rec in videos.values()
+    ]
 
     if verbose:
         n_wrong = 0
@@ -552,8 +607,8 @@ def eval_pseudo_accuracy(
         accelerator.print(f"[{prefix}] {n_wrong}/{len(videos)} videos misclassified")
 
     return {
-        f"{prefix}/frame_accuracy": sum(accuracies)    / max(n, 1),
-        f"{prefix}/mean_score_pos":  sum(best_pos_scores) / max(n, 1),
-        f"{prefix}/mean_score_neg":  sum(best_neg_scores) / max(n, 1),
-        f"{prefix}/video_accuracy":  sum(video_correct) / max(len(video_correct), 1),
+        f"{prefix}/frame_accuracy": sum(accuracies) / max(n, 1),
+        f"{prefix}/mean_score_pos": sum(best_pos_scores) / max(n, 1),
+        f"{prefix}/mean_score_neg": sum(best_neg_scores) / max(n, 1),
+        f"{prefix}/video_accuracy": sum(video_correct) / max(len(video_correct), 1),
     }

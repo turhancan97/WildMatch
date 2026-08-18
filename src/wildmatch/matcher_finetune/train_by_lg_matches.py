@@ -22,9 +22,10 @@ from contrastive_finetuning.keypoint_cache import is_cached_batch, open_cache_fo
 from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
-    _flatten_candidates, _lg_scores, _pseudo_batch_dims, _unwrap, add_common_args,
-    batch_features, build_pseudo_accuracy_loader, build_wandb_tags, eval_epoch,
-    eval_pseudo_accuracy, features_from_batch, resolve_trained_models, seed_all,
+    _flatten_candidates, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
+    add_common_args, batch_features, build_pseudo_accuracy_loader, build_wandb_tags,
+    eval_epoch, eval_pseudo_accuracy, features_from_batch, resolve_trained_models,
+    run_lg_partitioned, seed_all,
 )
 
 """
@@ -1096,11 +1097,11 @@ def measure_negative_gap(
         for step, (anchors, positives, negatives, neg_meta) in enumerate(loader):
             if step >= n_batches:
                 break
-            feats_a, H_r, W_r = features_from_batch(anchors,   rdd, args.resize, device)
-            feats_n, _,   _   = features_from_batch(negatives, rdd, args.resize, device)
-            data_a = batch_features(feats_a, H_r, W_r)
-            data_n = batch_features(feats_n, H_r, W_r)
-            pred_neg = lg({"image0": data_a, "image1": data_n})
+            feats_a, H_a, W_a = features_from_batch(anchors,   rdd, args.resize, device)
+            feats_n, H_n, W_n = features_from_batch(negatives, rdd, args.resize, device)
+            data_a = batch_features(feats_a, H_a, W_a)
+            data_n = batch_features(feats_n, H_n, W_n)
+            pred_neg = run_lg_partitioned(lg, data_a, data_n)
             neg_conf = _lg_scores(pred_neg, data_a, data_n).tolist()
 
             for src, is_weak, conf in zip(neg_meta["neg_source"], neg_meta["is_weak_query"], neg_conf):
@@ -1599,35 +1600,35 @@ def measure_pretrained_positive_scores(
     """
     device = accelerator.device
     _unwrap(rdd).eval()
-    ds = loader.dataset
-
     observations: list[tuple[str, str, float]] = []
-    for query_batch, cand_batch, idx_batch in tqdm(
-        loader, desc="healing-ref", leave=False, disable=not accelerator.is_main_process
-    ):
-        if not is_cached_batch(query_batch):
-            query_batch = query_batch.to(device)
-            cand_batch  = cand_batch.to(device)
-        B, n_cand = _pseudo_batch_dims(cand_batch)
-        feats_q, H_q, W_q = features_from_batch(
-            query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
-        feats_c, H_c, W_c = features_from_batch(
-            _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
-            chunk_size=args.batch_size)
+    for group_loader, ds in loader:
+        for query_batch, cand_batch, idx_batch in tqdm(
+            group_loader, desc=f"healing-ref[{ds.n_pos}+{ds.n_neg}]", leave=False,
+            disable=not accelerator.is_main_process
+        ):
+            if not is_cached_batch(query_batch):
+                query_batch = query_batch.to(device)
+                cand_batch  = cand_batch.to(device)
+            B, n_cand = _pseudo_batch_dims(cand_batch)
+            feats_q, H_q, W_q = features_from_batch(
+                query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
+            feats_c, H_c, W_c = features_from_batch(
+                _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
+                chunk_size=args.batch_size)
 
-        feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
-        data_q = batch_features(feats_q_rep, H_q, W_q)
-        data_c = batch_features(feats_c,     H_c, W_c)
-        pred = lg_ref({"image0": data_q, "image1": data_c})
-        # Candidates are stacked positives-then-negatives (PseudoAccuracyDataset),
-        # so the leading n_pos columns are what this table is about.
-        pos_scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)[:, :ds.n_pos]
+            feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
+            H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
+            data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
+            data_c = batch_features(feats_c,     H_c, W_c)
+            pred = run_lg_partitioned(lg_ref, data_q, data_c)
+            # Candidates are stacked positives-then-negatives (PseudoAccuracyDataset),
+            # so the leading n_pos columns are what this table is about.
+            pos_scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)[:, :ds.n_pos]
 
-        for row, idx in zip(pos_scores.tolist(), idx_batch.tolist()):
-            entry = ds.entries[idx]
-            for pos_rel, score in zip(entry["positives"], row):
-                observations.append((entry["query_frame"], pos_rel, score))
-
+            for row, idx in zip(pos_scores.tolist(), idx_batch.tolist()):
+                entry = ds.entries[idx]
+                for pos_rel, score in zip(entry["positives"], row):
+                    observations.append((entry["query_frame"], pos_rel, score))
     return {(q, p): s for q, p, s in gather_object(observations)}
 
 
@@ -1843,24 +1844,28 @@ def train_epoch_lg(
         # features_from_batch returns the precomputed features for the frames
         # the dataset actually loaded.
         with contextlib.nullcontext() if train_rdd else torch.no_grad():
-            feats_a, H_r, W_r = features_from_batch(anchors,   rdd, step_resize, device)
-            feats_p, _,   _   = features_from_batch(positives, rdd, step_resize, device)
-            feats_n, _,   _   = features_from_batch(negatives, rdd, step_resize, device)
+            feats_a, H_a, W_a = features_from_batch(anchors,   rdd, step_resize, device)
+            feats_p, H_p, W_p = features_from_batch(positives, rdd, step_resize, device)
+            feats_n, H_n, W_n = features_from_batch(negatives, rdd, step_resize, device)
 
         if args.keypoint_dropout > 0:
             feats_a = drop_keypoints(feats_a, args.keypoint_dropout)
             feats_p = drop_keypoints(feats_p, args.keypoint_dropout)
             feats_n = drop_keypoints(feats_n, args.keypoint_dropout)
 
-        data_a = batch_features(feats_a, H_r, W_r)
-        data_p = batch_features(feats_p, H_r, W_r)
-        data_n = batch_features(feats_n, H_r, W_r)
+        data_a = batch_features(feats_a, H_a, W_a)
+        data_p = batch_features(feats_p, H_p, W_p)
+        data_n = batch_features(feats_n, H_n, W_n)
         # Anchor features repeated per negative, so the negative pass stays a
         # single flat (B*K)-pair LG call — the same repeat-the-query pattern
         # eval_pseudo_accuracy uses. Same object as data_a when K == 1.
         data_a_neg = (
             data_a if K == 1
-            else batch_features([f for f in feats_a for _ in range(K)], H_r, W_r)
+            else batch_features(
+                [f for f in feats_a for _ in range(K)],
+                [h for h in H_a for _ in range(K)] if isinstance(H_a, list) else H_a,
+                [w for w in W_a for _ in range(K)] if isinstance(W_a, list) else W_a,
+            )
         )
 
         # ActivationCapture accumulates hooks fired during *every* forward
@@ -1869,8 +1874,12 @@ def train_epoch_lg(
         # using two separate captures.
         cap_ctx = ActivationCapture(lg) if distill_acts_active else contextlib.nullcontext()
         with cap_ctx as stu_cap:
-            pred_pos = lg({"image0": data_a,     "image1": data_p})
-            pred_neg = lg({"image0": data_a_neg, "image1": data_n})
+            if distill_acts_active:
+                pred_pos = lg({"image0": data_a, "image1": data_p})
+                pred_neg = lg({"image0": data_a_neg, "image1": data_n})
+            else:
+                pred_pos = run_lg_partitioned(lg, data_a, data_p)
+                pred_neg = run_lg_partitioned(lg, data_a_neg, data_n)
         if distill_acts_active:
             n_layers = len(_unwrap(lg).transformers)
             stu_acts_pos, stu_acts_neg = stu_cap.activations[:n_layers], stu_cap.activations[n_layers:]
@@ -1924,7 +1933,7 @@ def train_epoch_lg(
             # negative side (an empty negative is the desired outcome, not a
             # problem; see lg_confidence_loss's neg_empty handling).
             with torch.no_grad():
-                ref_pred_pos = distill_lg_ref({"image0": data_a, "image1": data_p})
+                ref_pred_pos = run_lg_partitioned(distill_lg_ref, data_a, data_p)
             pos_empty = pred_pos["valid0"].sum(dim=1) == 0
             if weak_mask is not None:
                 # Same distrust as lg_confidence_loss's weak_mask: a
@@ -1942,7 +1951,7 @@ def train_epoch_lg(
             # matches on this exact (anchor, positive) pair. They differ in
             # WHICH samples they apply to, and in what they then ask for.
             with torch.no_grad():
-                ref_pred_pos = distill_lg_ref({"image0": data_a, "image1": data_p})
+                ref_pred_pos = run_lg_partitioned(distill_lg_ref, data_a, data_p)
 
             # Index positives only, in every mode — same distrust of
             # --weak_queries' uncurated pairing as lg_confidence_loss's

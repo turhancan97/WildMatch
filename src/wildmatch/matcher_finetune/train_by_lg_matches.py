@@ -19,7 +19,11 @@ from torchvision import transforms
 from torch.utils.data import Subset
 
 from contrastive_finetuning.keypoint_cache import is_cached_batch, open_cache_for_run
-from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
+from contrastive_finetuning.loading import (
+    IndexAssignedTripletDataset,
+    ShapeBucketBatchSampler,
+    get_loader,
+)
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
     _flatten_candidates, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
@@ -1071,6 +1075,8 @@ def measure_negative_gap(
     prev_k    = dataset.num_negatives
     prev_hard = dataset.hard_negative_sampling
     prev_jq, prev_jd = dataset.frame_jitter_query, dataset.frame_jitter_db
+    prev_plan = dataset._planned_triplets
+    dataset.clear_shape_plan()
     dataset.random_negative_prob = force_prob
     dataset.return_meta = True
     dataset.weak_queries = False
@@ -1115,6 +1121,7 @@ def measure_negative_gap(
         dataset.num_negatives = prev_k
         dataset.hard_negative_sampling = prev_hard
         dataset.frame_jitter_query, dataset.frame_jitter_db = prev_jq, prev_jd
+        dataset._planned_triplets = prev_plan
 
     # Reduce sums and counts (not the two means) so the combined average is
     # weighted by how many samples each rank actually contributed.
@@ -2277,7 +2284,13 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # on those parameters that never arrive, and the step after aborts with
     # "Expected to have finished reduction in the prior iteration before
     # starting a new one".
+    # ShapeBucketBatchSampler yields global batches.  Splitting those batches
+    # is what makes every DDP rank execute the same shape-grouped LightGlue
+    # schedule.  On one GPU this is a no-op; standard eval loaders are still
+    # prepared correctly because their batch sizes are divisible by the world
+    # size in the supported SLURM configurations.
     accelerator = Accelerator(
+        split_batches=True,
         log_with="wandb" if args.project else None,
         kwargs_handlers=[DistributedDataParallelKwargs(find_unused_parameters=True)],
     )
@@ -2356,11 +2369,31 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # epoch's fresh worker spawn re-pickles the current state instead.
     # (--weak_queries and return_meta don't mutate anything post-construction,
     # so they don't need this.)
-    train_loader = get_loader(
-        train_ds, batch_size=args.batch_size, shuffle=True,
-        num_workers=args.num_workers, seed=args.seed,
-        persistent_workers=(not dataset_mutates) and args.num_workers > 0,
-    )
+    shape_batch_sampler = None
+    if accelerator.num_processes > 1:
+        shape_batch_sampler = ShapeBucketBatchSampler(
+            train_ds,
+            per_gpu_batch_size=args.batch_size,
+            num_processes=accelerator.num_processes,
+            seed=args.seed,
+        )
+        # Build epoch zero before accelerator.prepare() asks the loader for
+        # its length.  The plan is rebuilt after the pretrained baseline and
+        # at every subsequent epoch.
+        shape_batch_sampler.set_epoch(0)
+        train_loader = get_loader(
+            train_ds, batch_size=None, shuffle=False,
+            num_workers=args.num_workers, batch_sampler=shape_batch_sampler,
+            # The plan is replaced between epochs, so workers must be
+            # recreated to receive the new sampled paths.
+            persistent_workers=False,
+        )
+    else:
+        train_loader = get_loader(
+            train_ds, batch_size=args.batch_size, shuffle=True,
+            num_workers=args.num_workers, seed=args.seed,
+            persistent_workers=(not dataset_mutates) and args.num_workers > 0,
+        )
 
     _rng = random.Random(args.seed)
 
@@ -2569,6 +2602,8 @@ def run_training_lg(args: argparse.Namespace) -> None:
     prev_dead_pos_index: set[str] | None = None
     live_margin = args.lg_margin
     for epoch in range(args.epochs):
+        if shape_batch_sampler is not None:
+            shape_batch_sampler.set_epoch(epoch)
         epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index, epoch_extras = train_epoch_lg(
             accelerator, rdd, lg, eval_lg, optimizer, train_loader,
             mini_train_loader, mini_val_loader,

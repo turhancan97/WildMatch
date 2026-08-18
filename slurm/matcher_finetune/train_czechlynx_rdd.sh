@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=czechlynx-rdd-ft
-#SBATCH --partition=rtx4090_batch
-#SBATCH --qos=batch
+#SBATCH --partition=dgxh100
+#SBATCH --qos=big
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=125G
-#SBATCH --time=23:59:00
+#SBATCH --time=48:00:00
+#SBATCH --exclude=c11,c22
 #SBATCH --output=logs/czechlynx-rdd-ft-%j.out
 #SBATCH --error=logs/czechlynx-rdd-ft-%j.err
 
@@ -15,8 +16,8 @@ conda activate rdd
 export WANDB_MODE=online
 
 dataset_root=${CZECHLYNX_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed}
-train_index=${CZECHLYNX_TRAIN_INDEX:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/indices/strong_matches_train_combined.json}
-val_index=${CZECHLYNX_VAL_INDEX:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/indices/strong_matches_val_combined.json}
+train_index=${CZECHLYNX_TRAIN_INDEX:-/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/strong-matches_train_combined.json}
+val_index=${CZECHLYNX_VAL_INDEX:-/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/strong-matches_val_combined.json}
 rdd_weights=${RDD_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD-v2.pth}
 lg_weights=${LG_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD_lg-v2.pth}
 cache_root=${CZECHLYNX_RDD_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-cache}

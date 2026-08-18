@@ -14,6 +14,9 @@ from torchvision.datasets.folder import default_loader
 from torchvision import transforms
 from tqdm import tqdm
 
+
+ShapeSignature = tuple[tuple[int, int], tuple[int, int], tuple[tuple[int, int], ...]]
+
 class TripletImageFolder(Dataset):
     """ImageFolder wrapper that returns (anchor, positive, negative) triplets.
 
@@ -346,6 +349,10 @@ class IndexAssignedTripletDataset(Dataset):
         # neg_lynx -> {frame -> EMA confidence}, fed by update_mining_stats;
         # used by negative_mining_frame_prob.
         self._frame_scores: dict[str, dict[str, float]] = {}
+        # Main-process plans used by distributed shape-bucketed training.
+        # Workers receive a fresh copy each epoch because persistent workers
+        # are disabled for this loader.
+        self._planned_triplets: dict[int, tuple[str, str, list[str], dict]] | None = None
 
         with open(index_path) as f:
             self._entries: list[dict] = json.load(f)
@@ -591,8 +598,79 @@ class IndexAssignedTripletDataset(Dataset):
         }
         return query_rel, pos_rel, neg_rels, meta
 
-    def __getitem__(self, index: int):
+    def _sample_paths(self, index: int) -> tuple[str, str, list[str], dict]:
+        """Sample and jitter one triplet, without loading its images."""
         if self.weak_queries and random.random() < self.weak_queries_prob:
+            query_rel, pos_rel, neg_rels, meta = self._sample_weak_triplet()
+            load_query, load_pos, load_negs = query_rel, pos_rel, list(neg_rels)
+        else:
+            entry = self._entries[index]
+            query_rel = entry["query_frame"]
+            pos_rel = self._sample_positive(entry)
+            neg_rels, srcs, neg_lynxes = [], [], []
+            for _ in range(self.num_negatives):
+                neg_rel, m = self._sample_negative(entry)
+                neg_rels.append(neg_rel)
+                srcs.append(m["neg_source"])
+                neg_lynxes.append(m["neg_lynx"])
+            meta = {
+                "neg_source": srcs, "query_lynx": self._lynx_id(query_rel),
+                "neg_lynx": neg_lynxes, "is_weak_query": False, "query_frame": query_rel,
+            }
+            load_query = self._jitter_frame(query_rel, self.frame_jitter_query)
+            load_pos = self._jitter_frame(pos_rel, self.frame_jitter_db)
+            load_negs = [
+                self._jitter_frame(r, self.frame_jitter_db) if src == "index" else r
+                for r, src in zip(neg_rels, srcs)
+            ]
+        meta["pos_frame"] = pos_rel
+        meta["neg_frame"] = list(neg_rels)
+        if self.num_negatives == 1:
+            for key in ("neg_source", "neg_lynx", "neg_frame"):
+                meta[key] = meta[key][0]
+        return load_query, load_pos, load_negs, meta
+
+    def _frame_shape(self, rel: str) -> tuple[int, int]:
+        """Return the spatial shape that the current training path will batch."""
+        if self.feature_cache is not None:
+            return self.feature_cache.image_hw(rel)
+        image = self._loader(self._full_path(rel))
+        width, height = image.size
+        return int(height), int(width)
+
+    def prepare_shape_plan(self, epoch: int, seed: int) -> dict[int, ShapeSignature]:
+        """Plan deterministic triplets and return each entry's shape signature."""
+        state = random.getstate()
+        random.seed((int(seed) * 1_000_003 + int(epoch)) & 0xFFFFFFFF)
+        plan: dict[int, tuple[str, str, list[str], dict]] = {}
+        shapes: dict[int, ShapeSignature] = {}
+        try:
+            for index in range(len(self._entries)):
+                load_query, load_pos, load_negs, meta = self._sample_paths(index)
+                plan[index] = (load_query, load_pos, load_negs, meta)
+                shapes[index] = (
+                    self._frame_shape(load_query),
+                    self._frame_shape(load_pos),
+                    tuple(self._frame_shape(rel) for rel in load_negs),
+                )
+        finally:
+            random.setstate(state)
+        self._planned_triplets = plan
+        return shapes
+
+    def clear_shape_plan(self) -> None:
+        """Disable planned sampling for temporary diagnostic loaders."""
+        self._planned_triplets = None
+
+    def __getitem__(self, index: int):
+        if self._planned_triplets is not None:
+            load_query, load_pos, load_negs, meta = self._planned_triplets[index]
+            query_rel = meta["query_frame"]
+            pos_rel = meta["pos_frame"]
+            neg_rels = meta["neg_frame"]
+            if self.num_negatives == 1:
+                neg_rels = [neg_rels]
+        elif self.weak_queries and random.random() < self.weak_queries_prob:
             query_rel, pos_rel, neg_rels, meta = self._sample_weak_triplet()
             # A weak triplet is already a uniform draw over the whole frame
             # pool, so there is nothing for temporal jitter to add.
@@ -661,6 +739,61 @@ class IndexAssignedTripletDataset(Dataset):
         if self.return_meta:
             return query_img, pos_img, neg_img, meta
         return query_img, pos_img, neg_img
+
+
+class ShapeBucketBatchSampler(Sampler[list[int]]):
+    """Yield global batches whose triplets have identical spatial signatures.
+
+    The sampler yields global batches.  Accelerate is prepared with
+    ``split_batches=True`` so every rank receives the same shape bucket and a
+    different local slice, keeping partitioned LightGlue forwards aligned.
+    """
+
+    def __init__(
+        self,
+        dataset: IndexAssignedTripletDataset,
+        per_gpu_batch_size: int,
+        num_processes: int,
+        seed: int = 0,
+    ) -> None:
+        if per_gpu_batch_size <= 0 or num_processes <= 0:
+            raise ValueError("batch sizes and num_processes must be positive")
+        self.dataset = dataset
+        self.per_gpu_batch_size = int(per_gpu_batch_size)
+        self.num_processes = int(num_processes)
+        self.batch_size = self.per_gpu_batch_size * self.num_processes
+        self.seed = int(seed)
+        self.epoch = -1
+        self._batches: list[list[int]] = []
+
+    def set_epoch(self, epoch: int) -> None:
+        self.epoch = int(epoch)
+        signatures = self.dataset.prepare_shape_plan(self.epoch, self.seed)
+        buckets: dict[ShapeSignature, list[int]] = defaultdict(list)
+        for index, signature in signatures.items():
+            buckets[signature].append(index)
+
+        rng = random.Random((self.seed * 1_000_003 + self.epoch) & 0xFFFFFFFF)
+        bucket_items = list(buckets.items())
+        rng.shuffle(bucket_items)
+        batches: list[list[int]] = []
+        for _, indices in bucket_items:
+            rng.shuffle(indices)
+            for start in range(0, len(indices), self.batch_size):
+                batch = indices[start : start + self.batch_size]
+                if len(batch) < self.batch_size:
+                    # Keep rare shape buckets instead of dropping their tail.
+                    batch.extend(rng.choices(indices, k=self.batch_size - len(batch)))
+                batches.append(batch)
+        self._batches = batches
+
+    def __iter__(self):
+        if self.epoch < 0:
+            self.set_epoch(0)
+        return iter(self._batches)
+
+    def __len__(self) -> int:
+        return len(self._batches)
 
 
 class PseudoAccuracyDataset(Dataset):
@@ -818,24 +951,31 @@ class BalancedBatchSampler(Sampler):
 
 def get_loader(
     data: Dataset,
-    batch_size: int,
+    batch_size: int | None = None,
     shuffle: bool = True,
     num_workers: int = 16,
     pin: bool = True,
     persistent_workers=True,
     seed: int | None = None,
+    batch_sampler: Sampler[list[int]] | None = None,
 ):
+    if batch_sampler is not None and (batch_size is not None or shuffle):
+        raise ValueError("batch_sampler is mutually exclusive with batch_size and shuffle")
     generator = None
     if seed is not None:
         generator = torch.Generator()
         generator.manual_seed(seed)
-    loader = DataLoader(
-        dataset=data,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        pin_memory=pin,
-        num_workers=num_workers,
-        persistent_workers=persistent_workers,
-        generator=generator,
-    )
+    kwargs = {
+        "dataset": data,
+        "pin_memory": pin,
+        "num_workers": num_workers,
+        "persistent_workers": persistent_workers,
+        "generator": generator,
+    }
+    if batch_sampler is not None:
+        kwargs["batch_sampler"] = batch_sampler
+    else:
+        kwargs["batch_size"] = batch_size
+        kwargs["shuffle"] = shuffle
+    loader = DataLoader(**kwargs)
     return loader

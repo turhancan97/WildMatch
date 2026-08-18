@@ -127,6 +127,7 @@ class KeypointCache:
         obj.root = Path(root)
         obj.spec = spec
         obj.manifest = None
+        obj._image_hw_cache = {}
         return obj
 
     def __init__(self, root: str | Path, spec: CacheSpec | None = None) -> None:
@@ -140,6 +141,7 @@ class KeypointCache:
         with open(manifest_path) as f:
             self.manifest = json.load(f)
         self.spec = CacheSpec(**self.manifest["spec"])
+        self._image_hw_cache: dict[str, tuple[int, int]] = {}
         if spec is not None:
             self.spec.assert_matches(spec, self.root)
 
@@ -150,6 +152,26 @@ class KeypointCache:
 
     def has(self, rel: str) -> bool:
         return self.path_for(rel).exists()
+
+    def image_hw(self, rel: str) -> tuple[int, int]:
+        """Return the cached resized image size without loading features."""
+        cached = self._image_hw_cache.get(rel)
+        if cached is not None:
+            return cached
+        path = self.path_for(rel)
+        try:
+            with np.load(path, allow_pickle=False) as z:
+                hw = z["hw"]
+        except FileNotFoundError:
+            raise KeyError(
+                f"frame {rel!r} is not in the keypoint cache at {self.root} "
+                f"(expected {path})"
+            ) from None
+        if hw.shape != (2,):
+            raise ValueError(f"{path} has invalid image size shape {hw.shape}")
+        value = (int(hw[0]), int(hw[1]))
+        self._image_hw_cache[rel] = value
+        return value
 
     # ── read ─────────────────────────────────────────────────────────────────
     def load_padded(self, rel: str) -> dict[str, torch.Tensor]:

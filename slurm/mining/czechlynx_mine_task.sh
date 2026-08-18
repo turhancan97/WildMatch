@@ -5,6 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
+#SBATCH --exclude=c11
 #SBATCH --time=23:59:00
 #SBATCH --output=logs/czechlynx-mine-%A_%a.out
 #SBATCH --error=logs/czechlynx-mine-%A_%a.err
@@ -16,13 +17,15 @@ conda activate rdd
 dataset_root=${1:?canonical CzechLynx root is required}
 cache_dir=${2:?RDD feature cache is required}
 rdd_weights=${3:?RDD weights are required}
-dump_report=${4:?report prefix is required}
-split=${5:?query split is required}
+lg_weights=${4:?LightGlue weights are required}
+dump_report=${5:?report prefix is required}
+split=${6:?query split is required}
 
 python -m scripts.czechlynx_mine \
   --dataset_root "${dataset_root}" \
   --cache_dir "${cache_dir}" \
   --rdd_weights "${rdd_weights}" \
+  --lg_weights "${lg_weights}" \
   --split "${split}" \
   --query_id "${SLURM_ARRAY_TASK_ID}" \
   --frames_per_collection "${CZECHLYNX_FRAMES_PER_COLLECTION:-20}" \

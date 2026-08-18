@@ -7,6 +7,7 @@ conda activate rdd
 dataset_root=${CZECHLYNX_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed}
 cache_dir=${CZECHLYNX_RDD_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-cache}
 rdd_weights=${RDD_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD-v2.pth}
+lg_weights=${LG_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD_lg-v2.pth}
 dump_report=${CZECHLYNX_MINING_REPORT:-outputs/czechlynx-time-closed/strong-matches}
 max_concurrent=${CZECHLYNX_MAX_CONCURRENT:-30}
 train_log_dir=${CZECHLYNX_TRAIN_LOG_DIR:-logs/czechlynx-mine-train}
@@ -90,13 +91,13 @@ train_job=$(sbatch --parsable \
   --output="${train_log_dir}/czechlynx-mine-%A_%a.out" \
   --error="${train_log_dir}/czechlynx-mine-%A_%a.err" \
   slurm_scripts/czechlynx_mine_task.sh \
-  "${dataset_root}" "${cache_dir}" "${rdd_weights}" "${dump_report}" train)
+  "${dataset_root}" "${cache_dir}" "${rdd_weights}" "${lg_weights}" "${dump_report}" train)
 val_job=$(sbatch --parsable \
   --array="0-$((n_val - 1))%${max_concurrent}" \
   --output="${val_log_dir}/czechlynx-mine-%A_%a.out" \
   --error="${val_log_dir}/czechlynx-mine-%A_%a.err" \
   slurm_scripts/czechlynx_mine_task.sh \
-  "${dataset_root}" "${cache_dir}" "${rdd_weights}" "${dump_report}" val)
+  "${dataset_root}" "${cache_dir}" "${rdd_weights}" "${lg_weights}" "${dump_report}" val)
 
 aggregate_job=$(sbatch --parsable --dependency="afterok:${train_job}:${val_job}" \
   slurm_scripts/czechlynx_aggregate.sh "${dump_report}" "${dataset_root}")

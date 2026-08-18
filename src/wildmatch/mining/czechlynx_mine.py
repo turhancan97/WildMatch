@@ -33,7 +33,23 @@ def list_collections(root: Path, split: str) -> list[CzechLynxCollection]:
     return output
 
 
+def validate_lightglue_weights(weights: Path) -> None:
+    """Reject detector checkpoints before LightGlue's permissive load."""
+    if not weights.is_file():
+        raise FileNotFoundError(f"LightGlue checkpoint not found: {weights}")
+    state = torch.load(str(weights), map_location="cpu")
+    if isinstance(state, dict) and isinstance(state.get("state_dict"), dict):
+        state = state["state_dict"]
+    keys = set(state) if isinstance(state, dict) else set()
+    if not any(key.startswith(("transformers.", "log_assignment.")) for key in keys):
+        raise ValueError(
+            f"{weights} does not look like an RDD LightGlue checkpoint; "
+            "pass RDD_lg-v2.pth via --lg_weights, not RDD-v2.pth"
+        )
+
+
 def build_masked_lg(device: torch.device, weights: Path):
+    validate_lightglue_weights(weights)
     config = {
         "name": "lightglue", "input_dim": 256, "descriptor_dim": 256,
         "add_scale_ori": False, "n_layers": 9, "num_heads": 4,
@@ -41,6 +57,11 @@ def build_masked_lg(device: torch.device, weights: Path):
         "depth_confidence": -1, "width_confidence": -1, "weights": str(weights),
     }
     return LightGlueMasked("rdd", **config).to(device).eval()
+
+
+def is_exact_query_frame(candidate_path: Path, query_path: Path, split: str) -> bool:
+    """Whether a gallery frame must be excluded for this query."""
+    return split == "train" and candidate_path == query_path
 
 
 def select_diverse_topk(candidates: list[dict], k: int) -> list[dict]:
@@ -71,6 +92,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset_root", type=Path, required=True)
     parser.add_argument("--cache_dir", type=Path, required=True)
     parser.add_argument("--rdd_weights", type=Path, required=True)
+    parser.add_argument("--lg_weights", type=Path, required=True)
     parser.add_argument("--split", choices=["train", "val", "test"], required=True)
     parser.add_argument("--query_id", type=int, required=True)
     parser.add_argument("--frames_per_collection", type=int, default=20)
@@ -90,7 +112,7 @@ def main() -> None:
         raise RuntimeError("no training gallery collections found")
     if not 0 <= args.query_id < len(queries):
         raise ValueError(f"query_id={args.query_id} out of range 0..{len(queries)-1}")
-    model = build_masked_lg(device, args.rdd_weights)
+    model = build_masked_lg(device, args.lg_weights)
 
     def cache_path(path: Path) -> Path:
         return args.cache_dir / path.relative_to(args.dataset_root).with_suffix(".npz")
@@ -101,14 +123,11 @@ def main() -> None:
 
     query = queries[args.query_id]
     query_paths, query_features = load_collection(query)
-    query_path_set = set(query_paths)
     gallery_paths, gallery_features, gallery_names, gallery_ids = [], [], [], []
     started = time()
     for collection in gallery:
         paths, features = load_collection(collection)
         for path, feature in zip(paths, features):
-            if args.split == "train" and path in query_path_set:
-                continue
             gallery_paths.append(path)
             gallery_features.append(feature)
             gallery_names.append(collection.name)
@@ -130,6 +149,11 @@ def main() -> None:
                 "score": float(score), "frame": str(gallery_paths[column]),
                 "identity": gallery_ids[column], "collection": gallery_names[column],
             }
+            # Keep the query collection in the train gallery so its other
+            # frames remain valid positives; exclude only this exact query
+            # frame from its own candidate pool.
+            if is_exact_query_frame(gallery_paths[column], query_path, args.split):
+                continue
             (positives if candidate["identity"] == query.identity else negatives).append(candidate)
         selected_pos = select_diverse_topk(positives, args.top_k_frames)
         selected_neg = select_diverse_topk(negatives, args.top_k_frames)

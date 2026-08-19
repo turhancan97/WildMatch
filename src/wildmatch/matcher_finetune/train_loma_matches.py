@@ -60,6 +60,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_dir", type=Path, default=Path("checkpoints/loma-b"))
     parser.add_argument("--project", default="lynx-loma-finetuning")
     parser.add_argument("--run_name", default=None)
+    parser.add_argument(
+        "--split_protocol", choices=["legacy", "strict"], default=None,
+        help="Dataset split protocol recorded in the checkpoint metadata.",
+    )
     parser.add_argument("--wandb_mode", choices=["online", "offline", "disabled"], default="online")
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=2)
@@ -390,6 +394,7 @@ def save_checkpoint(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
         "format": "lynx-loma-matcher-v1",
         "backend": "loma",
         "variant": args.loma_variant,
+        "split_protocol": args.split_protocol,
         "base_weights": str(args.loma_weights) if args.loma_weights else None,
         "epoch": epoch,
         "step": step,

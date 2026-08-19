@@ -4,6 +4,7 @@
 #SBATCH --qos=batch
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
+#SBATCH --exclude=c11,c15
 #SBATCH --mem=125G
 #SBATCH --time=23:59:00
 #SBATCH --output=logs/czechlynx-loma-cache-%j.out

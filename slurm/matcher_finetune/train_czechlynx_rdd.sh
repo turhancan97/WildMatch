@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=125G
 #SBATCH --time=48:00:00
-#SBATCH --exclude=c11,c22
+#SBATCH --exclude=c11,c15
 #SBATCH --output=logs/czechlynx-rdd-ft-%j.out
 #SBATCH --error=logs/czechlynx-rdd-ft-%j.err
 
@@ -14,14 +14,32 @@ set -euo pipefail
 source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
 conda activate rdd
 export WANDB_MODE=online
+source /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/czechlynx_protocol.sh
+czechlynx_resolve_protocol
 
 dataset_root=${CZECHLYNX_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed}
-train_index=${CZECHLYNX_TRAIN_INDEX:-/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/strong-matches_train_combined.json}
-val_index=${CZECHLYNX_VAL_INDEX:-/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/strong-matches_val_combined.json}
+train_index=${CZECHLYNX_RESOLVED_TRAIN_INDEX}
+val_index=${CZECHLYNX_RESOLVED_VAL_INDEX}
 rdd_weights=${RDD_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD-v2.pth}
 lg_weights=${LG_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD_lg-v2.pth}
 cache_root=${CZECHLYNX_RDD_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-cache}
-output_dir=${CZECHLYNX_RDD_OUTPUT:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-finetuned}
+output_dir=${CZECHLYNX_RDD_OUTPUT:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-finetuned-${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}}
+run_name=${CZECHLYNX_RDD_RUN_NAME:-czechlynx-time-closed-rdd-${CZECHLYNX_RESOLVED_PROTOCOL}}
+
+echo "CzechLynx split protocol: ${CZECHLYNX_RESOLVED_PROTOCOL}"
+echo "training index: ${train_index}"
+echo "validation index: ${val_index}"
+echo "output directory: ${output_dir}"
+
+mkdir -p "${output_dir}"
+cat > "${output_dir}/czechlynx_protocol.json" <<EOF
+{
+  "protocol": "${CZECHLYNX_RESOLVED_PROTOCOL}",
+  "train_index": "${train_index}",
+  "validation_index": "${val_index}",
+  "final_evaluation_split": "test"
+}
+EOF
 
 mkdir -p logs
 if [[ ! -f "${cache_root}/manifest.json" ]]; then
@@ -38,7 +56,8 @@ accelerate launch --num_processes 2 --num_machines 1 \
   --train_index "${train_index}" --val_index "${val_index}" \
   --data_root "${dataset_root}" --rdd_weights "${rdd_weights}" \
   --lg_weights "${lg_weights}" --output_dir "${output_dir}" \
-  --project lynx-czechlynx-rdd --run_name czechlynx-time-closed-rdd \
+  --project lynx-czechlynx-rdd --run_name "${run_name}" \
+  --split_protocol "${CZECHLYNX_RESOLVED_PROTOCOL}" \
   --trained_model lg --epochs 300 --batch_size 8 --lr 1e-5 \
   --weight_decay 1e-4 --num_workers 8 --lg_margin 0.5 \
   --random_negative_prob 0.3 --resize 512 --top_k 512 \

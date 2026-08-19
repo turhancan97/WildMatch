@@ -34,6 +34,10 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--output_dir",    type=Path, default=Path("checkpoints"))
     p.add_argument("--project",       type=str,  default=None,  help="wandb project name")
     p.add_argument("--run_name",      type=str,  default=None)
+    p.add_argument(
+        "--split_protocol", choices=["legacy", "strict"], default=None,
+        help="Dataset split protocol recorded in run metadata; used by CzechLynx SLURM entry points.",
+    )
     p.add_argument("--epochs",        type=int,  default=10)
     p.add_argument("--batch_size",    type=int,  default=8)
     p.add_argument("--lr",            type=float, default=1e-4)

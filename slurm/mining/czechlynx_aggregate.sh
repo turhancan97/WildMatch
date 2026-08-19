@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
+#SBATCH --exclude=c11,c15
 #SBATCH --output=logs/czechlynx-aggregate-%j.out
 #SBATCH --error=logs/czechlynx-aggregate-%j.err
 
@@ -18,4 +19,4 @@ dataset_root=${2:?canonical CzechLynx root is required}
 python -m scripts.czechlynx_aggregate \
   --dump_report "${dump_report}" \
   --dataset_root "${dataset_root}" \
-  --splits train val
+  --splits train val test

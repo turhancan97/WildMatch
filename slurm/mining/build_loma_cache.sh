@@ -5,6 +5,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --time=23:00:00
 #SBATCH --partition=rtx4090_batch
+#SBATCH --exclude=c11,c15
 #SBATCH --qos=batch
 #SBATCH --output=logs/loma-cache-%j.out
 #SBATCH --error=logs/loma-cache-%j.err

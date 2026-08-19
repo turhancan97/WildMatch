@@ -8,12 +8,13 @@ dataset_root=${CZECHLYNX_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_
 cache_dir=${CZECHLYNX_RDD_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-cache}
 rdd_weights=${RDD_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD-v2.pth}
 lg_weights=${LG_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD_lg-v2.pth}
-dump_report=${CZECHLYNX_MINING_REPORT:-outputs/czechlynx-time-closed/strong-matches}
-max_concurrent=${CZECHLYNX_MAX_CONCURRENT:-30}
+dump_report=${CZECHLYNX_MINING_REPORT:-outputs/czechlynx-time-closed/legacy/strong-matches}
+max_concurrent=${CZECHLYNX_MAX_CONCURRENT:-20}
 train_log_dir=${CZECHLYNX_TRAIN_LOG_DIR:-logs/czechlynx-mine-train}
 val_log_dir=${CZECHLYNX_VAL_LOG_DIR:-logs/czechlynx-mine-val}
+test_log_dir=${CZECHLYNX_TEST_LOG_DIR:-logs/czechlynx-mine-test}
 
-mkdir -p "$(dirname "${dump_report}")" "${train_log_dir}" "${val_log_dir}"
+mkdir -p "$(dirname "${dump_report}")" "${train_log_dir}" "${val_log_dir}" "${test_log_dir}"
 if ! [[ "${max_concurrent}" =~ ^[1-9][0-9]*$ ]]; then
   echo "CZECHLYNX_MAX_CONCURRENT must be a positive integer, got: ${max_concurrent}" >&2
   exit 1
@@ -81,8 +82,9 @@ PY
 
 n_train=$(find "${dataset_root}/train" -mindepth 2 -maxdepth 2 -type d | wc -l)
 n_val=$(find "${dataset_root}/val" -mindepth 2 -maxdepth 2 -type d | wc -l)
-if [[ "${n_train}" -lt 1 || "${n_val}" -lt 1 ]]; then
-  echo "canonical view is missing train/ or val/ collections under ${dataset_root}" >&2
+n_test=$(find "${dataset_root}/test" -mindepth 2 -maxdepth 2 -type d | wc -l)
+if [[ "${n_train}" -lt 1 || "${n_val}" -lt 1 || "${n_test}" -lt 1 ]]; then
+  echo "canonical view is missing train/, val/, or test/ collections under ${dataset_root}" >&2
   exit 1
 fi
 
@@ -99,11 +101,20 @@ val_job=$(sbatch --parsable \
   slurm_scripts/czechlynx_mine_task.sh \
   "${dataset_root}" "${cache_dir}" "${rdd_weights}" "${lg_weights}" "${dump_report}" val)
 
-aggregate_job=$(sbatch --parsable --dependency="afterok:${train_job}:${val_job}" \
+test_job=$(sbatch --parsable \
+  --array="0-$((n_test - 1))%${max_concurrent}" \
+  --output="${test_log_dir}/czechlynx-mine-%A_%a.out" \
+  --error="${test_log_dir}/czechlynx-mine-%A_%a.err" \
+  slurm_scripts/czechlynx_mine_task.sh \
+  "${dataset_root}" "${cache_dir}" "${rdd_weights}" "${lg_weights}" "${dump_report}" test)
+
+aggregate_job=$(sbatch --parsable --dependency="afterok:${train_job}:${val_job}:${test_job}" \
   slurm_scripts/czechlynx_aggregate.sh "${dump_report}" "${dataset_root}")
 echo "train mining: ${train_job}"
 echo "validation mining: ${val_job}"
+echo "test mining: ${test_job}"
 echo "aggregation: ${aggregate_job}"
 echo "array concurrency: ${max_concurrent} per split"
 echo "train logs: ${train_log_dir}"
 echo "validation logs: ${val_log_dir}"
+echo "test logs: ${test_log_dir}"

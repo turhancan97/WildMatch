@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --exclude=c11
+#SBATCH --exclude=c11,c15
 #SBATCH --time=23:59:00
 #SBATCH --output=logs/czechlynx-mine-%A_%a.out
 #SBATCH --error=logs/czechlynx-mine-%A_%a.err

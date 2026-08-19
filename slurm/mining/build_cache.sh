@@ -5,6 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=01:00:00
 #SBATCH --partition=rtx4090_batch
+#SBATCH --exclude=c11,c15
 #SBATCH --qos=batch
 #SBATCH --output=logs/job-%j.out
 #SBATCH --error=logs/job-%j.err

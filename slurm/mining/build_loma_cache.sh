@@ -7,8 +7,8 @@
 #SBATCH --partition=rtx4090_batch
 #SBATCH --exclude=c11,c15
 #SBATCH --qos=batch
-#SBATCH --output=logs/loma-cache-%j.out
-#SBATCH --error=logs/loma-cache-%j.err
+#SBATCH --output=logs/loma-cache/loma-cache-%j.out
+#SBATCH --error=logs/loma-cache/loma-cache-%j.err
 
 set -euo pipefail
 source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh

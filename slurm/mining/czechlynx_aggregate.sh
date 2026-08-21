@@ -6,8 +6,8 @@
 #SBATCH --mem=16G
 #SBATCH --time=01:00:00
 #SBATCH --exclude=c11,c15
-#SBATCH --output=logs/czechlynx-aggregate-%j.out
-#SBATCH --error=logs/czechlynx-aggregate-%j.err
+#SBATCH --output=logs/czechlynx-aggregate/czechlynx-aggregate-%j.out
+#SBATCH --error=logs/czechlynx-aggregate/czechlynx-aggregate-%j.err
 
 set -euo pipefail
 source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh

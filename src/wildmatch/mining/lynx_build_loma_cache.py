@@ -17,6 +17,7 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from scripts.lynx_dataset import list_sequences, sample_frames
+from scripts.wildlife_dataset import list_collections
 from scripts.loma_backend import (
     LOMA_PATCH_SIZE,
     build_loma,
@@ -75,13 +76,26 @@ def parse_args():
     return parser.parse_args()
 
 
+def frame_groups(dataset_root: Path, split: str) -> list[list[Path]]:
+    """Return frame groups for both legacy Lynx and generic wildlife layouts.
+
+    The original Lynx layout has ``split/identity/site/sequence/frame.jpg``.
+    WildlifeReID uses ``split/identity/collection/frame.jpg``.  The latter is
+    intentionally handled here instead of changing the original benchmark
+    sequence loader used by existing commands.
+    """
+    sequences = list_sequences(dataset_root, split)
+    if sequences:
+        return [sequence.frame_paths for sequence in sequences]
+    return [collection.frame_paths for collection in list_collections(dataset_root, split)]
+
+
 def enumerate_frames(args) -> list[str]:
     frames: set[str] = set()
     for split in args.splits:
-        sequences = list_sequences(args.dataset_root, split)
-        for sequence in sequences:
-            selected = sequence.frame_paths if args.all_frames else sample_frames(
-                sequence.frame_paths, args.frames_per_seq
+        for frame_paths in frame_groups(args.dataset_root, split):
+            selected = frame_paths if args.all_frames else sample_frames(
+                frame_paths, args.frames_per_seq
             )
             frames.update(str(path.relative_to(args.dataset_root)) for path in selected)
     for index_path in args.index:

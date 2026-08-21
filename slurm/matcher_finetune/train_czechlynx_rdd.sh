@@ -7,8 +7,8 @@
 #SBATCH --mem=125G
 #SBATCH --time=48:00:00
 #SBATCH --exclude=c11,c15
-#SBATCH --output=logs/czechlynx-rdd-ft-%j.out
-#SBATCH --error=logs/czechlynx-rdd-ft-%j.err
+#SBATCH --output=logs/czechlynx-rdd-ft/czechlynx-rdd-ft-%j.out
+#SBATCH --error=logs/czechlynx-rdd-ft/czechlynx-rdd-ft-%j.err
 
 set -euo pipefail
 source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh

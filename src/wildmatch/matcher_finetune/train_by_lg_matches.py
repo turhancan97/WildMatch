@@ -21,7 +21,6 @@ from torch.utils.data import Subset
 from contrastive_finetuning.keypoint_cache import is_cached_batch, open_cache_for_run
 from contrastive_finetuning.loading import (
     IndexAssignedTripletDataset,
-    ShapeBucketBatchSampler,
     get_loader,
 )
 from contrastive_finetuning.models import build_rdd, build_masked_lg
@@ -1801,6 +1800,7 @@ def train_epoch_lg(
     # already-all-reduced per-step means — identical on every rank, which
     # --adaptive_margin relies on to keep the margin in sync across processes.
     epoch_gap_sum = 0.0
+    shape_stats = {"calls": 0, "groups": 0, "pairs": 0, "partitioned_calls": 0}
 
     # [n_skipped, n_total] per (pair, query-source) bucket, for
     # train/skip_rate_{pos,neg}_{index,random}.
@@ -1885,8 +1885,8 @@ def train_epoch_lg(
                 pred_pos = lg({"image0": data_a, "image1": data_p})
                 pred_neg = lg({"image0": data_a_neg, "image1": data_n})
             else:
-                pred_pos = run_lg_partitioned(lg, data_a, data_p)
-                pred_neg = run_lg_partitioned(lg, data_a_neg, data_n)
+                pred_pos = run_lg_partitioned(lg, data_a, data_p, stats=shape_stats)
+                pred_neg = run_lg_partitioned(lg, data_a_neg, data_n, stats=shape_stats)
         if distill_acts_active:
             n_layers = len(_unwrap(lg).transformers)
             stu_acts_pos, stu_acts_neg = stu_cap.activations[:n_layers], stu_cap.activations[n_layers:]
@@ -2178,6 +2178,16 @@ def train_epoch_lg(
     epoch_total_time = time.perf_counter() - t_epoch_start
     epoch_train_time = epoch_total_time - mini_eval_time
 
+    shape_totals = accelerator.reduce(
+        torch.tensor(
+            [shape_stats["calls"], shape_stats["groups"],
+             shape_stats["pairs"], shape_stats["partitioned_calls"]],
+            device=accelerator.device, dtype=torch.float64,
+        ),
+        reduction="sum",
+    ).tolist()
+    shape_calls, shape_groups, shape_pairs, partitioned_calls = shape_totals
+
     # Sum the raw [n_skipped, n_total] pairs across ranks before turning them
     # into rates — each rank only counted its own shard, and a ratio of sums is
     # not the mean of the per-rank ratios when the buckets are unevenly filled
@@ -2220,7 +2230,16 @@ def train_epoch_lg(
             "train/skip_rate_neg_random": _skip_rate("neg_random"),
             "train/skip_rate_pos_index_dead_count": len(dead_this_epoch),
             "time/train_s":     epoch_train_time,
+            "time/train_step_s": epoch_train_time / max(steps_per_epoch, 1),
             "time/mini_eval_s": mini_eval_time,
+            "train/global_batch_size": args.batch_size * accelerator.num_processes,
+            "train/local_batch_size": args.batch_size,
+            "train/steps_per_epoch": steps_per_epoch,
+            "train/pairs_processed": shape_pairs,
+            "train/shape_groups_total": shape_groups,
+            "train/shape_groups_per_call": shape_groups / shape_calls if shape_calls else 0.0,
+            "train/partitioned_lg_calls": partitioned_calls,
+            "train/padded_samples": 0,
         }
         if recurrence is not None:
             skip_log["train/skip_rate_pos_index_recurrence"] = recurrence
@@ -2284,11 +2303,11 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # on those parameters that never arrive, and the step after aborts with
     # "Expected to have finished reduction in the prior iteration before
     # starting a new one".
-    # ShapeBucketBatchSampler yields global batches.  Splitting those batches
-    # is what makes every DDP rank execute the same shape-grouped LightGlue
-    # schedule.  On one GPU this is a no-op; standard eval loaders are still
-    # prepared correctly because their batch sizes are divisible by the world
-    # size in the supported SLURM configurations.
+    # Distributed training uses global batches and split_batches=True. The
+    # previous shape-bucket sampler grouped on the complete (query, positive,
+    # negative) shape signature. Wildlife data has many such signatures, so
+    # it produced many small padded buckets and inflated optimizer steps.
+    # Mixed shapes are handled safely inside run_lg_partitioned instead.
     accelerator = Accelerator(
         split_batches=True,
         log_with="wandb" if args.project else None,
@@ -2369,26 +2388,15 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # epoch's fresh worker spawn re-pickles the current state instead.
     # (--weak_queries and return_meta don't mutate anything post-construction,
     # so they don't need this.)
-    shape_batch_sampler = None
     if accelerator.num_processes > 1:
-        shape_batch_sampler = ShapeBucketBatchSampler(
-            train_ds,
-            per_gpu_batch_size=args.batch_size,
-            num_processes=accelerator.num_processes,
-            seed=args.seed,
-        )
-        # Build epoch zero before accelerator.prepare() asks the loader for
-        # its length.  The plan is rebuilt after the pretrained baseline and
-        # at every subsequent epoch.
-        shape_batch_sampler.set_epoch(0)
+        global_batch_size = args.batch_size * accelerator.num_processes
         train_loader = get_loader(
-            train_ds, batch_size=None, shuffle=False,
-            num_workers=args.num_workers, batch_sampler=shape_batch_sampler,
-            # The plan is replaced between epochs, so workers must be
-            # recreated to receive the new sampled paths.
-            persistent_workers=False,
+            train_ds, batch_size=global_batch_size, shuffle=True,
+            num_workers=args.num_workers, seed=args.seed,
+            persistent_workers=(not dataset_mutates) and args.num_workers > 0,
         )
     else:
+        global_batch_size = args.batch_size
         train_loader = get_loader(
             train_ds, batch_size=args.batch_size, shuffle=True,
             num_workers=args.num_workers, seed=args.seed,
@@ -2504,6 +2512,22 @@ def run_training_lg(args: argparse.Namespace) -> None:
         )
     eval_lg = ema_lg if ema_lg is not None else lg
 
+    loader_diagnostics = {
+        "train/global_batch_size": global_batch_size,
+        "train/local_batch_size": args.batch_size,
+        "train/steps_per_epoch": len(train_loader),
+        "train/shape_groups_per_call": 0.0,
+        "train/partitioned_lg_calls": 0,
+        "train/padded_samples": 0,
+    }
+    accelerator.print(
+        "[train-loader] "
+        f"global_batch_size={global_batch_size} "
+        f"local_batch_size={args.batch_size} "
+        f"steps_per_epoch={len(train_loader)} "
+        "shape_handling=run_lg_partitioned padded_samples=0"
+    )
+
     # Computed only now (post-prepare) so len(train_loader) reflects each
     # process's actual per-rank step count, not the pre-shard full dataset —
     # using the latter would understate how many EMA updates each rank really
@@ -2586,7 +2610,13 @@ def run_training_lg(args: argparse.Namespace) -> None:
     lg.train(train_lg)
     if accelerator.is_main_process:
         accelerator.log(
-            {**baseline_train, **baseline_val, "epoch": -1, "train/random_negative_prob": train_ds.random_negative_prob},
+            {
+                **loader_diagnostics,
+                **baseline_train,
+                **baseline_val,
+                "epoch": -1,
+                "train/random_negative_prob": train_ds.random_negative_prob,
+            },
             step=global_step,
         )
 
@@ -2602,8 +2632,6 @@ def run_training_lg(args: argparse.Namespace) -> None:
     prev_dead_pos_index: set[str] | None = None
     live_margin = args.lg_margin
     for epoch in range(args.epochs):
-        if shape_batch_sampler is not None:
-            shape_batch_sampler.set_epoch(epoch)
         epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index, epoch_extras = train_epoch_lg(
             accelerator, rdd, lg, eval_lg, optimizer, train_loader,
             mini_train_loader, mini_val_loader,

@@ -46,8 +46,10 @@ def test_mixed_cached_pair_sizes_are_partitioned_and_restored():
     )
     matcher = RecordingMatcher()
 
-    result = run_lg_partitioned(matcher, query, candidate)
+    stats = {}
+    result = run_lg_partitioned(matcher, query, candidate, stats=stats)
 
+    assert stats == {"calls": 1, "groups": 3, "pairs": 3, "partitioned_calls": 1}
     assert len(matcher.batch_sizes) == 3
     assert result["matching_scores0"][:, 0].tolist() == [480.0, 512.0, 480.0]
     assert result["valid0"].shape == (3, 3)

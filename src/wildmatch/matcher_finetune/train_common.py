@@ -168,7 +168,12 @@ def _select_batch_rows(data: dict[str, torch.Tensor], indices: torch.Tensor) -> 
     return {key: value.index_select(0, indices) for key, value in data.items()}
 
 
-def run_lg_partitioned(lg: torch.nn.Module, data0: dict, data1: dict) -> dict:
+def run_lg_partitioned(
+    lg: torch.nn.Module,
+    data0: dict,
+    data1: dict,
+    stats: dict | None = None,
+) -> dict:
     """Run LightGlue separately for each pair of image dimensions.
 
     Cached RDD coordinates are expressed in each frame's resized image space.
@@ -186,6 +191,13 @@ def run_lg_partitioned(lg: torch.nn.Module, data0: dict, data1: dict) -> dict:
     groups: dict[tuple[int, int, int, int], list[int]] = defaultdict(list)
     for row, (s0, s1) in enumerate(zip(size0.tolist(), size1.tolist())):
         groups[(*map(int, s0), *map(int, s1))].append(row)
+    if stats is not None:
+        stats["calls"] = stats.get("calls", 0) + 1
+        stats["groups"] = stats.get("groups", 0) + len(groups)
+        stats["pairs"] = stats.get("pairs", 0) + size0.shape[0]
+        if len(groups) > 1:
+            stats["partitioned_calls"] = stats.get("partitioned_calls", 0) + 1
+
     if len(groups) == 1:
         return lg({"image0": data0, "image1": data1})
 

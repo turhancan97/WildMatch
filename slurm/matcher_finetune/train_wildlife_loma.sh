@@ -20,7 +20,15 @@ config=${WILDLIFE_CONFIG:-${benchmark_root}/configs/wildlife/BelugaID.json}
 protocol=${WILDLIFE_PROTOCOL:-strict}
 eval "$(cd "${benchmark_root}" && python -m scripts.wildlife_config --config "${config}" --shell)"
 dataset_root=${WILDLIFE_VIEW_ROOT:-/shared/sets/datasets/vision/czechlynx/wildlife_processed/${WILDLIFE_DATASET_ID}/${protocol}}
-index_root=${WILDLIFE_INDEX_ROOT:-${benchmark_root}/outputs/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/indices}
+index_base=${WILDLIFE_INDEX_ROOT:-${benchmark_root}/outputs/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/indices}
+if [[ -n "${WILDLIFE_INDEX_ROOT:-}" ]]; then
+  index_root=${index_base}
+elif [[ -f "${index_base}/loma/strong-matches_train_combined.json" ]]; then
+  index_root="${index_base}/loma"
+else
+  # Fall back to the original shared path for existing experiments.
+  index_root=${index_base}
+fi
 train_index=${WILDLIFE_TRAIN_INDEX:-${index_root}/strong-matches_train_combined.json}
 if [[ "${protocol}" == legacy ]]; then default_val_index=${index_root}/strong-matches_test_combined.json; else default_val_index=${index_root}/strong-matches_val_combined.json; fi
 val_index=${WILDLIFE_VAL_INDEX:-${default_val_index}}

@@ -84,3 +84,20 @@ def test_accelerate_splits_one_global_batch_per_rank(tmp_path: Path):
     rank1 = prepare_data_loader(loader, num_processes=2, process_index=1, split_batches=True)
     assert next(iter(rank0)).tolist() == global_batch[:2]
     assert next(iter(rank1)).tolist() == global_batch[2:]
+
+
+def test_accelerate_splits_balanced_global_batch_to_eight_samples_per_rank():
+    # This mirrors the four-GPU RDD contract: batch_size=8 is per GPU, so the
+    # unprepared loader must expose a global batch of 32 for split_batches=True.
+    loader = DataLoader(list(range(64)), batch_size=32, shuffle=False)
+    rank0 = prepare_data_loader(loader, num_processes=4, process_index=0, split_batches=True)
+    rank3 = prepare_data_loader(loader, num_processes=4, process_index=3, split_batches=True)
+
+    assert next(iter(rank0)).tolist() == list(range(8))
+    assert next(iter(rank3)).tolist() == list(range(24, 32))
+    assert len(loader) == 2
+
+
+def test_balanced_global_batch_has_expected_steps_for_zindi_size():
+    loader = DataLoader(list(range(8098)), batch_size=32, shuffle=False)
+    assert len(loader) == 254

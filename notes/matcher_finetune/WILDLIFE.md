@@ -45,21 +45,35 @@ sbatch slurm_scripts/build_wildlife_rdd_cache.sh
 sbatch slurm_scripts/build_wildlife_loma_cache.sh
 ```
 
-Mine once with pretrained RDD/LightGlue. Both backends later consume the same
-indices:
+Mine the training pairs with the backend you want to fine-tune. RDD remains
+the default if `WILDLIFE_MINING_BACKEND` is unset:
 
 ```bash
 cd /home/kargin/Projects/repositories/rdd-parallel-benchmark
 export WILDLIFE_CONFIG=/home/kargin/Projects/repositories/rdd-parallel-benchmark/configs/wildlife/BelugaID.json
 export WILDLIFE_PROTOCOL=legacy
+export WILDLIFE_MINING_BACKEND=rdd
+bash slurm_scripts/spawn_wildlife_mining.sh
+```
+
+For LoMa, use its compatible cache and pretrained checkpoint:
+
+```bash
+export WILDLIFE_MINING_BACKEND=loma
+export WILDLIFE_LOMA_CACHE=/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/BelugaID/loma-cache
+export LOMA_WEIGHTS=/shared/sets/datasets/confidential/lynx/checkpoints/loma/loma_B.pt
 bash slurm_scripts/spawn_wildlife_mining.sh
 ```
 
 The defaults are 20 frames per collection, `top_k_frames=5`, `top_m=10`, and
-array concurrency 30. The output is
-`outputs/wildlife-reid-10k/<dataset>/indices/strong-matches_*_combined.json`.
-In legacy mode, the validation combined file is an explicit alias of the test
-combined file; no second test mining pass is performed.
+array concurrency 30. Explicit backend selection stores indices under
+`outputs/wildlife-reid-10k/<dataset>/indices/rdd/` or `loma/`; the historical
+RDD path remains available when no selector is supplied. Each combined index
+keeps the trainer-compatible JSON list and has a `.metadata.json` sidecar with
+the backend, checkpoint, cache, protocol, and mining settings. RDD and LoMa
+indices are intentionally separate. In legacy mode, the validation combined
+file is an explicit alias of the test combined file; no second test mining pass
+is performed.
 
 ## 3. Fine-tune
 
@@ -71,8 +85,10 @@ sbatch slurm_scripts/train_wildlife_rdd.sh
 sbatch slurm_scripts/train_wildlife_loma.sh
 ```
 
-The training wrappers select `strong-matches_train_combined.json` for training.
-Validation is `strong-matches_val_combined.json` in strict mode and
+The training wrappers select the backend-specific combined index when it is
+present (`indices/rdd/` for RDD and `indices/loma/` for LoMa), while retaining
+the historical shared RDD path as a fallback. Validation is
+`strong-matches_val_combined.json` in strict mode and
 `strong-matches_test_combined.json` in legacy mode. Checkpoints and W&B runs
 are isolated by dataset, backend, and protocol.
 

@@ -1106,7 +1106,7 @@ def measure_negative_gap(
             feats_n, H_n, W_n = features_from_batch(negatives, rdd, args.resize, device)
             data_a = batch_features(feats_a, H_a, W_a)
             data_n = batch_features(feats_n, H_n, W_n)
-            pred_neg = run_lg_partitioned(lg, data_a, data_n)
+            pred_neg = run_lg_partitioned(lg, data_a, data_n, partition=accelerator.num_processes == 1)
             neg_conf = _lg_scores(pred_neg, data_a, data_n).tolist()
 
             for src, is_weak, conf in zip(neg_meta["neg_source"], neg_meta["is_weak_query"], neg_conf):
@@ -1626,7 +1626,7 @@ def measure_pretrained_positive_scores(
             H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
             data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
             data_c = batch_features(feats_c,     H_c, W_c)
-            pred = run_lg_partitioned(lg_ref, data_q, data_c)
+            pred = run_lg_partitioned(lg_ref, data_q, data_c, partition=accelerator.num_processes == 1)
             # Candidates are stacked positives-then-negatives (PseudoAccuracyDataset),
             # so the leading n_pos columns are what this table is about.
             pos_scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)[:, :ds.n_pos]
@@ -1885,8 +1885,8 @@ def train_epoch_lg(
                 pred_pos = lg({"image0": data_a, "image1": data_p})
                 pred_neg = lg({"image0": data_a_neg, "image1": data_n})
             else:
-                pred_pos = run_lg_partitioned(lg, data_a, data_p, stats=shape_stats)
-                pred_neg = run_lg_partitioned(lg, data_a_neg, data_n, stats=shape_stats)
+                pred_pos = run_lg_partitioned(lg, data_a, data_p, stats=shape_stats, partition=accelerator.num_processes == 1)
+                pred_neg = run_lg_partitioned(lg, data_a_neg, data_n, stats=shape_stats, partition=accelerator.num_processes == 1)
         if distill_acts_active:
             n_layers = len(_unwrap(lg).transformers)
             stu_acts_pos, stu_acts_neg = stu_cap.activations[:n_layers], stu_cap.activations[n_layers:]
@@ -1940,7 +1940,7 @@ def train_epoch_lg(
             # negative side (an empty negative is the desired outcome, not a
             # problem; see lg_confidence_loss's neg_empty handling).
             with torch.no_grad():
-                ref_pred_pos = run_lg_partitioned(distill_lg_ref, data_a, data_p)
+                ref_pred_pos = run_lg_partitioned(distill_lg_ref, data_a, data_p, partition=accelerator.num_processes == 1)
             pos_empty = pred_pos["valid0"].sum(dim=1) == 0
             if weak_mask is not None:
                 # Same distrust as lg_confidence_loss's weak_mask: a
@@ -1958,7 +1958,7 @@ def train_epoch_lg(
             # matches on this exact (anchor, positive) pair. They differ in
             # WHICH samples they apply to, and in what they then ask for.
             with torch.no_grad():
-                ref_pred_pos = run_lg_partitioned(distill_lg_ref, data_a, data_p)
+                ref_pred_pos = run_lg_partitioned(distill_lg_ref, data_a, data_p, partition=accelerator.num_processes == 1)
 
             # Index positives only, in every mode — same distrust of
             # --weak_queries' uncurated pairing as lg_confidence_loss's
@@ -2303,13 +2303,13 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # on those parameters that never arrive, and the step after aborts with
     # "Expected to have finished reduction in the prior iteration before
     # starting a new one".
-    # Distributed training uses global batches and split_batches=True. The
+    # Distributed training uses local batches and split_batches=False. The
     # previous shape-bucket sampler grouped on the complete (query, positive,
     # negative) shape signature. Wildlife data has many such signatures, so
     # it produced many small padded buckets and inflated optimizer steps.
     # Mixed shapes are handled safely inside run_lg_partitioned instead.
     accelerator = Accelerator(
-        split_batches=True,
+        split_batches=False,
         log_with="wandb" if args.project else None,
         kwargs_handlers=[DistributedDataParallelKwargs(find_unused_parameters=True)],
     )
@@ -2388,20 +2388,12 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # epoch's fresh worker spawn re-pickles the current state instead.
     # (--weak_queries and return_meta don't mutate anything post-construction,
     # so they don't need this.)
-    if accelerator.num_processes > 1:
-        global_batch_size = args.batch_size * accelerator.num_processes
-        train_loader = get_loader(
-            train_ds, batch_size=global_batch_size, shuffle=True,
-            num_workers=args.num_workers, seed=args.seed,
-            persistent_workers=(not dataset_mutates) and args.num_workers > 0,
-        )
-    else:
-        global_batch_size = args.batch_size
-        train_loader = get_loader(
-            train_ds, batch_size=args.batch_size, shuffle=True,
-            num_workers=args.num_workers, seed=args.seed,
-            persistent_workers=(not dataset_mutates) and args.num_workers > 0,
-        )
+    global_batch_size = args.batch_size * accelerator.num_processes
+    train_loader = get_loader(
+        train_ds, batch_size=args.batch_size, shuffle=True,
+        num_workers=args.num_workers, seed=args.seed,
+        persistent_workers=(not dataset_mutates) and args.num_workers > 0,
+    )
 
     _rng = random.Random(args.seed)
 

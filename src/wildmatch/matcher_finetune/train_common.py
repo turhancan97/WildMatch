@@ -173,6 +173,7 @@ def run_lg_partitioned(
     data0: dict,
     data1: dict,
     stats: dict | None = None,
+    partition: bool = True,
 ) -> dict:
     """Run LightGlue separately for each pair of image dimensions.
 
@@ -180,6 +181,10 @@ def run_lg_partitioned(
     This partitions mixed cached pair batches by
     ``(image0_h, image0_w, image1_h, image1_w)`` and merges dense outputs back
     into the original order. Uniform image batches take one unchanged forward.
+    With ``partition=False``, the model receives the complete mixed-shape batch
+    in one vectorized forward. Distributed training uses that mode so every
+    rank executes the same number of LightGlue calls; ``image_size`` remains
+    per-row and is used by LightGlue during keypoint normalization.
     """
     size0 = data0["image_size"]
     size1 = data1["image_size"]
@@ -197,6 +202,9 @@ def run_lg_partitioned(
         stats["pairs"] = stats.get("pairs", 0) + size0.shape[0]
         if len(groups) > 1:
             stats["partitioned_calls"] = stats.get("partitioned_calls", 0) + 1
+
+    if not partition:
+        return lg({"image0": data0, "image1": data1})
 
     if len(groups) == 1:
         return lg({"image0": data0, "image1": data1})
@@ -311,8 +319,8 @@ def run_lg_matching_grad(
     data_a = batch_features(feats_a, image_h, image_w)
     data_p = batch_features(feats_p, image_h, image_w)
     data_n = batch_features(feats_n, image_h, image_w)
-    pred_pos = run_lg_partitioned(lg, data_a, data_p)
-    pred_neg = run_lg_partitioned(lg, data_a, data_n)
+    pred_pos = run_lg_partitioned(lg, data_a, data_p, partition=accelerator.num_processes == 1)
+    pred_neg = run_lg_partitioned(lg, data_a, data_n, partition=accelerator.num_processes == 1)
     return pred_pos, pred_neg, data_a, data_p, data_n
 
 
@@ -346,8 +354,8 @@ def eval_epoch(
         data_p = batch_features(feats_p, H_p, W_p)
         data_n = batch_features(feats_n, H_n, W_n)
 
-        pred_pos = run_lg_partitioned(lg, data_a, data_p)
-        pred_neg = run_lg_partitioned(lg, data_a, data_n)
+        pred_pos = run_lg_partitioned(lg, data_a, data_p, partition=accelerator.num_processes == 1)
+        pred_neg = run_lg_partitioned(lg, data_a, data_n, partition=accelerator.num_processes == 1)
 
         # valid0 is the dense form of the ragged `matches` list — same count,
         # no per-batch-item Python loop.
@@ -569,7 +577,7 @@ def eval_pseudo_accuracy(
             H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
             data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
             data_c = batch_features(feats_c, H_c, W_c)
-            pred = run_lg_partitioned(lg, data_q, data_c)
+            pred = run_lg_partitioned(lg, data_q, data_c, partition=accelerator.num_processes == 1)
             scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
 
             score_pos, _ = scores[:, :ds.n_pos].max(dim=1)

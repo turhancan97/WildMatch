@@ -11,21 +11,24 @@
 #SBATCH --time=23:59:00
 
 set -euo pipefail
-source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
-conda activate rdd
-
 dataset_id=${1:?dataset id is required}
 dataset_root=${2:?canonical dataset root is required}
-cache_dir=${3:?RDD feature cache is required}
-lg_weights=${4:?LightGlue weights are required}
+cache_dir=${3:?feature cache is required}
+weights=${4:?matcher checkpoint is required}
 dump_report=${5:?report prefix is required}
 split=${6:?query split is required}
+backend=${7:-rdd}
+variant=${8:-loma-b}
+source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
+if [[ "${backend}" == loma ]]; then conda activate loma; else conda activate rdd; fi
 
 python -m scripts.wildlife_mine \
   --dataset_id "${dataset_id}" \
   --dataset_root "${dataset_root}" \
   --cache_dir "${cache_dir}" \
-  --lg_weights "${lg_weights}" \
+  --lg_weights "${weights}" \
+  --backend "${backend}" \
+  --variant "${variant}" \
   --split "${split}" \
   --query_id "${SLURM_ARRAY_TASK_ID}" \
   --frames_per_collection "${WILDLIFE_FRAMES_PER_COLLECTION:-20}" \

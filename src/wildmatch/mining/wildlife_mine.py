@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -18,6 +19,68 @@ from RDD.matchers.lightglue_masked import LightGlueMasked
 from scripts.batched_processing import sequence_score_per_video_and_per_frame
 from scripts.lynx_benchmark import load_cached_feat, sample_frames
 from scripts.wildlife_dataset import list_collections
+
+
+def weights_fingerprint(path: Path) -> str:
+    """Return a stable fingerprint for a checkpoint file or LoMa bundle."""
+    if path.is_dir():
+        metadata_path = path / "metadata.json"
+        metadata = json.loads(metadata_path.read_text()) if metadata_path.is_file() else {}
+        base = metadata.get("base_weights")
+        if base:
+            base_path = Path(base).expanduser()
+            if not base_path.is_absolute():
+                base_path = path / base_path
+            if base_path.is_file():
+                path = base_path
+        else:
+            path = next((path / name for name in ("model.safetensors", "matcher.safetensors", "weights.pth") if (path / name).is_file()), path)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def validate_loma_cache(cache_dir: Path, variant: str, weights: Path) -> dict:
+    manifest_path = cache_dir / "manifest.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"LoMa cache manifest not found: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text())
+    expected = {
+        "backend": "loma",
+        "variant": variant,
+        "resize": 512,
+        "num_keypoints": 512,
+        "patch_size": 14,
+    }
+    mismatches = {
+        key: (manifest.get(key), value)
+        for key, value in expected.items()
+        if manifest.get(key) != value
+    }
+    cached_hash = manifest.get("weights_sha256")
+    if cached_hash:
+        actual_hash = weights_fingerprint(weights)
+        if cached_hash != actual_hash:
+            mismatches["weights_sha256"] = (cached_hash, actual_hash)
+    if mismatches:
+        details = ", ".join(
+            f"{key}={actual!r} (wanted {wanted!r})"
+            for key, (actual, wanted) in mismatches.items()
+        )
+        raise ValueError(f"incompatible LoMa cache at {cache_dir}: {details}")
+    return manifest
+
+
+def build_backend_model(backend: str, device: torch.device, weights: Path, variant: str):
+    if backend == "rdd":
+        return build_model(device, weights)
+    if backend == "loma":
+        from scripts.loma_backend import build_loma
+
+        return build_loma(device, weights, variant)
+    raise ValueError(f"unsupported mining backend {backend!r}; expected rdd or loma")
 
 
 def validate_lightglue_weights(weights: Path) -> None:
@@ -70,6 +133,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset_root", type=Path, required=True)
     parser.add_argument("--cache_dir", type=Path, required=True)
     parser.add_argument("--lg_weights", type=Path, required=True)
+    parser.add_argument("--backend", choices=["rdd", "loma"], default="rdd")
+    parser.add_argument("--variant", default="loma-b")
     parser.add_argument("--dataset_id", default="wildlife-reid-10k")
     parser.add_argument("--split", choices=["train", "val", "test"], required=True)
     parser.add_argument("--query_id", type=int, required=True)
@@ -90,7 +155,9 @@ def main() -> None:
         raise RuntimeError("no training gallery collections found")
     if not 0 <= args.query_id < len(queries):
         raise ValueError(f"query_id={args.query_id} out of range 0..{len(queries) - 1}")
-    model = build_model(device, args.lg_weights)
+    if args.backend == "loma":
+        validate_loma_cache(args.cache_dir, args.variant, args.lg_weights)
+    model = build_backend_model(args.backend, device, args.lg_weights, args.variant)
 
     def cache_path(path: Path) -> Path:
         return args.cache_dir / path.relative_to(args.dataset_root).with_suffix(".npz")
@@ -112,9 +179,16 @@ def main() -> None:
             gallery_ids.append(collection.identity)
     chunks = []
     for start in range(0, len(gallery_features), 32):
-        chunks.append(sequence_score_per_video_and_per_frame(
-            model, query_features, gallery_features[start:start + 32], device
-        ))
+        gallery_chunk = gallery_features[start:start + 32]
+        if args.backend == "loma":
+            from scripts.loma_backend import score_all_loma
+
+            chunk = score_all_loma(model, query_features, gallery_chunk, device, batch_size=32)
+        else:
+            chunk = sequence_score_per_video_and_per_frame(
+                model, query_features, gallery_chunk, device
+            )
+        chunks.append(chunk)
     scores = torch.cat(chunks, dim=1)
     frames = []
     for query_index, query_path in enumerate(query_paths):
@@ -140,6 +214,10 @@ def main() -> None:
     output = {
         "dataset": args.dataset_id, "query": query.name, "query_identity": query.identity,
         "query_split": args.split, "query_id": args.query_id,
+        "backend": args.backend,
+        "variant": args.variant if args.backend == "loma" else None,
+        "weights": str(args.lg_weights.resolve()),
+        "cache_dir": str(args.cache_dir.resolve()),
         "frames_per_collection": args.frames_per_collection,
         "top_k_frames": args.top_k_frames, "top_m": args.top_m,
         "gallery_collections": len(gallery), "selected_frames": selected,

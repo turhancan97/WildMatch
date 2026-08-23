@@ -16,8 +16,16 @@ report=${1:?report prefix is required}
 dataset_root=${2:?canonical dataset root is required}
 dataset_id=${3:?dataset id is required}
 protocol=${4:?protocol is required}
+backend=${5:-rdd}
+variant=${6:-loma-b}
+weights=${7:-}
+cache_dir=${8:-}
 python -m scripts.wildlife_aggregate \
   --dataset_id "${dataset_id}" \
   --protocol "${protocol}" \
   --dump_report "${report}" \
-  --dataset_root "${dataset_root}"
+  --dataset_root "${dataset_root}" \
+  --backend "${backend}" \
+  --variant "${variant}" \
+  --weights "${weights}" \
+  --cache_dir "${cache_dir}"

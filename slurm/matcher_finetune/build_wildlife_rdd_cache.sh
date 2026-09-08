@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=125G
 #SBATCH --time=23:59:00
-#SBATCH --exclude=c11,c15
+#SBATCH --exclude=c11,c15,c22
 #SBATCH --output=logs/wildlife-rdd-cache/wildlife-rdd-cache-%j.out
 #SBATCH --error=logs/wildlife-rdd-cache/wildlife-rdd-cache-%j.err
 
@@ -30,5 +30,5 @@ python -m contrastive_finetuning.build_keypoint_cache \
   --data_root "${dataset_root}" --cache_root "${cache_root}" \
   --rdd_weights "${rdd_weights}" --splits "${splits[@]}" \
   --resize 512 --top_k 512 \
-  --batch_size "${WILDLIFE_RDD_CACHE_BATCH_SIZE:-32}" \
+  --batch_size "${WILDLIFE_RDD_CACHE_BATCH_SIZE:-8}" \
   --num_workers "${WILDLIFE_CACHE_WORKERS:-16}" --resume

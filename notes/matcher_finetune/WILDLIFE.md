@@ -5,14 +5,39 @@ supported configurations are in
 `rdd-parallel-benchmark/configs/wildlife/`:
 
 ```text
-BelugaID
-NyalaData
-WhaleSharkID
-ZindiTurtleRecall (labeled rows with a resolved masked image)
+BelugaID+
+NyalaData+
+WhaleSharkID+
+ZindiTurtleRecall+ (labeled rows with a resolved masked image)
+AmvrakikosTurtles
+ATRW+
+CowDataset+
+Giraffes+
+GiraffeZebraID+
+HyenaID2022+
+LeopardID2022+
+ReunionTurtles
+SeaStarReID2023+
+StripeSpotter+
+ZakynthosTurtles
 ```
 
 NDD20 is intentionally not configured: its masked paths and identity labels
 are not usable yet.
+
+The 11 newly added datasets use metadata from
+`metadata_mdsplit_no_background/metadata_<dataset>.csv`, the shared
+`masked_images` tree, and the `identity`, `path`, and `split` columns. The
+preparation step never falls back to unmasked images. Rows with an empty or
+`unknown` identity, invalid split, or missing masked target are excluded and
+recorded in the generated manifest; metadata/schema errors or a dataset with
+no usable records stop preparation.
+
+No encounter or session field is currently available in these metadata files,
+so identity is used as the collection fallback. This limitation is recorded
+by each configuration's `collection_rule: identity` setting and in the
+generated experiment metadata. It should be considered when interpreting
+collection-level metrics.
 
 ## 1. Select a dataset and prepare its canonical view
 
@@ -90,7 +115,15 @@ present (`indices/rdd/` for RDD and `indices/loma/` for LoMa), while retaining
 the historical shared RDD path as a fallback. Validation is
 `strong-matches_val_combined.json` in strict mode and
 `strong-matches_test_combined.json` in legacy mode. Checkpoints and W&B runs
-are isolated by dataset, backend, and protocol.
+are isolated by dataset, backend, and protocol. Unless overridden with
+`WILDLIFE_WANDB_PROJECT`, the default projects are
+`wildlife-reid-rdd-<dataset>-<protocol>` and
+`wildlife-reid-loma-<dataset>-<protocol>`.
+
+To run another dataset, replace `BelugaID.json` in the commands above with
+one of the configuration files listed at the beginning of this document. The
+cache, index, checkpoint, and evaluation paths are derived from that dataset
+identifier.
 
 ## 4. Evaluate
 

@@ -23,8 +23,8 @@ dataset_root=${WILDLIFE_VIEW_ROOT:-/shared/sets/datasets/vision/czechlynx/wildli
 index_base=${WILDLIFE_INDEX_ROOT:-${benchmark_root}/outputs/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/indices}
 if [[ -n "${WILDLIFE_INDEX_ROOT:-}" ]]; then
   index_root=${index_base}
-elif [[ -f "${index_base}/rdd/strong-matches_train_combined.json" ]]; then
-  index_root="${index_base}/rdd"
+elif [[ -f "${index_base}/loma/strong-matches_train_combined.json" ]]; then
+  index_root="${index_base}/loma"
 else
   # Fall back to the original shared path for existing experiments.
   index_root=${index_base}
@@ -41,6 +41,7 @@ lg_weights=${LG_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/
 cache_root=${WILDLIFE_RDD_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/rdd-cache}
 output_dir=${WILDLIFE_RDD_OUTPUT:-/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/rdd-finetuned/${protocol}}
 run_name=${WILDLIFE_RDD_RUN_NAME:-${WILDLIFE_DATASET_ID}-rdd-${protocol}-finetuned}
+wandb_project=${WILDLIFE_WANDB_PROJECT:-wildlife-reid-rdd-${WILDLIFE_DATASET_ID}-${protocol}}
 
 echo "dataset=${WILDLIFE_DATASET_ID} protocol=${protocol}"
 echo "training index=${train_index}"
@@ -60,7 +61,7 @@ accelerate launch --num_processes "${WILDLIFE_NUM_PROCESSES:-4}" --num_machines 
   --train_index "${train_index}" --val_index "${val_index}" \
   --data_root "${dataset_root}" --rdd_weights "${rdd_weights}" \
   --lg_weights "${lg_weights}" --output_dir "${output_dir}" \
-  --project "${WILDLIFE_WANDB_PROJECT:-wildlife-reid-rdd}" \
+  --project "${wandb_project}" \
   --run_name "${run_name}" --split_protocol "${protocol}" --trained_model lg \
   --epochs "${WILDLIFE_EPOCHS:-300}" --batch_size "${WILDLIFE_BATCH_SIZE:-8}" \
   --lr 1e-5 --weight_decay 1e-4 --num_workers "${WILDLIFE_NUM_WORKERS:-8}" \

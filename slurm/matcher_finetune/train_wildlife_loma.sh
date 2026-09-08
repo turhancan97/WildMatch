@@ -36,6 +36,7 @@ loma_weights=${LOMA_WEIGHTS:-/shared/sets/datasets/confidential/lynx/checkpoints
 cache_dir=${WILDLIFE_LOMA_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/loma-cache}
 output_dir=${WILDLIFE_LOMA_OUTPUT:-/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/loma-finetuned/${protocol}}
 run_name=${WILDLIFE_LOMA_RUN_NAME:-${WILDLIFE_DATASET_ID}-loma-${protocol}-finetuned}
+wandb_project=${WILDLIFE_WANDB_PROJECT:-wildlife-reid-loma-${WILDLIFE_DATASET_ID}-${protocol}}
 resume_args=()
 if [[ -n "${WILDLIFE_RESUME:-}" ]]; then
   resume_args+=(--resume "${WILDLIFE_RESUME}")
@@ -59,7 +60,7 @@ accelerate launch --num_processes "${WILDLIFE_NUM_PROCESSES:-4}" --num_machines 
   --trained_model loma --train_index "${train_index}" --val_index "${val_index}" \
   --data_root "${dataset_root}" --loma_weights "${loma_weights}" \
   --loma_cache "${cache_dir}" --output_dir "${output_dir}" \
-  --project "${WILDLIFE_WANDB_PROJECT:-wildlife-reid-loma}" \
+  --project "${wandb_project}" \
   --run_name "${run_name}" --split_protocol "${protocol}" --wandb_mode online \
   --loma_variant "${WILDLIFE_LOMA_VARIANT:-loma-b}" --epochs "${WILDLIFE_EPOCHS:-300}" \
   --batch_size "${WILDLIFE_BATCH_SIZE:-8}" --lr 1e-5 --weight_decay 1e-4 \

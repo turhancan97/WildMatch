@@ -168,8 +168,8 @@ CZECHLYNX_SPLIT_PROTOCOL=strict \
 sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_loma.sh
 ```
 
-RDD and LoMa use the same aggregated train/test/validation indices by default.
-Each run prints its selected protocol and index paths and writes
+RDD and LoMa use separate backend-specific index trees by default. Each run
+prints its selected split column, protocol, backend, and index paths and writes
 `czechlynx_protocol.json` in its output directory.
 
 ## RDD test-set evaluation
@@ -242,3 +242,54 @@ In top-15 mode, the pretrained checkpoint selects the strongest query frame
 and 15 diverse gallery frames. The target checkpoint then reranks those 15
 frames. This makes the pretrained and fine-tuned top-15 results directly
 comparable.
+
+## Comparing the time-open split
+
+The official metadata also contains `split-time_open`. The current default remains
+`split-time_closed`; select the open split explicitly with
+`CZECHLYNX_SPLIT_COLUMN=split-time_open`. The selected split gets its own canonical
+view, caches, indices, checkpoints, W&B names, and evaluation outputs.
+
+Prepare the time-open view:
+
+```bash
+cd /home/kargin/Projects/repositories/rdd-parallel-benchmark
+export CZECHLYNX_SPLIT_COLUMN=split-time_open
+sbatch slurm_scripts/prepare_czechlynx.sh
+```
+
+Build the RDD cache and mine RDD supervision:
+
+```bash
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/build_czechlynx_rdd_cache.sh
+export CZECHLYNX_MINING_BACKEND=rdd
+bash slurm_scripts/spawn_czechlynx_mining.sh
+```
+
+For LoMa, build its separate cache and mine LoMa supervision:
+
+```bash
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/build_czechlynx_loma_cache.sh
+export CZECHLYNX_MINING_BACKEND=loma
+bash slurm_scripts/spawn_czechlynx_mining.sh
+```
+
+Train either backend with the selected split. The default training protocol is
+`legacy`; use `CZECHLYNX_SPLIT_PROTOCOL=strict` for the dedicated validation
+holdout:
+
+```bash
+export CZECHLYNX_SPLIT_COLUMN=split-time_open
+export CZECHLYNX_SPLIT_PROTOCOL=legacy
+export CZECHLYNX_MINING_BACKEND=rdd
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_rdd.sh
+
+export CZECHLYNX_MINING_BACKEND=loma
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_loma.sh
+```
+
+Use the matching time-open cache and checkpoint when submitting full-gallery or
+top-15 evaluation. In top-15 mode, keep pretrained-model preselection for both
+pretrained and fine-tuned checkpoints so the candidate pool is identical. In
+legacy mode, the selected official test split is also used during checkpoint
+selection, so its final result is not an untouched test estimate.

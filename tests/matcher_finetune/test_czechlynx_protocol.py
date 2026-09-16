@@ -9,12 +9,20 @@ ROOT = Path(__file__).resolve().parents[1]
 HELPER = ROOT / "slurm_scripts" / "czechlynx_protocol.sh"
 
 
-def resolve(protocol: str | None) -> dict[str, str]:
+def resolve(protocol: str | None, split_column: str | None = None, backend: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
     if protocol is None:
         env.pop("CZECHLYNX_SPLIT_PROTOCOL", None)
     else:
         env["CZECHLYNX_SPLIT_PROTOCOL"] = protocol
+    if split_column is None:
+        env.pop("CZECHLYNX_SPLIT_COLUMN", None)
+    else:
+        env["CZECHLYNX_SPLIT_COLUMN"] = split_column
+    if backend is None:
+        env.pop("CZECHLYNX_MINING_BACKEND", None)
+    else:
+        env["CZECHLYNX_MINING_BACKEND"] = backend
     command = (
         f"source {HELPER!s}; "
         "czechlynx_resolve_protocol; "
@@ -22,7 +30,10 @@ def resolve(protocol: str | None) -> dict[str, str]:
         '"${CZECHLYNX_RESOLVED_PROTOCOL}" '
         '"${CZECHLYNX_RESOLVED_TRAIN_INDEX}" '
         '"${CZECHLYNX_RESOLVED_VAL_INDEX}" '
-        '"${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}"'
+        '"${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}" '
+        '"${CZECHLYNX_RESOLVED_SPLIT_COLUMN}" '
+        '"${CZECHLYNX_RESOLVED_EXPERIMENT}" '
+        '"${CZECHLYNX_RESOLVED_BACKEND}"'
     )
     result = subprocess.run(
         ["bash", "-c", command],
@@ -34,12 +45,15 @@ def resolve(protocol: str | None) -> dict[str, str]:
     )
     if result.returncode:
         raise AssertionError(result.stderr)
-    protocol_value, train_index, val_index, suffix = result.stdout.splitlines()
+    protocol_value, train_index, val_index, suffix, split_column_value, experiment, backend_value = result.stdout.splitlines()
     return {
         "protocol": protocol_value,
         "train_index": train_index,
         "val_index": val_index,
         "suffix": suffix,
+        "split_column": split_column_value,
+        "experiment": experiment,
+        "backend": backend_value,
     }
 
 
@@ -99,3 +113,22 @@ def test_both_czechlynx_trainers_use_the_shared_resolver():
         assert "czechlynx_resolve_protocol" in script
         assert "CZECHLYNX_RESOLVED_TRAIN_INDEX" in script
         assert "CZECHLYNX_RESOLVED_VAL_INDEX" in script
+
+
+def test_time_open_uses_separate_experiment_paths():
+    result = resolve("legacy", "split-time_open", "loma")
+    assert result["split_column"] == "split-time_open"
+    assert result["experiment"] == "czechlynx-time-open"
+    assert result["backend"] == "loma"
+    assert "/czechlynx-time-open/legacy/loma/" in result["train_index"]
+
+
+def test_invalid_split_column_fails():
+    env = os.environ.copy()
+    env["CZECHLYNX_SPLIT_COLUMN"] = "split-unknown"
+    result = subprocess.run(
+        ["bash", "-c", f"source {HELPER!s}; czechlynx_resolve_protocol"],
+        cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode != 0
+    assert "split-time_open" in result.stderr

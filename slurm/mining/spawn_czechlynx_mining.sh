@@ -34,7 +34,7 @@ else
   weights=${LG_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD_lg-v2.pth}
   rdd_weights=${RDD_WEIGHTS:-/home/kargin/Projects/repositories/lynx-finetuning/rdd/weights/RDD-v2.pth}
   variant=loma-b
-  default_report="outputs/${experiment_slug}/${protocol}/strong-matches"
+  default_report="outputs/${experiment_slug}/${protocol}/rdd/strong-matches"
   log_prefix="czechlynx-mine"
 fi
 

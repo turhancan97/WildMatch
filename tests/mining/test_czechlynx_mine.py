@@ -53,5 +53,7 @@ def test_mining_workflow_submits_and_aggregates_test_split():
     assert '"${dump_report}" "${dataset_root}"' in spawner
     assert 'CZECHLYNX_SPLIT_COLUMN' in spawner
     assert 'CZECHLYNX_MINING_BACKEND' in spawner
+    assert 'outputs/${experiment_slug}/${protocol}/rdd/strong-matches' in spawner
+    assert 'outputs/${experiment_slug}/${protocol}/loma/strong-matches' in spawner
     assert 'afterok:${train_job}:${val_job}:${test_job}' in spawner
     assert "--splits train val test" in aggregator

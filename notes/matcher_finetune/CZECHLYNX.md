@@ -68,22 +68,26 @@ bash /home/kargin/Projects/repositories/rdd-parallel-benchmark/slurm_scripts/spa
 ```
 
 The default mining report directory is
-`outputs/czechlynx-time-closed/legacy/strong-matches`, and the training entry
-points default to the corresponding legacy index root. The default protocol is
+`outputs/czechlynx-time-closed/legacy/rdd/strong-matches`, and the training
+entry points default to backend-specific legacy index roots. The default protocol is
 also `legacy`, so no environment variables are required for the standard
 legacy-compatible run.
 
 It produces:
 
 ```text
-outputs/czechlynx-time-closed/strong-matches_train_combined.json
-outputs/czechlynx-time-closed/strong-matches_val_combined.json
-outputs/czechlynx-time-closed/strong-matches_test_combined.json
+outputs/czechlynx-time-closed/legacy/rdd/strong-matches_train_combined.json
+outputs/czechlynx-time-closed/legacy/rdd/strong-matches_val_combined.json
+outputs/czechlynx-time-closed/legacy/rdd/strong-matches_test_combined.json
 ```
 
 Mining uses 20 frames per collection, `top_k_frames=5`, `top_m=10`, and the
 pretrained RDD/LightGlue weights. Test queries are scored against the train
 gallery, matching the previous Lynx protocol.
+
+The miner stores reports under a backend-specific directory: `.../rdd/` for
+RDD/LightGlue and `.../loma/` for LoMa. This prevents the two mining
+backends from overwriting or being confused with each other.
 
 ### Optional combined train+validation index
 
@@ -97,7 +101,7 @@ python - <<PY
 import json
 from pathlib import Path
 
-root = Path("outputs/czechlynx-time-closed/legacy")
+root = Path("outputs/czechlynx-time-closed/legacy/rdd")
 train = json.loads((root / "strong-matches_train_combined.json").read_text())
 val = json.loads((root / "strong-matches_val_combined.json").read_text())
 
@@ -115,14 +119,15 @@ The resulting index contains approximately 4,826 entries (3,009 train and
 1,817 validation entries). Use it explicitly for RDD or LoMa fine-tuning:
 
 ```bash
-CZECHLYNX_TRAIN_INDEX=/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/legacy/strong-matches_trainval_combined.json \
+CZECHLYNX_TRAIN_INDEX=/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/legacy/rdd/strong-matches_trainval_combined.json \
 sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_rdd.sh
 ```
 
-For LoMa, use the same `CZECHLYNX_TRAIN_INDEX` override with
-`train_czechlynx_loma.sh`. The legacy validation index remains
-`strong-matches_test_combined.json`; the combined file is used only as the
-training index.
+For LoMa, use the corresponding path under
+`outputs/czechlynx-time-closed/legacy/loma/`, or set
+`CZECHLYNX_INDEX_ROOT` explicitly before running `train_czechlynx_loma.sh`.
+The legacy validation index remains `strong-matches_test_combined.json`; the
+combined file is used only as the training index.
 
 This is a direct concatenation of already mined entries. The validation
 entries were originally mined against the train gallery, so this does not

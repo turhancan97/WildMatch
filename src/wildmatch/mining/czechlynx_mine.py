@@ -1,4 +1,4 @@
-"""Mine CzechLynx positive/negative frame pairs with RDD+LightGlue."""
+"""Mine CzechLynx positive/negative frame pairs with RDD/LightGlue or LoMa."""
 
 from __future__ import annotations
 
@@ -91,8 +91,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset_root", type=Path, required=True)
     parser.add_argument("--cache_dir", type=Path, required=True)
-    parser.add_argument("--rdd_weights", type=Path, required=True)
-    parser.add_argument("--lg_weights", type=Path, required=True)
+    parser.add_argument("--rdd_weights", type=Path, default=None)
+    parser.add_argument("--lg_weights", type=Path, default=None)
+    parser.add_argument("--weights", type=Path, default=None)
+    parser.add_argument("--backend", choices=["rdd", "loma"], default="rdd")
+    parser.add_argument("--variant", default="loma-b")
     parser.add_argument("--split", choices=["train", "val", "test"], required=True)
     parser.add_argument("--query_id", type=int, required=True)
     parser.add_argument("--frames_per_collection", type=int, default=20)
@@ -112,7 +115,18 @@ def main() -> None:
         raise RuntimeError("no training gallery collections found")
     if not 0 <= args.query_id < len(queries):
         raise ValueError(f"query_id={args.query_id} out of range 0..{len(queries)-1}")
-    model = build_masked_lg(device, args.lg_weights)
+    if args.backend == "rdd":
+        lg_weights = args.lg_weights or args.weights
+        if lg_weights is None:
+            raise ValueError("RDD mining requires --lg_weights or --weights")
+        model = build_masked_lg(device, lg_weights)
+    else:
+        loma_weights = args.weights or args.lg_weights
+        if loma_weights is None:
+            raise ValueError("LoMa mining requires --weights or --lg_weights")
+        from scripts.loma_backend import build_loma, score_all_loma
+
+        model = build_loma(device, loma_weights, args.variant)
 
     def cache_path(path: Path) -> Path:
         return args.cache_dir / path.relative_to(args.dataset_root).with_suffix(".npz")
@@ -135,12 +149,15 @@ def main() -> None:
     if not gallery_features:
         raise RuntimeError("gallery is empty after exact-frame exclusion")
 
-    chunks = []
-    for start in range(0, len(gallery_features), 32):
-        chunks.append(sequence_score_per_video_and_per_frame(
-            model, query_features, gallery_features[start:start + 32], device
-        ))
-    scores = torch.cat(chunks, dim=1)
+    if args.backend == "loma":
+        scores = score_all_loma(model, query_features, gallery_features, device, batch_size=32)
+    else:
+        chunks = []
+        for start in range(0, len(gallery_features), 32):
+            chunks.append(sequence_score_per_video_and_per_frame(
+                model, query_features, gallery_features[start:start + 32], device
+            ))
+        scores = torch.cat(chunks, dim=1)
     frames = []
     for query_index, query_path in enumerate(query_paths):
         positives, negatives = [], []
@@ -168,6 +185,8 @@ def main() -> None:
     output = {
         "dataset": "CzechLynx", "query": query.name, "query_identity": query.identity,
         "query_source": query.source, "query_split": args.split, "query_id": args.query_id,
+        "backend": args.backend, "variant": args.variant if args.backend == "loma" else None,
+        "weights": str((args.weights or args.lg_weights or args.rdd_weights).resolve()),
         "frames_per_collection": args.frames_per_collection, "top_k_frames": args.top_k_frames,
         "top_m": args.top_m, "gallery_collections": len(gallery),
         "selected_frames": selected, "all_frames": frames, "elapsed_s": time() - started,

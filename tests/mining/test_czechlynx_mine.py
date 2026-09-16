@@ -50,6 +50,8 @@ def test_mining_workflow_submits_and_aggregates_test_split():
     spawner = Path("slurm_scripts/spawn_czechlynx_mining.sh").read_text()
     aggregator = Path("slurm_scripts/czechlynx_aggregate.sh").read_text()
     assert '"${dataset_root}/test"' in spawner
-    assert '"${dump_report}" test)' in spawner
+    assert '"${dump_report}" "${dataset_root}"' in spawner
+    assert 'CZECHLYNX_SPLIT_COLUMN' in spawner
+    assert 'CZECHLYNX_MINING_BACKEND' in spawner
     assert 'afterok:${train_job}:${val_job}:${test_job}' in spawner
     assert "--splits train val test" in aggregator

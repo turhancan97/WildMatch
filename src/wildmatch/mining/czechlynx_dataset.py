@@ -34,6 +34,8 @@ DEFAULT_SOURCE_ROOT = Path(
 DEFAULT_OUTPUT_ROOT = Path(
     "/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed"
 )
+SUPPORTED_SPLIT_COLUMNS = ("split-time_closed", "split-time_open")
+DEFAULT_SPLIT_COLUMN = "split-time_closed"
 
 
 @dataclass(frozen=True)
@@ -119,25 +121,30 @@ def load_metadata(
 def assign_splits(
     rows: Iterable[dict[str, str]],
     *,
+    split_column: str = DEFAULT_SPLIT_COLUMN,
     validation_fraction: float = 0.20,
     seed: int = 0,
 ) -> tuple[dict[tuple[str, str], str], list[tuple[str, str]]]:
     """Assign whole source/encounter groups to train, val, or test.
 
-    The metadata's ``split-time_closed`` label is authoritative.  A mixed
+    The selected metadata split label is authoritative.  A mixed
     encounter is conservatively assigned to test so no test frame can enter a
     training or validation encounter.  Only all-train encounters participate
     in the deterministic validation holdout.
     """
     if not 0.0 <= validation_fraction < 1.0:
         raise ValueError("validation_fraction must be in [0, 1)")
+    if split_column not in SUPPORTED_SPLIT_COLUMNS:
+        raise ValueError(
+            f"split_column must be one of {SUPPORTED_SPLIT_COLUMNS}, got {split_column!r}"
+        )
 
     groups: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
     for row in rows:
-        label = row.get("split-time_closed", "")
+        label = row.get(split_column, "")
         if label not in {"train", "test"}:
             raise ValueError(
-                f"split-time_closed must be train/test, got {label!r} "
+                f"{split_column} must be train/test, got {label!r} "
                 f"for {row['path']}"
             )
         groups[(row["source"], row["encounter"])].append(row)
@@ -146,7 +153,7 @@ def assign_splits(
     mixed: list[tuple[str, str]] = []
     train_groups: list[tuple[str, str]] = []
     for key, group in sorted(groups.items()):
-        labels = {row["split-time_closed"] for row in group}
+        labels = {row[split_column] for row in group}
         if labels == {"test"} or labels == {"train", "test"}:
             assignments[key] = "test"
             if labels == {"train", "test"}:
@@ -166,6 +173,8 @@ def assign_splits(
 def build_records(
     rows: list[dict[str, str]],
     assignments: dict[tuple[str, str], str],
+    *,
+    split_column: str = DEFAULT_SPLIT_COLUMN,
 ) -> list[CzechLynxRecord]:
     """Create deterministic canonical relative paths for all metadata rows."""
     grouped: dict[tuple[str, str, str, str], list[dict[str, str]]] = defaultdict(list)
@@ -194,7 +203,7 @@ def build_records(
                     original_path=row["path"],
                     masked_path=row["masked_path"],
                     relative_path=relative_path,
-                    metadata_split=row["split-time_closed"],
+                    metadata_split=row[split_column],
                 )
             )
     return records
@@ -279,14 +288,18 @@ def write_view(
 def prepare(args: argparse.Namespace) -> dict[str, object]:
     rows = load_metadata(args.source_root, args.metadata, args.masked_metadata)
     assignments, mixed = assign_splits(
-        rows, validation_fraction=args.validation_fraction, seed=args.seed
+        rows,
+        split_column=args.split_column,
+        validation_fraction=args.validation_fraction,
+        seed=args.seed,
     )
-    records = build_records(rows, assignments)
+    records = build_records(rows, assignments, split_column=args.split_column)
     summary = validate_records(records, args.source_root)
     summary.update(
         {
             "dataset": "CzechLynx",
-            "protocol": "split-time_closed",
+            "protocol": args.split_column,
+            "split_column": args.split_column,
             "validation_fraction": args.validation_fraction,
             "seed": args.seed,
             "mixed_encounters_assigned_to_test": [list(key) for key in mixed],
@@ -328,6 +341,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     parser.add_argument("--metadata", type=Path, default=None)
     parser.add_argument("--masked_metadata", type=Path, default=None)
+    parser.add_argument(
+        "--split_column",
+        choices=SUPPORTED_SPLIT_COLUMNS,
+        default=DEFAULT_SPLIT_COLUMN,
+        help="Official metadata split column used to create train/test assignments.",
+    )
     parser.add_argument("--validation_fraction", type=float, default=0.20)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--dry_run", action="store_true")

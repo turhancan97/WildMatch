@@ -14,7 +14,13 @@ source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
 conda activate rdd
 
 source_root=${CZECHLYNX_SOURCE_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_v2}
-output_root=${CZECHLYNX_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed}
+split_column=${CZECHLYNX_SPLIT_COLUMN:-split-time_closed}
+case "${split_column}" in
+  split-time_closed|split-time_open) ;;
+  *) echo "CZECHLYNX_SPLIT_COLUMN must be split-time_closed or split-time_open (got ${split_column})" >&2; exit 1 ;;
+esac
+split_suffix=${split_column#split-}
+output_root=${CZECHLYNX_ROOT:-/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_${split_suffix}}
 validation_fraction=${CZECHLYNX_VALIDATION_FRACTION:-0.20}
 seed=${CZECHLYNX_SEED:-0}
 
@@ -23,4 +29,5 @@ python -m scripts.czechlynx_dataset \
   --source_root "${source_root}" \
   --output_root "${output_root}" \
   --validation_fraction "${validation_fraction}" \
-  --seed "${seed}"
+  --seed "${seed}" \
+  --split_column "${split_column}"

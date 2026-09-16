@@ -293,3 +293,34 @@ top-15 evaluation. In top-15 mode, keep pretrained-model preselection for both
 pretrained and fine-tuned checkpoints so the candidate pool is identical. In
 legacy mode, the selected official test split is also used during checkpoint
 selection, so its final result is not an untouched test estimate.
+
+## Visualizing CzechLynx fine-tuning pairs
+
+Use [`visualize_czechlynx_pairs.ipynb`](../rdd-parallel-benchmark/notebook/visualize_czechlynx_pairs.ipynb)
+to inspect the exact query, positive, and negative images used by fine-tuning.
+The configuration cell supports both official split variants:
+
+```python
+CZECHLYNX_SPLIT = "time_closed"  # or "time_open"
+```
+
+It automatically selects the corresponding canonical dataset view, protocol
+index root, RDD/LoMa caches, checkpoint defaults, and output directory. The
+training split inside the selected experiment remains independently selectable
+with `PAIR_SPLIT = "train"`, `"val"`, or `"test"`. To inspect LoMa-mined pairs,
+set `PAIR_MINING_BACKEND = "loma"`; RDD is the default.
+
+The notebook can also be controlled through environment variables before
+starting Jupyter:
+
+```bash
+export CZECHLYNX_SPLIT=time_open
+export CZECHLYNX_SPLIT_PROTOCOL=legacy
+export PAIR_MINING_BACKEND=rdd
+jupyter lab /home/kargin/Projects/repositories/rdd-parallel-benchmark/notebook/visualize_czechlynx_pairs.ipynb
+```
+
+Use `CZECHLYNX_SPLIT=time_closed` to return to the default time-closed
+experiment. Individual paths can still be overridden with `CZECHLYNX_ROOT`,
+`CZECHLYNX_INDEX_ROOT`, `PAIR_MINING_INDEX_ROOT`, `RDD_CACHE_ROOT`, and
+`LOMA_CACHE_ROOT`.

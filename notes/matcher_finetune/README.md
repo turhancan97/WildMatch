@@ -59,9 +59,18 @@ python -m contrastive_finetuning.train_by_lg_matches \
 - `--data_root`: root directory prepended to the (relative) image paths stored in the index files.
 - `--output_dir`: where checkpoints (and, with `--project`, W&B logs) are written.
 - `--trained_model`: which model(s) receive gradient — `lg`, `rdd`, or `lg+rdd`.
+- `--rdd_train_component descriptor`: when RDD is enabled, train only its
+  descriptor and keep its detector fixed. The default `all` preserves the
+  older behavior of training the complete RDD detector/descriptor stack.
 
 Run `python -m contrastive_finetuning.train_by_lg_matches --help` for the full list of options
 (augmentation, LoRA, EMA, frozen confidence head, etc.).
+
+The generic trainer accepts `--rdd_train_component descriptor` together with
+`--trained_model rdd` (or `lg+rdd`). The CzechLynx and Wildlife SLURM scripts
+expose this as `CZECHLYNX_RDD_TRAIN_COMPONENT=descriptor` and
+`WILDLIFE_RDD_TRAIN_COMPONENT=descriptor`. Those modes bypass the fixed RDD
+feature cache because the descriptor is changing during training.
 
 If you're on the Helios cluster, `helios_scripts/train_lg.sh` is a ready-to-submit SLURM job wrapping
 this same command with cluster-specific paths.
@@ -127,3 +136,25 @@ sbatch slurm_scripts/train_loma.sh
 The output is a LoMa bundle (`model.safetensors`, `metadata.json`, optimizer
 state, and RNG state). The benchmark consumes that bundle through its LoMa
 backend; it must not be passed to the LightGlue loader.
+
+### Optional DeDoDe descriptor fine-tuning
+
+Matcher-only remains the default and is unchanged. To train LoMa's full
+DeDoDe descriptor stack instead, freeze DaD and the matcher and set:
+
+```bash
+export LOMA_TRAIN_COMPONENT=descriptor
+sbatch slurm_scripts/train_loma.sh
+```
+
+This mode uses the same identity-based pair index and margin loss. It does not
+use the full keypoint/descriptor cache: descriptors are recomputed with
+gradients, while a separate, resumable cache stores fixed DaD keypoints only.
+The SLURM job builds or resumes this cache automatically. Descriptor forwards
+use a microbatch size of one by default and accumulate gradients to the regular
+training batch size; adjust `LOMA_DESCRIPTOR_MICROBATCH_SIZE` if GPU memory
+permits. The descriptor checkpoint is written to a separate default output
+directory. For CzechLynx and WildlifeReID, use
+`CZECHLYNX_LOMA_TRAIN_COMPONENT=descriptor` or
+`WILDLIFE_LOMA_TRAIN_COMPONENT=descriptor` with the corresponding training
+script. Existing `matcher` runs remain the default.

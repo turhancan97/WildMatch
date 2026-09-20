@@ -161,6 +161,23 @@ sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_cz
 This uses `strong-matches_val_combined.json` as `val_index` and writes to
 `rdd-finetuned-strict`.
 
+### RDD descriptor-only training
+
+By default, the CzechLynx RDD script trains LightGlue with cached, frozen RDD
+features. To train only RDD's descriptor while keeping its detector and
+LightGlue fixed, set:
+
+```bash
+export CZECHLYNX_RDD_TRAIN_COMPONENT=descriptor
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_rdd.sh
+```
+
+The job skips the fixed full-feature cache, recomputes RDD features during
+training, and writes to a separate `rdd-descriptor-finetuned-*` directory.
+`CZECHLYNX_RDD_TRAIN_COMPONENT=lg` (the default) preserves the existing
+LightGlue-only run; `rdd` trains the full RDD detector and descriptor, while
+`lg+rdd` trains both LightGlue and the full RDD model.
+
 ### Legacy and strict LoMa training
 
 Use the same setting with the LoMa entry point:
@@ -176,6 +193,24 @@ sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_cz
 RDD and LoMa use separate backend-specific index trees by default. Each run
 prints its selected split column, protocol, backend, and index paths and writes
 `czechlynx_protocol.json` in its output directory.
+
+To train LoMa's DeDoDe descriptor instead of its matcher, keep DaD and the
+matcher fixed and use the opt-in descriptor mode:
+
+```bash
+export CZECHLYNX_LOMA_TRAIN_COMPONENT=descriptor
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_loma.sh
+```
+
+The job uses the selected time-closed/time-open canonical view and the same
+LoMa-mined train/validation indices by default. It builds a separate
+keypoint-only cache for train, validation, and test frames, then recomputes
+descriptors with gradients during training. Descriptor checkpoints use a
+separate `loma-b-descriptor-finetuned-*` directory. The default descriptor
+microbatch size is one; gradients accumulate to the normal batch size. Set
+`CZECHLYNX_LOMA_KEYPOINT_CACHE` or
+`CZECHLYNX_LOMA_DESCRIPTOR_MICROBATCH_SIZE` to override those defaults.
+Matcher-only training remains unchanged and is selected by default.
 
 ## RDD test-set evaluation
 

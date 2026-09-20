@@ -387,6 +387,11 @@ def parse_args() -> argparse.Namespace:
     )
     add_common_args(p)
     p.add_argument(
+        "--rdd_train_component", choices=["all", "descriptor"], default="all",
+        help="When --trained_model includes rdd, train the full RDD detector+descriptor "
+             "(default/legacy) or only RDD's descriptor while freezing its detector.",
+    )
+    p.add_argument(
         "--eval_only", action="store_true",
         help="Run the pre-training val pseudo-accuracy eval — the exact eval_pseudo_accuracy "
              "call every epoch's val/video_accuracy is computed with, including RDD's "
@@ -744,6 +749,8 @@ def parse_args() -> argparse.Namespace:
             p.error("--moving_negative_prob must be in [0, 1]")
     if args.negative_mining and args.random_negative_prob <= 0:
         p.error("--negative_mining requires --random_negative_prob > 0")
+    if args.rdd_train_component == "descriptor" and "rdd" not in args.trained_model.split("+"):
+        p.error("--rdd_train_component descriptor requires --trained_model to include rdd")
     if args.weak_queries and not (0.0 < args.weak_queries_prob <= 1.0):
         p.error("--weak_queries requires --weak_queries_prob in (0, 1]")
     if args.distill_model != "none":
@@ -818,6 +825,34 @@ def parse_args() -> argparse.Namespace:
     if (args.frame_jitter_query > 0 or args.frame_jitter_db > 0) and args.frame_jitter_prob == 0:
         p.error("--frame_jitter_prob 0 silently disables --frame_jitter_query/--frame_jitter_db")
     return args
+
+
+def set_rdd_training_mode(rdd: torch.nn.Module, training: bool, component: str) -> None:
+    """Set RDD train/eval behavior while keeping frozen detector state fixed."""
+    model = _unwrap(rdd)
+    model.train(training)
+    if training and component == "descriptor":
+        model.detector.eval()
+        model.descriptor.train(True)
+
+
+def configure_rdd_trainable_component(
+    rdd: torch.nn.Module, train_rdd: bool, component: str
+) -> None:
+    """Freeze RDD by default, optionally enabling its descriptor or all weights."""
+    model = _unwrap(rdd)
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+    if not train_rdd:
+        return
+    if component == "descriptor":
+        for parameter in model.descriptor.parameters():
+            parameter.requires_grad_(True)
+    elif component == "all":
+        for parameter in model.parameters():
+            parameter.requires_grad_(True)
+    else:
+        raise ValueError(f"unsupported RDD training component {component!r}")
 
 
 # ── loss ──────────────────────────────────────────────────────────────────────
@@ -1760,7 +1795,7 @@ def train_epoch_lg(
     --adaptive_margin's input).
     """
     train_rdd, train_lg = resolve_trained_models(args.trained_model)
-    _unwrap(rdd).train(train_rdd)
+    set_rdd_training_mode(rdd, train_rdd, args.rdd_train_component)
     lg.train(train_lg)
 
     # --adaptive_margin passes the live (per-epoch) margin; everything else
@@ -2170,7 +2205,7 @@ def train_epoch_lg(
             mini_train_m = eval_epoch(accelerator, rdd, eval_lg, mini_train_loader, args, prefix="mini_train")
             mini_val_m   = eval_epoch(accelerator, rdd, eval_lg, mini_val_loader,   args, prefix="mini_val")
             mini_eval_time += time.perf_counter() - t_mini_start
-            _unwrap(rdd).train(train_rdd)
+            set_rdd_training_mode(rdd, train_rdd, args.rdd_train_component)
             lg.train(train_lg)
             if accelerator.is_main_process:
                 accelerator.log({**mini_train_m, **mini_val_m, "progress": progress}, step=global_step)
@@ -2426,8 +2461,9 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # pass (see rdd_patch/lightglue_masked.py); irrelevant when RDD is frozen.
     lg  = build_masked_lg(device, weights=args.lg_weights, detach_descriptors=not train_rdd)
 
-    for p in rdd.parameters():
-        p.requires_grad_(train_rdd)
+    configure_rdd_trainable_component(
+        rdd, train_rdd, args.rdd_train_component
+    )
 
     if args.lora:
         if not train_lg:
@@ -2598,7 +2634,7 @@ def run_training_lg(args: argparse.Namespace) -> None:
         baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
     baseline_val = eval_pseudo_accuracy(
         accelerator, rdd, eval_lg, eval_val_loader, args, prefix="val", verbose=args.eval_only)
-    _unwrap(rdd).train(train_rdd)
+    set_rdd_training_mode(rdd, train_rdd, args.rdd_train_component)
     lg.train(train_lg)
     if accelerator.is_main_process:
         accelerator.log(
@@ -2680,7 +2716,7 @@ def run_training_lg(args: argparse.Namespace) -> None:
             train_eval_metrics = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
             val_metrics        = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_val_loader,   args, prefix="val")
         epoch_eval_time = time.perf_counter() - t_eval_start
-        _unwrap(rdd).train(train_rdd)
+        set_rdd_training_mode(rdd, train_rdd, args.rdd_train_component)
         lg.train(train_lg)
 
         scheduler.step()

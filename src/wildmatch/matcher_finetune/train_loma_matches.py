@@ -1,9 +1,8 @@
-"""Fine-tune the LoMa matcher on the lynx positive/negative index.
+"""Fine-tune LoMa components on the lynx positive/negative index.
 
 This is intentionally a separate entry point from the RDD/LightGlue trainer.
-LoMa's detector and descriptor are frozen; only the matcher parameters are
-optimized with the same positive-versus-negative margin idea used by the
-existing lynx experiments.
+Matcher-only training remains the default. Descriptor mode freezes DaD and the
+matcher, training DeDoDe with the same positive-versus-negative margin loss.
 """
 
 from __future__ import annotations
@@ -33,8 +32,13 @@ from tqdm.auto import tqdm
 
 from contrastive_finetuning.loading import IndexAssignedTripletDataset
 from contrastive_finetuning.loma_cache import LomaFeatureCache
+from contrastive_finetuning.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
 from contrastive_finetuning.loma_backend import (
+    LoMaDescriptorTrainingModel,
     build_loma,
+    configure_loma_trainable_component,
+    describe_keypoints_with_grad,
+    detect_loma_keypoints,
     eval_pair_scores,
     extract_loma_features,
     set_loma_train_mode,
@@ -55,7 +59,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--loma_weights", type=Path, default=None,
                         help="Pretrained LoMa checkpoint or a LoMa fine-tuning bundle")
     parser.add_argument("--loma_cache", type=Path, default=None,
-                        help="Benchmark-compatible fixed-keypoint cache for frozen LoMa features")
+                        help="Benchmark-compatible fixed-keypoint cache (matcher-only mode)")
+    parser.add_argument("--loma_keypoint_cache", type=Path, default=None,
+                        help="Fixed DaD keypoints for descriptor mode; descriptors are recomputed")
+    parser.add_argument("--loma_train_component", choices=["matcher", "descriptor"], default="matcher",
+                        help="Which LoMa component to train; matcher-only remains the default")
+    parser.add_argument("--descriptor_microbatch_size", type=int, default=1,
+                        help="Triplets per descriptor forward/backward microbatch; gradients accumulate")
     parser.add_argument("--loma_variant", choices=["loma-b", "loma-b128", "loma-l", "loma-g", "loma-r"], default="loma-b")
     parser.add_argument("--output_dir", type=Path, default=Path("checkpoints/loma-b"))
     parser.add_argument("--project", default="lynx-loma-finetuning")
@@ -136,11 +146,30 @@ def prefixed_metrics(prefix: str, metrics: dict[str, float]) -> dict[str, float]
 
 
 def load_features_for_paths(model: torch.nn.Module, paths: list[Path], device: torch.device,
-                            resize: int, num_keypoints: int) -> tuple[torch.Tensor, torch.Tensor]:
+                            resize: int, num_keypoints: int,
+                            data_root: Path | None = None,
+                            keypoint_cache: LomaKeypointCache | None = None,
+                            component: str = "matcher") -> tuple[torch.Tensor, torch.Tensor]:
     features = []
     for path in paths:
-        image = load_image(path, resize).unsqueeze(0).to(device)
-        keypoints, descriptors = extract_loma_features(model, image, num_keypoints)
+        image = load_image(path, resize)
+        if keypoint_cache is None and component == "descriptor":
+            keypoints = detect_loma_keypoints(model, [image], num_keypoints)
+            with torch.no_grad():
+                descriptors = describe_keypoints_with_grad(model, [image], keypoints)
+        elif keypoint_cache is None:
+            image_batch = image.unsqueeze(0).to(device)
+            keypoints, descriptors = extract_loma_features(
+                model, image_batch, num_keypoints
+            )
+        else:
+            if data_root is None:
+                raise ValueError("data_root is required when using a LoMa keypoint cache")
+            keypoints = keypoint_cache.load(
+                path.relative_to(data_root).as_posix(), device
+            )[0]
+            with torch.no_grad():
+                descriptors = describe_keypoints_with_grad(model, [image], keypoints)
         features.append((keypoints, descriptors))
     return torch.cat([item[0] for item in features]), torch.cat([item[1] for item in features])
 
@@ -155,9 +184,32 @@ def set_model_mode(
     model: torch.nn.Module,
     training: bool,
     accelerator: Accelerator | None = None,
+    component: str = "matcher",
 ) -> None:
     model.train(training)
-    set_loma_train_mode(unwrap_model(model, accelerator), training)
+    unwrapped = unwrap_model(model, accelerator)
+    loma_model = getattr(unwrapped, "loma", unwrapped)
+    set_loma_train_mode(loma_model, training, component)
+
+
+def collate_triplet_images(batch):
+    """Preserve variable-sized images as lists; retain frame paths for cache lookup."""
+    return (
+        [item[0] for item in batch],
+        [item[1] for item in batch],
+        [item[2] for item in batch],
+        [item[3] for item in batch],
+    )
+
+
+def resize_image_list(images: list[torch.Tensor], resize: int) -> list[torch.Tensor]:
+    return [batch_images(image.unsqueeze(0), resize)[0] for image in images]
+
+
+def cached_keypoint_batch(
+    cache: LomaKeypointCache, relative_paths: list[str], device: torch.device
+) -> torch.Tensor:
+    return torch.cat([cache.load(relative, device)[0] for relative in relative_paths], dim=0)
 
 
 def cached_feature_batch(
@@ -194,6 +246,8 @@ def evaluate_mini_index(
     batch_size: int,
     feature_cache: LomaFeatureCache | None = None,
     accelerator: Accelerator | None = None,
+    keypoint_cache: LomaKeypointCache | None = None,
+    component: str = "matcher",
 ) -> dict[str, float]:
     """Compute the RDD-compatible mini-evaluation metrics.
 
@@ -204,7 +258,7 @@ def evaluate_mini_index(
     pool.  LoMa uses the same protocol here, while batching detector,
     descriptor, and matcher calls over each mini batch.
     """
-    set_model_mode(model, False, accelerator)
+    set_model_mode(model, False, accelerator, component)
     total_pos = 0.0
     total_neg = 0.0
     evaluated = 0
@@ -235,6 +289,21 @@ def evaluate_mini_index(
             )
             negative_k, negative_d = cached_feature_batch(
                 feature_cache, [path.relative_to(data_root).as_posix() for path in negative_paths], device
+            )
+        elif keypoint_cache is not None or component == "descriptor":
+            feature_model = unwrap_model(model, accelerator)
+            feature_model = getattr(feature_model, "loma", feature_model)
+            query_k, query_d = load_features_for_paths(
+                feature_model, query_paths, device, resize, num_keypoints,
+                data_root, keypoint_cache, component,
+            )
+            positive_k, positive_d = load_features_for_paths(
+                feature_model, positive_paths, device, resize, num_keypoints,
+                data_root, keypoint_cache, component,
+            )
+            negative_k, negative_d = load_features_for_paths(
+                feature_model, negative_paths, device, resize, num_keypoints,
+                data_root, keypoint_cache, component,
             )
         else:
             query_images = torch.stack([load_image(path, resize) for path in query_paths]).to(
@@ -274,8 +343,10 @@ def evaluate_mini_index(
 def evaluate_index(model: torch.nn.Module, entries: list[dict], data_root: Path, device: torch.device,
                    resize: int, num_keypoints: int, max_entries: int = 0,
                    feature_cache: LomaFeatureCache | None = None,
-                   accelerator: Accelerator | None = None) -> dict[str, float]:
-    set_model_mode(model, False, accelerator)
+                   accelerator: Accelerator | None = None,
+                   keypoint_cache: LomaKeypointCache | None = None,
+                   component: str = "matcher") -> dict[str, float]:
+    set_model_mode(model, False, accelerator, component)
     selected = entries[:max_entries] if max_entries else entries
     process_index = accelerator.process_index if accelerator is not None else 0
     num_processes = accelerator.num_processes if accelerator is not None else 1
@@ -306,12 +377,25 @@ def evaluate_index(model: torch.nn.Module, entries: list[dict], data_root: Path,
             cand_d = torch.cat([item[1] for item in cached_candidates], dim=0)
         else:
             feature_model = unwrap_model(model, accelerator)
-            query_k, query_d = load_features_for_paths(
-                feature_model, [data_root / query_rel], device, resize, num_keypoints
-            )
-            cand_k, cand_d = load_features_for_paths(
-                feature_model, [data_root / rel for rel in candidate_rel], device, resize, num_keypoints
-            )
+            feature_model = getattr(feature_model, "loma", feature_model)
+            if keypoint_cache is None:
+                query_k, query_d = load_features_for_paths(
+                    feature_model, [data_root / query_rel], device, resize,
+                    num_keypoints, component=component,
+                )
+                cand_k, cand_d = load_features_for_paths(
+                    feature_model, [data_root / rel for rel in candidate_rel],
+                    device, resize, num_keypoints, component=component,
+                )
+            else:
+                query_k, query_d = load_features_for_paths(
+                    feature_model, [data_root / query_rel], device, resize,
+                    num_keypoints, data_root, keypoint_cache, component,
+                )
+                cand_k, cand_d = load_features_for_paths(
+                    feature_model, [data_root / rel for rel in candidate_rel], device,
+                    resize, num_keypoints, data_root, keypoint_cache, component,
+                )
         query_k = query_k.expand(cand_k.shape[0], -1, -1)
         query_d = query_d.expand(cand_d.shape[0], -1, -1)
         scores, _ = eval_pair_scores(model, query_k, query_d, cand_k, cand_d)
@@ -391,8 +475,9 @@ def save_checkpoint(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
     )
     torch.save({"torch": torch.get_rng_state(), "numpy": np.random.get_state(), "python": random.getstate()}, out_dir / "rng_state.pt")
     metadata = {
-        "format": "lynx-loma-matcher-v1",
+        "format": f"lynx-loma-{getattr(args, 'loma_train_component', 'matcher')}-v1",
         "backend": "loma",
+        "train_component": getattr(args, "loma_train_component", "matcher"),
         "variant": args.loma_variant,
         "split_protocol": getattr(args, "split_protocol", None),
         "base_weights": str(args.loma_weights) if args.loma_weights else None,
@@ -412,9 +497,18 @@ def restore_checkpoint(
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LRScheduler,
     path: Path,
+    component: str = "matcher",
 ) -> tuple[int, int]:
     from safetensors.torch import load_file
 
+    metadata_path = path / "metadata.json"
+    if metadata_path.is_file():
+        metadata = json.loads(metadata_path.read_text())
+        saved_component = metadata.get("train_component", "matcher")
+        if saved_component != component:
+            raise ValueError(
+                f"cannot resume a LoMa {saved_component} checkpoint as {component} training"
+            )
     model.load_state_dict(load_file(str(path / "model.safetensors")), strict=False)
     # This is a trusted training-state bundle, not a model supplied by an
     # external user. Explicitly disable PyTorch 2.6's weights-only default:
@@ -443,6 +537,15 @@ def main() -> None:
     args = parse_args()
     if args.trained_model != "loma":
         raise ValueError("This entry point only supports --trained_model loma")
+    if args.descriptor_microbatch_size < 1:
+        raise ValueError("--descriptor_microbatch_size must be at least 1")
+    if args.loma_train_component == "descriptor" and args.loma_cache is not None:
+        raise ValueError(
+            "--loma_cache contains fixed descriptors and cannot be used for descriptor training; "
+            "use --loma_keypoint_cache instead"
+        )
+    if args.loma_train_component == "matcher" and args.loma_keypoint_cache is not None:
+        raise ValueError("--loma_keypoint_cache is only valid with --loma_train_component descriptor")
     if Accelerator is None:
         raise ImportError("Accelerate is required for LoMa training; install requirements-loma.txt")
     seed_all(args.seed)
@@ -451,15 +554,20 @@ def main() -> None:
     )
     device = accelerator.device
 
-    model = build_loma(args.loma_variant, args.loma_weights, device)
-    trainable = [parameter for parameter in model.parameters() if parameter.requires_grad]
+    loma_model = build_loma(args.loma_variant, args.loma_weights, device)
+    configure_loma_trainable_component(loma_model, args.loma_train_component)
+    model = (
+        LoMaDescriptorTrainingModel(loma_model)
+        if args.loma_train_component == "descriptor" else loma_model
+    )
+    trainable = [parameter for parameter in loma_model.parameters() if parameter.requires_grad]
     if not trainable:
-        raise RuntimeError("LoMa has no trainable matcher parameters")
+        raise RuntimeError(f"LoMa has no trainable {args.loma_train_component} parameters")
     optimizer = torch.optim.AdamW(trainable, lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(1, args.epochs))
 
     feature_cache = None
-    if args.loma_cache is not None:
+    if args.loma_cache is not None and args.loma_train_component == "matcher":
         feature_cache = LomaFeatureCache(
             args.loma_cache,
             variant=args.loma_variant,
@@ -467,12 +575,22 @@ def main() -> None:
             num_keypoints=args.num_keypoints,
             weights=args.loma_weights,
         )
+    keypoint_cache = None
+    if args.loma_keypoint_cache is not None:
+        keypoint_cache = LomaKeypointCache(
+            args.loma_keypoint_cache,
+            variant=args.loma_variant,
+            resize=args.resize,
+            num_keypoints=args.num_keypoints,
+            detector_sha256=module_fingerprint(loma_model._detector),
+        )
     dataset = IndexAssignedTripletDataset(
         args.train_index,
         root=args.data_root,
         transform=transforms.ToTensor(),
         random_negative_prob=args.random_negative_prob,
         feature_cache=feature_cache,
+        return_meta=args.loma_train_component == "descriptor",
     )
     loader = DataLoader(
         dataset,
@@ -481,6 +599,7 @@ def main() -> None:
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
         persistent_workers=args.num_workers > 0,
+        collate_fn=collate_triplet_images if args.loma_train_component == "descriptor" else None,
     )
     train_entries = load_entries(args.train_index)
     val_entries = load_entries(args.val_index)
@@ -500,17 +619,27 @@ def main() -> None:
     step = 0
     accelerator_state = args.resume / "accelerate_state" if args.resume else None
     if args.resume and not accelerator_state.exists():
-        start_epoch, step = restore_checkpoint(model, optimizer, scheduler, args.resume)
+        start_epoch, step = restore_checkpoint(
+            loma_model, optimizer, scheduler, args.resume, args.loma_train_component
+        )
         start_epoch += 1
 
     model, optimizer, scheduler, loader = accelerator.prepare(
         model, optimizer, scheduler, loader
     )
     if accelerator_state is not None and accelerator_state.exists():
-        accelerator.load_state(str(accelerator_state))
         metadata = json.loads((args.resume / "metadata.json").read_text())
+        saved_component = metadata.get("train_component", "matcher")
+        if saved_component != args.loma_train_component:
+            raise ValueError(
+                f"cannot resume a LoMa {saved_component} checkpoint as "
+                f"{args.loma_train_component} training"
+            )
+        accelerator.load_state(str(accelerator_state))
         start_epoch = int(metadata["epoch"]) + 1
         step = int(metadata.get("step", 0))
+
+    evaluation_model = model if args.loma_train_component == "matcher" else loma_model
 
     wandb_run = None
     if accelerator.is_main_process and args.wandb_mode != "disabled":
@@ -531,12 +660,14 @@ def main() -> None:
     if args.resume is None:
         baseline_started = time.perf_counter()
         baseline_train = evaluate_index(
-            model, train_entries, args.data_root, device, args.resize, args.num_keypoints,
-            feature_cache=feature_cache, accelerator=accelerator,
+            evaluation_model, train_entries, args.data_root, device, args.resize,
+            args.num_keypoints, feature_cache=feature_cache, accelerator=accelerator,
+            keypoint_cache=keypoint_cache, component=args.loma_train_component,
         )
         baseline_val = evaluate_index(
-            model, val_entries, args.data_root, device, args.resize, args.num_keypoints,
-            feature_cache=feature_cache, accelerator=accelerator,
+            evaluation_model, val_entries, args.data_root, device, args.resize,
+            args.num_keypoints, feature_cache=feature_cache, accelerator=accelerator,
+            keypoint_cache=keypoint_cache, component=args.loma_train_component,
         )
         baseline = {
             "epoch": -1,
@@ -549,11 +680,11 @@ def main() -> None:
             print(json.dumps({"pretrained_baseline": baseline}, indent=2))
         if wandb_run is not None:
             wandb_run.log(baseline, step=step)
-    set_model_mode(model, True, accelerator)
+    set_model_mode(model, True, accelerator, args.loma_train_component)
 
     for epoch in range(start_epoch, args.epochs):
         epoch_started = time.perf_counter()
-        set_model_mode(model, True, accelerator)
+        set_model_mode(model, True, accelerator, args.loma_train_component)
         running_loss = 0.0
         running_pos = 0.0
         running_neg = 0.0
@@ -567,47 +698,91 @@ def main() -> None:
             desc=f"LoMa epoch {epoch}",
             disable=not accelerator.is_main_process,
         )
-        for query, positive, negative in progress:
+        for batch in progress:
             if args.max_train_batches and batches >= args.max_train_batches:
                 break
-            if feature_cache is not None:
-                query_k, query_d = cached_collated_features(query, device)
-                positive_k, positive_d = cached_collated_features(positive, device)
-                negative_k, negative_d = cached_collated_features(negative, device)
-            else:
-                query = batch_images(query, args.resize).to(device, non_blocking=True)
-                positive = batch_images(positive, args.resize).to(device, non_blocking=True)
-                negative = batch_images(negative, args.resize).to(device, non_blocking=True)
-                feature_model = unwrap_model(model, accelerator)
-                query_k, query_d = extract_loma_features(feature_model, query, args.num_keypoints)
-                positive_k, positive_d = extract_loma_features(feature_model, positive, args.num_keypoints)
-                negative_k, negative_d = extract_loma_features(feature_model, negative, args.num_keypoints)
-            pos_score, pos_matches = train_pair_score_with_matches(
-                model, query_k, query_d, positive_k, positive_d
-            )
-            neg_score, neg_matches = train_pair_score_with_matches(
-                model, query_k, query_d, negative_k, negative_d
-            )
-            loss = F.relu(args.margin - pos_score + neg_score).mean()
-
             optimizer.zero_grad(set_to_none=True)
-            accelerator.backward(loss)
-            torch.nn.utils.clip_grad_norm_(
-                [parameter for parameter in model.parameters() if parameter.requires_grad],
-                args.grad_clip,
-            )
-            optimizer.step()
+            if args.loma_train_component == "descriptor":
+                query, positive, negative, metadata = batch
+                query = resize_image_list(query, args.resize)
+                positive = resize_image_list(positive, args.resize)
+                negative = resize_image_list(negative, args.resize)
+                query_paths = [item["query_frame"] for item in metadata]
+                positive_paths = [item["pos_frame"] for item in metadata]
+                negative_paths = [item["neg_frame"] for item in metadata]
+                if keypoint_cache is None:
+                    query_k = detect_loma_keypoints(loma_model, query, args.num_keypoints)
+                    positive_k = detect_loma_keypoints(loma_model, positive, args.num_keypoints)
+                    negative_k = detect_loma_keypoints(loma_model, negative, args.num_keypoints)
+                else:
+                    query_k = cached_keypoint_batch(keypoint_cache, query_paths, device)
+                    positive_k = cached_keypoint_batch(keypoint_cache, positive_paths, device)
+                    negative_k = cached_keypoint_batch(keypoint_cache, negative_paths, device)
 
-            active_frac_tensor = ((args.margin - pos_score + neg_score) > 0).float().mean()
-            step_values = accelerator.reduce(
-                torch.stack([
+                local_count = len(query)
+                stat_sums = torch.zeros(6, device=device, dtype=torch.float32)
+                micro_size = args.descriptor_microbatch_size
+                for start in range(0, local_count, micro_size):
+                    stop = min(start + micro_size, local_count)
+                    is_last = stop == local_count
+                    sync_context = (
+                        torch.enable_grad() if is_last else accelerator.no_sync(model)
+                    )
+                    with sync_context:
+                        pos_score, pos_matches, neg_score, neg_matches = model(
+                            query[start:stop], positive[start:stop], negative[start:stop],
+                            query_k[start:stop], positive_k[start:stop], negative_k[start:stop],
+                        )
+                        per_pair_loss = F.relu(args.margin - pos_score + neg_score)
+                        loss = per_pair_loss.mean()
+                        accelerator.backward(loss * ((stop - start) / local_count))
+                    weight = stop - start
+                    stat_sums += torch.stack([
+                        per_pair_loss.detach().sum(),
+                        pos_score.detach().sum(),
+                        neg_score.detach().sum(),
+                        pos_matches.detach().sum(),
+                        neg_matches.detach().sum(),
+                        ((args.margin - pos_score + neg_score) > 0).float().sum(),
+                    ])
+                local_step_values = stat_sums / max(1, local_count)
+            else:
+                query, positive, negative = batch
+                if feature_cache is not None:
+                    query_k, query_d = cached_collated_features(query, device)
+                    positive_k, positive_d = cached_collated_features(positive, device)
+                    negative_k, negative_d = cached_collated_features(negative, device)
+                else:
+                    query = batch_images(query, args.resize).to(device, non_blocking=True)
+                    positive = batch_images(positive, args.resize).to(device, non_blocking=True)
+                    negative = batch_images(negative, args.resize).to(device, non_blocking=True)
+                    feature_model = unwrap_model(model, accelerator)
+                    query_k, query_d = extract_loma_features(feature_model, query, args.num_keypoints)
+                    positive_k, positive_d = extract_loma_features(feature_model, positive, args.num_keypoints)
+                    negative_k, negative_d = extract_loma_features(feature_model, negative, args.num_keypoints)
+                pos_score, pos_matches = train_pair_score_with_matches(
+                    model, query_k, query_d, positive_k, positive_d
+                )
+                neg_score, neg_matches = train_pair_score_with_matches(
+                    model, query_k, query_d, negative_k, negative_d
+                )
+                loss = F.relu(args.margin - pos_score + neg_score).mean()
+                accelerator.backward(loss)
+                local_step_values = torch.stack([
                     loss.detach(),
                     pos_score.detach().mean(),
                     neg_score.detach().mean(),
                     pos_matches.mean(),
                     neg_matches.mean(),
-                    active_frac_tensor,
-                ]),
+                    ((args.margin - pos_score + neg_score) > 0).float().mean(),
+                ])
+
+            torch.nn.utils.clip_grad_norm_(
+                trainable, args.grad_clip,
+            )
+            optimizer.step()
+            step_values = accelerator.reduce(
+                local_step_values,
                 reduction="mean",
             ).tolist()
             loss_value, pos_value, neg_value, pos_match_value, neg_match_value, active_frac = step_values
@@ -645,17 +820,19 @@ def main() -> None:
             if step % 100 == 0:
                 mini_started = time.perf_counter()
                 mini_train = evaluate_mini_index(
-                    model, mini_train_entries, args.data_root, device, args.resize,
+                    evaluation_model, mini_train_entries, args.data_root, device, args.resize,
                     args.num_keypoints, args.batch_size,
                     feature_cache=feature_cache, accelerator=accelerator,
+                    keypoint_cache=keypoint_cache, component=args.loma_train_component,
                 )
                 mini_val = evaluate_mini_index(
-                    model, mini_val_entries, args.data_root, device, args.resize,
+                    evaluation_model, mini_val_entries, args.data_root, device, args.resize,
                     args.num_keypoints, args.batch_size,
                     feature_cache=feature_cache, accelerator=accelerator,
+                    keypoint_cache=keypoint_cache, component=args.loma_train_component,
                 )
                 mini_eval_time += time.perf_counter() - mini_started
-                set_model_mode(model, True, accelerator)
+                set_model_mode(model, True, accelerator, args.loma_train_component)
                 if wandb_run is not None:
                     wandb_run.log(
                         {
@@ -674,16 +851,18 @@ def main() -> None:
         if do_eval:
             eval_started = time.perf_counter()
             train_eval = evaluate_index(
-                model, train_entries, args.data_root, device, args.resize,
+                evaluation_model, train_entries, args.data_root, device, args.resize,
                 args.num_keypoints, feature_cache=feature_cache, accelerator=accelerator,
+                keypoint_cache=keypoint_cache, component=args.loma_train_component,
             )
             val_eval = evaluate_index(
-                model, val_entries, args.data_root, device, args.resize,
+                evaluation_model, val_entries, args.data_root, device, args.resize,
                 args.num_keypoints, args.max_val_entries,
                 feature_cache=feature_cache, accelerator=accelerator,
+                keypoint_cache=keypoint_cache, component=args.loma_train_component,
             )
             epoch_eval_time = time.perf_counter() - eval_started
-            set_model_mode(model, True, accelerator)
+            set_model_mode(model, True, accelerator, args.loma_train_component)
 
         epoch_loss = running_loss / max(1, batches)
         mean_pos = running_pos / max(1, batches)
@@ -717,7 +896,7 @@ def main() -> None:
             accelerator.wait_for_everyone()
             if accelerator.is_main_process:
                 save_checkpoint(
-                    unwrap_model(model, accelerator), optimizer, scheduler,
+                    loma_model, optimizer, scheduler,
                     epoch, step, args, output,
                 )
             accelerator.wait_for_everyone()

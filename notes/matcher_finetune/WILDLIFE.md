@@ -125,6 +125,45 @@ one of the configuration files listed at the beginning of this document. The
 cache, index, checkpoint, and evaluation paths are derived from that dataset
 identifier.
 
+### Optional RDD descriptor experiment
+
+The default RDD script behavior remains LightGlue-only with cached RDD
+features. To train only RDD's descriptor, keeping its detector and LightGlue
+fixed, run:
+
+```bash
+export WILDLIFE_RDD_TRAIN_COMPONENT=descriptor
+sbatch slurm_scripts/train_wildlife_rdd.sh
+```
+
+This mode computes RDD features online (the fixed feature cache is not valid
+while the descriptor is changing) and saves separately under
+`rdd-descriptor-finetuned/<protocol>/`. Other accepted values are `lg` (the
+existing default), `rdd` (all RDD detector and descriptor weights), and
+`lg+rdd` (LightGlue plus all RDD weights).
+
+### Optional LoMa descriptor experiment
+
+Matcher-only remains the default. To train the complete DeDoDe descriptor
+stack for the selected species, keep DaD and the LoMa matcher frozen and run:
+
+```bash
+export WILDLIFE_LOMA_TRAIN_COMPONENT=descriptor
+sbatch slurm_scripts/train_wildlife_loma.sh
+```
+
+This uses LoMa-mined indices by default (or `WILDLIFE_TRAIN_INDEX` and
+`WILDLIFE_VAL_INDEX` overrides), preserves the configured strict/legacy split,
+and writes to `loma-descriptor-finetuned/<protocol>/`, separate from matcher
+checkpoints. The script automatically builds a dataset-specific keypoint-only
+cache for all train/validation/test frames; descriptors are recomputed during
+training and evaluation. Override its path with
+`WILDLIFE_LOMA_KEYPOINT_CACHE`. The descriptor microbatch size defaults to
+`1` to reduce activation memory while gradients accumulate to the configured
+training batch size. Use
+`WILDLIFE_LOMA_TRAIN_COMPONENT=matcher` (the default) for the existing cached
+matcher-only workflow.
+
 ## 4. Evaluate
 
 Set `WILDLIFE_BACKEND`, `WILDLIFE_CACHE`, and `WILDLIFE_WEIGHTS` and submit the

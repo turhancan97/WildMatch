@@ -15,7 +15,11 @@ from torch.utils.data import Subset
 
 from rdd.RDD.utils import to_pixel_coords
 from contrastive_finetuning.keypoint_cache import is_cached_batch, unpad_cached_features
-from contrastive_finetuning.loading import PseudoAccuracyDataset, get_loader
+from contrastive_finetuning.loading import (
+    PseudoAccuracyDataset,
+    collate_pseudo_accuracy_images,
+    get_loader,
+)
 from contrastive_finetuning.process import align_tensors_to_max_length
 
 
@@ -478,6 +482,61 @@ def _flatten_candidates(cand_batch):
     return cand_batch.view(B * n_cand, C, H, W)
 
 
+def _score_live_pseudo_batch(
+    batch,
+    rdd: torch.nn.Module,
+    lg: torch.nn.Module,
+    accelerator: Accelerator,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Score a ragged live-image pseudo-eval batch safely.
+
+    Native CzechLynx image resolutions can differ even among candidates for
+    one query.  Grouping individual pairs by their query and candidate shapes
+    keeps every RDD forward stackable while preserving candidate order.
+    """
+    groups: dict[tuple[tuple[int, int], tuple[int, int]], list[tuple[int, int, torch.Tensor, torch.Tensor]]] = defaultdict(list)
+    for row, (query, candidates, _) in enumerate(batch):
+        query_shape = tuple(int(v) for v in query.shape[-2:])
+        for candidate_row, candidate in enumerate(candidates):
+            candidate_shape = tuple(int(v) for v in candidate.shape[-2:])
+            groups[(query_shape, candidate_shape)].append(
+                (row, candidate_row, query, candidate)
+            )
+
+    if not groups:
+        raise ValueError("pseudo-evaluation batch contains no candidates")
+
+    n_candidates = len(batch[0][1])
+    scores = torch.empty((len(batch), n_candidates), device=device)
+    model = _unwrap(rdd)
+    model.eval()
+    for records in groups.values():
+        query_images = torch.stack([record[2] for record in records])
+        candidate_images = torch.stack([record[3] for record in records])
+        feats_q, h_q, w_q = features_from_batch(
+            query_images, model, args.resize, device, chunk_size=args.batch_size
+        )
+        feats_c, h_c, w_c = features_from_batch(
+            candidate_images, model, args.resize, device, chunk_size=args.batch_size
+        )
+        data_q = batch_features(feats_q, h_q, w_q)
+        data_c = batch_features(feats_c, h_c, w_c)
+        pred = run_lg_partitioned(
+            lg, data_q, data_c,
+            partition=accelerator.num_processes == 1,
+        )
+        group_scores = _lg_scores(pred, data_q, data_c)
+        for score, (row, candidate_row, _, _) in zip(group_scores, records):
+            scores[row, candidate_row] = score
+
+    indices = torch.tensor(
+        [sample[2] for sample in batch], device=device, dtype=torch.long
+    )
+    return scores, indices
+
+
 def group_pseudo_accuracy_entries(entries: list[dict]) -> list[list[dict]]:
     """Group entries by positive/negative candidate counts deterministically."""
     buckets: dict[tuple[int, int], list[dict]] = defaultdict(list)
@@ -509,6 +568,15 @@ def build_pseudo_accuracy_loader(
 
     prepared = []
     for bucket in group_pseudo_accuracy_entries(entries):
+        live_images = base_ds.feature_cache is None
+        # Raw descriptor-mode evaluation keeps native-resolution images until
+        # shape grouping.  A normal eval batch would therefore make every
+        # worker hold (1 + n_pos + n_neg) full images, and four DDP ranks with
+        # the default worker/prefetch settings can exceed the Slurm memory
+        # cgroup before the first epoch.  Cached features are compact and keep
+        # the original throughput settings.
+        eval_batch_size = 1 if live_images else args.eval_batch_size
+        eval_workers = min(args.num_workers, 1) if live_images else args.num_workers
         ds = PseudoAccuracyDataset(
             bucket,
             root=base_ds.root,
@@ -518,8 +586,10 @@ def build_pseudo_accuracy_loader(
             feature_cache=base_ds.feature_cache,
         )
         loader = get_loader(
-            ds, batch_size=args.eval_batch_size, shuffle=False,
-            num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
+            ds, batch_size=eval_batch_size, shuffle=False,
+            num_workers=eval_workers, persistent_workers=eval_workers > 0,
+            collate_fn=(None if base_ds.feature_cache is not None
+                        else collate_pseudo_accuracy_images),
         )
         prepared.append((accelerator.prepare(loader), ds))
 
@@ -559,26 +629,39 @@ def eval_pseudo_accuracy(
     videos: dict[str, dict] = {}
 
     for group_loader, ds in loader:
-        for query_batch, cand_batch, idx_batch in tqdm(
+        for batch in tqdm(
             group_loader, desc=f"{prefix}[{ds.n_pos}+{ds.n_neg}]", leave=False,
             disable=not accelerator.is_main_process
         ):
-            if not is_cached_batch(query_batch):
-                query_batch = query_batch.to(device)
-                cand_batch = cand_batch.to(device)
-            B, n_cand = _pseudo_batch_dims(cand_batch)
-            feats_q, H_q, W_q = features_from_batch(
-                query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
-            feats_c, H_c, W_c = features_from_batch(
-                _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
-                chunk_size=args.batch_size)
+            if isinstance(batch, list):
+                # Live descriptor-mode images remain ragged in the DataLoader;
+                # _score_live_pseudo_batch groups them by native shape.
+                scores, idx_batch = _score_live_pseudo_batch(
+                    batch, rdd, lg, accelerator, args, device
+                )
+            else:
+                # Cached features already have a regular tensor payload and
+                # retain the original vectorized evaluation path.
+                query_batch, cand_batch, idx_batch = batch
+                if not is_cached_batch(query_batch):
+                    query_batch = query_batch.to(device)
+                    cand_batch = cand_batch.to(device)
+                B, n_cand = _pseudo_batch_dims(cand_batch)
+                feats_q, H_q, W_q = features_from_batch(
+                    query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
+                feats_c, H_c, W_c = features_from_batch(
+                    _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
+                    chunk_size=args.batch_size)
 
-            feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
-            H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
-            data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
-            data_c = batch_features(feats_c, H_c, W_c)
-            pred = run_lg_partitioned(lg, data_q, data_c, partition=accelerator.num_processes == 1)
-            scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
+                feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
+                H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
+                data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
+                data_c = batch_features(feats_c, H_c, W_c)
+                pred = run_lg_partitioned(
+                    lg, data_q, data_c,
+                    partition=accelerator.num_processes == 1,
+                )
+                scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
 
             score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
             score_neg, _ = scores[:, ds.n_pos:].max(dim=1)

@@ -178,6 +178,10 @@ training, and writes to a separate `rdd-descriptor-finetuned-*` directory.
 LightGlue-only run; `rdd` trains the full RDD detector and descriptor, while
 `lg+rdd` trains both LightGlue and the full RDD model.
 
+Descriptor mode defaults to one sample per GPU because RDD must retain the
+query, positive, and negative autograd graphs simultaneously. Override this
+with `CZECHLYNX_RDD_BATCH_SIZE` only if the available GPU memory allows it.
+
 ### Legacy and strict LoMa training
 
 Use the same setting with the LoMa entry point:

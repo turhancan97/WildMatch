@@ -803,10 +803,10 @@ class PseudoAccuracyDataset(Dataset):
     negative per item), pseudo-accuracy needs every positive and every
     negative for a query to find the best-scoring one. Every entry must carry
     the same number of positives and the same number of negatives (true for
-    indices built with a fixed top_k/top_m) so candidates stack into a
-    uniform (n_pos + n_neg, C, H, W) tensor per item and batch across queries
-    via the default collate_fn — same DataLoader/num_workers path as
-    training, instead of loading images one at a time in the main process.
+    indices built with a fixed top_k/top_m). Live images are returned as a
+    ragged candidate list because native CzechLynx resolutions can differ;
+    ``train_common.eval_pseudo_accuracy`` groups pairs by image shape before
+    stacking them. Cached feature payloads retain their regular tensor shape.
 
     Args:
         entries: List of index entries (query_frame/positives/negatives dicts).
@@ -857,7 +857,7 @@ class PseudoAccuracyDataset(Dataset):
     def _full_path(self, rel: str) -> Path:
         return self.root / rel if self.root is not None else Path(rel)
 
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, int]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, list[torch.Tensor] | torch.Tensor, int]:
         entry = self.entries[index]
         cand_paths = list(entry["positives"]) + list(entry["negatives"])
 
@@ -876,7 +876,12 @@ class PseudoAccuracyDataset(Dataset):
         if self.transform is not None:
             cand_imgs = [self.transform(img) for img in cand_imgs]
 
-        return query_img, torch.stack(cand_imgs), index
+        return query_img, cand_imgs, index
+
+
+def collate_pseudo_accuracy_images(batch):
+    """Keep live pseudo-evaluation images ragged until shape-aware scoring."""
+    return batch
 
 
 class LabeledImageFolder(ImageFolder):
@@ -958,6 +963,7 @@ def get_loader(
     persistent_workers=True,
     seed: int | None = None,
     batch_sampler: Sampler[list[int]] | None = None,
+    collate_fn=None,
 ):
     if batch_sampler is not None and (batch_size is not None or shuffle):
         raise ValueError("batch_sampler is mutually exclusive with batch_size and shuffle")
@@ -972,6 +978,8 @@ def get_loader(
         "persistent_workers": persistent_workers,
         "generator": generator,
     }
+    if collate_fn is not None:
+        kwargs["collate_fn"] = collate_fn
     if batch_sampler is not None:
         kwargs["batch_sampler"] = batch_sampler
     else:

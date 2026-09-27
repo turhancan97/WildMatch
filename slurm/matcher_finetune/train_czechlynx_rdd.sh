@@ -41,6 +41,16 @@ elif [[ "${component}" == lg ]]; then
 else
   output_dir=/shared/sets/datasets/vision/czechlynx/checkpoints/${CZECHLYNX_RESOLVED_EXPERIMENT}/rdd-full-finetuned-${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}
 fi
+if [[ -n "${CZECHLYNX_RDD_BATCH_SIZE:-}" ]]; then
+  batch_size=${CZECHLYNX_RDD_BATCH_SIZE}
+elif [[ "${component}" == descriptor ]]; then
+  # Descriptor training keeps three RDD autograd graphs alive (query,
+  # positive, negative).  With the PyTorch deformable-attention fallback,
+  # batch_size=8 exceeds the 24 GB GPU limit on CzechLynx images.
+  batch_size=1
+else
+  batch_size=8
+fi
 if [[ -n "${CZECHLYNX_RDD_RUN_NAME:-}" ]]; then
   run_name=${CZECHLYNX_RDD_RUN_NAME}
 elif [[ "${component}" == descriptor ]]; then
@@ -58,6 +68,7 @@ echo "RDD training component: ${component} (trained_model=${trained_model}, rdd 
 echo "training index: ${train_index}"
 echo "validation index: ${val_index}"
 echo "output directory: ${output_dir}"
+echo "batch size per GPU: ${batch_size}"
 
 mkdir -p "${output_dir}"
 cat > "${output_dir}/czechlynx_protocol.json" <<EOF
@@ -88,7 +99,7 @@ args=(
   --project "${CZECHLYNX_RDD_PROJECT:-lynx-${CZECHLYNX_RESOLVED_EXPERIMENT}-rdd}"
   --run_name "${run_name}" --split_protocol "${CZECHLYNX_RESOLVED_PROTOCOL}"
   --trained_model "${trained_model}" --rdd_train_component "${rdd_component}"
-  --epochs 300 --batch_size 8 --lr 1e-5 --weight_decay 1e-4
+  --epochs 300 --batch_size "${batch_size}" --lr 1e-5 --weight_decay 1e-4
   --num_workers 8 --lg_margin 0.5 --random_negative_prob 0.3
   --resize 512 --top_k 512 --seed 0
 )

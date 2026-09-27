@@ -21,6 +21,7 @@ from torch.utils.data import Subset
 from contrastive_finetuning.keypoint_cache import is_cached_batch, open_cache_for_run
 from contrastive_finetuning.loading import (
     IndexAssignedTripletDataset,
+    ShapeBucketBatchSampler,
     get_loader,
 )
 from contrastive_finetuning.models import build_rdd, build_masked_lg
@@ -2328,6 +2329,12 @@ def train_epoch_lg(
 def run_training_lg(args: argparse.Namespace) -> None:
     seed_all(args.seed)
 
+    train_rdd, train_lg = resolve_trained_models(args.trained_model)
+    # Unfrozen RDD runs must load raw images because a fixed descriptor cache
+    # would block gradients.  Native CzechLynx resolutions differ, so their
+    # training batches need the shape-bucket sampler below.
+    shape_bucket_training = train_rdd and args.keypoint_cache is None
+
     # find_unused_parameters=True is mandatory here, not a precaution: LightGlue
     # is instantiated with depth_confidence/width_confidence = -1 (see
     # build_masked_lg), and LightGlueForTraining._forward hardcodes the matching
@@ -2424,11 +2431,28 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # (--weak_queries and return_meta don't mutate anything post-construction,
     # so they don't need this.)
     global_batch_size = args.batch_size * accelerator.num_processes
-    train_loader = get_loader(
-        train_ds, batch_size=args.batch_size, shuffle=True,
-        num_workers=args.num_workers, seed=args.seed,
-        persistent_workers=(not dataset_mutates) and args.num_workers > 0,
-    )
+    shape_sampler = None
+    if shape_bucket_training:
+        # The sampler emits per-rank-sized batches.  Accelerate distributes
+        # complete batches across ranks (split_batches=False), so every local
+        # RDD forward sees one exact (query, positive, negative) shape
+        # signature while the effective global batch remains N * batch_size.
+        shape_sampler = ShapeBucketBatchSampler(
+            train_ds, per_gpu_batch_size=args.batch_size, num_processes=1,
+            seed=args.seed,
+        )
+        shape_sampler.set_epoch(0)
+        train_loader = get_loader(
+            train_ds, batch_sampler=shape_sampler, shuffle=False,
+            num_workers=args.num_workers, seed=args.seed,
+            persistent_workers=False,
+        )
+    else:
+        train_loader = get_loader(
+            train_ds, batch_size=args.batch_size, shuffle=True,
+            num_workers=args.num_workers, seed=args.seed,
+            persistent_workers=(not dataset_mutates) and args.num_workers > 0,
+        )
 
     _rng = random.Random(args.seed)
 
@@ -2436,14 +2460,15 @@ def run_training_lg(args: argparse.Namespace) -> None:
         n = max(1, int(len(ds) * fraction))
         return Subset(ds, _rng.sample(range(len(ds)), min(n, len(ds))))
 
+    mini_batch_size = 1 if shape_bucket_training else args.batch_size
     mini_train_loader = get_loader(
         _fixed_subset(train_ds_eval, 10 * args.batch_size / max(len(train_ds_eval), 1)),
-        batch_size=args.batch_size, shuffle=False,
+        batch_size=mini_batch_size, shuffle=False,
         num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
     )
     mini_val_loader = get_loader(
         _fixed_subset(val_ds, 10 * args.batch_size / max(len(val_ds), 1)),
-        batch_size=args.batch_size, shuffle=False,
+        batch_size=mini_batch_size, shuffle=False,
         num_workers=args.num_workers, persistent_workers=args.num_workers > 0,
     )
     # Video-level pseudo-accuracy needs every video's full set of query
@@ -2454,8 +2479,6 @@ def run_training_lg(args: argparse.Namespace) -> None:
     eval_val_loader   = build_pseudo_accuracy_loader(accelerator, val_ds, args)
 
     # ── models ──
-    train_rdd, train_lg = resolve_trained_models(args.trained_model)
-
     rdd = build_rdd(args.rdd_weights, device, args.top_k)
     # detach_descriptors=False lets gradient reach RDD through LG's forward
     # pass (see rdd_patch/lightglue_masked.py); irrelevant when RDD is frozen.
@@ -2660,6 +2683,8 @@ def run_training_lg(args: argparse.Namespace) -> None:
     prev_dead_pos_index: set[str] | None = None
     live_margin = args.lg_margin
     for epoch in range(args.epochs):
+        if shape_sampler is not None:
+            shape_sampler.set_epoch(epoch)
         epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index, epoch_extras = train_epoch_lg(
             accelerator, rdd, lg, eval_lg, optimizer, train_loader,
             mini_train_loader, mini_val_loader,

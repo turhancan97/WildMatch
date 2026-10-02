@@ -91,10 +91,10 @@ class MaskingDemoHelpersTests(unittest.TestCase):
             self.skipTest("match examples or dataset metadata not available")
         items = M.real_items()
         self.assertEqual(len(items), 16)
-        kinds = {i["dataset"]: i["reference"]["type"] for i in items}
+        kinds = {i["dataset"]: (i["reference"] or {}).get("type") for i in items}
         self.assertEqual(kinds["lynx_closed"], "rle")
-        self.assertEqual(kinds["salamander"], "sam3_pipeline")
-        self.assertEqual(kinds["hyena"], "premasked")
+        self.assertIsNone(kinds["salamander"])
+        self.assertIsNone(kinds["hyena"])
         self.assertTrue(all(not i["path"].startswith("masked_images/") for i in items))
         self.assertTrue(all((Path(i["root"]) / i["path"]).is_file() for i in items))
 
@@ -119,10 +119,16 @@ class CommittedMaskingDemoTests(unittest.TestCase):
             for item in group["items"]:
                 for key in ("image", "sam3_mask", "dataset_mask"):
                     file = item[key]["file"] if key == "image" else item[key]
+                    if file is None:
+                        continue
                     self.assertTrue((self.DEMO.parent / file).is_file(), file)
                 self.assertEqual(Image.open(self.DEMO.parent / item["sam3_mask"]).size, (item["image"]["width"], item["image"]["height"]))
-                self.assertTrue(0.0 <= item["iou_with_dataset_mask"] <= 1.0)
-                self.assertTrue(item["reference_mask_source"])
+                if item["dataset_mask"] is None:
+                    self.assertIsNone(item["iou_with_dataset_mask"]); self.assertIsNone(item["reference_mask_source"])
+                else:
+                    self.assertTrue(0.0 <= item["iou_with_dataset_mask"] <= 1.0); self.assertTrue(item["reference_mask_source"])
+                if group["key"] == "real":
+                    self.assertEqual(item["dataset_mask"] is not None, item["dataset"] == "lynx_closed")
         text = self.DEMO.read_text(encoding="utf-8")
         self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
 

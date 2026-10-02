@@ -32,12 +32,13 @@ export async function mountMaskingDemo(root) {
   root.append(groupBar, el("div", { class: "wm-demo-row" }, [stripLabel, strip]), stage, readout, controls, caption);
 
   const splitInput = el("input", { type: "range", min: "0", max: "100", step: "1", value: "50", "aria-label": "divider position" });
+  const datasetCheck = checkbox("Dataset mask", state.datasetOutline, (on) => { state.datasetOutline = on; draw(); }, PALETTE.blue);
   splitInput.addEventListener("input", () => { state.split = Number(splitInput.value) / 100; draw(); });
   controls.append(
     el("label", { class: "wm-control" }, [el("span", { text: "Divider: raw | masked input" }), el("span", { class: "wm-range" }, [splitInput])]),
     el("div", { class: "wm-control" }, [el("span", { text: "Outlines" }), el("div", { class: "wm-check-group" }, [
       checkbox("SAM 3 mask", state.sam3Outline, (on) => { state.sam3Outline = on; draw(); }, PALETTE.red),
-      checkbox("Reference mask", state.datasetOutline, (on) => { state.datasetOutline = on; draw(); }, PALETTE.blue),
+      datasetCheck,
     ])]),
   );
 
@@ -63,7 +64,7 @@ export async function mountMaskingDemo(root) {
         class: `wm-demo-tab${i === state.group ? " is-active" : ""}`, type: "button", role: "tab",
         "aria-selected": i === state.group ? "true" : "false",
         onclick: () => { state.group = i; state.index = 0; buildGroups(); buildStrip(); draw(); },
-      }, [el("span", { text: g.label }), el("small", { text: ` ${g.summary.items} images · mean IoU ${g.summary.mean_iou_with_reference}` })]));
+      }, [el("span", { text: g.label }), el("small", { text: g.summary.mean_iou_with_reference == null ? ` ${g.summary.items} images` : ` ${g.summary.items} images · mean IoU ${g.summary.mean_iou_with_reference}${g.summary.items_with_reference < g.summary.items ? ` on ${g.summary.items_with_reference} with a dataset mask` : ""}` })]));
     });
   }
 
@@ -77,7 +78,7 @@ export async function mountMaskingDemo(root) {
       strip.append(el("button", {
         class: `wm-demo-card${i === state.index ? " is-active" : ""}`, type: "button", role: "listitem",
         "aria-pressed": i === state.index ? "true" : "false",
-        title: `${it.dataset_label}, ${it.identity} (${it.role}): SAM 3 score ${it.sam3.score}, IoU ${it.iou_with_dataset_mask}`,
+        title: `${it.dataset_label}, ${it.identity} (${it.role}): SAM 3 score ${it.sam3.score}${it.iou_with_dataset_mask == null ? "" : `, IoU ${it.iou_with_dataset_mask}`}`,
         onclick: () => { state.index = i; buildStrip(); draw(); },
       }, [
         el("img", { src: assetUrl(`demo/masking/${it.image.file}`), alt: `${it.role} image, ${it.dataset_label}, ${it.identity}` }),
@@ -137,8 +138,10 @@ export async function mountMaskingDemo(root) {
 
   function draw() {
     const it = item();
-    const raw = image(it.image.file), sam3 = image(it.sam3_mask), dataset = image(it.dataset_mask);
-    if (!(loaded(raw) && loaded(sam3) && loaded(dataset))) return;
+    const raw = image(it.image.file), sam3 = image(it.sam3_mask);
+    const dataset = it.dataset_mask ? image(it.dataset_mask) : null;
+    if (!(loaded(raw) && loaded(sam3) && (!dataset || loaded(dataset)))) return;
+    datasetCheck.style.display = dataset ? "" : "none";
     const t = theme();
     const available = Math.max(320, stage.clientWidth || root.clientWidth || 800);
     const scale = Math.min(MAX_HEIGHT / it.image.height, available / it.image.width);
@@ -154,7 +157,7 @@ export async function mountMaskingDemo(root) {
     ctx.drawImage(raw, 0, 0, w, h);
     const masked = maskedInput(raw, sam3, w, h);
     ctx.drawImage(masked, splitX, 0, w - splitX, h, splitX, 0, w - splitX, h);
-    if (state.datasetOutline) { outlinePath(ctx, dataset, w, h); ctx.fillStyle = PALETTE.blue; ctx.fill(); }
+    if (state.datasetOutline && dataset) { outlinePath(ctx, dataset, w, h); ctx.fillStyle = PALETTE.blue; ctx.fill(); }
     if (state.sam3Outline) { outlinePath(ctx, sam3, w, h); ctx.fillStyle = PALETTE.red; ctx.fill(); }
     // Divider.
     ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillRect(splitX - 1, 0, 2, h);
@@ -165,13 +168,14 @@ export async function mountMaskingDemo(root) {
     const g = group();
     tag(ctx, 8, 8, g.synthetic ? "Raw render (synthetic)" : `Raw photo · ${it.dataset_label}`);
     tag(ctx, w - 8, 8, "Model input: SAM 3 mask", "right");
-    canvas.setAttribute("aria-label", `${it.dataset_label} ${it.identity}: raw image on the left of the divider, SAM 3 masked model input on the right; SAM 3 score ${it.sam3.score}, ${it.sam3.instances} instances, IoU with the reference mask ${it.iou_with_dataset_mask}`);
+    const iouText = it.iou_with_dataset_mask == null ? "" : ` · IoU with the dataset's own mask ${it.iou_with_dataset_mask.toFixed(3)}`;
+    canvas.setAttribute("aria-label", `${it.dataset_label} ${it.identity}: raw image on the left of the divider, SAM 3 masked model input on the right; SAM 3 score ${it.sam3.score}, ${it.sam3.instances} instances${iouText}`);
     readout.textContent = "";
     readout.append(
       el("strong", { text: `Prompt "${it.sam3.prompt}"` }),
-      el("span", { text: ` · confidence ${it.sam3.score ?? "–"} · ${it.sam3.instances ?? "–"} instance${it.sam3.instances === 1 ? "" : "s"} merged · foreground ${(it.sam3.foreground_fraction * 100).toFixed(0)} % of the frame · IoU with the reference mask ${it.iou_with_dataset_mask.toFixed(3)} (${it.reference_mask_source})` }),
+      el("span", { text: ` · confidence ${it.sam3.score ?? "–"} · ${it.sam3.instances ?? "–"} instance${it.sam3.instances === 1 ? "" : "s"} merged · foreground ${(it.sam3.foreground_fraction * 100).toFixed(0)} % of the frame${iouText}` }),
     );
-    caption.textContent = `Drag the divider or use the slider. Red outline: SAM 3 mask; blue outline: the reference mask the pipeline used for this dataset. The model input blacks out every pixel outside the mask; nothing is cropped. ${g.attribution}`;
+    caption.textContent = `Drag the divider or use the slider. Red outline: SAM 3 mask${dataset ? "; blue outline: the segmentation mask shipped with the dataset" : ""}. The model input blacks out every pixel outside the mask; nothing is cropped. ${g.attribution}`;
   }
 
   function tag(ctx, x, y, text, align = "left") {

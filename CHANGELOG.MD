@@ -110,7 +110,10 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: masking demo gained a real-photo group (user request after the Salamander team
   permitted display): the sixteen match-figure photos of all eight datasets, SAM 3 run with
   "animal" (fallback "sea star" for the two sea stars, which "animal" misses), compared
-  with each dataset's pipeline reference mask; group tabs in the viewer; Demo page text.
+  with the dataset's own mask where one ships; group tabs in the viewer; Demo page text.
+- 2026-10-02: masking demo compares against a reference mask only for the synthetic subset and
+  CzechLynx, the datasets that ship segmentation masks (user correction); WildlifeReID-10k and
+  Salamander photos show the SAM 3 mask alone.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

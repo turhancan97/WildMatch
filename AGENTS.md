@@ -1025,18 +1025,20 @@ paper and the research page (user report, 2026-10-02), and the user asked for a 
 group covering every paper dataset with two or three hand-picked images each, so the demo has
 two groups (tabs in `masking-demo.js`): `synthetic` (the twenty renders) and `real`, the
 sixteen match-figure photos (query and top-1 per dataset, the user's own picks; `real_items()`
-resolves raw paths from `docs/assets/match/match_examples.json` and `PAPER_PROFILES`). Each
-dataset's reference mask is what the pipeline used: CzechLynx RLE, the provider's pre-masked
-image for WildlifeReID-10k (foreground `max(RGB) > 12`), and the pipeline's own SAM 3 mask
-(prompt "Salamander") for SalamanderID2025; the readout names the reference. SAM 3 runs
+resolves raw paths from `docs/assets/match/match_examples.json` and `PAPER_PROFILES`). A
+reference mask and IoU appear only where the dataset itself ships segmentation masks, i.e. the
+synthetic subset and CzechLynx (RLE); the WildlifeReID-10k pre-masked images and the
+SalamanderID2025 masks were computed by us, so those photos show the SAM 3 mask alone (user
+correction 2026-10-02, replacing a first version that compared against those computed masks).
+`dataset_mask`, `iou_with_dataset_mask` and `reference_mask_source` are `null` for them and the
+group summary counts `items_with_reference`. SAM 3 runs
 (`--write-real-csvs` writes one render list per dataset root under
 `reports/project_page/sam3_real/{czechlynx,wildlife,salamander}/`; run by the assistant on
 `dgxh100` with prompt "animal") detected every photo except the two sea stars, which
 "animal" misses even at the 0.25 fallback threshold; the WildlifeReID-10k run was repeated
 with `--fallback-prompts "sea star"`, which segments them (scores 0.94/0.96, recorded as the
-prompt used). Real-group IoU with the references: 0.91-1.00 (Salamander 0.998 against the
-pipeline's own SAM 3 mask; CzechLynx 0.99; Nyala top-1 0.91 with two merged instances). The
-page states the sea-star fallback and the dark-pixel limitation of the pre-masked reference.
+prompt used). CzechLynx IoU with its dataset masks: 0.992 and 0.989. The page states the sea-star
+fallback.
 Licences: CzechLynx photos and the WildlifeReID-10k sub-datasets other than Hyena/Leopard
 (CDLA-Permissive) are still unverified for web display; the user chose to include them.
 

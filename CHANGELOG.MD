@@ -77,6 +77,10 @@ kept under Unreleased until a project version is assigned.
   and confidence; `synthetic-demo.js` shows the ranked strip, confidence-weighted lines,
   a strongest-N slider and hover confidences. Decisions: fine-tuned only, query vs all six,
   home page, labelled synthetic. GPU export pending.
+- 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
+  match figure switched to the text-free render and its caption to "of the 350 to 420
+  matches found for each pair, lines show the 10 most confident"); the page's match figure
+  and captions follow.
   Hero subtitle flows full width under the logo row and the author line is smaller.
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because

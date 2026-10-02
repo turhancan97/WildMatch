@@ -4,9 +4,10 @@
 
 One correct top-1 retrieval per dataset with the fine-tuned LoMa matcher at
 \(k = 50\). The query is on the left, its top-1 gallery image of the same individual on
-the right. Lines show 10 of the matches, chosen for spatial spread among the most
-confident correspondences; the total match count is given in each panel. Matching uses
-background-removed inputs, and the matches are drawn on the original photos.
+the right. Of the 350 to 420 matches found for each pair, lines show the 10 most
+confident, chosen for spatial spread. Matching uses background-removed inputs, and the
+matches are drawn on the original photos; the interactive viewer below gives every
+pair's match count.
 
 <figure class="wm-figure" markdown>
 ![LoMa + WildMatch matches on correct top-1 retrievals](assets/figures/match_examples.png)

@@ -125,7 +125,7 @@ At test time the adapted matcher scores the candidates of a query and returns a 
 
 <figure class="wm-figure" markdown>
 ![LoMa + WildMatch matches on correct top-1 retrievals](assets/figures/match_examples.png)
-<figcaption>LoMa + WildMatch matches on correct top-1 retrievals (k = 50). For each dataset, a query (left) and its top-1 gallery image (right) of the same individual. Lines show 10 of the matches, whose total is given in each panel. Matching uses background-removed inputs; the matches are drawn on the original photos.</figcaption>
+<figcaption>LoMa + WildMatch matches on correct top-1 retrievals (k = 50). For each dataset, a query (left) and its top-1 gallery image (right) of the same individual. Of the 350 to 420 matches found for each pair, lines show the 10 most confident. Matching uses background-removed inputs; the matches are drawn on the original photos.</figcaption>
 </figure>
 
 ## Limitations and outlook

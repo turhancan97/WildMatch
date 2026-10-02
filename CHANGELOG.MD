@@ -107,6 +107,10 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: SAM 3 run for the masking demo done on the H100 node (prompt "animal", as in
   the paper): twenty renders, one instance each, scores 0.945-0.969, IoU with the dataset
   masks 0.926-0.982 (mean 0.960; snow shadows explain the lowest). Export committed.
+- 2026-10-02: masking demo gained a real-photo group (user request after the Salamander team
+  permitted display): the sixteen match-figure photos of all eight datasets, SAM 3 run with
+  "animal" (fallback "sea star" for the two sea stars, which "animal" misses), compared
+  with each dataset's pipeline reference mask; group tabs in the viewer; Demo page text.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

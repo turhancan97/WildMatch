@@ -16,19 +16,20 @@ export async function mountMaskingDemo(root) {
     root.classList.add("wm-widget--pending");
     return;
   }
-  const state = { index: 0, split: 0.5, sam3Outline: true, datasetOutline: false, dragging: false };
+  const state = { group: 0, index: 0, split: 0.5, sam3Outline: true, datasetOutline: false, dragging: false };
   root.classList.remove("wm-widget");
   root.textContent = "";
 
-  const strip = el("div", { class: "wm-demo-strip", role: "list", "aria-label": "renders" });
+  const groupBar = el("div", { class: "wm-demo-groups", role: "tablist" });
+  const strip = el("div", { class: "wm-demo-strip", role: "list", "aria-label": "images" });
   const stage = el("div", { class: "wm-demo-stage wm-mask-stage" });
   const canvas = el("canvas", { class: "wm-match-canvas", role: "img" });
   stage.append(canvas);
   const readout = el("p", { class: "wm-demo-score" });
   const controls = el("div", { class: "wm-controls wm-controls--inline" });
   const caption = el("p", { class: "wm-match-caption" });
-  root.append(el("div", { class: "wm-demo-row" }, [el("span", { class: "wm-demo-label", text: "Render" }), strip]),
-              stage, readout, controls, caption);
+  const stripLabel = el("span", { class: "wm-demo-label", text: "Image" });
+  root.append(groupBar, el("div", { class: "wm-demo-row" }, [stripLabel, strip]), stage, readout, controls, caption);
 
   const splitInput = el("input", { type: "range", min: "0", max: "100", step: "1", value: "50", "aria-label": "divider position" });
   splitInput.addEventListener("input", () => { state.split = Number(splitInput.value) / 100; draw(); });
@@ -36,7 +37,7 @@ export async function mountMaskingDemo(root) {
     el("label", { class: "wm-control" }, [el("span", { text: "Divider: raw | masked input" }), el("span", { class: "wm-range" }, [splitInput])]),
     el("div", { class: "wm-control" }, [el("span", { text: "Outlines" }), el("div", { class: "wm-check-group" }, [
       checkbox("SAM 3 mask", state.sam3Outline, (on) => { state.sam3Outline = on; draw(); }, PALETTE.red),
-      checkbox("Dataset mask", state.datasetOutline, (on) => { state.datasetOutline = on; draw(); }, PALETTE.blue),
+      checkbox("Reference mask", state.datasetOutline, (on) => { state.datasetOutline = on; draw(); }, PALETTE.blue),
     ])]),
   );
 
@@ -52,19 +53,35 @@ export async function mountMaskingDemo(root) {
   }
   const loaded = (img) => img.complete && img.naturalWidth > 0;
 
-  function item() { return data.items[state.index]; }
+  function group() { return data.groups[state.group]; }
+  function item() { return group().items[state.index]; }
+
+  function buildGroups() {
+    groupBar.textContent = "";
+    data.groups.forEach((g, i) => {
+      groupBar.append(el("button", {
+        class: `wm-demo-tab${i === state.group ? " is-active" : ""}`, type: "button", role: "tab",
+        "aria-selected": i === state.group ? "true" : "false",
+        onclick: () => { state.group = i; state.index = 0; buildGroups(); buildStrip(); draw(); },
+      }, [el("span", { text: g.label }), el("small", { text: ` ${g.summary.items} images · mean IoU ${g.summary.mean_iou_with_reference}` })]));
+    });
+  }
+
+  function caption_for(it) {
+    return group().synthetic ? it.identity.replace("lynx_", "lynx ") : `${it.dataset_label} · ${it.role === "query" ? "query" : "top-1"}`;
+  }
 
   function buildStrip() {
     strip.textContent = "";
-    data.items.forEach((it, i) => {
+    group().items.forEach((it, i) => {
       strip.append(el("button", {
         class: `wm-demo-card${i === state.index ? " is-active" : ""}`, type: "button", role: "listitem",
         "aria-pressed": i === state.index ? "true" : "false",
-        title: `${it.identity.replace("_", " ")} (${it.role}): SAM 3 score ${it.sam3.score}, IoU ${it.iou_with_dataset_mask}`,
+        title: `${it.dataset_label}, ${it.identity} (${it.role}): SAM 3 score ${it.sam3.score}, IoU ${it.iou_with_dataset_mask}`,
         onclick: () => { state.index = i; buildStrip(); draw(); },
       }, [
-        el("img", { src: assetUrl(`demo/masking/${it.image.file}`), alt: `${it.role} render of ${it.identity}` }),
-        el("span", { class: "wm-demo-cap", text: it.identity.replace("lynx_", "lynx ") }),
+        el("img", { src: assetUrl(`demo/masking/${it.image.file}`), alt: `${it.role} image, ${it.dataset_label}, ${it.identity}` }),
+        el("span", { class: "wm-demo-cap", text: caption_for(it) }),
       ]));
     });
   }
@@ -145,14 +162,16 @@ export async function mountMaskingDemo(root) {
     ctx.strokeStyle = PALETTE.greyHead; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = PALETTE.greyHead; ctx.font = "700 11px Roboto, Helvetica, Arial, sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("◀ ▶", splitX, h / 2 + 0.5);
-    tag(ctx, 8, 8, "Raw render (synthetic)"); tag(ctx, w - 8, 8, "Model input: SAM 3 mask", "right");
-    canvas.setAttribute("aria-label", `${it.identity}: raw render on the left of the divider, SAM 3 masked model input on the right; SAM 3 score ${it.sam3.score}, ${it.sam3.instances} instances, IoU with dataset mask ${it.iou_with_dataset_mask}`);
+    const g = group();
+    tag(ctx, 8, 8, g.synthetic ? "Raw render (synthetic)" : `Raw photo · ${it.dataset_label}`);
+    tag(ctx, w - 8, 8, "Model input: SAM 3 mask", "right");
+    canvas.setAttribute("aria-label", `${it.dataset_label} ${it.identity}: raw image on the left of the divider, SAM 3 masked model input on the right; SAM 3 score ${it.sam3.score}, ${it.sam3.instances} instances, IoU with the reference mask ${it.iou_with_dataset_mask}`);
     readout.textContent = "";
     readout.append(
       el("strong", { text: `Prompt "${it.sam3.prompt}"` }),
-      el("span", { text: ` · confidence ${it.sam3.score ?? "–"} · ${it.sam3.instances ?? "–"} instance${it.sam3.instances === 1 ? "" : "s"} merged · foreground ${(it.sam3.foreground_fraction * 100).toFixed(0)} % of the frame · agreement with the dataset mask (IoU) ${it.iou_with_dataset_mask.toFixed(3)}` }),
+      el("span", { text: ` · confidence ${it.sam3.score ?? "–"} · ${it.sam3.instances ?? "–"} instance${it.sam3.instances === 1 ? "" : "s"} merged · foreground ${(it.sam3.foreground_fraction * 100).toFixed(0)} % of the frame · IoU with the reference mask ${it.iou_with_dataset_mask.toFixed(3)} (${it.reference_mask_source})` }),
     );
-    caption.textContent = `Drag the divider or use the slider. Red outline: SAM 3 mask; blue outline: the mask shipped with the dataset. The model input blacks out every pixel outside the mask; nothing is cropped. Mean IoU over ${data.summary.items} renders: ${data.summary.mean_iou_with_dataset_mask}. ${data.attribution}`;
+    caption.textContent = `Drag the divider or use the slider. Red outline: SAM 3 mask; blue outline: the reference mask the pipeline used for this dataset. The model input blacks out every pixel outside the mask; nothing is cropped. ${g.attribution}`;
   }
 
   function tag(ctx, x, y, text, align = "left") {
@@ -178,6 +197,7 @@ export async function mountMaskingDemo(root) {
   canvas.style.touchAction = "none";
   canvas.style.cursor = "ew-resize";
 
+  buildGroups();
   buildStrip();
   draw();
   onThemeChange(draw);

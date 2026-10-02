@@ -71,8 +71,10 @@ class MaskingDemoHelpersTests(unittest.TestCase):
                                  "threshold_used": "0.5", "prompt_used": "Lynx", "merge": "union",
                                  "fg_fraction": str(sam3_mask.mean()), "bbox": "", "mask": _rle(sam3_mask)})
             payload = M.export(root, "meta.csv", sam3, out, renders)
-            self.assertEqual(len(payload["items"]), 2)
-            item = payload["items"][0]
+            self.assertEqual([g["key"] for g in payload["groups"]], ["synthetic"])
+            items = payload["groups"][0]["items"]
+            self.assertEqual(len(items), 2)
+            item = items[0]
             self.assertEqual(item["sam3"]["prompt"], "Lynx")
             self.assertEqual(item["sam3"]["instances"], 2)
             self.assertAlmostEqual(item["iou_with_dataset_mask"], (18 * 40) / (20 * 40), places=3)
@@ -83,6 +85,18 @@ class MaskingDemoHelpersTests(unittest.TestCase):
             self.assertIn("Lynx", payload["run"]["prompts"])
             text = (out / "masking_demo.json").read_text(encoding="utf-8")
             self.assertNotIn("/home/", text)
+
+    def test_real_items_resolve_raw_paths_and_references(self):
+        if not M.MATCH_EXAMPLES_JSON.is_file() or not all(Path(p.metadata).is_file() for p in M.PAPER_PROFILES):
+            self.skipTest("match examples or dataset metadata not available")
+        items = M.real_items()
+        self.assertEqual(len(items), 16)
+        kinds = {i["dataset"]: i["reference"]["type"] for i in items}
+        self.assertEqual(kinds["lynx_closed"], "rle")
+        self.assertEqual(kinds["salamander"], "sam3_pipeline")
+        self.assertEqual(kinds["hyena"], "premasked")
+        self.assertTrue(all(not i["path"].startswith("masked_images/") for i in items))
+        self.assertTrue(all((Path(i["root"]) / i["path"]).is_file() for i in items))
 
     def test_missing_sam3_output_fails_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -97,14 +111,18 @@ class CommittedMaskingDemoTests(unittest.TestCase):
         if not self.DEMO.is_file():
             self.skipTest("masking demo not exported")
         data = json.loads(self.DEMO.read_text(encoding="utf-8"))
-        self.assertTrue(data["synthetic"])
-        self.assertIn("Picek", data["attribution"])
-        for item in data["items"]:
-            for key in ("image", "sam3_mask", "dataset_mask"):
-                file = item[key]["file"] if key == "image" else item[key]
-                self.assertTrue((self.DEMO.parent / file).is_file(), file)
-            self.assertEqual(Image.open(self.DEMO.parent / item["sam3_mask"]).size, (item["image"]["width"], item["image"]["height"]))
-            self.assertTrue(0.0 <= item["iou_with_dataset_mask"] <= 1.0)
+        self.assertEqual(data["groups"][0]["key"], "synthetic")
+        self.assertTrue(data["groups"][0]["synthetic"])
+        for group in data["groups"]:
+            self.assertIn("Picek", group["attribution"])
+            self.assertTrue(group["items"])
+            for item in group["items"]:
+                for key in ("image", "sam3_mask", "dataset_mask"):
+                    file = item[key]["file"] if key == "image" else item[key]
+                    self.assertTrue((self.DEMO.parent / file).is_file(), file)
+                self.assertEqual(Image.open(self.DEMO.parent / item["sam3_mask"]).size, (item["image"]["width"], item["image"]["height"]))
+                self.assertTrue(0.0 <= item["iou_with_dataset_mask"] <= 1.0)
+                self.assertTrue(item["reference_mask_source"])
         text = self.DEMO.read_text(encoding="utf-8")
         self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
 

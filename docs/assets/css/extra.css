@@ -666,3 +666,35 @@
 .wm-mask-stage .wm-match-canvas {
   user-select: none;
 }
+
+/* Masking demo: group tabs (synthetic renders / real photographs). */
+.wm-demo-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.wm-demo-tab {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--wm-grey);
+  border-radius: 999px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  cursor: pointer;
+}
+
+.wm-demo-tab small {
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-demo-tab.is-active {
+  border-color: var(--wm-blue);
+  background: var(--wm-blue-75);
+}
+
+[data-md-color-scheme="slate"] .wm-demo-tab.is-active {
+  background: rgba(58, 126, 171, 0.3);
+}

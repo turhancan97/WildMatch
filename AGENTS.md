@@ -1019,7 +1019,26 @@ renders detected in one instance with scores 0.945-0.969, no fallbacks; IoU with
 masks 0.926-0.982, mean 0.960. The lowest values are snow renders where the dataset mask
 includes the cast shadow and SAM 3 does not, so the disagreement is in the reference mask, not
 a SAM 3 failure. The SAM 3 outputs stay under the gitignored
-`reports/project_page/sam3_synthetic/`; the export (2.1 MB) is committed.
+`reports/project_page/sam3_synthetic/`; the export is committed.
+**Real photographs added 2026-10-02.** The SalamanderID2025 team allowed showing its photos on the
+paper and the research page (user report, 2026-10-02), and the user asked for a real-photo
+group covering every paper dataset with two or three hand-picked images each, so the demo has
+two groups (tabs in `masking-demo.js`): `synthetic` (the twenty renders) and `real`, the
+sixteen match-figure photos (query and top-1 per dataset, the user's own picks; `real_items()`
+resolves raw paths from `docs/assets/match/match_examples.json` and `PAPER_PROFILES`). Each
+dataset's reference mask is what the pipeline used: CzechLynx RLE, the provider's pre-masked
+image for WildlifeReID-10k (foreground `max(RGB) > 12`), and the pipeline's own SAM 3 mask
+(prompt "Salamander") for SalamanderID2025; the readout names the reference. SAM 3 runs
+(`--write-real-csvs` writes one render list per dataset root under
+`reports/project_page/sam3_real/{czechlynx,wildlife,salamander}/`; run by the assistant on
+`dgxh100` with prompt "animal") detected every photo except the two sea stars, which
+"animal" misses even at the 0.25 fallback threshold; the WildlifeReID-10k run was repeated
+with `--fallback-prompts "sea star"`, which segments them (scores 0.94/0.96, recorded as the
+prompt used). Real-group IoU with the references: 0.91-1.00 (Salamander 0.998 against the
+pipeline's own SAM 3 mask; CzechLynx 0.99; Nyala top-1 0.91 with two merged instances). The
+page states the sea-star fallback and the dark-pixel limitation of the pre-masked reference.
+Licences: CzechLynx photos and the WildlifeReID-10k sub-datasets other than Hyena/Leopard
+(CDLA-Permissive) are still unverified for web display; the user chose to include them.
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

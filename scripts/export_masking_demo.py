@@ -41,12 +41,28 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from export_synthetic_demo import ATTRIBUTION, INDIVIDUALS, decode_rle, identity_of, load_rows  # noqa: E402
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+from reid.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
 
 DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
 DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"
 DEFAULT_SAM3_DIR = REPO_ROOT / "reports" / "project_page" / "sam3_synthetic"
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "masking"
 WEB_LONG_SIDE = 900
+DEFAULT_SAM3_REAL_DIR = REPO_ROOT / "reports" / "project_page" / "sam3_real"
+MATCH_EXAMPLES_JSON = REPO_ROOT / "docs" / "assets" / "match" / "match_examples.json"
+PREMASKED_FOREGROUND_THRESHOLD = 12  # as in scripts/audit_image_quality.py
+# Real photographs: the match-figure pairs the user picked by eye (two per paper dataset).
+# Each dataset's reference mask comes from what the pipeline used: the RLE mask shipped
+# with CzechLynx, the provider's pre-masked image for WildlifeReID-10k (foreground =
+# max(RGB) > 12, which undercounts very dark animals), and the pipeline's own SAM 3 mask
+# (prompt "Salamander") for SalamanderID2025, whose team allowed display on 2026-10-02.
+REAL_ATTRIBUTION = ("Photographs from the paper's datasets: CzechLynx (Picek et al.), WildlifeReID-10k "
+                    "(Adam et al.; HyenaID2022, LeopardID2022, NyalaData, SeaStarReID2023, WhaleSharkID, "
+                    "ZindiTurtleRecall) and SalamanderID2025 (AnimalCLEF 2025, shown with the dataset team's permission).")
+PROFILE_BY_KEY = {p.key: p for p in PAPER_PROFILES}
+ROOT_KEYS = {"CzechLynx_v2": "czechlynx", "WildlifeReID-10k": "wildlife", "SalamanderID2025": "salamander"}
 
 
 def default_renders() -> List[Dict[str, str]]:
@@ -67,6 +83,67 @@ def write_renders_csv(path: Path, renders: Sequence[Dict[str, str]]) -> None:
         writer.writeheader()
         for row in renders:
             writer.writerow({k: row[k] for k in ("path", "identity", "role", "tag")})
+
+
+def _metadata_row(profile, path: str) -> Dict[str, str]:
+    csv.field_size_limit(1 << 30)
+    with Path(profile.metadata).open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if row.get("path") == path:
+                return row
+    raise FileNotFoundError(f"{profile.key}: {path} not in {profile.metadata}")
+
+
+def real_items(match_examples: Path = MATCH_EXAMPLES_JSON) -> List[Dict[str, Any]]:
+    """The match-figure photos (query and top-1 per dataset) with raw path and reference mask."""
+    examples = json.loads(match_examples.read_text(encoding="utf-8"))["examples"]
+    items: List[Dict[str, Any]] = []
+    for example in examples:
+        profile = PROFILE_BY_KEY[example["dataset"]]
+        root_key = ROOT_KEYS[profile.dataset_name]
+        for role, meta_path in (("query", example["query_path"]), ("gallery", example["gallery_path"])):
+            row = _metadata_row(profile, meta_path)
+            if profile.mask_col:                       # CzechLynx: raw photo + RLE mask in metadata
+                raw, reference = meta_path, {"type": "rle", "label": "dataset mask (RLE)"}
+            elif row.get("original_path"):             # SalamanderID2025: pipeline SAM 3 mask
+                raw = row["original_path"]
+                reference = {"type": "sam3_pipeline", "label": f"pipeline SAM 3 mask (prompt \"{row.get('sam3_prompt', '')}\")"}
+            else:                                      # WildlifeReID-10k: provider pre-masked image
+                raw = "images/" + meta_path[len("masked_images/"):] if meta_path.startswith("masked_images/") else meta_path
+                reference = {"type": "premasked", "label": "provider pre-masked image (foreground = max(RGB) > 12)",
+                             "masked_path": meta_path}
+            items.append({"tag": f"{example['dataset']}_{role}", "dataset": example["dataset"], "dataset_label": example["label"],
+                          "identity": str(row.get(profile.identity_col, "")), "role": role, "root_key": root_key,
+                          "root": str(profile.root), "path": raw, "metadata_path": meta_path, "reference": reference,
+                          "metadata_mask": row.get("mask") or ""})
+    return items
+
+
+def write_real_render_csvs(out_dir: Path, items: Sequence[Dict[str, Any]]) -> Dict[str, Path]:
+    """One render list per dataset root for the SAM 3 script (paths relative to that root)."""
+    written: Dict[str, Path] = {}
+    for root_key in sorted({i["root_key"] for i in items}):
+        rows = [i for i in items if i["root_key"] == root_key]
+        path = out_dir / root_key / "renders.csv"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=["path", "dataset", "role", "tag"])
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({k: row[k] for k in ("path", "dataset", "role", "tag")})
+        written[root_key] = path
+        print(f"[masking-demo] {root_key}: {len(rows)} photos, root {rows[0]['root']}")
+    return written
+
+
+def reference_mask(item: Dict[str, Any], size_hw: Sequence[int]) -> np.ndarray:
+    kind = item["reference"]["type"]
+    if kind in ("rle", "sam3_pipeline"):
+        return decode_rle(item["metadata_mask"])
+    masked = np.asarray(Image.open(Path(item["root"]) / item["reference"]["masked_path"]).convert("RGB"))
+    if masked.shape[:2] != tuple(size_hw):
+        raise ValueError(f"{item['tag']}: pre-masked image {masked.shape[:2]} does not match the raw photo {tuple(size_hw)}")
+    return (masked.max(axis=2) > PREMASKED_FOREGROUND_THRESHOLD).astype(np.uint8)
 
 
 def iou(a: np.ndarray, b: np.ndarray) -> float:
@@ -102,10 +179,12 @@ def load_sam3_rows(sam3_dir: Path, paths: Sequence[str]) -> Dict[str, Dict[str, 
     return found
 
 
-def item_record(render: Dict[str, str], size: Sequence[int], sam3_row: Dict[str, str], sam3_mask: np.ndarray,
+def item_record(render: Dict[str, Any], size: Sequence[int], sam3_row: Dict[str, str], sam3_mask: np.ndarray,
                 dataset_mask: np.ndarray) -> Dict[str, Any]:
     return {
         "tag": render["tag"], "identity": render["identity"], "role": render["role"], "source": render["path"],
+        "dataset": render.get("dataset", "synthetic"), "dataset_label": render.get("dataset_label", "CzechLynx synthetic"),
+        "reference_mask_source": render.get("reference", {}).get("label", "dataset mask (RLE)"),
         "image": {"file": f"{render['tag']}.jpg", "width": int(size[0]), "height": int(size[1])},
         "sam3_mask": f"{render['tag']}_sam3.png", "dataset_mask": f"{render['tag']}_dataset.png",
         "sam3": {"prompt": sam3_row.get("prompt_used", ""), "threshold": _float(sam3_row.get("threshold_used")),
@@ -130,18 +209,19 @@ def _int(value: Optional[str]) -> Optional[int]:
         return None
 
 
-def build_payload(items: List[Dict[str, Any]], run: Dict[str, Any]) -> Dict[str, Any]:
-    ious = [i["iou_with_dataset_mask"] for i in items]
+def build_payload(groups: List[Dict[str, Any]], run: Dict[str, Any]) -> Dict[str, Any]:
+    """Assemble the demo JSON: one group per image source, each with its own summary."""
+    for group in groups:
+        ious = [i["iou_with_dataset_mask"] for i in group["items"]]
+        group["summary"] = {"items": len(group["items"]),
+                            "mean_iou_with_reference": round(float(np.mean(ious)), 4) if ious else None,
+                            "min_iou_with_reference": round(float(np.min(ious)), 4) if ious else None}
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "generated_by": "scripts/export_masking_demo.py",
-        "synthetic": True,
-        "attribution": ATTRIBUTION,
         "method": "Text-prompted SAM 3 segmentation; all detected instances merged into one mask; pixels outside the mask set to black",
         "run": run,
-        "summary": {"items": len(items), "mean_iou_with_dataset_mask": round(float(np.mean(ious)), 4) if ious else None,
-                    "min_iou_with_dataset_mask": round(float(np.min(ious)), 4) if ious else None},
-        "items": items,
+        "groups": groups,
     }
     text = json.dumps(payload)
     for needle in ("/shared/", "/home/"):
@@ -150,37 +230,65 @@ def build_payload(items: List[Dict[str, Any]], run: Dict[str, Any]) -> Dict[str,
     return payload
 
 
-def export(root: Path, metadata: str, sam3_dir: Path, out_dir: Path, renders: Sequence[Dict[str, str]]) -> Dict[str, Any]:
-    paths = [r["path"] for r in renders]
-    dataset_rows = load_rows(root, metadata, paths)
-    sam3_rows = load_sam3_rows(sam3_dir, paths)
-    out_dir.mkdir(parents=True, exist_ok=True)
+def export_items(root: Path, sam3_rows: Dict[str, Dict[str, str]], out_dir: Path, renders: Sequence[Dict[str, Any]],
+                 dataset_masks: Dict[str, np.ndarray] | None, prompts: set) -> List[Dict[str, Any]]:
+    """Web copies, mask PNGs and records for one list of renders under one root."""
     items: List[Dict[str, Any]] = []
-    prompts = set()
     for render in renders:
-        if identity_of(render["path"]) != render["identity"]:
-            raise ValueError(f"{render['tag']}: path belongs to another individual")
         image = Image.open(root / render["path"]).convert("RGB")
         size = web_size(image.size)
         image.resize(size, Image.LANCZOS).save(out_dir / f"{render['tag']}.jpg", format="JPEG", quality=88,
                                               optimize=True, progressive=True)
         sam3_row = sam3_rows[render["path"]]
         sam3_mask = decode_rle(sam3_row["mask"]) if sam3_row.get("mask") else np.zeros((image.height, image.width), np.uint8)
-        dataset_mask = decode_rle(dataset_rows[render["path"]]["mask"])
-        if sam3_mask.shape != dataset_mask.shape or sam3_mask.shape != (image.height, image.width):
-            raise ValueError(f"{render['tag']}: mask sizes {sam3_mask.shape} / {dataset_mask.shape} do not match the render {image.size}")
+        ref = dataset_masks[render["path"]] if dataset_masks is not None else reference_mask(render, (image.height, image.width))
+        if sam3_mask.shape != ref.shape or sam3_mask.shape != (image.height, image.width):
+            raise ValueError(f"{render['tag']}: mask sizes {sam3_mask.shape} / {ref.shape} do not match the photo {image.size}")
         mask_png(sam3_mask, size, out_dir / f"{render['tag']}_sam3.png")
-        mask_png(dataset_mask, size, out_dir / f"{render['tag']}_dataset.png")
-        item = item_record(render, size, sam3_row, sam3_mask, dataset_mask)
+        mask_png(ref, size, out_dir / f"{render['tag']}_dataset.png")
+        item = item_record(render, size, sam3_row, sam3_mask, ref)
         prompts.add(item["sam3"]["prompt"])
         items.append(item)
         print(f"[masking-demo] {render['tag']}: score {item['sam3']['score']}, {item['sam3']['instances']} instance(s), "
-              f"fg {item['sam3']['foreground_fraction']:.2f}, IoU vs dataset mask {item['iou_with_dataset_mask']:.3f}", flush=True)
+              f"fg {item['sam3']['foreground_fraction']:.2f}, IoU vs reference {item['iou_with_dataset_mask']:.3f}", flush=True)
+    return items
+
+
+def export(root: Path, metadata: str, sam3_dir: Path, out_dir: Path, renders: Sequence[Dict[str, str]],
+           sam3_real_dir: Optional[Path] = None, real: Optional[Sequence[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prompts: set = set()
+    groups: List[Dict[str, Any]] = []
+
+    paths = [r["path"] for r in renders]
+    dataset_rows = load_rows(root, metadata, paths)
+    for render in renders:
+        if identity_of(render["path"]) != render["identity"]:
+            raise ValueError(f"{render['tag']}: path belongs to another individual")
+    dataset_masks = {p: decode_rle(dataset_rows[p]["mask"]) for p in paths}
+    synthetic_items = export_items(root, load_sam3_rows(sam3_dir, paths), out_dir, renders, dataset_masks, prompts)
+    groups.append({"key": "synthetic", "label": "Synthetic renders", "synthetic": True, "attribution": ATTRIBUTION,
+                   "reference": "mask shipped with the CzechLynx synthetic subset", "items": synthetic_items})
+
+    if sam3_real_dir is not None and real:
+        real_group_items: List[Dict[str, Any]] = []
+        for root_key in sorted({i["root_key"] for i in real}):
+            subset = [i for i in real if i["root_key"] == root_key]
+            sam3_rows = load_sam3_rows(sam3_real_dir / root_key, [i["path"] for i in subset])
+            real_group_items.extend(export_items(Path(subset[0]["root"]), sam3_rows, out_dir, subset, None, prompts))
+        order = [e["dataset"] for e in json.loads(MATCH_EXAMPLES_JSON.read_text(encoding="utf-8"))["examples"]]
+        real_group_items.sort(key=lambda i: (order.index(i["dataset"]), i["role"] != "query"))
+        groups.append({"key": "real", "label": "Camera-trap and field photographs", "synthetic": False,
+                       "attribution": REAL_ATTRIBUTION,
+                       "reference": "whatever mask the pipeline used for that dataset (see each photo's readout)",
+                       "items": real_group_items})
+
     run = {"segmenter": "SAM 3 (text prompt)", "prompts": sorted(p for p in prompts if p),
            "script": "scripts/segment_with_sam3.py --segment", "masks_csv": "masks.csv"}
-    payload = build_payload(items, run)
+    payload = build_payload(groups, run)
     (out_dir / "masking_demo.json").write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
-    print(f"[masking-demo] wrote {out_dir / 'masking_demo.json'} (mean IoU {payload['summary']['mean_iou_with_dataset_mask']})")
+    print(f"[masking-demo] wrote {out_dir / 'masking_demo.json'}: " +
+          ", ".join(f"{g['key']} {g['summary']['items']} items, mean IoU {g['summary']['mean_iou_with_reference']}" for g in groups))
     return payload
 
 
@@ -195,6 +303,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--write-renders-csv", type=Path, default=None,
                         help="only write the render list for the SAM 3 run to this path and exit")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--sam3-real-dir", type=Path, default=DEFAULT_SAM3_REAL_DIR,
+                        help="parent of per-root SAM 3 output dirs (czechlynx/, wildlife/, salamander/) for the photographs")
+    parser.add_argument("--real", action="store_true", help="also export the real-photo group (match-figure pairs)")
+    parser.add_argument("--write-real-csvs", action="store_true",
+                        help="only write the per-root render lists for the real-photo SAM 3 runs and exit")
     args = parser.parse_args(list(argv) if argv is not None else None)
     renders = default_renders()
     if args.renders is not None:
@@ -204,7 +317,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         write_renders_csv(args.write_renders_csv, renders)
         print(f"[masking-demo] wrote {args.write_renders_csv} ({len(renders)} renders)")
         return 0
-    export(args.root, args.metadata, args.sam3_dir, args.out, renders)
+    if args.write_real_csvs:
+        write_real_render_csvs(args.sam3_real_dir, real_items())
+        return 0
+    export(args.root, args.metadata, args.sam3_dir, args.out, renders,
+           sam3_real_dir=args.sam3_real_dir if args.real else None, real=real_items() if args.real else None)
     return 0
 
 

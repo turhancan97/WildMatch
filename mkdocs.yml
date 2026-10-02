@@ -88,6 +88,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Demo: demo.md
   - Method: method.md
   - Datasets: datasets.md
   - Results: results.md

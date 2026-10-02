@@ -48,6 +48,7 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 [Paper](paper.md){ .md-button .md-button--primary }
 [Results](results.md){ .md-button }
 [Code](code.md){ .md-button }
+[Demo](demo.md){ .md-button }
 [Reproduce](reproduce/index.md){ .md-button }
 </div>
 
@@ -72,20 +73,8 @@ Individual animal re-identification from camera-trap imagery is an instance retr
 3. **Transfer to unseen individuals**, and an analysis of where in the matching
    pipeline identity supervision should be applied.
 
-## Try it on synthetic renders
-
-Ten synthetic lynxes, two renders each. Choose one of the ten query renders; LoMa +
-WildMatch, the matcher fine-tuned on CzechLynx, ranks the ten gallery renders, one per
-individual, so exactly one is the same animal. Pick a candidate to see its
-correspondences, drag the slider to show more of them, and hover a match to read its
-confidence. The matches and scores are real matcher output; the images are synthetic
-renders, not the paper's test data, and the scores are not a benchmark result. Synthetic
-coats are generated from a shared texture model, so different individuals can look alike
-to the matcher and a few queries rank another lynx first by a small margin.
-
-<div id="wm-synthetic-demo" class="wm-widget">Loading the synthetic match demo…</div>
-
-<small>Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0.</small>
+Try the matcher yourself on the [interactive demo](demo.md): ten synthetic lynxes, real
+matches and confidences from the fine-tuned model.
 
 ## How it works
 

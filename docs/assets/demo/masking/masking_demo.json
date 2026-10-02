@@ -1,0 +1,482 @@
+{
+ "generated_at": "2026-10-02T15:08:44+00:00",
+ "generated_by": "scripts/export_masking_demo.py",
+ "synthetic": true,
+ "attribution": "Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0.",
+ "method": "Text-prompted SAM 3 segmentation; all detected instances merged into one mask; pixels outside the mask set to black",
+ "run": {
+  "segmenter": "SAM 3 (text prompt)",
+  "prompts": [
+   "animal"
+  ],
+  "script": "scripts/segment_with_sam3.py --segment",
+  "masks_csv": "masks.csv"
+ },
+ "summary": {
+  "items": 20,
+  "mean_iou_with_dataset_mask": 0.9598,
+  "min_iou_with_dataset_mask": 0.9256
+ },
+ "items": [
+  {
+   "tag": "Q_lynx_173",
+   "identity": "lynx_173",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg",
+   "image": {
+    "file": "Q_lynx_173.jpg",
+    "width": 427,
+    "height": 426
+   },
+   "sam3_mask": "Q_lynx_173_sam3.png",
+   "dataset_mask": "Q_lynx_173_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9531,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.3336
+   },
+   "dataset_foreground_fraction": 0.3427,
+   "iou_with_dataset_mask": 0.9723
+  },
+  {
+   "tag": "G_lynx_173",
+   "identity": "lynx_173",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/06420_synthetic_lynx_173.jpg",
+   "image": {
+    "file": "G_lynx_173.jpg",
+    "width": 593,
+    "height": 592
+   },
+   "sam3_mask": "G_lynx_173_sam3.png",
+   "dataset_mask": "G_lynx_173_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9609,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2438
+   },
+   "dataset_foreground_fraction": 0.2516,
+   "iou_with_dataset_mask": 0.9679
+  },
+  {
+   "tag": "Q_lynx_129",
+   "identity": "lynx_129",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/05121_synthetic_lynx_129.jpg",
+   "image": {
+    "file": "Q_lynx_129.jpg",
+    "width": 784,
+    "height": 783
+   },
+   "sam3_mask": "Q_lynx_129_sam3.png",
+   "dataset_mask": "Q_lynx_129_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9453,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2442
+   },
+   "dataset_foreground_fraction": 0.2506,
+   "iou_with_dataset_mask": 0.9738
+  },
+  {
+   "tag": "G_lynx_129",
+   "identity": "lynx_129",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/36554_synthetic_lynx_129.jpg",
+   "image": {
+    "file": "G_lynx_129.jpg",
+    "width": 560,
+    "height": 560
+   },
+   "sam3_mask": "G_lynx_129_sam3.png",
+   "dataset_mask": "G_lynx_129_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9609,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2066
+   },
+   "dataset_foreground_fraction": 0.213,
+   "iou_with_dataset_mask": 0.9686
+  },
+  {
+   "tag": "Q_lynx_242",
+   "identity": "lynx_242",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/08305_synthetic_lynx_242.jpg",
+   "image": {
+    "file": "Q_lynx_242.jpg",
+    "width": 900,
+    "height": 899
+   },
+   "sam3_mask": "Q_lynx_242_sam3.png",
+   "dataset_mask": "Q_lynx_242_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9453,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.1869
+   },
+   "dataset_foreground_fraction": 0.1923,
+   "iou_with_dataset_mask": 0.9711
+  },
+  {
+   "tag": "G_lynx_242",
+   "identity": "lynx_242",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/12884_synthetic_lynx_242.jpg",
+   "image": {
+    "file": "G_lynx_242.jpg",
+    "width": 570,
+    "height": 569
+   },
+   "sam3_mask": "G_lynx_242_sam3.png",
+   "dataset_mask": "G_lynx_242_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.957,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2158
+   },
+   "dataset_foreground_fraction": 0.2292,
+   "iou_with_dataset_mask": 0.9378
+  },
+  {
+   "tag": "Q_lynx_88",
+   "identity": "lynx_88",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/04055_synthetic_lynx_88.jpg",
+   "image": {
+    "file": "Q_lynx_88.jpg",
+    "width": 634,
+    "height": 633
+   },
+   "sam3_mask": "Q_lynx_88_sam3.png",
+   "dataset_mask": "Q_lynx_88_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9688,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2387
+   },
+   "dataset_foreground_fraction": 0.2429,
+   "iou_with_dataset_mask": 0.9819
+  },
+  {
+   "tag": "G_lynx_88",
+   "identity": "lynx_88",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/33261_synthetic_lynx_88.jpg",
+   "image": {
+    "file": "G_lynx_88.jpg",
+    "width": 525,
+    "height": 525
+   },
+   "sam3_mask": "G_lynx_88_sam3.png",
+   "dataset_mask": "G_lynx_88_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9609,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2385
+   },
+   "dataset_foreground_fraction": 0.247,
+   "iou_with_dataset_mask": 0.9641
+  },
+  {
+   "tag": "Q_lynx_79",
+   "identity": "lynx_79",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/00519_synthetic_lynx_79.jpg",
+   "image": {
+    "file": "Q_lynx_79.jpg",
+    "width": 627,
+    "height": 626
+   },
+   "sam3_mask": "Q_lynx_79_sam3.png",
+   "dataset_mask": "Q_lynx_79_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.957,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2246
+   },
+   "dataset_foreground_fraction": 0.23,
+   "iou_with_dataset_mask": 0.9749
+  },
+  {
+   "tag": "G_lynx_79",
+   "identity": "lynx_79",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/34400_synthetic_lynx_79.jpg",
+   "image": {
+    "file": "G_lynx_79.jpg",
+    "width": 529,
+    "height": 529
+   },
+   "sam3_mask": "G_lynx_79_sam3.png",
+   "dataset_mask": "G_lynx_79_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.957,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.1993
+   },
+   "dataset_foreground_fraction": 0.2129,
+   "iou_with_dataset_mask": 0.9356
+  },
+  {
+   "tag": "Q_lynx_138",
+   "identity": "lynx_138",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/09291_synthetic_lynx_138.jpg",
+   "image": {
+    "file": "Q_lynx_138.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "sam3_mask": "Q_lynx_138_sam3.png",
+   "dataset_mask": "Q_lynx_138_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.957,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2756
+   },
+   "dataset_foreground_fraction": 0.2977,
+   "iou_with_dataset_mask": 0.9256
+  },
+  {
+   "tag": "G_lynx_138",
+   "identity": "lynx_138",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/14555_synthetic_lynx_138.jpg",
+   "image": {
+    "file": "G_lynx_138.jpg",
+    "width": 511,
+    "height": 511
+   },
+   "sam3_mask": "G_lynx_138_sam3.png",
+   "dataset_mask": "G_lynx_138_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9648,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2128
+   },
+   "dataset_foreground_fraction": 0.2244,
+   "iou_with_dataset_mask": 0.9462
+  },
+  {
+   "tag": "Q_lynx_27",
+   "identity": "lynx_27",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/16742_synthetic_lynx_27.jpg",
+   "image": {
+    "file": "Q_lynx_27.jpg",
+    "width": 505,
+    "height": 505
+   },
+   "sam3_mask": "Q_lynx_27_sam3.png",
+   "dataset_mask": "Q_lynx_27_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9609,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.1999
+   },
+   "dataset_foreground_fraction": 0.2079,
+   "iou_with_dataset_mask": 0.9603
+  },
+  {
+   "tag": "G_lynx_27",
+   "identity": "lynx_27",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/04673_synthetic_lynx_27.jpg",
+   "image": {
+    "file": "G_lynx_27.jpg",
+    "width": 505,
+    "height": 505
+   },
+   "sam3_mask": "G_lynx_27_sam3.png",
+   "dataset_mask": "G_lynx_27_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9609,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2353
+   },
+   "dataset_foreground_fraction": 0.2428,
+   "iou_with_dataset_mask": 0.9673
+  },
+  {
+   "tag": "Q_lynx_174",
+   "identity": "lynx_174",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/19763_synthetic_lynx_174.jpg",
+   "image": {
+    "file": "Q_lynx_174.jpg",
+    "width": 582,
+    "height": 582
+   },
+   "sam3_mask": "Q_lynx_174_sam3.png",
+   "dataset_mask": "Q_lynx_174_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9648,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2131
+   },
+   "dataset_foreground_fraction": 0.2249,
+   "iou_with_dataset_mask": 0.9466
+  },
+  {
+   "tag": "G_lynx_174",
+   "identity": "lynx_174",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/23288_synthetic_lynx_174.jpg",
+   "image": {
+    "file": "G_lynx_174.jpg",
+    "width": 640,
+    "height": 640
+   },
+   "sam3_mask": "G_lynx_174_sam3.png",
+   "dataset_mask": "G_lynx_174_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9453,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.1945
+   },
+   "dataset_foreground_fraction": 0.2091,
+   "iou_with_dataset_mask": 0.9304
+  },
+  {
+   "tag": "Q_lynx_289",
+   "identity": "lynx_289",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/01549_synthetic_lynx_289.jpg",
+   "image": {
+    "file": "Q_lynx_289.jpg",
+    "width": 568,
+    "height": 568
+   },
+   "sam3_mask": "Q_lynx_289_sam3.png",
+   "dataset_mask": "Q_lynx_289_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9609,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2123
+   },
+   "dataset_foreground_fraction": 0.2162,
+   "iou_with_dataset_mask": 0.9784
+  },
+  {
+   "tag": "G_lynx_289",
+   "identity": "lynx_289",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/10624_synthetic_lynx_289.jpg",
+   "image": {
+    "file": "G_lynx_289.jpg",
+    "width": 619,
+    "height": 618
+   },
+   "sam3_mask": "G_lynx_289_sam3.png",
+   "dataset_mask": "G_lynx_289_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9648,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2171
+   },
+   "dataset_foreground_fraction": 0.2257,
+   "iou_with_dataset_mask": 0.9596
+  },
+  {
+   "tag": "Q_lynx_45",
+   "identity": "lynx_45",
+   "role": "query",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/39237_synthetic_lynx_45.jpg",
+   "image": {
+    "file": "Q_lynx_45.jpg",
+    "width": 516,
+    "height": 515
+   },
+   "sam3_mask": "Q_lynx_45_sam3.png",
+   "dataset_mask": "Q_lynx_45_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9648,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.1946
+   },
+   "dataset_foreground_fraction": 0.1996,
+   "iou_with_dataset_mask": 0.9741
+  },
+  {
+   "tag": "G_lynx_45",
+   "identity": "lynx_45",
+   "role": "gallery",
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/13915_synthetic_lynx_45.jpg",
+   "image": {
+    "file": "G_lynx_45.jpg",
+    "width": 579,
+    "height": 578
+   },
+   "sam3_mask": "G_lynx_45_sam3.png",
+   "dataset_mask": "G_lynx_45_dataset.png",
+   "sam3": {
+    "prompt": "animal",
+    "threshold": 0.5,
+    "score": 0.9648,
+    "instances": 1,
+    "merge": "union",
+    "foreground_fraction": 0.2652
+   },
+   "dataset_foreground_fraction": 0.2761,
+   "iou_with_dataset_mask": 0.9594
+  }
+ ]
+}

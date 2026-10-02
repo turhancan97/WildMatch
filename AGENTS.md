@@ -1013,6 +1013,13 @@ raw render and the masked model input (composited client-side from the mask PNG)
 `tests/test_export_masking_demo.py` run the export end to end on synthetic inputs and validate
 the committed export when present. The Salamander images drop in later by pointing
 `--root/--metadata/--sam3-dir/--renders` at the Salamander data, once permission exists.
+Run on 2026-10-02 by the assistant on the `dgxh100` node at the user's request, with the
+prompt "animal" (the paper's prompt, user decision), merge `union`, threshold 0.5: all twenty
+renders detected in one instance with scores 0.945-0.969, no fallbacks; IoU with the dataset
+masks 0.926-0.982, mean 0.960. The lowest values are snow renders where the dataset mask
+includes the cast shadow and SAM 3 does not, so the disagreement is in the reference mask, not
+a SAM 3 failure. The SAM 3 outputs stay under the gitignored
+`reports/project_page/sam3_synthetic/`; the export (2.1 MB) is committed.
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

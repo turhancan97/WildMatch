@@ -47,5 +47,7 @@ with it.
   dataset mask.
 - **Synthetic**: these are rendered lynxes used because their licence allows display.
   The pipeline's own SAM 3 use is for photographs without provided masks.
+- **Where the masks disagree**: on snow renders the dataset mask includes the animal's
+  cast shadow and SAM 3 does not, which accounts for the lowest agreement values.
 
 <small>Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0.</small>

@@ -69,17 +69,32 @@ export async function mountMaskingDemo(root) {
     });
   }
 
-  // Offscreen helpers: masked input (raw * mask) and mask outlines.
+  // Offscreen helpers: masked input (raw * mask) and mask outlines. The mask PNGs are
+  // opaque greyscale, so their brightness is turned into alpha before compositing.
   const work = document.createElement("canvas");
   const workCtx = work.getContext("2d");
+  const alphaCache = new Map();
+
+  function alphaMask(mask, w, h) {
+    const key = `${mask.src}|${w}x${h}`;
+    if (alphaCache.has(key)) return alphaCache.get(key);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const cx = c.getContext("2d");
+    cx.drawImage(mask, 0, 0, w, h);
+    const img = cx.getImageData(0, 0, w, h); const px = img.data;
+    for (let i = 0; i < px.length; i += 4) { px[i + 3] = px[i]; px[i] = px[i + 1] = px[i + 2] = 255; }
+    cx.putImageData(img, 0, 0);
+    alphaCache.set(key, c);
+    return c;
+  }
 
   function maskedInput(raw, mask, w, h) {
     work.width = w; work.height = h;
     workCtx.globalCompositeOperation = "source-over";
-    workCtx.fillStyle = "#000000"; workCtx.fillRect(0, 0, w, h);
+    workCtx.clearRect(0, 0, w, h);
     workCtx.drawImage(raw, 0, 0, w, h);
     workCtx.globalCompositeOperation = "destination-in";
-    workCtx.drawImage(mask, 0, 0, w, h);
+    workCtx.drawImage(alphaMask(mask, w, h), 0, 0);
     workCtx.globalCompositeOperation = "destination-over";
     workCtx.fillStyle = "#000000"; workCtx.fillRect(0, 0, w, h);
     workCtx.globalCompositeOperation = "source-over";

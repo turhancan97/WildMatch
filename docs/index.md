@@ -6,17 +6,25 @@ hide:
 
 <div class="wm-hero" markdown>
 
+<div class="wm-hero-head" markdown>
+
 <div class="wm-hero-logo" markdown>
 ![WildMatch](assets/logo/wildmatch-fullname.png){ .wm-logo }
 </div>
 
-<div class="wm-hero-text" markdown>
+<div class="wm-hero-title" markdown>
 
 <span class="wm-status">Manuscript · preprint to follow</span>
 
 # WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification
 
 <p class="wm-subtitle">Adapting a pretrained keypoint matcher to a wildlife domain with identity labels only, without keypoint or correspondence annotation.</p>
+
+</div>
+
+</div>
+
+<div class="wm-hero-text" markdown>
 
 <p class="wm-authors">
 Turhan Can Kargin<sup>*1,2</sup> ·

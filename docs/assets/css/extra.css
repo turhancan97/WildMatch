@@ -62,16 +62,27 @@
   font-weight: 600;
 }
 
-/* Landing-page hero (docs/index.md, rendered through md_in_html): logo column
-   plus text column on wide screens, stacked on narrow ones. */
+/* Landing-page hero (docs/index.md, rendered through md_in_html): a head row with
+   the full-name logo beside the title, then authors and buttons full width. */
 .wm-hero {
   display: grid;
-  grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
-  align-items: center;
-  gap: 2rem;
+  gap: var(--wm-hero-gap);
   padding: 1.5rem 0 1rem;
   border-bottom: 3px solid var(--wm-grey);
   margin-bottom: 1.5rem;
+}
+
+.wm-hero-head {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.wm-hero-title {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
 }
 
 .wm-hero-text {
@@ -79,33 +90,38 @@
   gap: var(--wm-hero-gap);
 }
 
-.md-typeset .wm-hero-logo p {
+.md-typeset .wm-hero-logo p,
+.md-typeset .wm-hero-title p {
   margin: 0;
 }
 
 .md-typeset img.wm-logo {
   width: 100%;
-  max-width: 18rem;
+  max-width: 11rem;
   height: auto;
   display: block;
 }
 
-/* Header tile: white rounded square from the logo package. */
+/* Header mark: the two-colour logo with its background removed. */
 .md-header__button.md-logo img {
-  height: 1.6rem;
-  width: 1.6rem;
-  border-radius: 0.3rem;
+  height: 1.9rem;
+  width: auto;
 }
 
 @media (max-width: 59.9375em) {
-  .wm-hero {
+  .wm-hero-head {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
   }
 
+  .wm-hero-title {
+    justify-items: center;
+  }
+
   .wm-hero-text {
     justify-items: center;
+    text-align: center;
   }
 
   .wm-buttons {
@@ -113,7 +129,7 @@
   }
 
   .md-typeset img.wm-logo {
-    max-width: 14rem;
+    max-width: 9rem;
   }
 }
 

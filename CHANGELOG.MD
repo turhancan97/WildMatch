@@ -61,6 +61,9 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: the project page no longer names the venue or the submission status
   (user decision): status pill, Paper page, banner and configuration comments reworded;
   the leak test now forbids venue names and "under review"/"submitted to" in site sources.
+- 2026-10-02: header logo is now the background-free two-colour mark
+  (`wildmatch-logo-256.png`, derived from `wildmatch-logo.png`), and the hero places the
+  full-name logo beside the title instead of in a full-height left column (user request).
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because
   enabling the open profile in its copy hit the closed-only joint guard. The test now
@@ -84,6 +87,8 @@ kept under Unreleased until a project version is assigned.
 
 ### Added
 
+- `plot_match_examples.py render --no-tags --output-stem`: text-free match figure
+  (`match_examples_notext`), titles only.
 - Recorded CzechLynx closed fine-tuning GPU-hours (matcher, descriptor and joint, LoMa and
   RDD) in AGENTS.md for the paper.
 - `plot_training_cost.py --x-scale log` for a log training-cost axis

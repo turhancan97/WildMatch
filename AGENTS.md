@@ -381,7 +381,10 @@ Dimming is also set per panel with `Example.dim`: 0.4 for Leopard, Nyala and Sal
 the light default 0.2 because its mask shows outlines when dimmed harder. Czech Lynx uses
 0.35 since its daylight replacement pair masks cleanly (user request). Photos are embedded at 260 px height (about 300 dpi at three panels per row)
 and, at the user's request, corner tags are 6.5 pt (`--tag-size`) and panel titles 9 pt
-(`--title-size`; the title band grows with it, so the figure is about 3.07 in tall).
+(`--title-size`; the title band grows with it, so the figure is about 3.07 in tall). `render --no-tags --output-stem match_examples_notext` (2026-10-02, user request) draws no
+text on the photos at all (no Query/Top-1 match/match-count tags; dataset titles stay) into
+`match_examples_notext.{pdf,png,json}`, leaving `match_examples.*` untouched; without tags the
+tag-area exclusion is skipped, so a few drawn correspondences can differ from the tagged version.
 Refinements (2026-09-30): "Query"/"Top-1 match" tags appear only on panel (a) (the
 caption states the convention) while every panel keeps its match-count tag; matches
 with an endpoint under a tag are dropped before the spread selection
@@ -835,10 +838,13 @@ repository by its `.gitignore` (`/paper/figures/logo/`, so the logo stays out of
 double-blind source); the user copied it to the gitignored
 `reports/project_page/logo/` on 2026-10-02. Web-sized copies live in `docs/assets/logo/`
 (`wildmatch-fullname.png` for the hero, 1200 px from `B1_fullname_two-color_transparent`;
-`wildmatch-wordmark.png`; `wildmatch-tile-192.png`, the white rounded tile used as the
-header logo because the bare two-colour mark loses its blue head on the blue header;
+`wildmatch-wordmark.png`; `wildmatch-logo-256.png` and `-512.png`, the mark from
+`wildmatch-logo.png` with its white background removed (alpha from distance to white,
+edges un-premultiplied) and used as the header logo at the user's request on 2026-10-02,
+replacing the white tile `wildmatch-tile-192.png`, which stays in the assets;
 `wildmatch-mark-256.png`; PNG favicons and the Apple touch icon) and `docs/assets/favicon.ico`
-is the package's multi-size icon, with the extra `<link rel="icon">` tags in
+is the package's multi-size icon. The hero puts the full-name logo (11 rem) beside the title
+in a head row, with authors and buttons full width below (user request 2026-10-02), with the extra `<link rel="icon">` tags in
 `overrides/main.html`. The "dark" logo variants have dark-grey lettering for light
 backgrounds, not dark-mode art, so both schemes use the two-colour wordmark. Interactive charts (step 3) should use brand blue for
 "ours" and the validated gold `#b8860b` as a third hue, always with a second cue (marker

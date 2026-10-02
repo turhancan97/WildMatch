@@ -23,7 +23,7 @@ theme:
     repo: fontawesome/brands/github
   # WildMatch logo package (kept out of the paper repository by its .gitignore;
   # web-sized copies made from reports/project_page/logo/).
-  logo: assets/logo/wildmatch-tile-192.png
+  logo: assets/logo/wildmatch-logo-256.png
   favicon: assets/favicon.ico
   features:
     - navigation.tabs

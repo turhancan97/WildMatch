@@ -326,6 +326,22 @@ class ParallelProbeLauncherTests(unittest.TestCase):
                 '    # "czechlynx_unseen_eval|CzechLynx_v2|CzechLynx|',
                 1,
             )
+            # joint-fine-tuned checkpoints exist for the closed split only, so the
+            # launcher fails closed when such a row meets the open profile. Disable
+            # any active joint rows in the copy; the launcher guard has its own test.
+            script_text = re.sub(
+                r'^(\s*)("vismatch\|[^|]+\|joint-fine-tuned\|)',
+                r'\1# \2',
+                script_text,
+                flags=re.MULTILINE,
+            )
+            # If that left the table empty, re-enable the split-agnostic cosine
+            # row so both profiles still have at least one task to multiply.
+            script_text = script_text.replace(
+                '    # "cosine|-|default|-|-|-|-"',
+                '    "cosine|-|default|-|-|-|-"',
+                1,
+            )
             script_copy.write_text(script_text, encoding="utf-8")
             # The editable launcher may have descriptor rows active. Supply
             # isolated open-split paths so this test exercises profile

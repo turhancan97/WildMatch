@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
+  the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because
+  enabling the open profile in its copy hit the closed-only joint guard. The test now
+  comments out joint rows in its temporary copy and re-enables the cosine row so profile
+  multiplication always has a split-agnostic task. Launcher behaviour is unchanged.
 - `plot_data_quality_examples.py` now shows raw source photos only, in one row:
   (a) washed-out frames, (b) no animal, (c) corrupted frame, (d) blurred frame. Masked
   model inputs and the mask-on-wrong-object panel were removed because background
@@ -25,6 +30,8 @@ kept under Unreleased until a project version is assigned.
 
 ### Added
 
+- Recorded CzechLynx closed fine-tuning GPU-hours (matcher, descriptor and joint, LoMa and
+  RDD) in AGENTS.md for the paper.
 - `plot_training_cost.py --x-scale log` for a log training-cost axis
   (`training_cost_k250_balanced_top5_logx`).
 - Final k=250 training-cost figures `training_cost_k250_balanced_top5` and

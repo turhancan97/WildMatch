@@ -91,7 +91,7 @@ uncomment that profile. It uses `unseen_eval_split` with `database/query` values
 generated CSV before task construction, and keeps its logs, manifests, runs, and
 caches separate from `split-time_open`. It is opt-in so ordinary closed/open
 submissions are unchanged.
-Launcher regression tests derive their expected candidate budgets from the active launcher table, so intentional budget edits do not require changing the launcher itself. The same applies to opt-in rows and profiles: tests validate whichever classifier-probe rows and CzechLynx profiles are active (skipping when none are) and never require a specific row to be uncommented. The closed/open profile-multiplication test disables `czechlynx_unseen_eval` in its temporary copy.
+Launcher regression tests derive their expected candidate budgets from the active launcher table, so intentional budget edits do not require changing the launcher itself. The same applies to opt-in rows and profiles: tests validate whichever classifier-probe rows and CzechLynx profiles are active (skipping when none are) and never require a specific row to be uncommented. The closed/open profile-multiplication test disables `czechlynx_unseen_eval` and any active `joint-fine-tuned` rows in its temporary copy (joint checkpoints exist for the closed split only, so the launcher would otherwise fail closed on the open profile) and re-enables the split-agnostic cosine row so the table is never empty; the joint-only guard has its own test.
 `--list-tasks` and `PROBE_PARALLEL_DRY_RUN=1` are safe non-executing inspection
 modes. Custom Vismatch tasks explicitly declare their component mode;
 matcher fine-tuning uses `checkpoint_components=matcher_only` and descriptor
@@ -488,6 +488,22 @@ starts at the default-LoMa result at 0 GPU-h. The script fails closed if a probe
 epoch-50 log value differs from its run's `top_1` or a LoMa checkpoint's hash changed,
 and skips LoMa epochs whose evaluation has not completed. Known biases to state: LoMa trained on 80% of the train images and the
 probes on 100%; 300 vs 50 epochs; one seed each.
+
+**Fine-tuning GPU-hours, CzechLynx closed (extracted 2026-10-02 for the paper).** Pure
+training steps x 4 RTX 4090 GPUs (`rtx4090_batch`), summed up to the epoch the paper probes
+load; LoMa from per-epoch `time/train_s` in the `.out` JSON records, RDD from the `Epoch N: 100%`
+tqdm bars in the `.err` files (lynx-finetuning/logs/czechlynx-{loma,rdd}-ft/). Matcher only:
+LoMa 5.1 (job 508111, epoch 299), RDD 5.0 (508028, epoch 299). Descriptor only: LoMa 65.2
+(509262, epoch 252), RDD 60.1 (509313, epoch 175; old recipe, effective batch 4). Joint:
+LoMa 28.8 to epoch 100 (84.0 to epoch 299; jobs 521758+521759), RDD 35.1 to epoch 100
+(63.8 to epoch 185; 521756+521757). Whole-job equivalents: 8.9, 6.8, 95.9, 96.0 (+3.0 for two
+failed starts), 118.4 for all 300 joint-LoMa epochs, 100.8 for 186 joint-RDD epochs. The
+descriptor runs and the RDD joint run stopped at the 24 h limit, before the 300-epoch cosine
+schedule ended, and the joint probes so far use epoch 100.
+Projected to the full 300-epoch schedule (epoch 299; measured epochs plus remaining epochs x
+mean measured epoch time, which varies by 2-12% across epochs): LoMa descriptor 77.3, RDD
+descriptor 102.5, RDD joint 102.9 GPU-h; LoMa joint is measured at 84.0 and both matcher-only
+runs at 5.1/5.0. Label projected values as estimates in the paper.
 
 New visualizations belong inside the run’s `visualizations/` directory. Their
 `index.csv` must map query/database identities, ranks, scores, correctness, and

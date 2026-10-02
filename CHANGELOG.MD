@@ -7,6 +7,57 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: project page scaffold (MkDocs Material) on the local `project-page`
+  branch: `mkdocs.yml`, `requirements-docs.txt` (mkdocs-material 9.7.7), `docs/` pages
+  (home with abstract and authors, method, datasets, results, qualitative, training cost,
+  reproduce stubs, code, paper), `overrides/main.html` review-period banner, static copies
+  of the current figures, mount points for four interactive components, and
+  `tests/test_project_page.py`. Text follows the paper brief relayed by the paper-writing
+  session (stored under the gitignored `reports/project_page/`). Decisions: MkDocs Material
+  over plain HTML or Astro; page conventions follow the paper (k=250, Top-5 and balanced
+  Top-1, weighted probes only, eight datasets, unseen-identity protocol instead of the
+  CzechLynx open split); the branch stays unpushed and undeployed until the ECIR 2027
+  notification because the submission is double-blind and the repository is public.
+  Verified for the paper: SalamanderID2025 SAM 3 prompt "Salamander" (all rows of
+  `masks.csv`) and all training-cost jobs on `rtx4090_batch` (sacct).
+  The paper's LaTeX repository was then cloned read-only as a sibling checkout
+  (`ECIR-Animal-ReID-Paper`, `dbe837b`, pulled to `9e78102` the same day once the implementation-details and GPU-hour edits were pushed) with the user's approval, and the page's masking
+  statement was marked draft because the manuscript sentence is unsettled.
+  Brand palette applied (user request): custom Material primary/accent mapped to
+  #3a7eab/#cf4832 with #d1d3d4 rules, brand greys for text, icon cards on the home page
+  from the paper's icon set, interim logo/favicon from the match icon (the logo folder
+  was gitignored in the paper repository); `test_project_page` checks palette and logo.
+  The user then copied the logo package to the gitignored `reports/project_page/logo/`;
+  web-sized copies (hero wordmark, header tile, favicon set) replaced the interim icons.
+- 2026-10-02: project-page data export (step 2). `scripts/export_project_page_data.py`
+  reads the paper repository's `results/` snapshot (user instruction) and writes
+  `docs/data/{results,curves,adapt,training_cost,manifest}.json` under the paper's
+  conventions, plus brand-palette SVG page figures (light and dark) under
+  `docs/assets/figures/page/`: k-sweep small multiples (LoMa Top-5 and balanced Top-1,
+  RDD Top-5), a k=250 default-to-fine-tuned dumbbell, the adaptation cost-against-gain
+  scatter, the unseen protocol and the training-cost curves. Exported Table 2 and Table 3
+  values match the manuscript exactly. Pages embed the new figures; the copied
+  training-cost PNGs were removed. Tests in `tests/test_export_project_page_data.py`.
+- 2026-10-02: first `mkdocs build --strict` of the project page passed; `mkdocs==1.6.1` is
+  now pinned next to `mkdocs-material==9.7.7` so the MkDocs 2.0 rewrite (no plugins or
+  theme overrides) cannot be installed by accident.
+- 2026-10-02: project-page interactive components (step 3): `docs/assets/js/` ES modules
+  (accuracy explorer, sortable results table with CSV download, training-cost plot, match
+  viewer) over the exported JSON, Plotly from the pinned CDN build, theme-aware; styles in
+  `extra.css`. `scripts/plot_match_examples.py render` gained `--web-export DIR`, writing
+  web-sized raw photos and every correspondence for the viewer (GPU run pending).
+- 2026-10-02: project-page cross-check (step 4). Every transcribed table and prose claim
+  was verified against the paper clone (`9e78102`) and the exported data; all matched.
+  `tests/test_project_page_numbers.py` parses the Markdown tables and pins them to
+  `docs/data` and the paper's `tab_datasets.tex`. Pages gained the paper's explanations
+  for the descriptor result, the RDD narrowing and the qualitative figure. The user
+  exported the match-viewer assets (`docs/assets/match/`).
+- 2026-10-02: project-page Reproduce section (step 5) written from the three repositories'
+  guides: pair mining, matcher fine-tuning (recipe, wrappers, checkpoint layout, ablation
+  variants), evaluation (data contract, probe commands, launchers, unseen protocol,
+  metrics, exporters) and a shared-settings overview, with placeholder paths.
+- 2026-10-02: home page gained "Limitations and outlook" from the paper's newly pushed
+  Conclusion (`226037a`); the earlier draft limitation bullets are superseded.
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because
   enabling the open profile in its copy hit the closed-only joint guard. The test now

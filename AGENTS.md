@@ -29,6 +29,8 @@ single-label animal-species classifier: identity labels represent individual ani
 - tests/: dependency-light regression tests.
 - experiments/, reports/, results/, benchmark_runs/, kaggle_runs/, cache/, and visualizations/:
   generated artifacts; do not edit them manually.
+- mkdocs.yml, docs/, overrides/: MkDocs Material project page (see "Project page");
+  site/ is its ignored build output.
 
 ## Standard commands
 
@@ -48,6 +50,7 @@ python scripts/export_class_balance.py
 python scripts/audit_image_quality.py --dataset leopard --limit 400  # dev subset
 python -m unittest discover -s tests -p 'test_*.py'
 python -m py_compile models/*.py reid/**/*.py train/*.py scripts/*.py
+mkdocs build --strict   # project page; needs requirements-docs.txt installed
 ~~~
 
 Use --dry-run, --pair-limit, or --fast for Jaguar development runs.
@@ -758,6 +761,176 @@ reproduction, and the measured impact so it can be picked up without re-investig
 - [x] Repair stale configuration expectations and synthetic-image fixtures so the full
   ex-reid regression suite is green before relying on it as a release gate.
 
+
+## Project page
+
+The public project page for the manuscript is a MkDocs Material site (decided
+2026-10-02): `mkdocs.yml` at the repository root, Markdown sources and assets under
+`docs/`, theme overrides under `overrides/`, dependencies pinned in
+`requirements-docs.txt` (installed into the shared ex-reid environment; both `mkdocs==1.6.1`
+and `mkdocs-material==9.7.7` are pinned because MkDocs 2.0 drops plugins and theme
+overrides, which Material's build banner warns about; the first strict build passed on
+2026-10-02), ignored build output in `site/`, deployment to the `gh-pages` branch with `mkdocs gh-deploy` run by the
+user. `tests/test_project_page.py` checks the configuration and sources without MkDocs:
+`strict: true`, every nav entry exists and every page is in the nav, local assets exist,
+relative links resolve, and no cluster path (`/shared/`, `/home/kargin`), session link,
+or the phrase "ECIR 2027 paper" appears in the sources.
+
+**Embargo (binding until the ECIR 2027 notification, 2026-12-07).** The manuscript
+("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification",
+submitted to ECIR 2027, under review) is double-blind and this GitHub repository is
+public. All project-page files therefore live on the local `project-page` branch, which
+must not be pushed, merged into `main`, or deployed before the notification without the
+user's explicit instruction. The page always says "submitted", never "ECIR 2027 paper".
+The paper brief relayed by the paper-writing session (authors, abstract, outline,
+method text, dataset table, figure captions, headline numbers, open items) is stored at
+`reports/project_page/paper_brief_2026-10-02.md`, under the gitignored `reports/` tree
+on purpose; re-read it before writing page text. The paper's LaTeX source is cloned
+read-only at `/home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper` (GitHub
+`turhancan97/ECIR-Animal-ReID-Paper`, approved by the user 2026-10-02; snapshot of
+`226037a`, refresh with `git pull` since the paper changes until the 2026-10-05
+deadline). `paper/main.tex` inputs `paper/tex/{abstract,intro,related,method_v2_mp,
+setup,results,conclusion}.tex` (not `method.tex` or the `_method*.tex` drafts); tables
+in `paper/tables/` and figures in `paper/figures/` come from `results/make_tables.py`
+and `results/make_figures.py`, except the hand-made `teaser.pdf`, `training_mirror.pdf`,
+`data_quality_examples.pdf` and `match_examples.pdf`. Never reproduce the reviewers'
+note macros (`\marcinp`, `\katya`) or the page budgets in headings. The masking
+sentence of the paper is unsettled: the page states masking from the mask metadata and
+marks it draft rather than quoting the manuscript. The paper session is reachable over
+Remote Control as "Conference abstract word count and deadline"; it receives messages
+but reports nothing back.
+
+**Framing rules from the paper (team decision 2026-09-28, relayed 2026-10-02).** The
+MegaDescriptor-L candidate list is a shared implementation detail, mentioned once as the
+fixed starting point of all methods; never frame the work as "two-stage retrieval" or
+show a "Stage A"; say "feature matching", not "re-ranking". Page conventions follow the
+paper, not the table exporter: default candidate budget k=250, Top-5 and balanced Top-1
+as primary metrics, class-weighted classifier probes only, eight datasets (BelugaID
+dropped), no CzechLynx open-split results (the unseen-identity protocol replaces them).
+State with every cosine or classifier baseline that MegaDescriptor-L was trained on six
+of the eight datasets (all except Sea star, CzechLynx, Salamander). Never call the
+descriptor-only result a "collapse". No BibTeX or preprint exists; the user writes all
+BibTeX entries. Items the authors still mark as draft (triplet-vs-contrastive wording,
+SAM 3 prompt, same-hardware cost statement, empty Related Work and Limitations, pending
+expert study, Fig. 2 revision) carry a "Draft" admonition on the page. Two were settled
+from this server on 2026-10-02 and sent back: the SalamanderID2025 SAM 3 prompt was
+"Salamander" for all 1,384 images (`masks.csv`, `prompt_used`), and every training-cost
+job (508111, 508028, arrays 508523 and 522223) ran on `rtx4090_batch` per sacct.
+
+**Branding (user request 2026-10-02).** The page uses the team's brand palette, blue
+`#3a7eab`, red `#cf4832`, grey `#d1d3d4`, with the validated extension recorded in the
+paper repository's `context.md`: tints 40 %/75 % toward white (`#89b2cd`/`#cedfea`,
+`#e29184`/`#f3d1cc`), neutrals `#6d6e71` for small text and `#58595b` for headings,
+`#d1d3d4` for decoration only. `mkdocs.yml` sets `primary: custom` and `accent: custom`
+and `docs/assets/css/extra.css` maps them (blue header, links and "ours" rows; red
+accents, status pill and warnings; grey rules). Icons come from the paper's
+`paper/figures/icons/` set (copied to `docs/assets/icons/`, blue and grey variants plus a
+`docs/assets/icons/`). The WildMatch logo package is excluded from the paper
+repository by its `.gitignore` (`/paper/figures/logo/`, so the logo stays out of the
+double-blind source); the user copied it to the gitignored
+`reports/project_page/logo/` on 2026-10-02. Web-sized copies live in `docs/assets/logo/`
+(`wildmatch-fullname.png` for the hero, 1200 px from `B1_fullname_two-color_transparent`;
+`wildmatch-wordmark.png`; `wildmatch-tile-192.png`, the white rounded tile used as the
+header logo because the bare two-colour mark loses its blue head on the blue header;
+`wildmatch-mark-256.png`; PNG favicons and the Apple touch icon) and `docs/assets/favicon.ico`
+is the package's multi-size icon, with the extra `<link rel="icon">` tags in
+`overrides/main.html`. The "dark" logo variants have dark-grey lettering for light
+backgrounds, not dark-mode art, so both schemes use the two-colour wordmark. Interactive charts (step 3) should use brand blue for
+"ours" and the validated gold `#b8860b` as a third hue, always with a second cue (marker
+or line style), because the paper notes found no safe fourth hue.
+
+**Page data and figures (step 2, done 2026-10-02).** `scripts/export_project_page_data.py`
+reads the paper repository's `results/` directory (the frozen snapshot behind the
+manuscript's tables and figures; its CzechLynx closed main CSV already differs from this
+repository's live `reports/paper_tables/`), never the live tables, and writes committed JSON
+under `docs/data/`: `results.json` (one record per dataset, method and budget), `curves.json`
+(series and k-independent baselines per dataset plus the unseen-identity protocol),
+`adapt.json` (Table 2 with the GPU-hours constants copied from the paper's `make_tables.py`),
+`training_cost.json`, and `manifest.json` (source SHA-256 hashes, paper commit, conventions).
+It applies the paper conventions: eight datasets, main k=250, matcher-only fine-tuned and
+default Vismatch runs on MegaDescriptor-L candidates, class-weighted classifiers only
+(unweighted and unknown-weighting rows dropped), descriptor and joint runs only in
+`adapt.json`, no BelugaID and no `split-time_open`; it drops `manifest_path` and fails on
+any `/shared/` or `/home/` fragment. On 2026-10-02 the export reproduced the paper's Table 2
+and Table 3 values exactly. It also renders static page figures to
+`docs/assets/figures/page/` as SVG in light and dark variants (Material's `#only-light` /
+`#only-dark` image suffixes): small multiples of Top-5 and balanced Top-1 against k for
+LoMa and of Top-5 for RDD, a default-to-fine-tuned dumbbell at k=250 (`gain_loma_k250`),
+the "what to adapt" cost-against-gain scatter (`adapt_cost_k250`), the unseen protocol and
+the training-cost curves. Chart conventions follow the dataviz validator run on
+2026-10-02: colour by matcher family (LoMa blue, RDD red, WildFusion gold), fine-tuned
+solid with filled markers, default dashed with hollow markers, baselines grey (emphasis
+form); brand blue sits just under the validator's chroma floor and gold versus red is in
+the CVD floor band, so line style and marker shape always carry identity too; the 40 %
+tints fail the dark-surface checks and are not used for series. Small multiples omit the
+cosine flat lines (they would squeeze the curves; the table carries them). Tests in
+`tests/test_export_project_page_data.py` use a synthetic results directory and check the
+committed `docs/data` files parse and contain no private paths. Rerun the exporter after
+`git pull` in the paper clone whenever the paper's results change.
+
+**Interactive components (step 3, done 2026-10-02).** Vanilla ES modules under
+`docs/assets/js/`, registered in `mkdocs.yml` as `assets/js/page.js` with `type: module`
+(the entry mounts each component where its `#wm-*` mount point exists and re-mounts on
+Material's `document$`); `wm-common.js` holds the palette, series styles, theme detection
+(`data-md-color-scheme` on `body`, re-rendering on change), data loading relative to the
+module URL (`docs/data/<name>`), Plotly bootstrapping (CDN build `plotly-2.35.2`, deferred)
+and small DOM helpers. `explorer.js` (`#wm-accuracy-explorer`) draws accuracy against k
+from `curves.json` with dataset, metric, method and baseline toggles and a table view;
+`results-table.js` (`#wm-results-table`) filters, sorts and downloads `results.json` with
+budget-independent baselines shown with every budget; `training-cost.js`
+(`#wm-training-cost`) draws `training_cost.json` with metric and linear/log axis toggles
+(no whole-job accounting: the paper snapshot only carries training-step costs);
+`match-viewer.js` (`#wm-match-viewer`) draws query and top-1 photos with correspondence
+lines on a canvas from `docs/assets/match/match_examples.json`, which
+`scripts/plot_match_examples.py render --web-export docs/assets/match` writes (web-sized raw
+JPEGs, long side 1000 px, every correspondence in exported-photo pixels, confidence order);
+until that GPU run happens the viewer shows a pending note. Chart conventions match the
+static figures (colour by matcher family, solid/filled versus dashed/hollow, grey
+baselines, hover for exact values, table views so no value is tooltip-only). JavaScript is
+syntax-checked with `node --check`; there is no headless browser test, so visual checks
+happen in `mkdocs serve`.
+
+**Cross-check (step 4, done 2026-10-02).** Against the paper clone at `9e78102` and the
+export: the abstract is verbatim; the dataset table equals `tab_datasets.tex`; Table 2,
+Table 3 and the training-cost final points equal `adapt.json`, `curves.json` and
+`training_cost.json`; the prose claims hold in the data (smallest k=250 Top-5 gain on Sea
+star, +0.2; Top-5 up on all eight datasets at k=250; balanced Top-1 down only on Leopard
+and Turtle; fine-tuned LoMa beats the fully fine-tuned weighted classifier on 8/8 in
+balanced Top-1 and 7/8 in Top-5, Sea star going to the classifier; DINOv3-L cosine beats
+MegaDescriptor-L cosine only on CzechLynx and Sea star; both fine-tuned matchers beat
+default and WildFusion at every unseen-protocol budget in both metrics). The paper's
+"two to five times longer candidate list" is its own summary: measured at k=250 the
+default matcher needs 2x (CzechLynx, Hyena, Salamander, Sea star), 4x (Leopard, Whale
+shark) or more than 4x (Nyala, Turtle), so the page quotes the paper's wording rather
+than restating it. `tests/test_project_page_numbers.py` makes the table checks permanent
+by parsing the Markdown tables and comparing them with `docs/data` (and with
+`tab_datasets.tex` when the paper clone exists); it also pins the prose claims above.
+The implementation-details sentence follows the pushed wording ("the training steps of
+fine-tuning take 5.1 GPU-hours"). Match-viewer assets were exported by the user on
+2026-10-02 (`docs/assets/match/`, 8 pairs, 2.6 MB, every keypoint inside its photo).
+The paper's Conclusion (limitations and future work) was pushed as `226037a` later on
+2026-10-02 and is mirrored as "Limitations and outlook" on the home page; it supersedes
+the draft limitation bullets in the brief.
+
+**Reproduce pages (step 5, done 2026-10-02).** `docs/reproduce/{index,mining,finetuning,
+probing}.md` distil the three repositories' operating guides (`rdd-parallel-benchmark/README.md`,
+`lynx-finetuning/README.md`, `CZECHLYNX.md`, `WILDLIFE.md`, and this repository's AGENTS.md)
+into the pipeline used for the manuscript: canonical symlink views, 512 px / 512-keypoint
+feature caches with the fine-tuning preprocessing, strong-match mining (20 images per
+collection, 5 positives and 5 hard negatives per anchor, 10 anchors per collection, pretrained
+weights only), the shared fine-tuning recipe and wrapper commands, the checkpoint layout with
+protocol files, the descriptor and joint ablation variants, the probe commands, the two
+launchers, the unseen-protocol generator, the metrics and the exporters. Cluster-specific
+paths are written as `<placeholders>` (the leak test forbids real ones); the `legacy` protocol
+is named as the paper's protocol and `strict` as unused. Metadata files per dataset come from
+the launcher profiles.
+
+**Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
+copies of the current figures under `docs/assets/figures/`, mount points
+(`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,
+`#wm-training-cost`) for the interactive components, and Reproduce stubs. Step 2 (done, see above; the match-example photos for the viewer are still to be
+exported from `match_examples.json`). Step 3 (done, see above). Step 4 (done, see above). Step 5 (done, see above). Step 6: repository rename, image-license check for every
+published photograph, then the first deploy after the notification.
 
 ## Vismatch matcher policy
 

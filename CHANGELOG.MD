@@ -124,6 +124,10 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: `--joint-checkpoint` adds the joint descriptor + matcher LoMa model to the
   background analysis; on the CzechLynx subset it is as background-prone as the matcher-only
   model (36 % of matches on the animal) and still scores some different-lynx pairs high.
+- 2026-10-02: before/after fine-tuning demo (user request): `scripts/export_before_after_demo.py`
+  matches the eight match-figure pairs with the default and the fine-tuned LoMa matcher on
+  masked inputs and `before-after-demo.js` toggles between them on the original photos, with
+  scores, match counts, hover confidences and a pair selector; first section of the Demo page.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

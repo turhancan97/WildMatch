@@ -5,6 +5,7 @@ import { mountTrainingCost } from "./training-cost.js";
 import { mountMatchViewer } from "./match-viewer.js";
 import { mountSyntheticDemo } from "./synthetic-demo.js";
 import { mountMaskingDemo } from "./masking-demo.js";
+import { mountBeforeAfter } from "./before-after-demo.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -13,6 +14,7 @@ const MOUNTS = [
   ["wm-match-viewer", mountMatchViewer],
   ["wm-synthetic-demo", mountSyntheticDemo],
   ["wm-masking-demo", mountMaskingDemo],
+  ["wm-before-after", mountBeforeAfter],
 ];
 
 function mountAll() {

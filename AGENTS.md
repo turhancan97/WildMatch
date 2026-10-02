@@ -1081,6 +1081,29 @@ also scores 0.132 on masked inputs. Training the descriptor therefore does not r
 animal focus without masks either; keypoint locations are identical across the three models
 because the detector stays frozen.
 
+**Before/after demo (user request 2026-10-02).** `scripts/export_before_after_demo.py` (GPU)
+matches each of the eight match-figure pairs (`reports/figures/match_examples.json`: query and
+correct top-1 photo per dataset, the user's picks) twice on the background-removed inputs the
+pipeline uses, with the default LoMa matcher and with the dataset's fine-tuned matcher (paths
+and SHA-256 from the sidecar, verified before loading; Nyala's is `model__actual_nyala`), and
+writes `docs/assets/demo/before_after/` (web copies of the raw photos, 1000 px long side, and
+`before_after.json` with both results per pair: score, match count, every correspondence in
+exported-photo pixels, confidences, order). Matches are computed on masked inputs and drawn on
+the originals, as in the paper's qualitative figure; raw-input matching was rejected after the
+background analysis above. Single-image extraction moves a few keypoints relative to the
+probe's batched extraction, so fine-tuned scores differ from the probe's recorded ones by up
+to 0.02 (Czech Lynx 0.731 vs 0.734, Hyena 0.604 vs 0.587, Turtle 0.666 vs 0.646). Export of
+2026-10-02 (default -> fine-tuned, score and matches): Czech Lynx 0.072/130 -> 0.731/402,
+Hyena 0.106/127 -> 0.604/358, Leopard 0.064/103 -> 0.664/384, Nyala 0.098/134 -> 0.662/378,
+Salamander 0.233/205 -> 0.653/381, Sea Star 0.415/331 -> 0.772/425, Turtle 0.044/80 ->
+0.666/374, Whale Shark 0.199/190 -> 0.655/370. `before-after-demo.js` (`#wm-before-after`,
+first section of the Demo page, `data-pair` sets the initial pair, Czech Lynx) shows a two-button
+matcher toggle with each matcher's score and match count, the pair canvas with
+confidence-weighted lines and hover confidences, a strongest-N slider (default 30) and a pair
+selector over the eight datasets. This is the one place the page shows the default matcher
+next to the fine-tuned one; the user asked for it explicitly as the most direct visual
+argument. Tests in `tests/test_export_before_after_demo.py`.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

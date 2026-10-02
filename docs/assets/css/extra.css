@@ -698,3 +698,67 @@
 [data-md-color-scheme="slate"] .wm-demo-tab.is-active {
   background: rgba(58, 126, 171, 0.3);
 }
+
+/* Before/after demo: matcher toggle and score cards. */
+.wm-ba-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.wm-ba-button {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: start;
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 2px solid var(--wm-grey);
+  border-radius: 0.3rem;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  cursor: pointer;
+  min-width: 13rem;
+}
+
+.wm-ba-button .wm-ba-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.wm-ba-button .wm-ba-stat {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+  font-variant-numeric: tabular-nums;
+}
+
+.wm-ba-button.is-active {
+  border-color: var(--wm-grey-heading);
+  box-shadow: 0 0 0 2px var(--wm-grey);
+}
+
+.wm-ba-button.is-ours.is-active {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+.wm-ba-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0.4rem 0;
+  font-size: 0.85rem;
+}
+
+.wm-ba-score {
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-ba-score.is-active {
+  color: var(--md-default-fg-color);
+}
+
+.wm-ba-score-name {
+  font-weight: 600;
+  margin-right: 0.4rem;
+}

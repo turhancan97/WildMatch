@@ -1,5 +1,16 @@
 # Demo
 
+## Before and after fine-tuning
+
+The most direct view of what WildMatch changes: one photo pair, the query and its correct
+top-1 gallery photo of the same individual, matched by the default LoMa matcher and by the
+matcher fine-tuned on that dataset. Switch between the two and watch the correspondences
+and the image score change. Matches are computed on the background-removed inputs the
+paper uses and drawn on the original photos; the pairs are the ones in the paper's
+qualitative figure.
+
+<div id="wm-before-after" class="wm-widget" data-pair="0">Loading the before/after demo…</div>
+
 ## Synthetic keypoint matching
 
 Ten synthetic lynxes, two renders each. Choose one of the ten query renders; LoMa +

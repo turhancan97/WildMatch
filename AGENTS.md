@@ -944,9 +944,21 @@ is named as the paper's protocol and `strict` as unused. Metadata files per data
 the launcher profiles.
 
 **Synthetic match demo (requested by the user via the paper session, decisions 2026-10-02).**
-`scripts/export_synthetic_demo.py` matches the seven renders of the paper's teaser selection
-(`RENDERS`, paths copied from the paper's `results/teaser_prep.py`: query `L173_0` in snow
-against six forest renders, one of them lynx 173 again; CzechLynx synthetic subset, Picek et
+`scripts/export_synthetic_demo.py` matches the renders in `RENDERS`: the paper's teaser
+selection (paths copied from the paper's `results/teaser_prep.py`: query `L173_0` in snow
+against six forest renders, one of them lynx 173 again) plus four more individuals added at
+the user's request on 2026-10-02 (lynx 27, 174, 289, 45; one render each), so the gallery
+holds ten different lynxes. The additions were chosen by appearance only, before any
+matching, with thresholds calibrated on the paper's own renders: side view (mask box at
+least 1.25x wider than tall), blue-pixel share <= 0.0066 and strongly saturated share <= 0.55
+inside the mask, mask share 0.18-0.42, long side 450-1400 px, random seed 11, then picked by
+eye from a 12-candidate sheet for scene variety; their scores were kept as they came
+(0.001-0.003, 2-5 matches). A first random pick (lynx 265, 226, 101, 206; mask share and
+size only) was rejected by the user: those renders had unnatural coats (blue patches, dense
+high-contrast spots) and two faced the camera, and the fine-tuned matcher gave them
+hundreds of confident matches (scores 0.29-0.62) although lynx 173 still ranked first. Keep
+this in mind when reading synthetic results: strongly textured synthetic coats attract
+confident correspondences; CzechLynx synthetic subset, Picek et
 al., Zenodo 17592004, CC BY 4.0) read from the local dataset
 (`/shared/sets/datasets/vision/czechlynx/CzechLynx_v2`, `CzechLynxDataset-Metadata-Synthetic.csv`,
 40,000 rows with COCO-RLE `mask`) with the fine-tuned LoMa matcher configured from the paper

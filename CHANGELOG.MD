@@ -79,6 +79,12 @@ kept under Unreleased until a project version is assigned.
   home page, labelled synthetic. The script then switched to the local CzechLynx synthetic
   renders and their dataset masks (user pointer) and was run on the login node's V100 with
   the user's permission; the export (seven renders, ranked matches) is committed.
+- 2026-10-02: synthetic demo gallery extended to ten individuals (user request). A first
+  pick by mask share and size alone (lynx 265, 226, 101, 206) had unnatural coats and
+  frontal poses and drew hundreds of confident matches (scores 0.29-0.62); the user chose
+  selection by appearance instead, so lynx 27, 174, 289 and 45 were picked before matching
+  with thresholds calibrated on the paper's renders (side view, natural colours) and their
+  scores kept as they came (0.001-0.003). Export rerun on the local GPU and recommitted.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-02T14:23:43+00:00",
+ "generated_at": "2026-10-02T14:32:29+00:00",
  "generated_by": "scripts/export_synthetic_demo.py",
  "synthetic": true,
  "attribution": "Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0.",
@@ -4608,6 +4608,134 @@
    "rank": 2
   },
   {
+   "tag": "L289_0",
+   "identity": "lynx_289",
+   "same_individual": false,
+   "image": {
+    "file": "L289_0.jpg",
+    "width": 568,
+    "height": 568
+   },
+   "score": 0.002839145716279745,
+   "match_count": 3,
+   "points": {
+    "query": [
+     [
+      119.3,
+      196.8
+     ],
+     [
+      173.4,
+      189.9
+     ],
+     [
+      150.8,
+      196.2
+     ]
+    ],
+    "gallery": [
+     [
+      280.9,
+      297.2
+     ],
+     [
+      327.8,
+      261.5
+     ],
+     [
+      286.3,
+      280.8
+     ]
+    ]
+   },
+   "confidence": [
+    0.9101,
+    0.3848,
+    0.1587
+   ],
+   "order_by_confidence": [
+    0,
+    1,
+    2
+   ],
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/01549_synthetic_lynx_289.jpg",
+   "rank": 3
+  },
+  {
+   "tag": "L45_0",
+   "identity": "lynx_45",
+   "same_individual": false,
+   "image": {
+    "file": "L45_0.jpg",
+    "width": 516,
+    "height": 515
+   },
+   "score": 0.002652239752933383,
+   "match_count": 5,
+   "points": {
+    "query": [
+     [
+      188.9,
+      190.8
+     ],
+     [
+      173.4,
+      189.9
+     ],
+     [
+      258.9,
+      212.1
+     ],
+     [
+      156.5,
+      206.9
+     ],
+     [
+      139.7,
+      200.3
+     ]
+    ],
+    "gallery": [
+     [
+      254.7,
+      237.9
+     ],
+     [
+      253.2,
+      231.2
+     ],
+     [
+      368.7,
+      238.9
+     ],
+     [
+      294.0,
+      267.8
+     ],
+     [
+      240.7,
+      268.5
+     ]
+    ]
+   },
+   "confidence": [
+    0.4507,
+    0.2269,
+    0.2381,
+    0.3049,
+    0.1373
+   ],
+   "order_by_confidence": [
+    0,
+    3,
+    2,
+    1,
+    4
+   ],
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/39237_synthetic_lynx_45.jpg",
+   "rank": 4
+  },
+  {
    "tag": "L88_0",
    "identity": "lynx_88",
    "same_individual": false,
@@ -4669,7 +4797,51 @@
     3
    ],
    "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/04055_synthetic_lynx_88.jpg",
-   "rank": 3
+   "rank": 5
+  },
+  {
+   "tag": "L174_0",
+   "identity": "lynx_174",
+   "same_individual": false,
+   "image": {
+    "file": "L174_0.jpg",
+    "width": 582,
+    "height": 582
+   },
+   "score": 0.0020983265712857246,
+   "match_count": 2,
+   "points": {
+    "query": [
+     [
+      139.7,
+      165.6
+     ],
+     [
+      150.8,
+      196.2
+     ]
+    ],
+    "gallery": [
+     [
+      305.0,
+      264.6
+     ],
+     [
+      257.4,
+      277.2
+     ]
+    ]
+   },
+   "confidence": [
+    0.4531,
+    0.6213
+   ],
+   "order_by_confidence": [
+    1,
+    0
+   ],
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/19763_synthetic_lynx_174.jpg",
+   "rank": 6
   },
   {
    "tag": "L138_0",
@@ -4703,7 +4875,7 @@
     0
    ],
    "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/09291_synthetic_lynx_138.jpg",
-   "rank": 4
+   "rank": 7
   },
   {
    "tag": "L242_0",
@@ -4737,7 +4909,7 @@
     0
    ],
    "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/08305_synthetic_lynx_242.jpg",
-   "rank": 5
+   "rank": 8
   },
   {
    "tag": "L129_0",
@@ -4771,7 +4943,51 @@
     0
    ],
    "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/05121_synthetic_lynx_129.jpg",
-   "rank": 6
+   "rank": 9
+  },
+  {
+   "tag": "L27_0",
+   "identity": "lynx_27",
+   "same_individual": false,
+   "image": {
+    "file": "L27_0.jpg",
+    "width": 505,
+    "height": 505
+   },
+   "score": 0.0008107282337732613,
+   "match_count": 2,
+   "points": {
+    "query": [
+     [
+      133.0,
+      144.5
+     ],
+     [
+      114.3,
+      210.2
+     ]
+    ],
+    "gallery": [
+     [
+      207.3,
+      245.7
+     ],
+     [
+      208.5,
+      266.3
+     ]
+    ]
+   },
+   "confidence": [
+    0.2498,
+    0.1653
+   ],
+   "order_by_confidence": [
+    0,
+    1
+   ],
+   "source": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/16742_synthetic_lynx_27.jpg",
+   "rank": 10
   }
  ]
 }

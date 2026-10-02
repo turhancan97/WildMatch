@@ -18,8 +18,8 @@ paper's CzechLynx fine-tuned LoMa probe run (``config.snapshot.yaml`` of the run
 LoMa-B, 512 px long side, up to 512 keypoints, default mutual-match threshold,
 ``matcher_only`` checkpoint), and the checkpoint file's SHA-256 is recorded.
 
-The seven renders are the paper's teaser selection (query ``L173_0`` in snow and six
-forest renders, one of them lynx 173 again). Needs a GPU and the ex-reid environment.
+The renders are the paper's teaser selection (query ``L173_0`` in snow and six forest
+renders, one of them lynx 173 again) plus four further individuals, ten gallery lynxes in all. Needs a GPU and the ex-reid environment.
 """
 
 from __future__ import annotations
@@ -49,8 +49,8 @@ WEB_LONG_SIDE = 1000
 ATTRIBUTION = ("Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), "
                "Zenodo record 17592004, CC BY 4.0.")
 
-# The paper's teaser renders (results/teaser_prep.py in the paper repository): tag ->
-# path relative to the dataset root. L173_0 is the snow query; L173_1 is the same
+# Gallery renders: the paper's teaser selection (results/teaser_prep.py in the paper
+# repository) plus four more individuals. Tag -> path relative to the dataset root. L173_0 is the snow query; L173_1 is the same
 # individual in the forest.
 RENDERS: Dict[str, str] = {
     "L173_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg",
@@ -60,6 +60,15 @@ RENDERS: Dict[str, str] = {
     "L88_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/04055_synthetic_lynx_88.jpg",
     "L79_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/00519_synthetic_lynx_79.jpg",
     "L138_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/09291_synthetic_lynx_138.jpg",
+    # Four more individuals (added 2026-10-02 at the user's request), chosen by appearance
+    # before any matching: side view (mask box at least 1.25x wider than tall), natural
+    # coat colours (blue-pixel share and strongly saturated share no higher than on the
+    # paper's renders), mask share 0.18-0.42, long side 450-1400 px; one render per
+    # individual, picked by eye from a 12-candidate sheet for scene variety (seed 11).
+    "L27_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/16742_synthetic_lynx_27.jpg",
+    "L174_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/19763_synthetic_lynx_174.jpg",
+    "L289_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/01549_synthetic_lynx_289.jpg",
+    "L45_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/39237_synthetic_lynx_45.jpg",
 }
 DEFAULT_QUERY = "L173_0"
 

@@ -75,7 +75,10 @@ export async function mountMatchViewer(root) {
     const ex = examples[state.index];
     const t = theme();
     const gap = 16;
-    const height = 420;
+    // Fit both photos side by side into the available width; cap the height.
+    const available = Math.max(320, stage.clientWidth || root.clientWidth || 800);
+    const aspectSum = ex.images.query.width / ex.images.query.height + ex.images.gallery.width / ex.images.gallery.height;
+    const height = Math.min(420, Math.floor((available - gap) / aspectSum));
     const scaleQ = height / ex.images.query.height, scaleG = height / ex.images.gallery.height;
     const wQ = Math.round(ex.images.query.width * scaleQ), wG = Math.round(ex.images.gallery.width * scaleG);
     const dpr = window.devicePixelRatio || 1;
@@ -117,4 +120,5 @@ export async function mountMatchViewer(root) {
 
   load();
   onThemeChange(draw);
+  if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
 }

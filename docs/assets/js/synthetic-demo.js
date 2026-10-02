@@ -6,7 +6,7 @@
 import { PALETTE, theme, onThemeChange, el, assetUrl } from "./wm-common.js";
 
 const LINE = "#19c2d6";
-const PHOTO_HEIGHT = 380;
+const MAX_HEIGHT = 380;
 const GAP = 18;
 
 export async function mountSyntheticDemo(root) {
@@ -108,17 +108,21 @@ export async function mountSyntheticDemo(root) {
     const qImg = image(q.image.file), gImg = image(c.image.file);
     if (!(loaded(qImg) && loaded(gImg))) return;
     const t = theme();
-    const sQ = PHOTO_HEIGHT / q.image.height, sG = PHOTO_HEIGHT / c.image.height;
+    // Fit both renders side by side into the available width; cap the height.
+    const available = Math.max(320, stage.clientWidth || root.clientWidth || 800);
+    const aspectSum = q.image.width / q.image.height + c.image.width / c.image.height;
+    const height = Math.min(MAX_HEIGHT, Math.floor((available - GAP) / aspectSum));
+    const sQ = height / q.image.height, sG = height / c.image.height;
     const wQ = Math.round(q.image.width * sQ), wG = Math.round(c.image.width * sG);
     const width = wQ + GAP + wG;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = width * dpr; canvas.height = PHOTO_HEIGHT * dpr;
-    canvas.style.width = `${width}px`; canvas.style.height = `${PHOTO_HEIGHT}px`;
+    canvas.width = width * dpr; canvas.height = height * dpr;
+    canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
     const ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, width, PHOTO_HEIGHT);
-    ctx.drawImage(qImg, 0, 0, wQ, PHOTO_HEIGHT);
-    ctx.drawImage(gImg, wQ + GAP, 0, wG, PHOTO_HEIGHT);
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(qImg, 0, 0, wQ, height);
+    ctx.drawImage(gImg, wQ + GAP, 0, wG, height);
     const chosen = c.order_by_confidence.slice(0, state.count);
     const segments = [];
     const maxConf = c.confidence.length ? Math.max(...c.confidence) : 1;
@@ -194,4 +198,5 @@ export async function mountSyntheticDemo(root) {
   buildStrip();
   load();
   onThemeChange(draw);
+  if (window.ResizeObserver) new ResizeObserver(() => draw()).observe(stage);
 }

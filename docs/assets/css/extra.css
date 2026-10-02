@@ -520,6 +520,7 @@
 .wm-match-stage {
   overflow-x: auto;
   margin: 0.5rem 0;
+  width: 100%;
 }
 
 .wm-match-canvas {
@@ -602,6 +603,12 @@
   position: relative;
   overflow-x: auto;
   margin: 0.5rem 0;
+  width: 100%;
+}
+
+.wm-demo-stage .wm-match-canvas,
+.wm-match-stage .wm-match-canvas {
+  max-width: 100%;
 }
 
 .wm-demo-tooltip {

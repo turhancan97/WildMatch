@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: project-page candidate-budget trade-off (user idea). `scripts/export_budget_tradeoff.py`
+  collects, per dataset and measured k, the shortlist share, Top-5 of both LoMa matchers and the
+  Vismatch matching time (minutes per 1,000 queries, ms per pair) with the GPU from Slurm
+  accounting; `budget-tradeoff.js` adds a k slider with readout tiles and a two-panel chart to
+  the Results page ("The cost of k"). Tests in `tests/test_export_budget_tradeoff.py`.
 - 2026-10-02: project-page score-separation view (user request). `scripts/export_score_separation.py`
   builds same- vs different-individual score histograms and per-query margins for the eight
   paper datasets from the paper's k=250 default and fine-tuned LoMa runs' `scores.npz`,

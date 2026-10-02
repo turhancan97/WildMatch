@@ -1206,6 +1206,32 @@ the committed export's internal consistency including AUROC up / overlap down ev
 Rerun the exporter after the paper's k=250 LoMa runs change (e.g. after the RDD retrain, no
 change, since it reads LoMa only).
 
+**Candidate-budget trade-off (user idea 2026-10-02, "makes the cost of k concrete").**
+`scripts/export_budget_tradeoff.py` (CPU) writes `docs/data/budget_tradeoff.json`: for each
+paper dataset and each measured budget k in 10/50/100/250/500/1000, the shortlist share
+(`candidate_recall_at_k`, identity-level, asserted equal between the default and fine-tuned
+run because both rank the same candidates), Top-5 of both matchers (paper CSV), the Vismatch
+matching time (`vismatch_rerank_sec`; feature extraction, candidate selection, setup and
+cache I/O excluded) normalised to minutes per 1,000 queries and ms per pair, and the
+hardware per run: Slurm job from `logs/index.csv`, partition from `sacct` at export time
+(`--no-sacct` skips it), mapped to a GPU name. Nothing is interpolated. Hardware found on
+2026-10-02: CzechLynx, Hyena, Leopard, Sea star and the Turtle fine-tuned runs on
+`rtx4090_batch` (1.80 ± 0.03 ms per pair), Salamander on `dgxh100` (1.37 ms), the Turtle
+fine-tuned k=10 run on `dgxa100` (2.85 ms), and the Nyala, Whale shark and Turtle default
+runs of 2026-08-21/22 without task records (pace 1.8 ms, matching the RTX 4090 runs, but
+reported as "not recorded", never inferred). Per budget, `display` shows the mean of both
+runs' times when they share a partition, else the run on the dataset's dominant partition
+(falling back to the default run), and the page prints the GPU next to every time.
+`budget-tradeoff.js` (`#wm-budget-tradeoff`, Results page section "The cost of k" between the
+accuracy explorer and "All numbers") has a dataset selector, a slider that snaps to the six
+budgets, four readout tiles (shortlist share, Top-5 default, Top-5 fine-tuned with the gain,
+matching minutes per 1,000 queries with ms per pair and GPU) and a two-panel Plotly chart
+(accuracy: shortlist share grey dotted, Top-5 default dashed hollow, fine-tuned solid; cost:
+minutes in gold) with a red dashed marker at the chosen k. Tests in
+`tests/test_export_budget_tradeoff.py` pin the normalisations, the display choice, and in
+the committed export that the shortlist share and matching time grow with k and that Top-5
+never exceeds the shortlist share. Rerun after the paper's LoMa runs change.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

@@ -38,6 +38,28 @@ Every plotted value is also listed in the table view below the chart.
 
 <div id="wm-accuracy-explorer" class="wm-widget">Loading the accuracy explorer…</div>
 
+### The cost of k
+
+Every method ranks the k MegaDescriptor-L candidates of a query, so k sets both a ceiling
+and a bill. A query whose individual is not among the candidates cannot be retrieved by any
+matcher, and the matching time grows linearly with k because every query is matched against
+all k candidates. Move the slider over the six measured budgets; nothing is interpolated.
+
+<div id="wm-budget-tradeoff" class="wm-widget">Loading the candidate-budget trade-off…</div>
+
+- **Individual inside the shortlist** is the share of queries with at least one image of
+  their individual among the k candidates. Both matchers rank the same candidates, so it is
+  their shared ceiling: Top-5 can never exceed it.
+- **Top-5** for the default matcher and for LoMa + WildMatch at that k, from the same runs
+  as the tables above.
+- **Matching time** is the Vismatch feature-matching timer over all query × candidate
+  pairs, scaled to 1,000 queries. Feature extraction, candidate selection and model setup
+  are excluded. The per-pair cost is nearly constant, about 1.8 ms on an RTX 4090 and 1.4 ms
+  on an H100, so cost is proportional to k while the shortlist share saturates.
+- **Hardware** comes from Slurm accounting and is shown next to every time. The Nyala and
+  Whale shark runs and the Turtle default runs predate the launcher's task records, so
+  their partition is not recorded; their per-pair pace matches the RTX 4090 runs.
+
 ### All numbers
 
 Filter by dataset, candidate budget and method group, sort any column, and download

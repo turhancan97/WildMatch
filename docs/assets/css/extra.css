@@ -1029,3 +1029,73 @@
 .md-typeset table.wm-ss-table tr.wm-ss-ours th:first-child {
   color: var(--wm-blue);
 }
+
+/* Candidate-budget trade-off: readout tiles and the wide k slider. */
+.wm-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.wm-kpi {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--wm-grey);
+  border-top: 3px solid var(--wm-grey-text, #6d6e71);
+  border-radius: 0.3rem;
+  background: var(--md-default-bg-color);
+}
+
+.wm-kpi--default {
+  border-top-color: var(--wm-blue);
+  border-top-style: dashed;
+}
+
+.wm-kpi--ours {
+  border-top-color: var(--wm-blue);
+}
+
+.wm-kpi-label {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .wm-kpi-value {
+  color: var(--md-default-fg-color);
+}
+
+.wm-kpi--ours .wm-kpi-value {
+  color: var(--wm-blue);
+}
+
+.wm-kpi-note {
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-range--wide input {
+  width: min(100%, 28rem);
+}
+
+.wm-kpi-k {
+  min-width: 5.5ch;
+  font-weight: 600;
+}
+
+.wm-range-ticks {
+  display: flex;
+  justify-content: space-between;
+  width: min(100%, 28rem);
+  font-size: 0.68rem;
+  color: var(--md-default-fg-color--light);
+  font-variant-numeric: tabular-nums;
+}

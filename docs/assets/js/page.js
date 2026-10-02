@@ -9,6 +9,7 @@ import { mountBeforeAfter } from "./before-after-demo.js";
 import { mountMinedPairs } from "./mined-pairs-demo.js";
 import { mountRankChange } from "./rank-change-demo.js";
 import { mountScoreSeparation } from "./score-separation-demo.js";
+import { mountBudgetTradeoff } from "./budget-tradeoff.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -21,6 +22,7 @@ const MOUNTS = [
   ["wm-mined-pairs", mountMinedPairs],
   ["wm-rank-change", mountRankChange],
   ["wm-score-separation", mountScoreSeparation],
+  ["wm-budget-tradeoff", mountBudgetTradeoff],
 ];
 
 function mountAll() {

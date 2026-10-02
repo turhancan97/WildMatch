@@ -1099,3 +1099,9 @@
   color: var(--md-default-fg-color--light);
   font-variant-numeric: tabular-nums;
 }
+
+/* Frequency-bin view: faint rows for small bins. */
+.md-typeset table.wm-ss-table tr.wm-fb-small td,
+.md-typeset table.wm-ss-table tr.wm-fb-small th {
+  color: var(--md-default-fg-color--light);
+}

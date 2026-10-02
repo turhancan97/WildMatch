@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: project-page "Rare and common individuals" view (user idea). `scripts/export_frequency_bins.py`
+  bins the paper's k=250 queries by gallery images per individual and reports Top-1/Top-5 of both LoMa
+  matchers, the shortlist ceiling and bootstrap intervals on the gain; `frequency-bins.js` draws it on
+  the Results page. Finding: in Top-5 no bin loses and singletons often gain most; Leopard's and
+  Turtle's Top-1 losses sit in the 2-29 bins. Tests in `tests/test_export_frequency_bins.py`.
 - 2026-10-02: project-page candidate-budget trade-off (user idea). `scripts/export_budget_tradeoff.py`
   collects, per dataset and measured k, the shortlist share, Top-5 of both LoMa matchers and the
   Vismatch matching time (minutes per 1,000 queries, ms per pair) with the GPU from Slurm

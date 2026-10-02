@@ -105,6 +105,34 @@ two exceptions for balanced Top-1 at this budget.
 Scores are read from the paper's own k=250 runs, and the Top-1 recomputed from them
 matches each run's recorded value exactly, which also verifies the identity labels.
 
+## Rare and common individuals
+
+Most individuals in these datasets have a handful of gallery images and a few have
+hundreds. A method that only improves the well-photographed animals would leave the
+monitoring problem where it is. This view bins the test queries by how many gallery images
+their individual has and shows Top-1 or Top-5 for the default matcher and for LoMa +
+WildMatch in each bin, with the shortlist ceiling and a bootstrap interval on the gain.
+
+<div id="wm-frequency-bins" class="wm-widget">Loading the frequency-bin view…</div>
+
+- **Bins** are fixed and shared by every dataset: 1, 2–4, 5–9, 10–29 and 30 or more
+  gallery images. Queries whose individual has no gallery image cannot be retrieved by any
+  method and are excluded; their number is given in the caption.
+- **Ceiling**: the diamond is the share of the bin's queries whose individual is among the
+  250 candidates. Rare individuals reach the shortlist less often, so part of their lower
+  accuracy is set before any matcher runs.
+- **Gain interval**: a paired bootstrap over the bin's queries (2,000 resamples). An
+  interval that excludes zero marks a gain the bin's size supports; bins with fewer than
+  20 queries are drawn faint and flagged in the table.
+- **Reading**: in Top-5, the paper's primary metric, no populated bin on any dataset loses
+  accuracy, and the largest gains often fall on the rarest individuals: queries whose
+  individual has a single gallery image gain 9.8 points on Leopard, 14.3 on Nyala, 11.1 on
+  Whale shark and 25.6 on Turtle. On CzechLynx the gain is a near-constant 2 to 3 points
+  in every bin. Fine-tuning therefore does not trade rare individuals for common ones. In
+  Top-1, the losses the paper reports for Leopard and Turtle sit in the middle bins
+  (2 to 29 gallery images), while their singletons and their best-covered individuals
+  hold or gain.
+
 ## What to adapt in the matcher
 
 For each matcher, the descriptor branch, the matching module, or both are fine-tuned

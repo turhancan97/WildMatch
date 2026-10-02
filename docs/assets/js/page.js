@@ -10,6 +10,7 @@ import { mountMinedPairs } from "./mined-pairs-demo.js";
 import { mountRankChange } from "./rank-change-demo.js";
 import { mountScoreSeparation } from "./score-separation-demo.js";
 import { mountBudgetTradeoff } from "./budget-tradeoff.js";
+import { mountFrequencyBins } from "./frequency-bins.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -23,6 +24,7 @@ const MOUNTS = [
   ["wm-rank-change", mountRankChange],
   ["wm-score-separation", mountScoreSeparation],
   ["wm-budget-tradeoff", mountBudgetTradeoff],
+  ["wm-frequency-bins", mountFrequencyBins],
 ];
 
 function mountAll() {

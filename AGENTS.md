@@ -1232,6 +1232,30 @@ minutes in gold) with a red dashed marker at the chosen k. Tests in
 the committed export that the shortlist share and matching time grow with k and that Top-5
 never exceeds the shortlist share. Rerun after the paper's LoMa runs change.
 
+**Rare and common individuals (user idea 2026-10-02; recomputes the earlier ad hoc long-tail
+check, which was never persisted).** `scripts/export_frequency_bins.py` (CPU) reuses the
+score-separation exporter's run pinning, label loading and fail-closed checks for the paper's
+k=250 default and fine-tuned LoMa runs, bins every query by the number of gallery images of
+its individual with fixed edges shared by all datasets (1, 2-4, 5-9, 10-29, 30+; queries whose
+individual has no gallery image are excluded and counted, 0 on every paper dataset), and
+writes `docs/data/frequency_bins.json`: per bin and matcher Top-1 and Top-5 (shared stable
+rule, Top-5 from the first five stable positions), the shortlist share (identical for both
+matchers, asserted), the fine-tuning gain with a paired percentile bootstrap 95 % interval
+(2,000 resamples, seed 0) and the identity count; bins under 20 queries are flagged `small`.
+The overall Top-1 reproduces the recorded run metric (test). Findings (2026-10-02): in Top-5
+no populated bin on any dataset loses, and the largest gains often fall on singletons
+(Leopard +9.8, Nyala +14.3, Whale shark +11.1, Turtle +25.6 points); CzechLynx gains a near
+constant +1.7 to +3.2 in every bin (its gallery has no singleton identities, so that bin is
+empty); the Top-1 losses of Leopard and Turtle sit in the 2-29 bins (Turtle 2-4: -5.2
+[-7.6, -3.0]; 5-9: -6.1; 10-29: -6.3) while their singletons and 30+ bins hold or gain. The
+user's recollection "helps every bin about equally" holds for CzechLynx and for Top-5 in
+direction, not in size; the page states the measured pattern. `frequency-bins.js`
+(`#wm-frequency-bins`, Results page section "Rare and common individuals" after "Score
+separation") draws grouped bars per bin (default hatched and translucent, fine-tuned solid,
+both brand blue; small bins fainter), the shortlist ceiling as grey diamonds, the gain in
+points above each bin, a table with intervals, and dataset/metric selectors defaulting to
+Top-5 (the paper's primary metric). Tests in `tests/test_export_frequency_bins.py`.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

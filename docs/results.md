@@ -45,6 +45,44 @@ the filtered rows as CSV. Rows for the fine-tuned matchers are tinted blue.
 
 <div id="wm-results-table" class="wm-widget">Loading the results table…</div>
 
+## Score separation
+
+The gains above come from one mechanism: the fine-tuned matcher pushes the scores of
+same-individual pairs away from the scores of different-individual pairs. This view shows
+it on the test split of every dataset.
+
+WildMatch is trained with a triplet margin objective: for every mined anchor, the score
+with each positive must exceed the score with each hard negative by a margin. This view
+shows the test-split consequence. For each query, the matcher scores its 250
+MegaDescriptor-L candidates; every candidate is either the same individual as the query or
+a different one. The histograms count those pairs by image score, blue for same
+individual and red for different, with the default matcher on the left and LoMa +
+WildMatch on the right. Both matchers score the identical pairs.
+
+<div id="wm-score-separation" class="wm-widget">Loading the score-separation view…</div>
+
+- **Pair scores** are the matcher's image scores on the background-removed inputs. The
+  different-individual pairs are the shortlist candidates MegaDescriptor-L already found
+  similar, so they are hard negatives, not random pairs.
+- **Per-query margin** switches to the quantity the objective acts on: each query's best
+  same-individual score minus its best different-individual score. Queries right of zero
+  rank their own individual above every other candidate; the view is defined for queries
+  whose shortlist contains at least one photo of their individual.
+- **AUROC** is the probability that a random same-individual pair outscores a random
+  different-individual pair; **overlap** is the shared area of the two normalised
+  histograms, 1 for identical distributions.
+- **Share and log axes**: the different-individual pairs outnumber the same-individual
+  pairs by far, so counts hide the blue histogram; the share view normalises each to unit
+  mass and the log axis shows the tails.
+
+Separation improves on all eight datasets by AUROC and overlap. The share of queries with a
+positive margin, which is close to Top-1 among queries whose individual is in the
+shortlist, rises on six and falls slightly on Leopard and Turtle; the paper reports the same
+two exceptions for balanced Top-1 at this budget.
+
+Scores are read from the paper's own k=250 runs, and the Top-1 recomputed from them
+matches each run's recorded value exactly, which also verifies the identity labels.
+
 ## What to adapt in the matcher
 
 For each matcher, the descriptor branch, the matching module, or both are fine-tuned

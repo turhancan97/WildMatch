@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: project-page score-separation view (user request). `scripts/export_score_separation.py`
+  builds same- vs different-individual score histograms and per-query margins for the eight
+  paper datasets from the paper's k=250 default and fine-tuned LoMa runs' `scores.npz`,
+  verifying the identity order by reproducing each run's Top-1. Shown as the "Score
+  separation" section of the Results page with `score-separation-demo.js` (two Plotly panels,
+  dataset and view selectors, statistics table); first drafted as a Demo page, moved to Results
+  at the user's request the same day. AUROC improves on all eight
+  datasets; the positive-margin share falls slightly on Leopard and Turtle, which the page states.
+  Tests in `tests/test_export_score_separation.py`.
 - 2026-10-02: the project page's Demo page was split into a `docs/demo/` section (user
   request, the single page had become cluttered): a hub `demo/index.md` with one card per
   demo (thumbnails from `scripts/build_demo_cards.py`, composed from the committed demo

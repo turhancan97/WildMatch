@@ -8,6 +8,7 @@ import { mountMaskingDemo } from "./masking-demo.js";
 import { mountBeforeAfter } from "./before-after-demo.js";
 import { mountMinedPairs } from "./mined-pairs-demo.js";
 import { mountRankChange } from "./rank-change-demo.js";
+import { mountScoreSeparation } from "./score-separation-demo.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -19,6 +20,7 @@ const MOUNTS = [
   ["wm-before-after", mountBeforeAfter],
   ["wm-mined-pairs", mountMinedPairs],
   ["wm-rank-change", mountRankChange],
+  ["wm-score-separation", mountScoreSeparation],
 ];
 
 function mountAll() {

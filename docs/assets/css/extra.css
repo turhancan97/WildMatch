@@ -1010,3 +1010,22 @@
   font-style: italic;
   margin-top: -0.4rem;
 }
+
+/* Score-separation view: two histogram panels and a statistics table. */
+.wm-plot--short {
+  min-height: 20rem;
+}
+
+.md-typeset table.wm-ss-table {
+  font-size: 0.78rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.md-typeset table.wm-ss-table th:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.md-typeset table.wm-ss-table tr.wm-ss-ours th:first-child {
+  color: var(--wm-blue);
+}

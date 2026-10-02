@@ -1154,7 +1154,7 @@ category logic and the committed export's internal consistency (counts add up, t
 match true ranks).
 
 **Demo section (user request 2026-10-02, replacing the single cluttered Demo page).** The
-five demos live on their own pages under `docs/demo/` and the "Demo" tab opens a hub,
+demos live on their own pages under `docs/demo/` and the "Demo" tab opens a hub,
 `docs/demo/index.md` (Material `navigation.indexes`), with one card per demo (thumbnail,
 one sentence, link) in the paper's narrative order chosen by the user: `before-after.md`,
 `rank-changes.md`, `mined-pairs.md`, `masking.md`, `synthetic.md`; Material's prev/next
@@ -1173,6 +1173,38 @@ demo re-export. Hub card styles are `.wm-hub` / `.wm-hub-card` in `extra.css` (b
 hover and image rule). `tests/test_build_demo_cards.py` covers the compose helpers, the
 fail-closed builders and the committed cards against the hub's references and pages.
 Home-page links point at `demo/index.md`. Strict build verified 2026-10-02.
+
+**Score-separation view (user request 2026-10-02, "shows directly what the margin loss
+does").** `scripts/export_score_separation.py` (CPU) reads, for each of the eight paper
+datasets, the paper repository's `results/<stem>_ablation.csv` to pin the exact default and
+matcher-only fine-tuned LoMa runs at k=250 (`run_id`, `manifest_path`), loads each run's
+`scores.npz` (all 250 shortlist pairs per query) and derives the identity order from the
+run's `config.snapshot.yaml` metadata filter (the same filter as `load_dataset_splits`).
+It fails closed unless the manifest is completed with the recorded run id, the matrix shape
+equals the split sizes, every score is in [0, 1], and the Top-1 recomputed with the shared
+stable rule equals both the run's `metrics.json` and the paper CSV (this verifies the label
+order; all sixteen runs passed on 2026-10-02). Output `docs/assets/demo/score_separation/
+score_separation.json`: per dataset and matcher, 50-bin histograms on [0, 1] of same- and
+different-individual pair scores, a 50-bin histogram on [-1, 1] of the per-query margin
+(best same-individual score minus best different-individual score, over queries whose
+shortlist holds their individual), and statistics (AUROC with average-rank ties, medians,
+means, histogram overlap coefficient, positive-margin fraction). Population caveat stated on
+the page: "different individual" means hard shortlist candidates, not random pairs; both
+matchers score the identical pairs. Results: AUROC rises and overlap falls on all eight
+datasets (CzechLynx 0.591 -> 0.772 and 0.820 -> 0.603; Nyala 0.634 -> 0.863; Salamander
+0.933 -> 0.971; Sea star 0.880 -> 0.909), while the positive-margin fraction falls slightly
+on Leopard (0.851 -> 0.838) and Turtle (0.846 -> 0.797), the paper's two balanced-Top-1
+exceptions; the page says so. `score-separation-demo.js` (`#wm-score-separation`, section "Score separation" of
+`docs/results.md`, after the main results and before "What to adapt"; first built as a Demo
+page and moved the same day because the user judged it a result, not a demo) draws two Plotly
+panels (default | fine-tuned, blue same / red different, overlaid bars) with dataset and
+view selectors (pair scores or per-query margin, zero line), share/count and log-axis
+toggles, hover counts and shares, and a statistics table (AUROC, medians, overlap, counts;
+in margin view: queries with margin, median, positive fraction, recorded Top-1). It has no Demo hub card. Tests in
+`tests/test_export_score_separation.py` (statistics helpers, stable top-1, margins, and
+the committed export's internal consistency including AUROC up / overlap down everywhere).
+Rerun the exporter after the paper's k=250 LoMa runs change (e.g. after the RDD retrain, no
+change, since it reads LoMa only).
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

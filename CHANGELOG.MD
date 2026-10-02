@@ -114,6 +114,10 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: masking demo compares against a reference mask only for the synthetic subset and
   CzechLynx, the datasets that ship segmentation masks (user correction); WildlifeReID-10k and
   Salamander photos show the SAM 3 mask alone.
+- 2026-10-02: `scripts/analyze_background_matches.py` tests whether the fine-tuned LoMa matcher
+  favours the animal when photos keep their background (Nyala, nine pairs, H100). It does not:
+  38 % of its matches land on the animal versus 40 % for the default matcher, and on raw inputs
+  it either matches the background heavily or collapses; masks remain required at inference.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

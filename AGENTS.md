@@ -1042,6 +1042,25 @@ fallback.
 Licences: CzechLynx photos and the WildlifeReID-10k sub-datasets other than Hyena/Leopard
 (CDLA-Permissive) are still unverified for web display; the user chose to include them.
 
+**Background-match analysis (user hypothesis, 2026-10-02).** `scripts/analyze_background_matches.py`
+(GPU, ex-reid) matches raw, unmasked WildlifeReID-10k photo pairs with the default and a
+fine-tuned LoMa matcher, classifies each correspondence endpoint as animal or background with
+the provider's pre-masked image (`max(RGB) > 12`, so dark animals are undercounted), draws a
+contact sheet (cyan = both endpoints on the animal, orange = at least one on the background)
+and also reports each matcher's score on the masked inputs for reference; outputs go to the
+gitignored `reports/project_page/analysis/`. Run on Nyala (checkpoint
+`model__actual_nyala.safetensors`, SHA `c0cbe570...`, 6 same-individual pairs including the
+match-figure pair, 3 different-individual pairs, seed 0, H100). Hypothesis: a matcher fine-tuned
+on masked images would focus on the animal when the background is present. Result: not
+supported. The detector places only 16-50 % of keypoints on the animal in raw photos; the
+default matcher keeps 40 % of its matches on the animal on average (scores 0.04-0.12), the
+fine-tuned one 38 %, and the fine-tuned matcher is bimodal on raw inputs: either hundreds of
+matches with 72-97 % touching the background (two same pairs scoring 0.59/0.63, and one
+different-individual pair scoring 0.263 through background matches) or a near-total collapse to
+1-35 matches on pairs whose masked-input score is 0.54-0.60. Masks are therefore required at
+inference for the fine-tuned matcher, consistent with the paper's limitation on mask
+dependence; nothing suggests an animal bias. Nine pairs, one seed.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

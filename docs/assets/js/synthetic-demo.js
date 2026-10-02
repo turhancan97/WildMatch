@@ -44,17 +44,19 @@ export async function mountSyntheticDemo(root) {
   countInput.addEventListener("input", () => { state.count = Number(countInput.value); countValue.textContent = countInput.value; draw(); });
   controls.append(el("label", { class: "wm-control" }, [el("span", { text: "Strongest matches drawn" }), el("span", { class: "wm-range" }, [countInput, countValue])]));
 
+  // One Image per file; a load triggers a redraw once. Never call back synchronously
+  // for an already loaded image, or draw() would recurse into itself.
   const imageCache = new Map();
-  function image(file, onload) {
+  function image(file) {
     if (!imageCache.has(file)) {
       const img = new Image();
+      img.addEventListener("load", () => draw(), { once: true });
       img.src = assetUrl(`demo/synthetic/${file}`);
       imageCache.set(file, img);
     }
-    const img = imageCache.get(file);
-    if (img.complete && img.naturalWidth) onload(); else img.addEventListener("load", onload, { once: true });
-    return img;
+    return imageCache.get(file);
   }
+  const loaded = (img) => img.complete && img.naturalWidth > 0;
 
   function query() { return data.queries[state.query]; }
   function candidate() { return query().candidates[state.index]; }
@@ -103,8 +105,8 @@ export async function mountSyntheticDemo(root) {
 
   function draw() {
     const q = query(), c = candidate();
-    const qImg = image(q.image.file, draw), gImg = image(c.image.file, draw);
-    if (!(qImg.complete && qImg.naturalWidth && gImg.complete && gImg.naturalWidth)) return;
+    const qImg = image(q.image.file), gImg = image(c.image.file);
+    if (!(loaded(qImg) && loaded(gImg))) return;
     const t = theme();
     const sQ = PHOTO_HEIGHT / q.image.height, sG = PHOTO_HEIGHT / c.image.height;
     const wQ = Math.round(q.image.width * sQ), wG = Math.round(c.image.width * sG);

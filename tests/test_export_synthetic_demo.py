@@ -31,16 +31,31 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             D.identity_of("not/a/render.jpg")
 
-    def test_mask_background_blackens_only_the_flat_colour(self):
-        array = np.full((8, 8, 3), D.TEASER_BACKGROUND, dtype=np.uint8)
-        array[2:5, 2:5] = (120, 90, 40)      # animal
-        array[0, 0] = (240, 240, 236)        # within tolerance -> background
-        array[7, 7] = (200, 200, 200)        # outside tolerance -> kept
-        out = np.asarray(D.mask_background(Image.fromarray(array, "RGB")))
-        self.assertTrue((out[2:5, 2:5] == (120, 90, 40)).all())
-        self.assertTrue((out[0, 0] == 0).all())
-        self.assertTrue((out[7, 7] == (200, 200, 200)).all())
-        self.assertTrue((out[6, 1] == 0).all())
+    def test_apply_mask_blackens_outside_the_mask(self):
+        array = np.full((6, 5, 3), 200, dtype=np.uint8)
+        mask = np.zeros((6, 5), dtype=np.uint8); mask[1:4, 1:3] = 1
+        out = np.asarray(D.apply_mask(Image.fromarray(array, "RGB"), mask))
+        self.assertTrue((out[1:4, 1:3] == 200).all())
+        self.assertEqual(int(out.sum()), 200 * 3 * 6)
+        with self.assertRaises(ValueError):
+            D.apply_mask(Image.fromarray(array, "RGB"), np.zeros((5, 6), dtype=np.uint8))
+
+    def test_decode_rle_round_trip(self):
+        from pycocotools import mask as mask_utils
+        mask = np.zeros((7, 9), dtype=np.uint8); mask[2:5, 3:8] = 1
+        rle = mask_utils.encode(np.asfortranarray(mask))
+        rle["counts"] = rle["counts"].decode("ascii")
+        decoded = D.decode_rle(json.dumps(rle))
+        np.testing.assert_array_equal(decoded, mask)
+
+    def test_load_rows_fails_closed_on_missing_render(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "meta.csv").write_text("source,path,mask\nsynthetic,a/b.jpg,{}\n", encoding="utf-8")
+            self.assertEqual(set(D.load_rows(root, "meta.csv", ["a/b.jpg"])), {"a/b.jpg"})
+            with self.assertRaises(FileNotFoundError):
+                D.load_rows(root, "meta.csv", ["a/b.jpg", "missing.jpg"])
 
     def test_normalized_to_pixels_uses_half_pixel_convention(self):
         pts = D.normalized_to_pixels(np.array([[-1.0, -1.0], [1.0, 1.0], [0.0, 0.0]]), (520, 400))

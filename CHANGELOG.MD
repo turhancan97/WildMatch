@@ -76,7 +76,9 @@ kept under Unreleased until a project version is assigned.
   reproduced from the teaser crops) and writes ranked candidates with every correspondence
   and confidence; `synthetic-demo.js` shows the ranked strip, confidence-weighted lines,
   a strongest-N slider and hover confidences. Decisions: fine-tuned only, query vs all six,
-  home page, labelled synthetic. GPU export pending.
+  home page, labelled synthetic. The script then switched to the local CzechLynx synthetic
+  renders and their dataset masks (user pointer) and was run on the login node's V100 with
+  the user's permission; the export (seven renders, ranked matches) is committed.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

@@ -8,24 +8,24 @@ openly licensed images (CzechLynx synthetic subset, Picek et al., Zenodo record
 17592004, CC BY 4.0). Synthetic renders are not the paper's test data; the page labels
 the demo as such.
 
-Inputs are the paper's teaser crops (``paper/figures/teaser/<tag>_full.png`` and
-``prep.json`` in the paper repository): full-body renders with the dataset mask applied
-and the background replaced by one flat light colour. For inference that flat colour is
-set to black, which reproduces the paper's masked input (pixels outside the mask are
-blacked out, nothing is cropped); the displayed photo keeps the light background.
-Matching is configured exactly like the paper's CzechLynx fine-tuned LoMa probe run
-(``config.snapshot.yaml`` of the run: LoMa-B, 512 px long side, up to 512 keypoints,
-default mutual-match threshold, ``matcher_only`` checkpoint), and the checkpoint file's
-SHA-256 is recorded. Keypoints are mapped from LoMa's normalized coordinates to the
-render's pixels with the Vismatch half-pixel convention.
+Inputs are the original renders and the dataset's own COCO-RLE masks from the CzechLynx
+synthetic metadata (``CzechLynxDataset-Metadata-Synthetic.csv`` under the dataset root).
+The model input is the render with every pixel outside the mask set to black, exactly
+as the probe's ``BenchmarkDatasetView`` does for CzechLynx (``no_background=true``);
+nothing is cropped, so LoMa's normalized keypoints map straight onto the raw render,
+which is what the page displays (resized for the web). Matching is configured like the
+paper's CzechLynx fine-tuned LoMa probe run (``config.snapshot.yaml`` of the run:
+LoMa-B, 512 px long side, up to 512 keypoints, default mutual-match threshold,
+``matcher_only`` checkpoint), and the checkpoint file's SHA-256 is recorded.
 
-Requires a GPU with the ex-reid environment and the fine-tuned checkpoint; run it
-yourself and commit the output under ``docs/assets/demo/synthetic/``.
+The seven renders are the paper's teaser selection (query ``L173_0`` in snow and six
+forest renders, one of them lynx 173 again). Needs a GPU and the ex-reid environment.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as dt
 import hashlib
 import json
@@ -38,13 +38,30 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TEASER_DIR = REPO_ROOT.parent / "ECIR-Animal-ReID-Paper" / "paper" / "figures" / "teaser"
+if str(REPO_ROOT) not in sys.path:  # allow running as a plain script
+    sys.path.insert(0, str(REPO_ROOT))
+DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
+DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"
 DEFAULT_RUN_DIR = (REPO_ROOT / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
                    "/vismatch/loma/20260920T122915Z_0015f14a")
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "synthetic"
-TEASER_BACKGROUND = (243, 241, 236)  # the flat colour teaser_prep.py put behind the animal
+WEB_LONG_SIDE = 1000
 ATTRIBUTION = ("Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), "
                "Zenodo record 17592004, CC BY 4.0.")
+
+# The paper's teaser renders (results/teaser_prep.py in the paper repository): tag ->
+# path relative to the dataset root. L173_0 is the snow query; L173_1 is the same
+# individual in the forest.
+RENDERS: Dict[str, str] = {
+    "L173_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg",
+    "L173_1": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/06420_synthetic_lynx_173.jpg",
+    "L129_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/05121_synthetic_lynx_129.jpg",
+    "L242_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/08305_synthetic_lynx_242.jpg",
+    "L88_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/04055_synthetic_lynx_88.jpg",
+    "L79_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/00519_synthetic_lynx_79.jpg",
+    "L138_0": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/09291_synthetic_lynx_138.jpg",
+}
+DEFAULT_QUERY = "L173_0"
 
 
 def sha256_file(path: Path) -> str:
@@ -63,18 +80,23 @@ def identity_of(src: str) -> str:
     return f"lynx_{match.group(1)}"
 
 
-def mask_background(render: Image.Image, background: Sequence[int] = TEASER_BACKGROUND, tolerance: int = 6) -> Image.Image:
-    """Model input: the teaser's flat background colour becomes black, the animal stays.
+def decode_rle(mask_json: str) -> np.ndarray:
+    """COCO compressed RLE (as stored in the metadata) -> 2-D uint8 mask."""
+    from pycocotools import mask as mask_utils
 
-    The teaser crops already carry the dataset mask (everything outside the animal is
-    one flat colour), so thresholding that colour recovers the masked input the paper
-    fed to the matcher without re-downloading the renders and masks.
-    """
-    array = np.asarray(render.convert("RGB")).astype(np.int16)
-    is_background = (np.abs(array - np.asarray(background, dtype=np.int16)) <= tolerance).all(axis=2)
-    out = array.astype(np.uint8).copy()
-    out[is_background] = 0
-    return Image.fromarray(out, "RGB")
+    data = json.loads(mask_json)
+    mask = mask_utils.decode(data).astype(np.uint8)
+    if mask.ndim == 3:
+        mask = mask[..., 0] if mask.shape[-1] == 1 else mask.max(axis=-1)
+    return mask
+
+
+def apply_mask(render: Image.Image, mask: np.ndarray) -> Image.Image:
+    """Model input: pixels outside the mask become black, as in ``BenchmarkDatasetView``."""
+    array = np.asarray(render.convert("RGB"))
+    if array.shape[:2] != mask.shape:
+        raise ValueError(f"mask {mask.shape} does not match render {array.shape[:2]}")
+    return Image.fromarray(array * mask[..., None].astype(np.uint8), "RGB")
 
 
 def normalized_to_pixels(points: np.ndarray, size: Sequence[int]) -> np.ndarray:
@@ -85,6 +107,14 @@ def normalized_to_pixels(points: np.ndarray, size: Sequence[int]) -> np.ndarray:
     out[:, 0] = width * (points[:, 0] + 1.0) / 2.0 - 0.5
     out[:, 1] = height * (points[:, 1] + 1.0) / 2.0 - 0.5
     return out
+
+
+def web_copy(render: Image.Image, out_path: Path, long_side: int = WEB_LONG_SIDE) -> Dict[str, int]:
+    scale = min(1.0, long_side / max(render.size))
+    size = (max(1, round(render.width * scale)), max(1, round(render.height * scale)))
+    photo = render.convert("RGB").resize(size, Image.LANCZOS) if scale < 1.0 else render.convert("RGB")
+    photo.save(out_path, format="JPEG", quality=88, optimize=True, progressive=True)
+    return {"file": out_path.name, "width": size[0], "height": size[1]}
 
 
 def candidate_record(tag: str, src: str, query_identity: str, size: Sequence[int], result: Any,
@@ -118,6 +148,7 @@ def build_payload(query: Dict[str, Any], candidates: List[Dict[str, Any]], model
         "synthetic": True,
         "attribution": ATTRIBUTION,
         "method": "LoMa + WildMatch (matching module fine-tuned on CzechLynx, closed split)",
+        "inputs": "renders with the dataset's own masks applied (background set to black), as in the paper",
         "coordinates": "pixels on the exported renders (origin top-left)",
         "score_definition": "sum of match confidences over mutual-nearest matches above the threshold, divided by min(n_query, n_gallery)",
         "model": model,
@@ -129,6 +160,20 @@ def build_payload(query: Dict[str, Any], candidates: List[Dict[str, Any]], model
         if needle in text:
             raise ValueError(f"demo payload contains a private path fragment {needle!r}")
     return payload
+
+
+def load_rows(root: Path, metadata: str, paths: Sequence[str]) -> Dict[str, Dict[str, str]]:
+    csv.field_size_limit(1 << 30)
+    wanted = set(paths)
+    found: Dict[str, Dict[str, str]] = {}
+    with (root / metadata).open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            if row.get("path") in wanted:
+                found[row["path"]] = row
+    missing = wanted - set(found)
+    if missing:
+        raise FileNotFoundError(f"renders missing from {metadata}: {sorted(missing)}")
+    return found
 
 
 def _load_backend(run_dir: Path, checkpoint: Optional[Path], device: str):
@@ -157,37 +202,42 @@ def _load_backend(run_dir: Path, checkpoint: Optional[Path], device: str):
     return backend, model
 
 
-def export(teaser_dir: Path, run_dir: Path, out_dir: Path, checkpoint: Optional[Path], device: str,
-           query_tag: str = "L173_0") -> Dict[str, Any]:
+def export(root: Path, metadata: str, run_dir: Path, out_dir: Path, checkpoint: Optional[Path], device: str,
+           query_tag: str = DEFAULT_QUERY, renders: Dict[str, str] = RENDERS) -> Dict[str, Any]:
     from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
 
-    prep = json.loads((teaser_dir / "prep.json").read_text(encoding="utf-8"))
-    if query_tag not in prep:
-        raise ValueError(f"query tag {query_tag!r} not in prep.json")
+    if query_tag not in renders:
+        raise ValueError(f"query tag {query_tag!r} is not one of {sorted(renders)}")
+    rows = load_rows(root, metadata, list(renders.values()))
     backend, model = _load_backend(run_dir, checkpoint, device)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    renders: Dict[str, Image.Image] = {}
+    images: Dict[str, Dict[str, int]] = {}
     features: Dict[str, Any] = {}
-    for tag in prep:
-        render = Image.open(teaser_dir / f"{tag}_full.png").convert("RGB")
-        renders[tag] = render
-        render.save(out_dir / f"{tag}.jpg", format="JPEG", quality=90, optimize=True, progressive=True)
-        features[tag] = backend.extract_frame(to_rgb_float_tensor(mask_background(render)))
-        print(f"[synthetic-demo] {tag}: {len(features[tag].keypoints)} keypoints", flush=True)
+    for tag, rel in renders.items():
+        render = Image.open(root / rel).convert("RGB")
+        mask = decode_rle(rows[rel]["mask"])
+        features[tag] = backend.extract_frame(to_rgb_float_tensor(apply_mask(render, mask)))
+        images[tag] = web_copy(render, out_dir / f"{tag}.jpg")
+        images[tag]["raw_width"], images[tag]["raw_height"] = render.width, render.height
+        print(f"[synthetic-demo] {tag}: {render.width}x{render.height}, mask share {mask.mean():.2f}, "
+              f"{len(features[tag].keypoints)} keypoints", flush=True)
 
-    query_identity = identity_of(prep[query_tag]["src"])
-    query = {"tag": query_tag, "identity": query_identity, "source": prep[query_tag]["src"],
-             "image": {"file": f"{query_tag}.jpg", "width": renders[query_tag].width, "height": renders[query_tag].height}}
+    query_identity = identity_of(renders[query_tag])
+    query = {"tag": query_tag, "identity": query_identity, "source": renders[query_tag],
+             "image": {k: images[query_tag][k] for k in ("file", "width", "height")}}
     candidates: List[Dict[str, Any]] = []
-    for tag, entry in prep.items():
+    for tag, rel in renders.items():
         if tag == query_tag:
             continue
         result = backend.match_features(features[query_tag], features[tag])
-        kq = normalized_to_pixels(result.matched_kpts0 if result.matched_kpts0 is not None else np.empty((0, 2)), renders[query_tag].size)
-        kg = normalized_to_pixels(result.matched_kpts1 if result.matched_kpts1 is not None else np.empty((0, 2)), renders[tag].size)
-        record = candidate_record(tag, entry["src"], query_identity, renders[tag].size, result, kq, kg)
-        record["source"] = entry["src"]
+        web_q, web_g = images[query_tag], images[tag]
+        kq = normalized_to_pixels(result.matched_kpts0 if result.matched_kpts0 is not None else np.empty((0, 2)),
+                                  (web_q["width"], web_q["height"]))
+        kg = normalized_to_pixels(result.matched_kpts1 if result.matched_kpts1 is not None else np.empty((0, 2)),
+                                  (web_g["width"], web_g["height"]))
+        record = candidate_record(tag, rel, query_identity, (web_g["width"], web_g["height"]), result, kq, kg)
+        record["source"] = rel
         candidates.append(record)
         print(f"[synthetic-demo] {query_tag} vs {tag} ({record['identity']}): score {record['score']:.4f}, "
               f"{record['match_count']} matches", flush=True)
@@ -200,20 +250,20 @@ def export(teaser_dir: Path, run_dir: Path, out_dir: Path, checkpoint: Optional[
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--teaser-dir", type=Path, default=DEFAULT_TEASER_DIR,
-                        help="paper/figures/teaser in the paper repository clone")
+    parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="CzechLynx dataset root")
+    parser.add_argument("--metadata", default=DEFAULT_METADATA, help="synthetic metadata CSV, relative to the root")
     parser.add_argument("--run-dir", type=Path, default=DEFAULT_RUN_DIR,
                         help="fine-tuned LoMa probe run whose config.snapshot.yaml configures the matcher")
     parser.add_argument("--checkpoint", type=Path, default=None,
                         help="override the checkpoint path recorded in the run snapshot")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--query", default="L173_0", help="teaser tag used as the query render")
+    parser.add_argument("--query", default=DEFAULT_QUERY, help="render tag used as the query")
     args = parser.parse_args(list(argv) if argv is not None else None)
-    if not (args.teaser_dir / "prep.json").is_file():
-        print(f"error: {args.teaser_dir} has no prep.json", file=sys.stderr)
+    if not (args.root / args.metadata).is_file():
+        print(f"error: metadata not found: {args.root / args.metadata}", file=sys.stderr)
         return 2
-    export(args.teaser_dir, args.run_dir, args.out, args.checkpoint, args.device, args.query)
+    export(args.root, args.metadata, args.run_dir, args.out, args.checkpoint, args.device, args.query)
     return 0
 
 

@@ -67,6 +67,9 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: header bar recoloured, first to copper `#ab673a` (rejected), then to white with
   dark grey text (dark scheme: `#2b3036`) so the two-colour logo mark reads as designed; the
   brand blue remains for links, hero title, active tabs and chart series.
+- 2026-10-02: objective wording settled (paper session, confirmed from the training code):
+  the page describes a triplet margin objective as a contrastive loss and the two "Draft"
+  notes about triplet-versus-contrastive wording were removed.
   Hero subtitle flows full width under the logo row and the author line is smaller.
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because

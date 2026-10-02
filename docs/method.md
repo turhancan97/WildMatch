@@ -61,17 +61,14 @@ over both directions:
 \tilde{s}(x, x') = \tfrac{1}{2}\Big( \operatorname{mean}_i \max_j P_{ij} + \operatorname{mean}_j \max_i P_{ij} \Big).
 \]
 
-The loss pushes the anchor-positive score above the anchor-negative score by a margin
-\(\alpha = 0.5\):
+The matching module is fine-tuned with a triplet margin objective, a contrastive loss
+that encourages higher correspondence scores for same-identity pairs than for
+different-identity pairs. It pushes the anchor-positive score above the anchor-negative
+score by a margin \(\alpha = 0.5\):
 
 \[
 \mathcal{L} = \mathbb{E}\big[\, (\alpha - \tilde{s}(a,p) + \tilde{s}(a,n))_+ \,\big].
 \]
-
-!!! note "Draft"
-    Equation and figure captions call this a triplet margin loss; the abstract and
-    introduction still say "contrastively fine-tune". The authors are checking the
-    wording against the training code.
 
 ### Implementation details
 

@@ -818,9 +818,13 @@ dropped), no CzechLynx open-split results (the unseen-identity protocol replaces
 State with every cosine or classifier baseline that MegaDescriptor-L was trained on six
 of the eight datasets (all except Sea star, CzechLynx, Salamander). Never call the
 descriptor-only result a "collapse". No BibTeX or preprint exists; the user writes all
-BibTeX entries. Items the authors still mark as draft (triplet-vs-contrastive wording,
-SAM 3 prompt, same-hardware cost statement, empty Related Work and Limitations, pending
-expert study, Fig. 2 revision) carry a "Draft" admonition on the page. Two were settled
+BibTeX entries. Items the authors still mark as draft (SAM 3 masking wording, the caching explanation
+of the cost gap, pending expert study, Fig. 2 revision) carry a "Draft" admonition on the
+page. Settled on 2026-10-02 by the paper session: the objective is a triplet margin loss on
+the relaxed score, confirmed from the training code; the page calls it "a triplet margin
+objective, a contrastive loss" and never "softmax-based contrastive" or "InfoNCE" (an
+old project note that was wrong); the abstract's "contrastively fine-tune" is kept on
+purpose; same-hardware was confirmed from sacct; Conclusion and limitations were pushed. Two were settled
 from this server on 2026-10-02 and sent back: the SalamanderID2025 SAM 3 prompt was
 "Salamander" for all 1,384 images (`masks.csv`, `prompt_used`), and every training-cost
 job (508111, 508028, arrays 508523 and 522223) ran on `rtx4090_batch` per sacct.

@@ -70,6 +70,13 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: objective wording settled (paper session, confirmed from the training code):
   the page describes a triplet margin objective as a contrastive loss and the two "Draft"
   notes about triplet-versus-contrastive wording were removed.
+- 2026-10-02: synthetic keypoint-match demo for the home page (user request): 
+  `scripts/export_synthetic_demo.py` matches the paper's CC BY 4.0 CzechLynx synthetic
+  teaser renders with the fine-tuned LoMa matcher (paper run configuration, masked input
+  reproduced from the teaser crops) and writes ranked candidates with every correspondence
+  and confidence; `synthetic-demo.js` shows the ranked strip, confidence-weighted lines,
+  a strongest-N slider and hover confidences. Decisions: fine-tuned only, query vs all six,
+  home page, labelled synthetic. GPU export pending.
   Hero subtitle flows full width under the logo row and the author line is smaller.
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because

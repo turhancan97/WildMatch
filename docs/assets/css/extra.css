@@ -541,3 +541,85 @@
   border-color: var(--wm-red);
   color: var(--wm-red-dark);
 }
+
+/* Synthetic match demo (docs/assets/js/synthetic-demo.js). */
+.wm-demo-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+
+.wm-demo-card {
+  display: grid;
+  gap: 0.2rem;
+  justify-items: center;
+  padding: 0.4rem 0.4rem 0.5rem;
+  border: 2px solid var(--wm-grey);
+  border-radius: 0.3rem;
+  background: var(--md-default-bg-color);
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+}
+
+.wm-demo-card:hover {
+  border-color: var(--wm-blue-40);
+}
+
+.wm-demo-card.is-active {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+.wm-demo-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 0.2rem;
+}
+
+.wm-demo-rank {
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+}
+
+.wm-demo-cardscore {
+  font-variant-numeric: tabular-nums;
+}
+
+.wm-demo-verdict {
+  color: var(--wm-grey-text);
+}
+
+.wm-demo-verdict.is-same {
+  color: var(--wm-blue);
+  font-weight: 600;
+}
+
+.wm-demo-stage {
+  position: relative;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.wm-demo-tooltip {
+  position: absolute;
+  pointer-events: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.2rem;
+  background: rgba(40, 44, 50, 0.92);
+  color: #ffffff;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.wm-demo-score {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.wm-controls--inline {
+  margin-top: 0.25rem;
+}

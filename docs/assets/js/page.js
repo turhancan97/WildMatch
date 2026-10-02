@@ -3,12 +3,14 @@ import { mountExplorer } from "./explorer.js";
 import { mountResultsTable } from "./results-table.js";
 import { mountTrainingCost } from "./training-cost.js";
 import { mountMatchViewer } from "./match-viewer.js";
+import { mountSyntheticDemo } from "./synthetic-demo.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
   ["wm-results-table", mountResultsTable],
   ["wm-training-cost", mountTrainingCost],
   ["wm-match-viewer", mountMatchViewer],
+  ["wm-synthetic-demo", mountSyntheticDemo],
 ];
 
 function mountAll() {

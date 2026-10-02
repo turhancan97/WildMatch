@@ -72,6 +72,18 @@ Individual animal re-identification from camera-trap imagery is an instance retr
 3. **Transfer to unseen individuals**, and an analysis of where in the matching
    pipeline identity supervision should be applied.
 
+## Try it on synthetic renders
+
+One synthetic query render of a lynx is matched against six synthetic gallery renders by
+LoMa + WildMatch, the matcher fine-tuned on CzechLynx. Pick a candidate to see its
+correspondences, drag the slider to show more of them, and hover a match to read its
+confidence. The matches and scores are real matcher output; the images are synthetic
+renders, not the paper's test data, and the scores are not a benchmark result.
+
+<div id="wm-synthetic-demo" class="wm-widget">Loading the synthetic match demo…</div>
+
+<small>Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0.</small>
+
 ## How it works
 
 <div class="wm-cards" markdown>

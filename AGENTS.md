@@ -943,6 +943,30 @@ paths are written as `<placeholders>` (the leak test forbids real ones); the `le
 is named as the paper's protocol and `strict` as unused. Metadata files per dataset come from
 the launcher profiles.
 
+**Synthetic match demo (requested by the user via the paper session, decisions 2026-10-02).**
+`scripts/export_synthetic_demo.py` (GPU, run by the user) matches the paper's teaser renders
+(`paper/figures/teaser/<tag>_full.png` and `prep.json` in the paper clone: seven CzechLynx
+synthetic renders, Picek et al., Zenodo 17592004, CC BY 4.0; query `L173_0` in snow against
+six forest renders, one of them lynx 173 again) with the fine-tuned LoMa matcher configured
+from the paper run `20260920T122915Z_0015f14a` (same checkpoint as the k=250 run
+`20260920T131759Z_612b4791`: `loma-b-finetuned-loma-mined-legacy/epoch_299`, matcher only,
+LoMa-B, 512 px, 512 keypoints, default threshold). The teaser's flat background colour
+`(243, 241, 236)` is set to black for the model input, reproducing the paper's masked input;
+the displayed render keeps the light background. Keypoints are mapped with the half-pixel
+convention to the 520 px renders. Output `docs/assets/demo/synthetic/` holds the seven
+JPEGs and `synthetic_demo.json` (query, candidates ranked by score with identity,
+`same_individual`, every correspondence, confidences and confidence order, model settings
+and checkpoint SHA-256, attribution, `synthetic: true`). The prep.json scores are SIFT
+stand-ins and are never used. User decisions: fine-tuned matcher only (no default-LoMa
+comparison, because the internal expert study found fine-tuned matches less intuitive and a
+side-by-side would invite that reading); strongest-N slider (default 10) with hover
+confidence; query against all six, ranked, including the different individuals; placed on
+the home page below the hero and labelled synthetic with attribution. `synthetic-demo.js`
+(`#wm-synthetic-demo`) renders the ranked candidate strip, the pair canvas with
+confidence-weighted lines and hover tooltips, and shows a pending note until the export
+exists. `tests/test_export_synthetic_demo.py` covers the GPU-free helpers and validates the
+committed export when present.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

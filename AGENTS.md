@@ -1060,6 +1060,16 @@ different-individual pair scoring 0.263 through background matches) or a near-to
 1-35 matches on pairs whose masked-input score is 0.54-0.60. Masks are therefore required at
 inference for the fine-tuned matcher, consistent with the paper's limitation on mask
 dependence; nothing suggests an animal bias. Nine pairs, one seed.
+CzechLynx repeat (same day, `--mask-col mask --identity-col unique_name --split-col
+split-time_closed`, exact RLE masks, closed-split checkpoint `epoch_299`, the match-figure pair
+plus 8 same and 4 different random pairs, seed 1): default 49 % of matches on the animal,
+fine-tuned 39 %; the fine-tuned matcher returns 280-390 matches on 7 of 9 same pairs with
+61-83 % touching the background, scores two different-lynx pairs photographed in similar
+scenes 0.52 and 0.62 through background correspondences (0.003 and 0.001 on masked inputs),
+and collapses to 3-13 matches where no shared scene exists. Confidence gained by fine-tuning
+flows into repeated background texture when the mask is absent, so masking at inference is a
+hard requirement; this is the mechanism behind the paper's mask-dependence limitation. The
+script takes `--mask-col/--identity-col/--split-col` so either layout works.
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

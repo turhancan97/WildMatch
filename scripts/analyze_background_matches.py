@@ -52,6 +52,33 @@ def raw_path(masked_rel: str) -> str:
     return "images/" + masked_rel[len("masked_images/"):] if masked_rel.startswith("masked_images/") else masked_rel
 
 
+class Layout:
+    """Dataset layout: how to find the raw photo and the animal mask for a metadata row."""
+
+    def __init__(self, root: Path, rows: Sequence[Dict[str, str]], identity_col: str, split_col: str, mask_col: Optional[str]):
+        self.root, self.identity_col, self.split_col, self.mask_col = root, identity_col, split_col, mask_col
+        self.by_path = {r["path"]: r for r in rows}
+
+    def raw(self, path: str) -> Path:
+        return self.root / (path if self.mask_col else raw_path(path))
+
+    def mask(self, path: str) -> np.ndarray:
+        if self.mask_col:  # dataset-provided COCO-RLE (CzechLynx): exact animal region
+            from pycocotools import mask as mask_utils
+            data = json.loads(self.by_path[path][self.mask_col])
+            m = mask_utils.decode(data)
+            if m.ndim == 3:
+                m = m.max(axis=-1)
+            return m.astype(bool)
+        return animal_mask(self.root, path)  # pre-masked image threshold (WildlifeReID-10k)
+
+    def masked_input(self, path: str) -> Image.Image:
+        if self.mask_col:
+            image = np.asarray(Image.open(self.raw(path)).convert("RGB"))
+            return Image.fromarray(image * self.mask(path)[..., None].astype(np.uint8), "RGB")
+        return Image.open(self.root / path).convert("RGB")
+
+
 def normalized_to_pixels(points: np.ndarray, size_wh: Sequence[int]) -> np.ndarray:
     points = np.asarray(points, dtype=np.float64).reshape(-1, 2)
     out = np.empty_like(points)
@@ -73,17 +100,21 @@ def on_animal(points: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 
 def load_pairs(root: Path, metadata: Path, split: str, n_same: int, n_diff: int, seed: int,
-               pinned: Sequence[Tuple[str, str]] = ()) -> List[Dict[str, Any]]:
+               pinned: Sequence[Tuple[str, str]] = (), identity_col: str = "identity", split_col: str = "split",
+               mask_col: Optional[str] = None) -> Tuple[List[Dict[str, Any]], "Layout"]:
     """Random same-identity and different-identity pairs from one split, plus pinned pairs."""
+    csv.field_size_limit(1 << 30)
     all_rows = list(csv.DictReader(metadata.open(newline="", encoding="utf-8")))
-    rows = [r for r in all_rows if r["split"] == split]
+    layout = Layout(root, all_rows, identity_col, split_col, mask_col)
+    rows = [r for r in all_rows if r[split_col] == split]
     by_id: Dict[str, List[Dict[str, str]]] = {}
     for r in rows:
-        by_id.setdefault(r["identity"], []).append(r)
+        by_id.setdefault(r[identity_col], []).append(r)
     rng = random.Random(seed)
     pairs: List[Dict[str, Any]] = []
     for a, b in pinned:  # pinned pairs may span splits (e.g. a query and its top-1 gallery image)
-        pairs.append({"kind": "same" if _ident(all_rows, a) == _ident(all_rows, b) else "different", "a": a, "b": b, "pinned": True})
+        same = layout.by_path[a][identity_col] == layout.by_path[b][identity_col]
+        pairs.append({"kind": "same" if same else "different", "a": a, "b": b, "pinned": True})
     multi = sorted(k for k, v in by_id.items() if len(v) >= 2)
     rng.shuffle(multi)
     for ident in multi[:n_same]:
@@ -93,14 +124,7 @@ def load_pairs(root: Path, metadata: Path, split: str, n_same: int, n_diff: int,
     for i in range(n_diff):
         ia, ib = idents[2 * i], idents[2 * i + 1]
         pairs.append({"kind": "different", "a": rng.choice(by_id[ia])["path"], "b": rng.choice(by_id[ib])["path"], "pinned": False})
-    return pairs
-
-
-def _ident(rows: Sequence[Dict[str, str]], path: str) -> str:
-    for r in rows:
-        if r["path"] == path:
-            return r["identity"]
-    raise KeyError(path)
+    return pairs, layout
 
 
 def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: int, top_k: int):
@@ -116,7 +140,7 @@ def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: in
     return {"default": default, "fine-tuned": tuned}, threshold
 
 
-def analyze(root: Path, pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int) -> List[Dict[str, Any]]:
+def analyze(layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int) -> List[Dict[str, Any]]:
     from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
     import matplotlib
     matplotlib.use("Agg")
@@ -130,14 +154,14 @@ def analyze(root: Path, pairs: Sequence[Dict[str, Any]], backends, out_dir: Path
     def features(name, backend, rel, masked_input: bool):
         key = (name, rel, "masked" if masked_input else "raw")
         if key not in feature_cache:
-            image = Image.open(root / (rel if masked_input else raw_path(rel))).convert("RGB")
+            image = layout.masked_input(rel) if masked_input else Image.open(layout.raw(rel)).convert("RGB")
             feature_cache[key] = (backend.extract_frame(to_rgb_float_tensor(image)), image.size)
         return feature_cache[key]
 
     for row, pair in enumerate(pairs):
-        mask_a, mask_b = animal_mask(root, pair["a"]), animal_mask(root, pair["b"])
-        raw_a = Image.open(root / raw_path(pair["a"])).convert("RGB")
-        raw_b = Image.open(root / raw_path(pair["b"])).convert("RGB")
+        mask_a, mask_b = layout.mask(pair["a"]), layout.mask(pair["b"])
+        raw_a = Image.open(layout.raw(pair["a"])).convert("RGB")
+        raw_b = Image.open(layout.raw(pair["b"])).convert("RGB")
         for col, (name, backend) in enumerate(backends.items()):
             (fa, size_a), (fb, size_b) = features(name, backend, pair["a"], False), features(name, backend, pair["b"], False)
             result = backend.match_features(fa, fb)
@@ -193,7 +217,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=WILDLIFE_ROOT)
     parser.add_argument("--metadata", type=Path, default=WILDLIFE_ROOT / "metadata_mdsplit_no_background/metadata_NyalaData.csv")
-    parser.add_argument("--split", default="train", help="metadata split to draw pairs from (train = database)")
+    parser.add_argument("--split", default="train", help="metadata split value to draw pairs from (train = database)")
+    parser.add_argument("--split-col", default="split"); parser.add_argument("--identity-col", default="identity")
+    parser.add_argument("--mask-col", default=None, help="COCO-RLE mask column (CzechLynx: mask); omit for pre-masked datasets")
     parser.add_argument("--checkpoint", type=Path, required=True, help="fine-tuned LoMa matcher checkpoint")
     parser.add_argument("--n-same", type=int, default=4)
     parser.add_argument("--n-diff", type=int, default=2)
@@ -206,11 +232,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "reports" / "project_page" / "analysis" / "nyala_background")
     args = parser.parse_args(list(argv) if argv is not None else None)
     pinned = [tuple(p.split(",", 1)) for p in args.pin]
-    pairs = load_pairs(args.root, args.metadata, args.split, args.n_same, args.n_diff, args.seed, pinned)
+    pairs, layout = load_pairs(args.root, args.metadata, args.split, args.n_same, args.n_diff, args.seed, pinned,
+                               args.identity_col, args.split_col, args.mask_col)
     backends, threshold = build_backends(args.device, args.checkpoint, args.loma_arch, args.resize_max, args.top_k)
-    records = analyze(args.root, pairs, backends, args.out, args.draw_top)
+    records = analyze(layout, pairs, backends, args.out, args.draw_top)
     summary: Dict[str, Any] = {"checkpoint": str(args.checkpoint), "checkpoint_sha256": sha256_file(args.checkpoint),
-                               "threshold": threshold, "pairs": len(pairs)}
+                               "threshold": threshold, "pairs": len(pairs), "mask_source": "dataset RLE" if args.mask_col else "pre-masked image threshold"}
     for name in backends:
         rows = [r for r in records if r["matcher"] == name]
         fr = [r["frac_matches_on_animal"] for r in rows if r["frac_matches_on_animal"] is not None]

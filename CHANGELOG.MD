@@ -118,6 +118,9 @@ kept under Unreleased until a project version is assigned.
   favours the animal when photos keep their background (Nyala, nine pairs, H100). It does not:
   38 % of its matches land on the animal versus 40 % for the default matcher, and on raw inputs
   it either matches the background heavily or collapses; masks remain required at inference.
+- 2026-10-02: the same analysis on a CzechLynx subset with exact RLE masks (13 pairs): default
+  49 % of matches on the animal, fine-tuned 39 %; two different-lynx pairs in similar scenes
+  score 0.52 and 0.62 through background matches. The script now supports RLE-masked layouts.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

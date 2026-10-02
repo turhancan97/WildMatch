@@ -781,7 +781,12 @@ or the phrase "ECIR 2027 paper" appears in the sources.
 submitted to ECIR 2027, under review) is double-blind and this GitHub repository is
 public. All project-page files therefore live on the local `project-page` branch, which
 must not be pushed, merged into `main`, or deployed before the notification without the
-user's explicit instruction. The page always says "submitted", never "ECIR 2027 paper".
+user's explicit instruction. **Venue rule (user decision 2026-10-02):** the site never names
+the venue or the submission status anywhere, not even in source comments; the status pill
+says "Manuscript · preprint to follow" and the Paper page says the manuscript is not yet
+public. When a preprint appears, the page says it is available online without naming the
+venue; the venue is announced only after acceptance. `test_project_page` forbids "ECIR",
+"LNCS", "Springer", "under review" and "submitted to" in the site sources.
 The paper brief relayed by the paper-writing session (authors, abstract, outline,
 method text, dataset table, figure captions, headline numbers, open items) is stored at
 `reports/project_page/paper_brief_2026-10-02.md`, under the gitignored `reports/` tree

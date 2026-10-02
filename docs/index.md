@@ -12,7 +12,7 @@ hide:
 
 <div class="wm-hero-text" markdown>
 
-<span class="wm-status">Submitted to ECIR 2027 · under review</span>
+<span class="wm-status">Manuscript · preprint to follow</span>
 
 # WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification
 
@@ -48,9 +48,8 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 </div>
 
 !!! warning "Draft page"
-    The manuscript is under double-blind review. This page is built privately and
-    mirrors the manuscript as of 2026-10-02. Sections marked *draft* follow text that
-    the authors are still revising.
+    This page is a private draft that mirrors the manuscript as of 2026-10-02. Sections
+    marked *draft* follow text that the authors are still revising.
 
 ## Abstract
 

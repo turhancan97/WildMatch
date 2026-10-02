@@ -1,15 +1,13 @@
 # Paper
 
 **WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife
-Re-Identification.** Submitted to the ECIR 2027 full-paper track (Springer LNCS).
-Under review.
-
-The PDF and a preprint link will appear here after the review period.
+Re-Identification.** The manuscript is not yet publicly available; a preprint link will
+appear here when it is online.
 
 ## Citation
 
 ```bibtex
-% BibTeX entry to be provided by the authors after notification.
+% BibTeX entry to be provided by the authors once the preprint is online.
 ```
 
 ## Contact

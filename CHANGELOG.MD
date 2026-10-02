@@ -58,6 +58,9 @@ kept under Unreleased until a project version is assigned.
   metrics, exporters) and a shared-settings overview, with placeholder paths.
 - 2026-10-02: home page gained "Limitations and outlook" from the paper's newly pushed
   Conclusion (`226037a`); the earlier draft limitation bullets are superseded.
+- 2026-10-02: the project page no longer names the venue or the submission status
+  (user decision): status pill, Paper page, banner and configuration comments reworded;
+  the leak test now forbids venue names and "under review"/"submitted to" in site sources.
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because
   enabling the open profile in its copy hit the closed-only joint guard. The test now

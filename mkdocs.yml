@@ -1,8 +1,8 @@
 # Project page for the WildMatch manuscript. Source lives in docs/, the built site
 # goes to site/ (gitignored) and is deployed to the gh-pages branch with
-# `mkdocs gh-deploy`. The manuscript is under double-blind review until the
-# ECIR 2027 notification (2026-12-07): this configuration lives on the local
-# `project-page` branch and must not be pushed or deployed before then.
+# `mkdocs gh-deploy`. While the manuscript is unpublished this configuration lives
+# on the local `project-page` branch and must not be pushed or deployed (see
+# AGENTS.md, "Project page").
 site_name: WildMatch
 site_description: Weakly supervised image matcher adaptation for wildlife re-identification
 # Placeholder until the repository rename; GitHub Pages URLs carry the repository name.
@@ -13,7 +13,7 @@ edit_uri: ""
 docs_dir: docs
 site_dir: site
 strict: true
-copyright: Figures and text are drafts of a manuscript under review.
+copyright: Draft figures and text from an unpublished manuscript.
 
 theme:
   name: material

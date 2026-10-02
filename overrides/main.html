@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 
 {#
-  Review-period banner. The manuscript is under double-blind review until the
-  ECIR 2027 notification (2026-12-07); the page is built locally and not deployed
-  before then. Remove this block, or the whole override, at publication time.
+  Draft banner. The page is built locally and not deployed while the manuscript is
+  unpublished (see AGENTS.md, "Project page"). Remove this block at publication time.
 #}
 {% block announce %}
   <span class="wm-announce">
-    Manuscript under review. This page is a private draft and is not published.
+    Private draft page. The manuscript is not yet published.
   </span>
 {% endblock %}
 

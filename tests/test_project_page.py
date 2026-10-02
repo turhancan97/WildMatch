@@ -21,8 +21,9 @@ FORBIDDEN_PATTERNS = (
     re.compile(r"/home/kargin"),
     re.compile(r"claude\.ai/code/session"),
 )
-# The submission is double-blind and not accepted; never describe it as published.
-FORBIDDEN_PHRASES = ("ECIR 2027 paper",)
+# The venue must not be named anywhere on the site until the authors announce it
+# (user decision 2026-10-02); the submission status is never described either.
+FORBIDDEN_PHRASES = ("ECIR", "LNCS", "Springer", "under review", "Submitted to", "submitted to")
 
 
 def _nav_paths(items) -> list[str]:

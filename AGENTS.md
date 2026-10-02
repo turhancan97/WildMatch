@@ -991,6 +991,29 @@ note until the export exists. `tests/test_export_synthetic_demo.py` covers the G
 helpers (mask application, RLE decoding, row lookup, ranking, payload, `INDIVIDUALS`
 consistency) and validates the committed export when present.
 
+**Background-masking demo (piece 1 of the SAM 3 demo plan, started 2026-10-02).** The user
+asked for a SAM 3 capability demo; of the recommended pieces (1 before/after slider with
+readouts, 2 mask-to-matching comparison, 3 honest hard cases, 4 prompt sensitivity) piece 1 is
+built first, on the CC BY 4.0 synthetic renders because the SalamanderID2025 photographs are
+Kaggle competition data whose rules (Section 2.4b, read 2026-10-02) forbid publishing or
+redistributing the data to non-participants; written permission from the sponsor
+(University of West Bohemia, Picek's group) is needed before any Salamander photograph,
+including the match-figure pair and the match-viewer pair already on the page, can go
+public. `scripts/export_masking_demo.py` (CPU) reads the SAM 3 output of
+`scripts/segment_with_sam3.py --segment` for the twenty match-demo renders
+(`--write-renders-csv` writes their list; the run itself needs the `lynx-app` environment on
+an A100/H100 node, submitted by the user, default output `reports/project_page/sam3_synthetic/`)
+plus the dataset's own masks, and writes `docs/assets/demo/masking/`: web renders, binary
+SAM 3 and dataset mask PNGs at web size, and `masking_demo.json` (per render: prompt,
+threshold, confidence, merged instance count, foreground share, IoU with the dataset mask;
+summary mean/min IoU). `masking-demo.js` (`#wm-masking-demo`, Demo page section "Background
+masking with SAM 3") shows a render filmstrip, a canvas with a draggable divider between the
+raw render and the masked model input (composited client-side from the mask PNG), SAM 3
+(red) and dataset (blue) mask outlines, and the readouts. Tests in
+`tests/test_export_masking_demo.py` run the export end to end on synthetic inputs and validate
+the committed export when present. The Salamander images drop in later by pointing
+`--root/--metadata/--sam3-dir/--renders` at the Salamander data, once permission exists.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

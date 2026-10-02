@@ -26,3 +26,26 @@ to the matcher and a few queries rank another lynx first by a small margin.
   hovering one shows its exact value. Every match is available through the slider.
 - **Synthetic**: the images are rendered lynxes, the paper's test data are camera-trap
   photographs. See [Qualitative](qualitative.md) for matches on real photos.
+
+## Background masking with SAM 3
+
+Before feature extraction every image is background-masked, so keypoints land on the
+animal rather than on the vegetation or ground that stationary camera traps repeat.
+Where a dataset ships masks they are used; otherwise the animal is segmented with
+text-prompted SAM 3 and all detected instances are merged into one mask. This demo runs
+SAM 3 on the same twenty synthetic renders as the matching demo. Because these renders
+also ship with the dataset's own masks, each one reports how well the SAM 3 mask agrees
+with it.
+
+<div id="wm-masking-demo" class="wm-widget">Loading the background-masking demo…</div>
+
+- **Divider**: raw render on the left, masked model input on the right. Everything
+  outside the mask is set to black; nothing is cropped or recentred.
+- **Outlines**: red is the SAM 3 mask, blue the mask shipped with the dataset.
+- **Readouts**: the text prompt, SAM 3's detection confidence, how many instances were
+  merged, the foreground share of the frame, and the intersection over union with the
+  dataset mask.
+- **Synthetic**: these are rendered lynxes used because their licence allows display.
+  The pipeline's own SAM 3 use is for photographs without provided masks.
+
+<small>Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0.</small>

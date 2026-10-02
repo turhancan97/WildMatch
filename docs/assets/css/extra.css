@@ -661,3 +661,8 @@
   border-color: var(--wm-red);
   box-shadow: 0 0 0 2px var(--wm-red-75);
 }
+
+/* Background-masking demo: the divider canvas is pointer-driven. */
+.wm-mask-stage .wm-match-canvas {
+  user-select: none;
+}

@@ -99,6 +99,11 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: the demo's query and gallery selectors became two compact filmstrips (inline
   label, small thumbnails, rank and score caption, red inner frame on the query's own
   individual) to shorten the page (user request).
+- 2026-10-02: background-masking demo (SAM 3, piece 1) scaffolded on the synthetic renders:
+  `scripts/export_masking_demo.py`, `masking-demo.js` (divider, outlines, readouts, IoU with
+  the dataset mask), Demo page section and tests. The SAM 3 run on the twenty renders is
+  pending (A100/H100, `lynx-app` env). Salamander photographs are blocked by the Kaggle
+  competition rules (no redistribution) until the sponsor grants permission.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

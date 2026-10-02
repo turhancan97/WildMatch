@@ -64,6 +64,9 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: header logo is now the background-free two-colour mark
   (`wildmatch-logo-256.png`, derived from `wildmatch-logo.png`), and the hero places the
   full-name logo beside the title instead of in a full-height left column (user request).
+- 2026-10-02: header bar recoloured to copper `#ab673a` (user request) so the two-colour
+  logo mark stays visible; the brand blue remains for links, hero title and chart series.
+  Hero subtitle flows full width under the logo row and the author line is smaller.
 - 2026-10-02: `test_czechlynx_split_is_explicit_and_open_profile_can_be_enabled` failed once
   the editable CzechLynx launcher had only the LoMa `joint-fine-tuned` row active, because
   enabling the open profile in its copy hit the closed-only joint guard. The test now

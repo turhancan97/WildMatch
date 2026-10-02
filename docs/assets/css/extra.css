@@ -17,14 +17,19 @@
   --wm-grey: #d1d3d4;
   --wm-grey-text: #6d6e71;
   --wm-grey-heading: #58595b;
+  /* Header bar colour (user request 2026-10-02): a copper tone distinct from the
+     logo's blue head, which disappeared against a blue header. */
+  --wm-header: #ab673a;
+  --wm-header-dark: #8a5230;
+  --wm-header-light: #c9916b;
   --wm-hero-gap: 1.25rem;
 }
 
 /* Material palette hooks: `primary: custom` / `accent: custom` in mkdocs.yml. */
 [data-md-color-primary="custom"] {
-  --md-primary-fg-color: var(--wm-blue);
-  --md-primary-fg-color--light: var(--wm-blue-40);
-  --md-primary-fg-color--dark: var(--wm-blue-dark);
+  --md-primary-fg-color: var(--wm-header);
+  --md-primary-fg-color--light: var(--wm-header-light);
+  --md-primary-fg-color--dark: var(--wm-header-dark);
   --md-primary-bg-color: #ffffff;
   --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
 }

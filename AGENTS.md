@@ -830,8 +830,11 @@ job (508111, 508028, arrays 508523 and 522223) ran on `rtx4090_batch` per sacct.
 paper repository's `context.md`: tints 40 %/75 % toward white (`#89b2cd`/`#cedfea`,
 `#e29184`/`#f3d1cc`), neutrals `#6d6e71` for small text and `#58595b` for headings,
 `#d1d3d4` for decoration only. `mkdocs.yml` sets `primary: custom` and `accent: custom`
-and `docs/assets/css/extra.css` maps them (blue header, links and "ours" rows; red
-accents, status pill and warnings; grey rules). Icons come from the paper's
+and `docs/assets/css/extra.css` maps them (links, hero title and "ours" rows blue; red
+accents, status pill and warnings; grey rules). The header bar is copper `#ab673a`
+(user request 2026-10-02, with `#8a5230`/`#c9916b` as Material's dark/light steps and the
+`theme-color` meta) because the logo's blue head vanished against a blue header; copper is
+chrome only and never a chart series colour. Icons come from the paper's
 `paper/figures/icons/` set (copied to `docs/assets/icons/`, blue and grey variants plus a
 `docs/assets/icons/`). The WildMatch logo package is excluded from the paper
 repository by its `.gitignore` (`/paper/figures/logo/`, so the logo stays out of the

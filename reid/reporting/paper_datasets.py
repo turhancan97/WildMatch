@@ -12,6 +12,9 @@ from typing import NamedTuple, Optional
 WILDLIFE_ROOT = Path("/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k")
 CZECHLYNX_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
 CZECHLYNX_METADATA = CZECHLYNX_ROOT / "CzechLynxDataset-Metadata-Real.csv"
+# Not part of WildlifeReID-10k: its own time-closed database/query split, with
+# backgrounds removed by scripts/segment_with_sam3.py (pre-masked images).
+SALAMANDER_ROOT = Path("/shared/sets/datasets/vision/czechlynx/SalamanderID2025")
 
 
 class PaperProfile(NamedTuple):
@@ -53,6 +56,11 @@ PAPER_PROFILES = [
     _wildlife("sea_star", "Sea Star", "SeaStarReID2023", "metadata_mdsplit_no_background"),
     _wildlife("whale_shark", "Whale Shark", "WhaleSharkID", "metadata_no_background"),
     _wildlife("turtle", "Turtle", "ZindiTurtleRecall", "metadata_no_background"),
+    PaperProfile(
+        "salamander", "Salamander", "SalamanderID2025",
+        SALAMANDER_ROOT / "split_time_closed_no_background.csv", "identity", "split", "database", "query",
+        "SalamanderID2025", "SalamanderID2025", SALAMANDER_ROOT, None,
+    ),
     _czechlynx("lynx_closed", "Lynx (closed)", "split-time_closed"),
     _czechlynx("lynx_open", "Lynx (open)", "split-time_open"),
 ]

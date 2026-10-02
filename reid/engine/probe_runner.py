@@ -1302,7 +1302,8 @@ def run_linear_probe(
                 f"val_loss={float(np.mean(val_losses)) if val_losses else float('nan'):.6f} "
                 f"val_top1={cls_metrics.get('classification_top_1', float('nan')):.4f} "
                 f"val_top5={cls_metrics.get('classification_top_5', float('nan')):.4f} "
-                f"val_top10={cls_metrics.get('classification_top_10', float('nan')):.4f}"
+                f"val_top10={cls_metrics.get('classification_top_10', float('nan')):.4f} "
+                f"val_balanced_top1={cls_metrics.get('classification_balanced_top_1', float('nan')):.4f}"
             )
 
         if bool(lp_cfg.save_checkpoint) and ((epoch + 1) % int(lp_cfg.save_every) == 0):
@@ -1568,7 +1569,8 @@ def run_efficient_probe(
                 f"val_loss={float(np.mean(val_losses)) if val_losses else float('nan'):.6f} "
                 f"val_top1={cls_metrics.get('classification_top_1', float('nan')):.4f} "
                 f"val_top5={cls_metrics.get('classification_top_5', float('nan')):.4f} "
-                f"val_top10={cls_metrics.get('classification_top_10', float('nan')):.4f}"
+                f"val_top10={cls_metrics.get('classification_top_10', float('nan')):.4f} "
+                f"val_balanced_top1={cls_metrics.get('classification_balanced_top_1', float('nan')):.4f}"
             )
 
         if bool(ep_cfg.save_checkpoint) and ((epoch + 1) % int(ep_cfg.save_every) == 0):

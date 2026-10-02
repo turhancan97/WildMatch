@@ -108,5 +108,38 @@ class ParallelManifestTests(unittest.TestCase):
             )
 
 
+    def joint_line(self, checkpoint, label, components):
+        return "|".join([
+            "czechlynx_closed", "CzechLynx_v2", "CzechLynx", "/data",
+            "metadata.csv", "unique_name", "mask", "true", "no_background",
+            "split-time_closed", "train", "test", "100", "vismatch", "rdd-lightglue",
+            label, str(checkpoint), "CzechLynx", components,
+            "-", "-", "-", "10", "CzechLynx",
+        ])
+
+    def test_joint_checkpoints_require_full_components(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            epoch = root / "rdd-joint-finetuned-loma-mined-legacy" / "epoch_299"
+            epoch.mkdir(parents=True)
+            (epoch / "model.safetensors").write_bytes(b"rdd")
+            (epoch / "model_1.safetensors").write_bytes(b"lightglue")
+            submission, _ = self.create(root, epoch, line=self.joint_line(epoch, "joint-fine-tuned", "full"))
+            self.assertEqual(run_helper("validate", "--manifest", submission / "manifest.json", "--index", 0).returncode, 0)
+            for label, components, message in (
+                ("joint-fine-tuned", "matcher_only", "joint-fine-tuned checkpoints must use checkpoint_components=full"),
+                ("custom", "full", "full-model checkpoints must use checkpoint_label=joint-fine-tuned"),
+            ):
+                tasks = root / "bad.tsv"
+                tasks.write_text(self.joint_line(epoch, label, components))
+                result = run_helper(
+                    "create", "--submission-dir", root / f"bad-{label}", "--submission-id", "s2",
+                    "--config-file", root / "probe.yaml", "--task-file", tasks,
+                    "--launcher-path", ROOT / "probe-parallel-czechlynx.sh", "--repository-dir", ROOT,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

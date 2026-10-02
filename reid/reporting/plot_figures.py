@@ -146,6 +146,30 @@ DESCRIPTOR_PLOT_SERIES = {
     ),
 }
 
+# Descriptor + matcher fine-tuned together (checkpoint_components=full). Kept in
+# their own figures, like descriptor-only runs, and never merged into the
+# matcher-only "fine-tuned" series.
+JOINT_PLOT_SERIES = {
+    "joint_rdd": (
+        PLOT_SERIES[0],
+        PLOT_SERIES[3],
+        {"name": "RDD-LightGlue joint fine-tuned", "method_key": "vismatch", "matcher": "rdd-lightglue", "checkpoint": "full-fine-tuned", "color": "#2b6cb0", "marker": "P", "linestyle": "--"},
+    ),
+    "joint_loma": (
+        PLOT_SERIES[0],
+        PLOT_SERIES[1],
+        {"name": "LoMa joint fine-tuned", "method_key": "vismatch", "matcher": "loma", "checkpoint": "full-fine-tuned", "color": "#c53030", "marker": "v", "linestyle": "--"},
+    ),
+}
+FAMILY_PLOT_SERIES = {**DESCRIPTOR_PLOT_SERIES, **JOINT_PLOT_SERIES}
+
+
+def _family_parts(family: str) -> tuple[str, str, str]:
+    """Family key -> (kind, matcher label, checkpoint variant), e.g. ('joint', 'rdd', 'full-fine-tuned')."""
+    if family.startswith("joint_"):
+        return "joint", family.removeprefix("joint_"), "full-fine-tuned"
+    return "descriptor", family, "descriptor-fine-tuned"
+
 
 def _finite_float(value: Any) -> float | None:
     try:
@@ -162,7 +186,6 @@ def _normalise_checkpoint(value: Any) -> str:
         "fine-tuned",
         "matcher-fine-tuned",
         "extractor-fine-tuned",
-        "full-fine-tuned",
     }:
         return "custom"
     return value
@@ -242,7 +265,7 @@ def prepare_series_data(
     excluded_methods = _normalise_excluded_methods(exclude_methods)
 
     selected = select_latest_records(records, animal, split_protocol)
-    registry = PLOT_SERIES if descriptor_family is None else DESCRIPTOR_PLOT_SERIES[descriptor_family]
+    registry = PLOT_SERIES if descriptor_family is None else FAMILY_PLOT_SERIES[descriptor_family]
     by_key = {
         (
             str(record.get("method_key") or ""),
@@ -426,7 +449,9 @@ def render_metric_figure(
         axis.set_visible(False)
     title = f"{PLOT_METRICS[metric]} versus k"
     if descriptor_family:
-        title += f" ({descriptor_family} descriptor fine-tuning)"
+        kind, matcher_label, _ = _family_parts(descriptor_family)
+        title += (f" ({matcher_label} joint descriptor + matcher fine-tuning)" if kind == "joint"
+                  else f" ({matcher_label} descriptor fine-tuning)")
     if split_protocol:
         title += f" ({split_protocol})"
     figure.suptitle(title, fontsize=style_config["title_size"] + 2, fontweight="bold")
@@ -572,15 +597,16 @@ def plot_metrics(
                 import matplotlib.pyplot as plt
 
                 plt.close(figure)
+        requested = list(descriptor_families or DESCRIPTOR_PLOT_SERIES) + list(JOINT_PLOT_SERIES)
         available_descriptor_families = [
-            family for family in (descriptor_families or DESCRIPTOR_PLOT_SERIES)
-            if family in DESCRIPTOR_PLOT_SERIES
-            and family not in excluded_methods
+            family for family in requested
+            if family in FAMILY_PLOT_SERIES
+            and _family_parts(family)[1] not in excluded_methods
             and any(
                 record.get("animal") in group_animals
                 and record.get("split_protocol") == (split_protocol or "")
-                and _normalise_checkpoint(record.get("checkpoint")) == "descriptor-fine-tuned"
-                and str(record.get("matcher", "")).lower() == ("rdd-lightglue" if family == "rdd" else "loma")
+                and _normalise_checkpoint(record.get("checkpoint")) == _family_parts(family)[2]
+                and str(record.get("matcher", "")).lower() == ("rdd-lightglue" if _family_parts(family)[1] == "rdd" else "loma")
                 for record in records
             )
         ]
@@ -601,7 +627,8 @@ def plot_metrics(
                 )
                 try:
                     for fmt in formats:
-                        output_path = output_dir / f"descriptor_{family}_{metric}_vs_k{suffix}.{fmt}"
+                        kind, matcher_label, _ = _family_parts(family)
+                        output_path = output_dir / f"{kind}_{matcher_label}_{metric}_vs_k{suffix}.{fmt}"
                         figure.savefig(
                             output_path,
                             dpi=600 if fmt == "png" else 300,

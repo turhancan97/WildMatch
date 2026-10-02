@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH -p dgx
+#SBATCH -p rtx4090_batch
 #SBATCH --gpus=1
-#SBATCH --qos=big
+#SBATCH --qos=batch
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=64G
 #SBATCH --ntasks=1
@@ -51,12 +51,17 @@ DATASET_PROFILES=(
     # four fields select the known checkpoint layout/epoch for each animal.
     # "atrw|WildlifeReID-10k|ATRW|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_ATRW.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
     # "giraffes|WildlifeReID-10k|Giraffes|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_Giraffes.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
-    "leopardid2022|WildlifeReID-10k|LeopardID2022|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_LeopardID2022.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
+    # "leopardid2022|WildlifeReID-10k|LeopardID2022|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_LeopardID2022.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
     # "hyenaid2022|WildlifeReID-10k|HyenaID2022|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_HyenaID2022.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
     # "giraffezebraid|WildlifeReID-10k|GiraffeZebraID|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_GiraffeZebraID.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
     # "cowdataset|WildlifeReID-10k|CowDataset|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_CowDataset.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
     # "stripespotter|WildlifeReID-10k|StripeSpotter|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_StripeSpotter.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
     # "seastarreid2023|WildlifeReID-10k|SeaStarReID2023|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_SeaStarReID2023.csv|identity|mask|false|no_background|split|train|test|100|legacy|legacy|299|299"
+    # SalamanderID2025 is not part of WildlifeReID-10k but runs through this
+    # launcher: its own root, SAM3 pre-masked metadata (scripts/segment_with_sam3.py),
+    # database/query split values, LoMa fine-tuned on LoMa-mined and RDD on
+    # RDD-mined pairs (checkpoints under wildlife-reid-10k/SalamanderID2025/).
+    "salamander|SalamanderID2025|SalamanderID2025|/shared/sets/datasets/vision/czechlynx/SalamanderID2025|split_time_closed_no_background.csv|identity|mask|false|no_background|split|database|query|100|legacy-loma-mined|legacy-rdd-mined|299|299"
 )
 
 # method|matcher|checkpoint_label|checkpoint_path|checkpoint_components|train_mode|class_weighting
@@ -64,14 +69,14 @@ DATASET_PROFILES=(
 # linear_probe|-|default|-|partial|weighted
 # linear_probe|-|default|-|all|weighted
 VARIANTS=(
-    "cosine|-|default|-|-|-|-"
+    # "cosine|-|default|-|-|-|-"
     # "wildfusion|-|default|-|-|-|-"
     # "local_lightglue|-|default|-|-|-|-"
     # "linear_probe|-|default|-|-|classifier|weighted"
     # "linear_probe|-|default|-|classifier|unweighted"
     # "linear_probe|-|default|-|partial|weighted"
     # "linear_probe|-|default|-|partial|unweighted"
-    # "linear_probe|-|default|-|-|all|weighted"
+    "linear_probe|-|default|-|-|all|weighted"
     # "linear_probe|-|default|-|all|unweighted"
     # "efficient_probe|-|default|-|classifier|weighted"
     # "efficient_probe|-|default|-|classifier|unweighted"

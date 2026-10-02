@@ -232,6 +232,72 @@ class VismatchCheckpointTests(unittest.TestCase):
             resolution = resolve_vismatch_checkpoint("loma", "custom", path, "auto")
             apply_vismatch_checkpoint(Model(), resolution)
 
+    def _lightglue_state(self):
+        return {
+            "transformers.0.weight": torch.zeros(2, 2),
+            "log_assignment.0.weight": torch.zeros(2, 2),
+            "token_confidence.0.weight": torch.zeros(1, 2),
+        }
+
+    def test_joint_rdd_checkpoint_resolves_full_and_rejects_partial_modes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run = Path(temp_dir)
+            epoch = run / "epoch_299"
+            epoch.mkdir()
+            # accelerate's layout for two prepared models: RDD first, LightGlue second.
+            self._save(epoch / "model.pth", {"detector.weight": torch.zeros(2, 2), "descriptor.weight": torch.ones(2, 2)})
+            self._save(epoch / "model_1.pth", self._lightglue_state())
+            (run / "czechlynx_protocol.json").write_text(
+                json.dumps({"rdd_train_component": "joint", "trained_model": "lg+rdd", "rdd_component": "descriptor"}),
+                encoding="utf-8",
+            )
+            for mode in ("full", "auto"):
+                resolution = resolve_vismatch_checkpoint("rdd-lightglue", "custom", epoch, mode)
+                self.assertEqual(resolution.resolved_component_mode, "full")
+                self.assertEqual({item.component for item in resolution.files}, {"rdd_extractor", "lightglue"})
+                self.assertEqual(resolution.default_components, ())
+            for mode in ("matcher_only", "descriptor_only", "extractor_only"):
+                with self.assertRaisesRegex(ValueError, "joint"):
+                    resolve_vismatch_checkpoint("rdd-lightglue", "custom", epoch, mode)
+            (epoch / "model_1.pth").unlink()
+            with self.assertRaisesRegex(ValueError, "both the RDD and the LightGlue"):
+                resolve_vismatch_checkpoint("rdd-lightglue", "custom", epoch, "full")
+
+    def test_joint_loma_checkpoint_loads_as_a_complete_model(self):
+        class LoMa(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self._detector = nn.Linear(2, 2, bias=False)
+                self._descriptor = nn.Linear(2, 2, bias=False)
+                self.transformers = nn.ModuleList([nn.Linear(2, 2, bias=False)])
+                self.log_assignment = nn.ModuleList([nn.Linear(2, 2, bias=False)])
+
+        class Model(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.matcher = LoMa()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run = Path(temp_dir)
+            epoch = run / "epoch_299"
+            epoch.mkdir()
+            source = LoMa()
+            source._descriptor.weight.data.fill_(5.0)
+            source.transformers[0].weight.data.fill_(7.0)
+            self._save(epoch / "model.pth", source.state_dict())
+            (run / "czechlynx_protocol.json").write_text(json.dumps({"loma_train_component": "joint"}), encoding="utf-8")
+            resolution = resolve_vismatch_checkpoint("loma", "custom", epoch / "model.pth", "full")
+            self.assertEqual(resolution.resolved_component_mode, "full")
+            target = Model()
+            apply_vismatch_checkpoint(target, resolution)
+            self.assertTrue(torch.all(target.matcher._descriptor.weight == 5.0))
+            self.assertTrue(torch.all(target.matcher.transformers[0].weight == 7.0))
+            with self.assertRaisesRegex(ValueError, "joint"):
+                resolve_vismatch_checkpoint("loma", "custom", epoch / "model.pth", "matcher_only")
+            self._save(epoch / "model.pth", {k: v for k, v in source.state_dict().items() if not k.startswith("_detector.")})
+            with self.assertRaisesRegex(ValueError, "complete"):
+                resolve_vismatch_checkpoint("loma", "custom", epoch / "model.pth", "full")
+
     def test_loma_descriptor_checkpoint_applies_only_descriptor(self):
         class LoMa(nn.Module):
             def __init__(self):

@@ -28,6 +28,7 @@ import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image, ImageDraw
+from pycocotools import mask as mask_utils
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
@@ -40,6 +41,7 @@ from reid.utils.fingerprints import sha256_file
 ANALYSIS_LONG_SIDE = 512
 # Pre-masked JPEGs leave near-black compression noise in the background.
 PREMASKED_FOREGROUND_THRESHOLD = 12
+PREMASKED_MASK_COL = "mask"
 MIN_COMPONENT_FRACTION = 0.005
 
 # Heuristic thresholds. They rank candidates for review, not ground truth.
@@ -89,8 +91,24 @@ def load_model_input(profile: PaperProfile, frame: pd.DataFrame, view: Optional[
         foreground = view._decode_mask(frame.iloc[idx], idx).astype(bool)
     else:
         masked = np.asarray(image)
-        foreground = masked.max(axis=2) > PREMASKED_FOREGROUND_THRESHOLD
+        foreground = premasked_foreground(frame, idx, masked)
     return masked, foreground
+
+
+def premasked_foreground(frame: pd.DataFrame, idx: int, masked: np.ndarray) -> np.ndarray:
+    """Foreground of a pre-masked file: its RLE mask when shipped, else a threshold.
+
+    SalamanderID2025 metadata carries the SAM3 RLE that produced the file; using it
+    keeps black skin from counting as background. WildlifeReID-10k has no mask column.
+    """
+    raw = frame.iloc[idx].get(PREMASKED_MASK_COL) if PREMASKED_MASK_COL in frame.columns else None
+    if isinstance(raw, str) and raw:
+        mask = mask_utils.decode(json.loads(raw)).astype(bool)
+        if mask.ndim == 3:
+            mask = mask.any(axis=-1)
+        if mask.shape == masked.shape[:2]:
+            return mask
+    return masked.max(axis=2) > PREMASKED_FOREGROUND_THRESHOLD
 
 
 def image_metrics(image: np.ndarray, foreground: np.ndarray) -> Dict[str, float]:
@@ -269,6 +287,35 @@ def contact_sheet(profile: PaperProfile, frame: pd.DataFrame, table: pd.DataFram
     return len(picked)
 
 
+def foreground_source(profile: PaperProfile) -> str:
+    if profile.mask_col:
+        return f"rle:{profile.mask_col} (applied at load time)"
+    if PREMASKED_MASK_COL in pd.read_csv(profile.metadata, nrows=0).columns:
+        return f"rle:{PREMASKED_MASK_COL} (shipped with pre-masked files)"
+    return f"threshold: max(RGB) > {PREMASKED_FOREGROUND_THRESHOLD}"
+
+
+def summary_row(profile: PaperProfile, table: pd.DataFrame) -> Dict[str, object]:
+    """One summary row, derived only from a per-dataset CSV so it can be rebuilt."""
+    ok = table["error"].isna() | (table["error"].astype(str) == "")
+    runs = int(table["query_runs"].max()) if table["query_runs"].notna().any() else 0
+    row: Dict[str, object] = {"dataset": profile.key, "label": profile.label, "images": len(table), "scored_runs": runs}
+    for flag in list(FLAG_RULES) + ["unreadable"]:
+        row[f"{flag}_images"] = int(table[f"flag_{flag}"].astype(bool).sum())
+    any_flag = table["any_flag"].astype(bool)
+    row["any_flag_images"] = int(any_flag.sum())
+    row["any_flag_fraction"] = float(any_flag.mean())
+    row["blur_sharpness_cut"] = float(table.loc[ok, "sharpness"].quantile(0.02)) if ok.any() else float("nan")
+    queries = table["side"] == "query"
+    if runs:
+        rate = table["query_top1_rate"]
+        row["query_top1_flagged"] = float(rate[queries & any_flag].mean())
+        row["query_top1_clean"] = float(rate[queries & ~any_flag].mean())
+        row["flagged_queries"] = int((queries & any_flag).sum())
+        row["queries_never_correct"] = int((queries & (rate == 0)).sum())
+    return row
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", action="append", choices=[p.key for p in PAPER_PROFILES], help="Dataset key; repeat for several (default: all)")
@@ -283,12 +330,12 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     profiles = [p for p in PAPER_PROFILES if not args.dataset or p.key in args.dataset]
+    profiles_by_key = {p.key: p for p in PAPER_PROFILES}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     sheets_dir = args.output_dir / "contact_sheets"
     sheets_dir.mkdir(exist_ok=True)
     measured: Dict[Path, pd.DataFrame] = {}
-    summaries: List[Dict[str, object]] = []
-    sources: List[Dict[str, object]] = []
+    fresh_sources: Dict[str, Dict[str, object]] = {}
     for profile in profiles:
         frame = pd.read_csv(profile.metadata, low_memory=False)
         split = frame[profile.split_col].astype(str)
@@ -314,25 +361,37 @@ def main() -> None:
         table = table.merge(rates, on="row_index", how="left")
         table.to_csv(args.output_dir / f"{profile.key}.csv", index=False, float_format="%.6g")
 
-        row: Dict[str, object] = {"dataset": profile.key, "label": profile.label, "images": len(table), "scored_runs": len(runs)}
-        queries = table[table["side"] == "query"]
-        for flag in list(FLAG_RULES) + ["unreadable"]:
-            column = f"flag_{flag}"
-            row[f"{flag}_images"] = int(table[column].sum())
-            if flag in SHEET_ORDER:
-                contact_sheet(profile, frame, table, flag, sheets_dir / f"{profile.key}__{flag}.jpg", args.sheet_count)
-        row["any_flag_images"] = int(table["any_flag"].sum())
-        row["any_flag_fraction"] = float(table["any_flag"].mean())
-        row["blur_sharpness_cut"] = blur_cut
-        if runs:
-            row["query_top1_flagged"] = float(queries.loc[queries["any_flag"], "query_top1_rate"].mean())
-            row["query_top1_clean"] = float(queries.loc[~queries["any_flag"], "query_top1_rate"].mean())
-            row["flagged_queries"] = int(queries["any_flag"].sum())
-            row["queries_never_correct"] = int((queries["query_top1_rate"] == 0).sum())
-        summaries.append(row)
-        sources.append({"dataset": profile.key, "metadata": str(profile.metadata), "metadata_sha256": sha256_file(profile.metadata), "runs": runs})
-        print(f"[image-quality] {profile.key}: {row['any_flag_images']} flagged of {len(table)}", flush=True)
+        for flag in SHEET_ORDER:
+            contact_sheet(profile, frame, table, flag, sheets_dir / f"{profile.key}__{flag}.jpg", args.sheet_count)
+        fresh_sources[profile.key] = {"dataset": profile.key, "metadata": str(profile.metadata), "metadata_sha256": sha256_file(profile.metadata), "runs": runs}
+        print(f"[image-quality] {profile.key}: {int(table['any_flag'].sum())} flagged of {len(table)}", flush=True)
 
+    # Rebuild the summary from every per-dataset CSV present, and merge manifest
+    # sources by dataset, so a --dataset subset run never drops the other datasets.
+    manifest_path = args.output_dir / "manifest.json"
+    try:
+        previous = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        previous = {}
+    sources_by_key = {entry["dataset"]: entry for entry in previous.get("sources", [])}
+    sources_by_key.update(fresh_sources)
+    summaries: List[Dict[str, object]] = []
+    sources: List[Dict[str, object]] = []
+    for profile in PAPER_PROFILES:
+        table_path = args.output_dir / f"{profile.key}.csv"
+        if not table_path.is_file():
+            continue
+        summaries.append(summary_row(profile, pd.read_csv(table_path, low_memory=False)))
+        if profile.key not in sources_by_key:
+            # The CSV predates this manifest; its run list cannot be recovered, and
+            # listing today's runs would misstate what its query_top1_rate used.
+            sources_by_key[profile.key] = {
+                "dataset": profile.key, "metadata": str(profile.metadata),
+                "metadata_sha256": sha256_file(profile.metadata),
+                "runs": None,
+                "runs_note": f"unknown: rebuilt from an existing CSV that scored {summaries[-1]['scored_runs']} runs",
+            }
+        sources.append(sources_by_key[profile.key])
     columns = list(dict.fromkeys(key for row in summaries for key in row))
     with (args.output_dir / "summary.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns)
@@ -344,10 +403,11 @@ def main() -> None:
         "limit": args.limit,
         "analysis_long_side": ANALYSIS_LONG_SIDE,
         "premasked_foreground_threshold": PREMASKED_FOREGROUND_THRESHOLD,
+        "foreground_source": {entry["dataset"]: foreground_source(profiles_by_key[entry["dataset"]]) for entry in sources},
         "flag_rules": FLAG_RULES,
         "sources": sources,
     }
-    (args.output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

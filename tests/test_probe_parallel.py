@@ -90,6 +90,89 @@ class ParallelProbeLauncherTests(unittest.TestCase):
                 script_text,
             )
 
+    def salamander_launcher(self, temp_root: Path) -> Path:
+        """Temporary launcher copy with only the Salamander profile active.
+
+        The editable launcher's active profile, variants and k grid change from
+        run to run, so the copy pins a small known grid instead.
+        """
+        text = SCRIPT.read_text(encoding="utf-8")
+        profiles = re.search(r"^DATASET_PROFILES=\(\n.*?^\)", text, flags=re.M | re.S).group(0)
+        pinned = re.sub(r'^    "', '    # "', profiles, flags=re.M)
+        pinned = pinned.replace('    # "salamander|', '    "salamander|', 1)
+        text = text.replace(profiles, pinned, 1)
+        text = re.sub(
+            r"^VARIANTS=\(\n.*?^\)",
+            'VARIANTS=(\n'
+            '    "cosine|-|default|-|-|-|-"\n'
+            '    "vismatch|loma|custom|${LOMA_CUSTOM_CHECKPOINT_PATH}|matcher_only|-|-"\n'
+            '    "vismatch|rdd-lightglue|custom|${RDD_CUSTOM_CHECKPOINT_PATH}|matcher_only|-|-"\n'
+            ')',
+            text, count=1, flags=re.M | re.S,
+        )
+        text = re.sub(r"^CANDIDATE_K_VALUES=\(.*\)$", "CANDIDATE_K_VALUES=(10 50)", text, count=1, flags=re.M)
+        copy = temp_root / "probe-parallel-wildlife.sh"
+        copy.write_text(text, encoding="utf-8")
+        return copy
+
+    def test_salamander_profile_template(self):
+        text = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn(
+            '"salamander|SalamanderID2025|SalamanderID2025|/shared/sets/datasets/vision/czechlynx/SalamanderID2025|'
+            'split_time_closed_no_background.csv|identity|mask|false|no_background|split|database|query|100|'
+            'legacy-loma-mined|legacy-rdd-mined|299|299"',
+            text,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            launcher = self.salamander_launcher(temp_root)
+            loma = temp_root / "loma.safetensors"
+            rdd = temp_root / "rdd.safetensors"
+            loma.write_bytes(b"loma")
+            rdd.write_bytes(b"rdd")
+            env = {**os.environ, **self.checkpoint_env(loma, rdd)}
+            env.pop("SLURM_ARRAY_TASK_ID", None)
+            listed = subprocess.run(
+                ["bash", str(launcher), "--list-tasks"], cwd=temp_root, env=env,
+                text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+            rows = [dict(item.split("=", 1) for item in line.split())
+                    for line in listed.stdout.splitlines() if line.startswith("index=")]
+            self.assertEqual(len(rows), 6)  # 3 variants x k in {10, 50}
+            self.assertEqual({(row["profile"], row["dataset"], row["evaluation_animal"]) for row in rows},
+                             {("salamander", "SalamanderID2025", "SalamanderID2025")})
+            self.assertEqual({row["checkpoint_owner"] for row in rows if row["checkpoint"] == "custom"},
+                             {"SalamanderID2025"})
+            custom = next(row for row in rows if row["matcher"] == "loma")
+            dry = subprocess.run(
+                ["bash", str(launcher), "--dry-run"], cwd=temp_root,
+                env={**env, "SLURM_ARRAY_TASK_ID": custom["index"], "PROBE_PARALLEL_DRY_RUN": "1"},
+                text=True, capture_output=True, check=False,
+            )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        for override in (
+            "dataset.name=SalamanderID2025",
+            "dataset.animal=SalamanderID2025",
+            "dataset.root=/shared/sets/datasets/vision/czechlynx/SalamanderID2025",
+            "dataset.metadata_file=split_time_closed_no_background.csv",
+            "dataset.no_background=false",
+            "dataset.image_variant=no_background",
+            "dataset.split_col=split",
+            "dataset.database_split_value=database",
+            "dataset.query_split_value=query",
+            "checkpoint_components=matcher_only",
+        ):
+            self.assertIn(override, dry.stdout)
+
+    def test_czechlynx_joint_rows_use_full_components(self):
+        text = CZECH_SCRIPT.read_text(encoding="utf-8")
+        for matcher, variable in (("loma", "CZECHLYNX_CLOSED_JOINT_LOMA_CHECKPOINT"),
+                                  ("rdd-lightglue", "CZECHLYNX_CLOSED_JOINT_RDD_CHECKPOINT")):
+            self.assertIn(f'"vismatch|{matcher}|joint-fine-tuned|${{{variable}}}|full|-|-"', text)
+        self.assertIn("rdd-joint-finetuned-loma-mined-legacy/epoch_", text)
+        self.assertIn("loma-b-joint-finetuned-loma-mined-legacy/epoch_", text)
+
     def test_slurm_submission_directory_is_used(self):
         with tempfile.TemporaryDirectory() as submit_dir:
             result = self.run_script("--list-tasks", env={"SLURM_SUBMIT_DIR": submit_dir})

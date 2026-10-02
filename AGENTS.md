@@ -75,12 +75,14 @@ builds tasks from its explicit `VARIANTS` table and crosses them with the
 `CANDIDATE_K_VALUES` list. The active tables near the top of the selected launcher
 are the source of truth for its comparison grid. The CzechLynx launcher supports
 the independent `split-time_closed` and `split-time_open` profiles; either or
-both may be uncommented. The wildlife launcher remains reserved for one active
-WildlifeReID-10k animal profile. `MAX_CONCURRENT_JOBS` becomes the Slurm array `%`
+both may be uncommented. The wildlife launcher takes one active profile at a time:
+a WildlifeReID-10k animal or SalamanderID2025 (see "SalamanderID2025" below).
+`MAX_CONCURRENT_JOBS` becomes the Slurm array `%`
 throttle.
 The CzechLynx launcher is the only parallel launcher for CzechLynx; the wildlife
-launcher is reserved for WildlifeReID-10k profiles and must not gain a CzechLynx
-profile.
+launcher serves WildlifeReID-10k profiles plus the SalamanderID2025 profile
+(decided 2026-09-29, so Salamander reuses the same manifest, SHA-256 and log
+machinery instead of a copied launcher) and must not gain a CzechLynx profile.
 The CzechLynx launcher also contains a commented `czechlynx_unseen_eval` profile.
 After `scripts/build_unseen_eval_metadata.py` creates an evaluation CSV, the
 launcher defaults to the repository-local CzechLynx unseen-evaluation path;
@@ -99,8 +101,28 @@ complete Hydra command in each task log. CzechLynx custom checkpoint paths are
 stored per split; an open-split custom task fails closed if its path is missing or
 does not belong to the declared animal. The supplied open profile defaults to
 the `czechlynx-time-open` checkpoint root at epoch 299, using the
-`loma-b-finetuned-legacy` and `rdd-finetuned-legacy` subdirectories. Split names appear in task manifests,
+`loma-b-finetuned-loma-mined-legacy` and `rdd-finetuned-loma-mined-legacy` subdirectories
+(both matchers are fine-tuned on LoMa-mined pairs; the closed profile uses the same names under
+`czechlynx-time-closed`). Split names appear in task manifests,
 metadata, log directories, and task filenames.
+
+**Fine-tuned matcher objective (decided 2026-09-29).** RDD-LightGlue and LoMa are now
+fine-tuned in the sibling `lynx-finetuning` repository with one shared recipe: the relaxed
+pair score (mean over real keypoints of each keypoint's best assignment probability before
+mutual selection/thresholding, averaged over both directions), a margin-0.5 hinge over every
+triplet, AdamW (lr 1e-5, wd 1e-4, cosine over 300 epochs), effective batch 32, LoMa-mined
+pairs for every dataset, and the fixed epoch-299 checkpoint. RDD previously trained on the
+filtered inference score (dropping triplets whose positive had no surviving match) with
+Adam+L2, padded keypoints inside LightGlue's assignment softmax, and an effective descriptor
+batch of 4; wildlife RDD runs also mixed pair sources (RDD-mined for NyalaData and
+WhaleSharkID). All RDD runs feeding the paper are retrained under the shared recipe into the
+same canonical directory names, after the old directories are renamed to
+`<name>__filtered-archive`, so probe launcher paths do not change except the CzechLynx closed
+RDD descriptor default, which moves from `epoch_175` to `epoch_299` once the retrained
+checkpoint exists. RDD probe results produced before the retrain describe the archived
+checkpoints; five wildlife RDD checkpoints they reference (HyenaID2022, LeopardID2022,
+ATRW, CowDataset, StripeSpotter) were already missing on disk on 2026-09-29. Inference
+ranking is unchanged: Vismatch still scores pairs with the filtered mutual-confidence score.
 Descriptor profiles may explicitly separate `evaluation_animal` from
 `checkpoint_owner` for cross-species tests. The immutable manifest validates that
 an owner-identifiable WildlifeReID-10k path matches the declared checkpoint owner;
@@ -211,6 +233,24 @@ matcher plus cosine/WildFusion context. `plot_paper_figures.py` writes separate
 `descriptor_rdd_*` and `descriptor_loma_*` figures. Descriptor and matcher
 fine-tuning must be reported separately; never merge their cache identities or
 same-budget gains.
+Joint (descriptor + matcher trained together) runs form a third, equally separate
+family (added 2026-09-30). They load with `checkpoint_components=full` (variant
+`full-fine-tuned`, shown as "joint fine-tuned"), are excluded from the main and
+ablation tables and from the matcher "fine-tuned" plot series, and get their own
+`<animal>_<split>_joint_{rdd,loma}_*` tables and `joint_{rdd,loma}_*` figures
+(`SEPARATE_FAMILIES` in `reid/reporting/paper_tables.py`, `JOINT_PLOT_SERIES` in
+`plot_figures.py`). They come from the lynx-finetuning `joint` presets: RDD descriptor
++ LightGlue (`--trained_model lg+rdd --rdd_train_component descriptor`, detector frozen)
+saved as an accelerate epoch directory with `model.safetensors` (RDD) and
+`model_1.safetensors` (LightGlue), and LoMa DeDoDe + matcher (DaD frozen) saved as one
+complete bundle; both protocol files record `*_train_component=joint`. The Vismatch
+loader treats that protocol value as a complete model and refuses any other component
+mode; the CzechLynx launcher's `joint-fine-tuned` rows (closed split only, paths
+`CZECHLYNX_CLOSED_JOINT_{RDD,LOMA}_CHECKPOINT`) and the manifest enforce
+`joint-fine-tuned` <=> `full`. Recipe: pretrained initialization, one AdamW learning
+rate (1e-5), relaxed score, effective batch 32, LoMa-mined pairs, legacy protocol,
+epoch 299. Verified 2026-09-30 on smoke checkpoints: detectors unchanged, descriptor
+and matcher updated, strict loading into the real Vismatch models.
 The manuscript template must provide `xcolor` for row colors and delta arrows.
 
 Probe timing uses separate fields for primary compute, matcher/reranking,
@@ -225,7 +265,7 @@ without primary timing fields must not be relabeled as matcher timings.
 Per-identity class-balance statistics for the paper are generated with
 `scripts/export_class_balance.py` into the ignored `experiments/class-balance/`
 directory: one CSV per dataset/split (`nyala`, `beluga`, `hyena`, `leopard`,
-`sea_star`, `whale_shark`, `turtle`, `lynx_closed`, `lynx_open`) with exact
+`sea_star`, `whale_shark`, `turtle`, `salamander`, `lynx_closed`, `lynx_open`) with exact
 database/query image counts per identity, a `summary.csv` (counts, Gini, singleton
 fraction, top-decile query share), and a `manifest.json` with source metadata
 SHA-256 hashes. Its profiles come from `reid/reporting/paper_datasets.py`
@@ -259,14 +299,195 @@ so they are not dataset noise. Report only categories confirmed this way.
 For pre-masked files, foreground is `max(RGB) > 12`, so very dark animals are
 undercounted: `tiny_foreground`/`empty_foreground` flags and `foreground_fraction` on
 night images (e.g. HyenaID2022 row 1616) can be false positives. CzechLynx uses its RLE
-mask and is unaffected.
-`scripts/plot_data_quality_examples.py` renders the confirmed examples (raw photo above
-exact model input, letterboxed square panels, specks ringed) to
-`reports/figures/data_quality_examples.{pdf,png}`. Panels are (a) washed-out frames (CzechLynx row 38308,
-LeopardID2022 row 2824), (b) masks on the wrong object, (c) a corrupted frame, and
-(d) a blurred frame (HyenaID2022 row 550), chosen by the user so each panel is one
-problem; the Sea Star/Whale Shark mask failures stay text-only. Its `EXAMPLES` list holds only
-images confirmed by eye; add a row only after inspecting both the raw file and the input.
+mask and is unaffected. When pre-masked metadata ships its own RLE `mask` column
+(SalamanderID2025, SAM3), the audit uses that mask for foreground instead of the
+threshold, so black salamander skin is not counted as background; the manifest's
+`foreground_source` records which source each dataset used. `summary.csv` is rebuilt
+from every per-dataset CSV and manifest sources are merged by dataset, so a
+`--dataset` subset run keeps the other datasets. On 2026-09-30 a subset run had
+overwritten both files; the nine older rows were rebuilt from their CSVs (identical
+numbers) and their manifest `runs` are recorded as unknown with the scored-run count,
+because the original run lists could not be recovered.
+SalamanderID2025 findings verified by eye on 2026-09-30: the threshold flags catch only
+one image (row 107, dim but readable, rejected as noise). The confirmed problems come
+from handheld night capture: the handler's finger hides part of the pattern and splits
+the mask into fragments (rows 1006, 1238; all 8 inspected `sam3_n_instances > 1` images
+were finger splits, 62 images in total), and flash close-ups are out of focus (row 249;
+28 images in the dataset-relative blur ranking). Finger-split queries are not less
+accurate (mean top-1 0.34 vs 0.32 over 36 runs), so report occlusion as a difficulty,
+not as harmful noise; the 5 blurry queries score 0.02 vs 0.33 (small n). Rows 1280 and
+281 look like the mask includes finger skin but may be shadowed body; not confirmed.
+`scripts/plot_data_quality_examples.py` renders the confirmed examples to
+`reports/figures/data_quality_examples.{pdf,png}` as one row of raw source photos in
+letterboxed square panels. Since 2026-09-30 it shows raw photos only (user decision):
+masked model inputs could be read as our error because we removed backgrounds
+ourselves (SAM3 for SalamanderID2025), so every panel must show a problem visible in
+the raw photo. Panels, in order, are (a) Overexposure (CzechLynx row 38308,
+LeopardID2022 row 2824), (b) Insufficient detail (ZindiTurtleRecall row 11453, whose
+turtle spans a few dozen pixels at model input size and whose file is stored rotated
+90 degrees with no EXIF orientation tag, so models also see it sideways; WhaleSharkID
+row 614, a hazy backlit silhouette with no visible spot pattern), (c) Empty frame
+(CzechLynx row 36426, a stick; its 368 px file carries 20 px left and 118 px bottom
+black padding, so `fill=True` trims that padding and centre-crops to a square so the
+photo fills its panel; use `fill` only for source padding, never to hide content), (d) Corruption (CzechLynx row 2307, colour banding),
+and (e) Blur (HyenaID2022 row 550). Labels use formal image-quality terms and the
+figure uses Times (Times New Roman when installed, else the bundled Times-compatible
+STIX, embedded in the PDF) to match the CVPR body text. Group labels wrap onto two lines when wider than their columns. Panels carry
+only the group label and dataset name; per-image notes stay in `EXAMPLES` as
+provenance and are not drawn. Mask-only
+problems (masks on branches, Sea Star/Whale Shark provider mask failures, Salamander
+finger splits) stay text-only. Its `EXAMPLES` list holds only images confirmed by eye.
+`scripts/plot_match_examples.py` (added 2026-09-30) renders one successful fine-tuned
+LoMa match per paper dataset, in alphabetical order (Czech Lynx closed, Hyena, Leopard,
+Nyala, Salamander, Sea Star, Turtle (Zindi), Whale Shark), as three panels per row with
+the last row of two centred (`--columns 3`; 6.875 x 2.97 in, half the height of the first
+4 x 2 layout, to save page space) in
+`reports/figures/match_examples.{pdf,png}` plus a `match_examples.json` sidecar. User
+decisions: one method (fine-tuned LoMa, `matcher_only`, k=50, runs pinned in `RUNS`),
+raw photos with background, keypoints mapped from normalized LoMa coordinates with
+`x = W(x_n+1)/2 - 0.5`, only the 30-50 strongest lines drawn, labels with dataset name,
+"rank 1" and match count. `candidates` lists correct top-1 queries from the run's
+`scores.npz` (shared tie rule), rejects same-encounter/same-day pairs where metadata
+records them and dHash near-duplicates, sorts by MegaDescriptor-L cosine (hardest
+first), and writes `match_candidates/<dataset>.csv` and `_sheet.png`; the user picks one
+pair per dataset by eye into `EXAMPLES`, then `render` draws them. The user's picks
+(2026-09-30, contact-sheet rows): Nyala 5, Hyena 3, Leopard 3, Sea Star 5, Whale Shark 5,
+Turtle 3, Salamander 2, and for Czech Lynx row 12 of the later daylight sheet
+(`lynx_041`, 17-09-2022 vs 12-01-2020, 396 matches), which replaced the pink infrared
+row-4 pair the user rejected; each `Example.note` records its cosine, match count
+and probe score. `render` crops every photo to one aspect ratio (`--aspect`, default
+4:3) around its matched keypoints so all cells share one shape; the crop trims only the
+long side, and correspondences with an endpoint outside a crop are dropped before the
+strongest 40 are drawn, while the label keeps the total match count.
+Paper styling (2026-09-30): Times/STIX embedded fonts, panel titles "(a) Nyala" ...,
+corner tags "Query", "Top-1 match" and "<N> matches" ("rank 1" belongs in the caption),
+black source padding trimmed from edge bands (`padding_box`), 30 spatially spread
+high-confidence matches, reduced to 10 at the user's request (`--paper-matches`;
+`spread_selection`: greedy in `stable_rank_1d` order with a minimum endpoint spacing of
+12% of the photo height, halved until enough matches exist)
+drawn in one cyan with a dark outline and white-edged endpoints, and photos embedded at
+320 px height (about 300 dpi at `figure*` width; PDF about 3.6 MB). At the user's request the
+default is now a light dim (`--dim 0.2`: background brightness and saturation 0.8,
+mask feathered six times wider), which keeps mask outlines nearly invisible; `--dim 0`
+disables it. Strong dimming (brightness 0.55) was rejected: on 2026-09-30 it
+exposed provider and SAM3 mask outlines (a hard pink block on the CzechLynx IR frame,
+patchy water on WhaleSharkID, a flat grey Hyena background), which would read as our
+masking error, the same reason the data-quality figure shows raw photos only.
+Dimming is also set per panel with `Example.dim`: 0.4 for Leopard, Nyala and Salamander and
+0.35 for Sea Star and Turtle, whose masks follow the animal cleanly; Whale Shark keeps
+the light default 0.2 because its mask shows outlines when dimmed harder. Czech Lynx uses
+0.35 since its daylight replacement pair masks cleanly (user request). Photos are embedded at 260 px height (about 300 dpi at three panels per row)
+and, at the user's request, corner tags are 6.5 pt (`--tag-size`) and panel titles 9 pt
+(`--title-size`; the title band grows with it, so the figure is about 3.07 in tall).
+Refinements (2026-09-30): "Query"/"Top-1 match" tags appear only on panel (a) (the
+caption states the convention) while every panel keeps its match-count tag; matches
+with an endpoint under a tag are dropped before the spread selection
+(`points_outside_boxes`); the line outline is thicker (1.35 pt, alpha 0.7) for contrast
+on water; Hyena uses `dim=0.0` because dimming its blown-out white background left a
+grey halo; the figure has no side margin (spans `\linewidth`) and the gap between
+panels (0.07 in) is about three times the gutter inside a pair. `candidates` gained
+presentability filters for replacing a weak panel: `--min-foreground` (mask share of
+each raw photo), `--min-saturation`, and `--min-warm` (share of orange-brown animal
+pixels; measured 0.0 on CzechLynx pink infrared frames, which saturation alone does not
+reject, and 0.57-0.74 on daylight coats), plus `--tag` to keep earlier sheets. The
+daylight CzechLynx search used `--pool 3000 --min-foreground 0.15 --min-warm 0.5`
+(793 of 3,000 pairs passed; 40 with at least 40 matches) and wrote
+`match_candidates/lynx_closed_daylight*`, including a paper-style preview. Two provenance traps
+found on 2026-09-30: (1) checkpoint directories were renamed after most runs
+(`legacy/` -> `legacy-loma-mined/`, `legacy-rdd-mined/` for Whale Shark) and Nyala's
+recorded `legacy/epoch_299/model.safetensors` was overwritten on 2026-09-09 by another
+file (the original survives as `model__actual_nyala.safetensors`), so the script locates
+the checkpoint by the manifest's SHA-256 and fails closed when none matches; (2) the
+matcher reads the probe's own Vismatch feature cache (key rebuilt from the run's
+recorded `vismatch_cache_fingerprint`), because batched and single-image LoMa extraction
+give slightly different keypoints. Recomputed LoMa scores still differ from
+`scores.npz` by up to about 1e-2 (V100 and H100 alike), because LoMa matches under a
+bfloat16 autocast (`cfg.mp`); the 1e-4 parity gate therefore cannot be met for LoMa, and
+rank 1 always comes from `scores.npz`, never from the recompute. Probe runs that load
+the canonical `model.safetensors` path for Nyala after 2026-09-09 use a different file
+than the paper-table run did.
+
+**Training-cost ablation (revived 2026-09-30 at the team's request; minimum-effort design,
+user decisions).** CzechLynx closed only; fine-tuned LoMa (matcher only, k=50) against the
+six classifier probes (frozen/partial/full x weighted/unweighted, run 508523). Axis:
+cumulative *training* GPU-hours on RTX 4090 (both arms trained on that GPU type); LoMa's
+mining and feature-cache costs are excluded, and inference cost is not reported. Metric:
+test Top-1 and balanced Top-1. Accepted limitation: the curves use the test split because
+no clean validation split exists, so no epoch is ever selected from them; each method's
+fixed final epoch stays the headline. Probe curves come from the existing per-epoch
+`[linear_probe] epoch N/50 ... val_top1=` log lines (identical to the final `top_1`) and
+the tqdm training time per epoch; no probe is retrained. LoMa points come from the saved
+checkpoints `epoch_000..250` (epoch 299 is run 20260920T122915Z_0015f14a), evaluated by
+`scripts/eval_loma_epoch_curve.sh`, a 6-task Slurm array that reuses that run's frozen
+config copy and changes only the checkpoint path, a disposable feature cache
+(`.../cache/vismatch_epoch_curve`, about 20 GB per epoch, since the cache key includes the
+checkpoint), and the outputs, which go to `experiments/compute-efficiency/` (runs, legacy
+CSV, run index). They must stay out of `experiments/probe/`: the paper-table exporter keys
+runs by checkpoint label and k only, so an intermediate epoch there would replace epoch 299.
+`scripts/plot_training_cost.py` collects everything and writes
+`reports/figures/training_cost.{pdf,png,csv,json}`. User decision (2026-09-30): report the
+weighted-loss probes only, in three panels (Top-1, Top-5, balanced Top-1). Top-1 and Top-5
+are logged per probe epoch (both checked against the run's final metrics); balanced Top-1
+was not, and no probe checkpoints or per-query scores were saved, so probes contribute only
+their final balanced Top-1 marker. State in the paper that LoMa's Top-5 is capped by the
+k=50 shortlist (a correct identity outside it can never rank in the top 5), which is why
+full fine-tuning leads on Top-5 (55.4 vs 47.7) while LoMa leads on Top-1 and balanced Top-1.
+`--candidate-k 100` or `250` renders the same figure at that budget (`training_cost_k100.*`,
+`training_cost_k250.*`) from the existing epoch-299 and default runs; training cost is identical (k only changes how
+many candidates LoMa re-ranks at test time, and probes ignore k), but matching time
+roughly doubles at k=100 (2,140 s vs 1,080 s for 11,924 queries) and is five times higher
+at k=250 (5,447 s), where LoMa also overtakes full fine-tuning on Top-5 (58.3 vs 55.4). Intermediate k=100 epochs would
+need their own evaluation array; k=50 stays the paper's main budget.
+Since 2026-09-30 the linear- and efficient-probe epoch lines end with
+`val_balanced_top1=` (the already-computed `classification_balanced_top_1`, which equals
+the run's final `balanced_top_1`); the value is appended last so older parsers keep
+working. The user reruns the three weighted CzechLynx closed probes to get balanced curves;
+`plot_training_cost.py --probe-job-dir logs/parallel_run/.../job-<new id>` draws them
+whenever every epoch has the field, and takes job durations from the task metadata
+start/end times (within 3 s of sacct). For comparable GPU-hours the rerun must use the
+original resources (`rtx4090_batch`, QOS `batch`), which `SBATCH_PARTITION`/`SBATCH_QOS`
+override without editing the launcher. The reruns land in `experiments/probe/` with the same
+identity as runs 508523, so the paper-table exporter will then pick the newer ones.
+On 2026-10-01 the user switched `scripts/eval_loma_epoch_curve.sh` to k=250 on
+`rtx4090_batch` (all six intermediate checkpoints evaluated, plus the existing epoch-299
+k=250 run) and reran the weighted probes as array 522223 (RTX 4090, `val_balanced_top1`
+logged). The requested figure is two panels, balanced Top-1 left and Top-5 right, at k=250:
+`plot_training_cost.py --candidate-k 250 --probe-job-dir .../job-522223 --allow-incomplete
+--metrics balanced_top_1,top_5 --output-stem training_cost_k250_balanced_top5`.
+`--allow-incomplete` draws a still-running probe up to its last epoch with both a metric
+line and a finished training bar (no final marker, no metric check, train cost only);
+rerun without it once partial and full finish. The frozen rerun reproduced run 508523
+(Top-5 21.14, balanced 9.76). Finding to report carefully: at k=250, LoMa reaches its
+plateau after the first fine-tuning epoch (epoch 0: balanced 35.2, Top-5 57.5 at 0.02
+GPU-h, vs default 31.3 / 55.2), and later checkpoints move within about 1.5 points
+(epoch 299: 34.7 / 58.3). These are test-split curves, so no earlier epoch may be
+selected from them.
+Final k=250 figures (2026-10-01, all LoMa evaluations and probes of array 522223 done):
+`training_cost_k250_balanced_top5.*` (balanced Top-1 | Top-5) and `training_cost_k250_weighted.*`
+(Top-1 | Top-5 | balanced Top-1), rendered without `--allow-incomplete`. Values: LoMa FT
+5.1 GPU-h, 49.1/58.3/34.7 (Top-1/Top-5/balanced); full FT 10.0 GPU-h, 30.1/55.4/19.4; partial 8.1 GPU-h, 24.0/47.9/17.6;
+frozen 3.8 GPU-h, 8.8/21.1/9.8; default LoMa 46.0/55.2/31.3; cosine 16.2/31.8/9.1. All three
+rerun probes reproduce array 508523 exactly; the log-x variant was re-rendered too.
+`--x-scale log` (2026-10-01, `training_cost_k250_balanced_top5_logx.*`) spreads LoMa's first
+checkpoint (0.02 GPU-h) from the rest, so its jump above default LoMa and the flat plateau
+over two decades of compute are visible; zero-cost methods (default LoMa, cosine) then
+appear only as reference lines, since 0 has no position on a log axis.
+`--cost job` (added 2026-09-30, "fair plot" request) renders the conservative accounting
+(`training_cost_job.*`): whole Slurm job GPU-hours (sacct elapsed: LoMa 508111 8,026 s x 4
+GPUs; probe tasks 0/2/4 of 508523), i.e. training plus per-epoch evaluation/validation,
+setup and checkpointing, with the one-off overhead charged at epoch 0. Totals: LoMa 8.9,
+frozen/partial/full probes 5.8/10.0/11.9 GPU-h. The default `--cost train` counts pure
+training steps for both arms (5.1 vs 3.8/8.1/10.0). The earlier "13.1 GPU-h" LoMa figure
+came from an older training run, not the one behind the paper result. Costs
+count pure training only, on both arms: probe epochs use the tqdm training bar of array
+508523 (per-epoch evaluation excluded), and LoMa checkpoint `epoch_E` uses the summed
+`time/train_s` of epochs 0..E in `lynx-finetuning/logs/czechlynx-loma-ft/czechlynx-loma-ft-508111.out`
+times 4 GPUs (validation excluded). Totals: LoMa 5.10 GPU-h for 300 epochs; frozen,
+partial and full probes 3.8, 8.1 and 10.0 GPU-h for 50 epochs. The fine-tuned LoMa curve
+starts at the default-LoMa result at 0 GPU-h. The script fails closed if a probe's
+epoch-50 log value differs from its run's `top_1` or a LoMa checkpoint's hash changed,
+and skips LoMa epochs whose evaluation has not completed. Known biases to state: LoMa trained on 80% of the train images and the
+probes on 100%; 300 vs 50 epochs; one seed each.
 
 New visualizations belong inside the run’s `visualizations/` directory. Their
 `index.csv` must map query/database identities, ranks, scores, correctness, and
@@ -680,13 +901,38 @@ Dataset profiles explicitly pair dataset/animal settings with expected custom-ch
 Exactly one `DATASET_PROFILES` entry must be active. The wildlife launcher includes
 templates for NyalaData, WhaleSharkID, BelugaID, ZindiTurtleRecall, ATRW, Giraffes,
 LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset, StripeSpotter, and
-SeaStarReID2023; the current active entry is the uncommented row in the file. The
+SeaStarReID2023, plus a commented SalamanderID2025 profile; the current active entry
+is the uncommented row in the file. The
 added profiles use official pre-masked metadata and profile-specific checkpoint
 layout/epoch fields; the four newest profiles use `legacy/epoch_299/model.safetensors`
 for both LoMa and RDD. The launcher derives default LoMa and RDD checkpoint
 paths from the active profile and fails before task generation when zero or multiple
 profiles are active. Explicit checkpoint overrides remain supported but must belong
 to the active animal; `animal_name`, when supplied, must match it.
+
+### SalamanderID2025
+
+SalamanderID2025 (added 2026-09-29) is not part of WildlifeReID-10k: 1,384 images of
+584 fire salamanders at `/shared/sets/datasets/vision/czechlynx/SalamanderID2025`
+(repository symlink `dataset/czechlynx/SalamanderID2025`), with a time-closed
+`split` column of `database` (1,138) / `query` (246) values; every query identity is
+in the database and 372 database identities are singletons. Backgrounds were removed
+with `scripts/segment_with_sam3.py` (SAM3, prompt "Salamander", all detected instances
+merged because an occluding finger splits one animal into several instances; one image,
+`query/images/9d1fc96e28c0058e_1277.jpg`, needed a reviewed 0.10 threshold). The script
+writes `masked_images/`, `masks.csv` (COCO-RLE and SAM3 quality fields) and
+`split_time_closed_no_background.csv`, whose `path` points at the masked image and which
+keeps the original row, adds `original_path`, `mask`, `sam3_*`, and `split_train_test`
+(database->train, query->test) for the lynx-finetuning wildlife pipeline. Probes use
+the masked metadata with `no_background=false`, `image_variant=no_background`, and
+`split`/`database`/`query`; results land in
+`experiments/probe/SalamanderID2025/SalamanderID2025/split/` and share the `split`
+split-protocol figure group with WildlifeReID-10k. Unlike the other datasets, LoMa is
+fine-tuned on LoMa-mined and RDD-LightGlue on RDD-mined pairs (user decision), stored as
+`wildlife-reid-10k/SalamanderID2025/{loma,rdd}-finetuned/legacy-{loma,rdd}-mined/`; state
+this in the paper. A 2026-09-29 run with `safety_checks.enabled=true` found no path or
+content overlap between database and query. SAM3 runs in the `lynx-app` conda env on an
+A100/H100 only (its CUDA 13 PyTorch has no V100 kernels).
 
 LoMa descriptor exports may omit standard BatchNorm running-stat buffers. Descriptor
 loading preserves those non-learned buffers from the active model defaults while

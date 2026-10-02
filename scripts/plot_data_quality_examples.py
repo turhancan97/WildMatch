@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-"""Plot confirmed low-quality dataset examples: raw photo above model input.
+"""Plot confirmed low-quality dataset examples as raw source photos.
 
 Every example below was flagged by ``scripts/audit_image_quality.py`` and then
-confirmed by eye against the raw source file. The bottom row is the exact probe
-input (pre-masked WildlifeReID-10k file, or the CzechLynx RLE mask applied through
-``BenchmarkDatasetView``). Edit ``EXAMPLES`` only after confirming a new image.
+confirmed by eye against the raw source file. Only raw photos are shown: masked
+model inputs are left out because background removal (partly our own SAM3 runs)
+could be read as our error rather than a property of the source data. Every panel
+must therefore show a problem visible in the raw photo itself. Edit ``EXAMPLES``
+only after confirming a new image.
 """
 
 from __future__ import annotations
@@ -23,12 +25,9 @@ import pandas as pd  # noqa: E402
 from PIL import Image  # noqa: E402
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-for entry in (ROOT_DIR, ROOT_DIR / "scripts"):
-    if str(entry) not in sys.path:
-        sys.path.insert(0, str(entry))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-from audit_image_quality import _FrameAdapter, load_model_input  # noqa: E402
-from reid.data.dataset_view import BenchmarkDatasetView  # noqa: E402
 from reid.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
 
 
@@ -36,19 +35,21 @@ class Example(NamedTuple):
     group: str
     dataset: str
     row: int
-    note: str
-    # Ring the foreground centre; only for confirmed near-invisible specks.
-    ring: bool = False
+    note: str  # provenance only; not drawn
+    # Trim the black padding baked into the source file, then centre-crop to a square
+    # so the photo fills its panel. Only for padding, never to hide image content.
+    fill: bool = False
 
 
-# Confirmed by eye on 2026-09-23 (raw file and model input both inspected).
+# Raw photos confirmed by eye on 2026-09-23.
 EXAMPLES = [
-    Example("(a) Washed-out frame", "lynx_closed", 38308, "no animal visible"),
-    Example("(a) Washed-out frame", "leopard", 2824, "IR flash glare"),
-    Example("(b) Mask on wrong object", "lynx_closed", 3914, "branches, not lynx"),
-    Example("(b) Mask on wrong object", "lynx_closed", 36426, "stick, no lynx"),
-    Example("(c) Corrupted frame", "lynx_closed", 2307, "colour banding"),
-    Example("(d) Blurred frame", "hyena", 550, "no fine detail"),
+    Example("(a) Overexposure", "lynx_closed", 38308, "fully saturated"),
+    Example("(a) Overexposure", "leopard", 2824, "IR flash glare"),
+    Example("(b) Insufficient detail", "turtle", 11453, "turtle a few dozen pixels at model input size"),
+    Example("(b) Insufficient detail", "whale_shark", 614, "hazy backlit silhouette, no spot pattern"),
+    Example("(c) Empty frame", "lynx_closed", 36426, "stick, no lynx", fill=True),
+    Example("(d) Corruption", "lynx_closed", 2307, "colour banding"),
+    Example("(e) Blur", "hyena", 550, "no fine detail"),
 ]
 DATASET_NAMES = {
     "lynx_closed": "CzechLynx",
@@ -56,43 +57,47 @@ DATASET_NAMES = {
     "hyena": "HyenaID2022",
     "sea_star": "SeaStarReID2023",
     "whale_shark": "WhaleSharkID",
+    "salamander": "SalamanderID2025",
+    "turtle": "ZindiTurtleRecall",
+    "nyala": "NyalaData",
 }
 THUMBNAIL = 480
+PADDING_THRESHOLD = 16
 
 
-def load_pair(profiles, frames, example: Example):
-    profile = profiles[example.dataset]
-    frame = frames.setdefault(example.dataset, pd.read_csv(profile.metadata, low_memory=False))
-    view = None
-    if profile.mask_col:
-        view = BenchmarkDatasetView(_FrameAdapter(frame, profile.identity_col), label_col=profile.identity_col, no_background=True, mask_col=profile.mask_col)
-    model_input, foreground = load_model_input(profile, frame, view, example.row)
-    raw_path = str(frame.iloc[example.row]["path"])
-    if profile.mask_col is None:
+def raw_image_path(profile, frame: pd.DataFrame, row: int) -> Path:
+    """Unmasked source photo for a metadata row."""
+    record = frame.iloc[row]
+    if "original_path" in frame.columns:
+        # SalamanderID2025 records the unmasked source explicitly.
+        relative = str(record["original_path"])
+    elif profile.mask_col is None:
         # Pre-masked WildlifeReID-10k files mirror the raw tree under images/.
-        raw_path = raw_path.replace("masked_images/", "images/", 1)
-    raw = Image.open(profile.root / raw_path).convert("RGB")
-    masked = Image.fromarray(model_input)
-    # Opt-in: a dark animal in a pre-masked file falls below the foreground
-    # threshold, so an automatic small-foreground rule would ring it wrongly.
-    ys, xs = np.nonzero(foreground)
-    centre = None
-    if example.ring and len(xs):
-        centre = _square_coords(masked.size, float(xs.mean()), float(ys.mean()))
-    return _square(raw, (255, 255, 255)), _square(masked, (0, 0, 0)), centre
+        relative = str(record["path"]).replace("masked_images/", "images/", 1)
+    else:
+        # CzechLynx paths are raw images; its mask is applied only at load time.
+        relative = str(record["path"])
+    path = Path(relative)
+    return path if path.is_absolute() else profile.root / path
 
 
-def _square_coords(size, x: float, y: float):
-    width, height = size
-    scale = THUMBNAIL / max(width, height)
-    return (x * scale + (THUMBNAIL - width * scale) / 2, y * scale + (THUMBNAIL - height * scale) / 2)
+def trim_and_fill(image: Image.Image) -> Image.Image:
+    """Drop near-black source padding, then centre-crop the content to a square."""
+    content = np.asarray(image).max(axis=2) > PADDING_THRESHOLD
+    ys, xs = np.nonzero(content)
+    if len(xs):
+        image = image.crop((int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1))
+    side = min(image.size)
+    left = (image.width - side) // 2
+    top = (image.height - side) // 2
+    return image.crop((left, top, left + side, top + side))
 
 
-def _square(image: Image.Image, fill) -> Image.Image:
-    """Letterbox onto a square canvas so every panel has identical geometry."""
-    image = image.copy()
-    image.thumbnail((THUMBNAIL, THUMBNAIL))
-    canvas = Image.new("RGB", (THUMBNAIL, THUMBNAIL), fill)
+def square(image: Image.Image) -> Image.Image:
+    """Letterbox onto a white square so every panel has identical geometry."""
+    scale = THUMBNAIL / max(image.size)
+    image = image.resize((max(1, round(image.width * scale)), max(1, round(image.height * scale))), Image.LANCZOS)
+    canvas = Image.new("RGB", (THUMBNAIL, THUMBNAIL), (255, 255, 255))
     canvas.paste(image, ((THUMBNAIL - image.width) // 2, (THUMBNAIL - image.height) // 2))
     return canvas
 
@@ -106,43 +111,60 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    # Times to match the CVPR body text; STIX (bundled with matplotlib) is a
+    # Times-compatible fallback when Times New Roman is not installed.
     plt.rcParams.update({
-        "font.family": "sans-serif",
-        "font.sans-serif": ["DejaVu Sans", "Arial"],
+        "font.family": "serif",
+        "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
+        "mathtext.fontset": "stix",
         "pdf.fonttype": 42,
         "ps.fonttype": 42,
     })
     profiles = {profile.key: profile for profile in PAPER_PROFILES}
     frames: dict = {}
     columns = len(EXAMPLES)
-    cell = args.width / columns
-    figure, axes = plt.subplots(2, columns, figsize=(args.width, 2 * cell + 0.5), squeeze=False)
-    for column, example in enumerate(EXAMPLES):
-        raw, masked, centre = load_pair(profiles, frames, example)
-        for row, image in enumerate((raw, masked)):
-            axis = axes[row][column]
-            axis.imshow(image)
-            if row == 1 and centre is not None:
-                axis.add_patch(plt.Circle(centre, THUMBNAIL * 0.07, fill=False, edgecolor="#D55E00", linewidth=0.9))
-            axis.set_xticks([])
-            axis.set_yticks([])
-            axis.set_facecolor("black")
-            for spine in axis.spines.values():
-                spine.set_linewidth(0.4)
-        axes[0][column].set_title(DATASET_NAMES[example.dataset], fontsize=6.5, pad=2)
-        axes[1][column].set_xlabel(example.note, fontsize=6.5, labelpad=2)
-    axes[0][0].set_ylabel("Raw image", fontsize=7)
-    axes[1][0].set_ylabel("Model input", fontsize=7)
-    figure.subplots_adjust(left=0.035, right=0.995, top=0.86, bottom=0.08, wspace=0.06, hspace=0.06)
+    left_margin, right_margin, gap = 0.01, 0.01, 0.012
+    cell = args.width * (1 - left_margin - right_margin - gap * (columns - 1)) / columns
+    # Inches for the group label + dataset name; no footer, the group label says it all.
+    header, footer = 0.42, 0.03
+    height = cell + header + footer
+    figure, axes = plt.subplots(1, columns, figsize=(args.width, height), squeeze=False)
+    axes = axes[0]
+    figure.subplots_adjust(
+        left=left_margin, right=1 - right_margin,
+        top=1 - header / height, bottom=footer / height,
+        wspace=gap * columns / (1 - left_margin - right_margin - gap * (columns - 1)),
+    )
+    for axis, example in zip(axes, EXAMPLES):
+        profile = profiles[example.dataset]
+        frame = frames.setdefault(example.dataset, pd.read_csv(profile.metadata, low_memory=False))
+        with Image.open(raw_image_path(profile, frame, example.row)) as handle:
+            image = handle.convert("RGB")
+            if example.fill:
+                image = trim_and_fill(image)
+            axis.imshow(square(image))
+        axis.set_xticks([])
+        axis.set_yticks([])
+        for spine in axis.spines.values():
+            spine.set_linewidth(0.4)
+        axis.set_title(DATASET_NAMES[example.dataset], fontsize=7.5, pad=2)
 
-    # Group labels centred over each run of same-group columns.
+    # Group labels centred over each run of same-group columns. A label wider than
+    # its columns wraps onto two lines instead of running into its neighbour.
+    rule_y = 1 - 0.2 / height
+    renderer = figure.canvas.get_renderer()
     start = 0
     for index in range(1, columns + 1):
         if index == columns or EXAMPLES[index].group != EXAMPLES[start].group:
-            left = axes[0][start].get_position().x0
-            right = axes[0][index - 1].get_position().x1
-            figure.text((left + right) / 2, 0.965, EXAMPLES[start].group, ha="center", va="center", fontsize=7, fontweight="bold")
-            figure.add_artist(plt.Line2D([left + 0.004, right - 0.004], [0.935, 0.935], color="0.35", linewidth=0.6))
+            left = axes[start].get_position().x0
+            right = axes[index - 1].get_position().x1
+            label = figure.text((left + right) / 2, rule_y + 0.035 / height, EXAMPLES[start].group,
+                                ha="center", va="bottom", fontsize=8, fontweight="bold", linespacing=1.1)
+            span = (right - left) * figure.bbox.width
+            if label.get_window_extent(renderer).width > span * 0.96:
+                words = EXAMPLES[start].group.split(" ")
+                label.set_text(" ".join(words[:-1]) + "\n" + words[-1])
+            figure.add_artist(plt.Line2D([left + 0.004, right - 0.004], [rule_y, rule_y], color="0.35", linewidth=0.6))
             start = index
 
     args.output_dir.mkdir(parents=True, exist_ok=True)

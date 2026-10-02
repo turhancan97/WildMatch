@@ -211,6 +211,29 @@ def _protocol_component(protocol: Mapping[str, Any], component: str) -> Optional
     return str(value).strip().lower() if value is not None else None
 
 
+JOINT_TRAIN_COMPONENT = "joint"
+
+
+def _is_joint_checkpoint(item: CheckpointFile, protocol: Mapping[str, Any]) -> bool:
+    """Descriptor and matcher fine-tuned together (lynx-finetuning ``joint`` presets).
+
+    Such checkpoints are complete models: an RDD extractor plus LightGlue file,
+    or a LoMa bundle with DaD, DeDoDe and matcher tensors. Loading only one part
+    would silently evaluate a model that was never trained, so they must be
+    used with ``checkpoint_components=full``.
+    """
+    return _protocol_component(protocol, item.component) == JOINT_TRAIN_COMPONENT
+
+
+def _require_full_for_joint(mode: str) -> str:
+    if mode not in {"full", "auto"}:
+        raise ValueError(
+            "joint (descriptor + matcher) checkpoints must use checkpoint_components=full, "
+            f"got {mode}"
+        )
+    return "full"
+
+
 def _is_descriptor_checkpoint(item: CheckpointFile, protocol: Mapping[str, Any]) -> bool:
     declared = _protocol_component(protocol, item.component)
     if declared == "descriptor":
@@ -285,6 +308,11 @@ def _select_components(
         if incompatible:
             raise ValueError(f"RDD-LightGlue cannot use incompatible checkpoint components: {incompatible}")
         descriptor_item = detected.get("rdd_extractor")
+        if descriptor_item is not None and _is_joint_checkpoint(descriptor_item, protocol):
+            resolved = _require_full_for_joint(mode)
+            if "lightglue" not in detected:
+                raise ValueError("joint RDD-LightGlue checkpoints need both the RDD and the LightGlue file")
+            return (descriptor_item, detected["lightglue"]), (), resolved, (), ()
         is_descriptor = descriptor_item is not None and _is_descriptor_checkpoint(descriptor_item, protocol)
         if mode == "descriptor_only" or (mode == "auto" and is_descriptor):
             if descriptor_item is None:
@@ -346,6 +374,12 @@ def _select_components(
                 f"{incompatible or ['none']}"
             )
         item = detected["loma_model"]
+        if _is_joint_checkpoint(item, protocol):
+            resolved = _require_full_for_joint(mode)
+            names = {str(key).removeprefix("module.") for key in item.keys}
+            if not any(name.startswith("_detector.") for name in names) or not any(name.startswith("_descriptor.") for name in names):
+                raise ValueError(f"joint LoMa checkpoints must contain complete {loma_arch} weights (DaD, DeDoDe and matcher)")
+            return (item,), (), resolved, (), ()
         is_descriptor = _is_descriptor_checkpoint(item, protocol)
         if mode == "descriptor_only" or (mode == "auto" and is_descriptor):
             declared = _protocol_component(protocol, "loma_model")

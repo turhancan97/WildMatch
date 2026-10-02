@@ -144,6 +144,12 @@ def _validate_checkpoint(task: dict[str, str]) -> dict[str, Any]:
         raise ValueError("descriptor-fine-tuned checkpoints must use checkpoint_components=descriptor_only")
     if task["checkpoint_label"] == "custom" and components == "descriptor_only":
         raise ValueError("descriptor_only checkpoints must use checkpoint_label=descriptor-fine-tuned")
+    # Joint (descriptor + matcher) checkpoints are complete models; loading only
+    # one part would evaluate weights that were never trained together.
+    if task["checkpoint_label"] == "joint-fine-tuned" and components != "full":
+        raise ValueError("joint-fine-tuned checkpoints must use checkpoint_components=full")
+    if task["checkpoint_label"] == "custom" and components == "full":
+        raise ValueError("full-model checkpoints must use checkpoint_label=joint-fine-tuned")
     owner = task["checkpoint_owner"] if source == "custom" else ""
     path_text = task["checkpoint_path"] if source == "custom" else ""
     if source == "default":

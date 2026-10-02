@@ -172,6 +172,36 @@ class PaperTableTests(unittest.TestCase):
             self.assertIn("Lynx_descriptor_loma_main.tex", names)
             self.assertIn("Lynx_descriptor_loma_ablation.csv", names)
             self.assertNotIn("descriptor-fine-tuned", (output / "Lynx_main.tex").read_text(encoding="utf-8"))
+    def test_joint_rows_and_outputs_are_separate_from_matcher_and_descriptor_tables(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "experiments"
+            output = Path(temp_dir) / "reports"
+            write_run(root, animal="Lynx", run_id="20260100_cosine", method="cosine")
+            write_run(root, animal="Lynx", run_id="20260102_default", method="vismatch", variant="default", candidate_k=50)
+            write_run(root, animal="Lynx", run_id="20260103_matcher", method="vismatch", variant="custom", candidate_k=50, top_1=0.7)
+            write_run(root, animal="Lynx", run_id="20260104_joint", method="vismatch", variant="custom", candidate_k=50, top_1=0.9)
+            for run_id, mode, variant in (("20260103_matcher", "matcher_only", "matcher-fine-tuned"),
+                                          ("20260104_joint", "full", "full-fine-tuned")):
+                manifest_path = root / "probe" / "Dataset" / "Lynx" / run_id / "run_manifest.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest["variant"] = "loma"
+                manifest["vismatch_checkpoint"] = {
+                    "source": "custom", "resolved_component_mode": mode, "checkpoint_variant": variant,
+                }
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            records = discover_records(root)
+            main = {row["checkpoint"] for row in build_main_rows(records, "Lynx", 50)}
+            self.assertIn("matcher-fine-tuned", main)
+            self.assertNotIn("full-fine-tuned", main)
+            joint_main, _ = build_descriptor_rows(records, animal="Lynx", matcher="loma", budgets=(10, 50), family="joint")
+            self.assertIn("full-fine-tuned", {row["checkpoint"] for row in joint_main})
+            self.assertNotIn("matcher-fine-tuned", {row["checkpoint"] for row in joint_main})
+            names = {path.name for path in write_animal_tables(records, animal="Lynx", output_dir=output, budgets=(10, 50))}
+            self.assertIn("Lynx_joint_loma_main.tex", names)
+            self.assertIn("Lynx_joint_loma_ablation.csv", names)
+            self.assertFalse(any("descriptor" in name for name in names))
+            self.assertIn("joint fine-tuned", (output / "Lynx_joint_loma_main.tex").read_text(encoding="utf-8"))
+
     def test_split_protocol_is_part_of_selection_and_output_names(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"

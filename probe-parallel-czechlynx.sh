@@ -1,7 +1,7 @@
 #!/bin/bash -l
-#SBATCH -p dgx
+#SBATCH -p rtx4090_batch
 #SBATCH --gpus=1
-#SBATCH --qos=big
+#SBATCH --qos=batch
 #SBATCH --cpus-per-task=10
 #SBATCH --mem=64G
 #SBATCH --ntasks=1
@@ -39,6 +39,12 @@ CZECHLYNX_CLOSED_DESCRIPTOR_LOMA_CHECKPOINT="${CZECHLYNX_CLOSED_DESCRIPTOR_LOMA_
 CZECHLYNX_CLOSED_DESCRIPTOR_RDD_CHECKPOINT="${CZECHLYNX_CLOSED_DESCRIPTOR_RDD_CHECKPOINT:-${CZECHLYNX_CLOSED_CHECKPOINT_ROOT}/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors}"
 CZECHLYNX_OPEN_DESCRIPTOR_LOMA_CHECKPOINT="${CZECHLYNX_OPEN_DESCRIPTOR_LOMA_CHECKPOINT:-}"
 CZECHLYNX_OPEN_DESCRIPTOR_RDD_CHECKPOINT="${CZECHLYNX_OPEN_DESCRIPTOR_RDD_CHECKPOINT:-}"
+# Joint (descriptor + matcher trained together, detector frozen) checkpoints exist
+# for the closed split only. RDD's is the accelerate epoch directory holding
+# model.safetensors (RDD) and model_1.safetensors (LightGlue); LoMa's is one
+# complete bundle. Both load with checkpoint_components=full.
+CZECHLYNX_CLOSED_JOINT_RDD_CHECKPOINT="${CZECHLYNX_CLOSED_JOINT_RDD_CHECKPOINT:-${CZECHLYNX_CLOSED_CHECKPOINT_ROOT}/rdd-joint-finetuned-loma-mined-legacy/epoch_${CZECHLYNX_CLOSED_CHECKPOINT_EPOCH}}"
+CZECHLYNX_CLOSED_JOINT_LOMA_CHECKPOINT="${CZECHLYNX_CLOSED_JOINT_LOMA_CHECKPOINT:-${CZECHLYNX_CLOSED_CHECKPOINT_ROOT}/loma-b-joint-finetuned-loma-mined-legacy/epoch_${CZECHLYNX_CLOSED_CHECKPOINT_EPOCH}/model.safetensors}"
 
 # Unseen-identity evaluation is generated separately with
 # scripts/build_unseen_eval_metadata.py. Set this to the generated CSV and
@@ -87,7 +93,7 @@ DATASET_PROFILES=(
 # efficient_probe|-|default|-|partial|unweighted
 # efficient_probe|-|default|-|all|unweighted
 VARIANTS=(
-    "cosine|-|default|-|-|-|-"
+    # "cosine|-|default|-|-|-|-"
     # "wildfusion|-|default|-|-|-|-"
     # "local_lightglue|-|default|-|-|-|-"
     # "linear_probe|-|default|-|-|classifier|weighted"
@@ -108,6 +114,8 @@ VARIANTS=(
     # "vismatch|rdd-lightglue|default|-|-|-|-"
     # "vismatch|rdd-lightglue|custom|${RDD_CUSTOM_CHECKPOINT_PATH}|matcher_only|-|-"
     # "vismatch|rdd-lightglue|descriptor-fine-tuned|${CZECHLYNX_CLOSED_DESCRIPTOR_RDD_CHECKPOINT}|descriptor_only|-|-"
+    "vismatch|loma|joint-fine-tuned|${CZECHLYNX_CLOSED_JOINT_LOMA_CHECKPOINT}|full|-|-"
+    # "vismatch|rdd-lightglue|joint-fine-tuned|${CZECHLYNX_CLOSED_JOINT_RDD_CHECKPOINT}|full|-|-"
 )
 
 die() { echo "${LAUNCHER_NAME}: $*" >&2; exit 1; }
@@ -148,14 +156,18 @@ for profile in "${DATASET_PROFILES[@]}"; do
             if [[ "${METHOD}" != linear_probe && "${METHOD}" != efficient_probe && "${CLASS_WEIGHTING}" != - ]]; then
                 die "only classifier-probe variants may specify class_weighting; got '${CLASS_WEIGHTING}' for ${METHOD}"
             fi
-            if [[ "${CHECKPOINT_LABEL}" == custom || "${CHECKPOINT_LABEL}" == descriptor-fine-tuned ]]; then
+            if [[ "${CHECKPOINT_LABEL}" == joint-fine-tuned ]]; then
+                [[ "${PROFILE_ID}" == czechlynx_closed ]] || die "joint-fine-tuned checkpoints exist only for the closed split, not ${PROFILE_ID}"
+                [[ "${CHECKPOINT_COMPONENTS}" == full ]] || die "joint-fine-tuned checkpoints must use checkpoint_components=full"
+            fi
+            if [[ "${CHECKPOINT_LABEL}" == custom || "${CHECKPOINT_LABEL}" == descriptor-fine-tuned || "${CHECKPOINT_LABEL}" == joint-fine-tuned ]]; then
                 if [[ "${MATCHER}" == loma ]]; then
                     CHECKPOINT_OWNER="${LOMA_OWNER}"; LOMA_ARCH=LoMa-B
-                    if [[ "${CHECKPOINT_LABEL}" == descriptor-fine-tuned ]]; then CHECKPOINT_PATH="${PROFILE_DESCRIPTOR_LOMA_CHECKPOINT}"; else CHECKPOINT_PATH="${LOMA_PROFILE_CHECKPOINT}"; fi
+                    if [[ "${CHECKPOINT_LABEL}" == descriptor-fine-tuned ]]; then CHECKPOINT_PATH="${PROFILE_DESCRIPTOR_LOMA_CHECKPOINT}"; elif [[ "${CHECKPOINT_LABEL}" == joint-fine-tuned ]]; then CHECKPOINT_PATH="${CZECHLYNX_CLOSED_JOINT_LOMA_CHECKPOINT}"; else CHECKPOINT_PATH="${LOMA_PROFILE_CHECKPOINT}"; fi
                 fi
                 if [[ "${MATCHER}" == rdd-lightglue ]]; then
                     CHECKPOINT_OWNER="${RDD_OWNER}"
-                    if [[ "${CHECKPOINT_LABEL}" == descriptor-fine-tuned ]]; then CHECKPOINT_PATH="${PROFILE_DESCRIPTOR_RDD_CHECKPOINT}"; else CHECKPOINT_PATH="${RDD_PROFILE_CHECKPOINT}"; fi
+                    if [[ "${CHECKPOINT_LABEL}" == descriptor-fine-tuned ]]; then CHECKPOINT_PATH="${PROFILE_DESCRIPTOR_RDD_CHECKPOINT}"; elif [[ "${CHECKPOINT_LABEL}" == joint-fine-tuned ]]; then CHECKPOINT_PATH="${CZECHLYNX_CLOSED_JOINT_RDD_CHECKPOINT}"; else CHECKPOINT_PATH="${RDD_PROFILE_CHECKPOINT}"; fi
                 fi
                 [[ "${METHOD}" == vismatch ]] || die "custom checkpoint variants are only valid for vismatch"
                 [[ "${CHECKPOINT_COMPONENTS}" == matcher_only || "${CHECKPOINT_COMPONENTS}" == descriptor_only || "${CHECKPOINT_COMPONENTS}" == full ]] || die "${CHECKPOINT_LABEL} must declare matcher_only, descriptor_only, or full"
@@ -211,7 +223,7 @@ if [[ -z "${PROBE_PARALLEL_MANIFEST:-}" ]]; then
     (( TASK_INDEX < ${#TASKS[@]} )) || die "array task index ${TASK_INDEX} is outside 0..$((${#TASKS[@]} - 1))"
     CURRENT_TASK="${TASKS[${TASK_INDEX}]}"
     IFS='|' read -r PROFILE_ID DATASET_NAME ANIMAL DATASET_ROOT METADATA_FILE LABEL_COL MASK_COL NO_BACKGROUND IMAGE_VARIANT SPLIT_COL DATABASE_SPLIT_VALUE QUERY_SPLIT_VALUE CALIBRATION_SIZE METHOD MATCHER CHECKPOINT_LABEL CHECKPOINT_PATH CHECKPOINT_OWNER CHECKPOINT_COMPONENTS LOMA_ARCH TRAIN_MODE CLASS_WEIGHTING CANDIDATE_K EVALUATION_ANIMAL <<< "${CURRENT_TASK}"
-    CHECKPOINT_SOURCE=default; [[ "${CHECKPOINT_LABEL}" == custom || "${CHECKPOINT_LABEL}" == descriptor-fine-tuned ]] && CHECKPOINT_SOURCE=custom
+    CHECKPOINT_SOURCE=default; [[ "${CHECKPOINT_LABEL}" == custom || "${CHECKPOINT_LABEL}" == descriptor-fine-tuned || "${CHECKPOINT_LABEL}" == joint-fine-tuned ]] && CHECKPOINT_SOURCE=custom
     if [[ "${CHECKPOINT_SOURCE}" == custom && ! -e "${CHECKPOINT_PATH}" ]]; then CHECKPOINT_DISPLAY="${MATCHER}"; [[ "${MATCHER}" == rdd-lightglue ]] && CHECKPOINT_DISPLAY="RDD-LightGlue"; [[ "${MATCHER}" == loma ]] && CHECKPOINT_DISPLAY="LoMa"; die "${CHECKPOINT_DISPLAY} custom checkpoint does not exist: ${CHECKPOINT_PATH}"; fi
     CONFIG_SNAPSHOT_PATH="${CONFIG_FILE}"; SUBMISSION_ID=local-dry-run; CHECKPOINT_SHA256=
 else

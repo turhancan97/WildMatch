@@ -159,6 +159,22 @@ class PlotFigureTests(unittest.TestCase):
             self.assertEqual({item["name"] for item in series}, {"LoMa default", "LoMa descriptor fine-tuned"})
             self.assertEqual(next(item for item in series if "descriptor" in item["name"])["values"][0], 0.8)
 
+    def test_joint_series_is_separate_from_matcher_fine_tuned_series(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "experiments"
+            write_plot_run(root, animal="Lynx", run_id="20260101_default", method="vismatch", matcher="loma", candidate_k=10)
+            write_plot_run(root, animal="Lynx", run_id="20260102_joint", method="vismatch", matcher="loma", checkpoint="custom", candidate_k=10, top_1=0.9)
+            manifest_path = root / "probe" / "Dataset" / "Lynx" / "20260102_joint" / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["vismatch_checkpoint"] = {"source": "custom", "resolved_component_mode": "full", "checkpoint_variant": "full-fine-tuned"}
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            records = discover_records(root)
+            joint = prepare_series_data(records, animal="Lynx", metric="top_1", descriptor_family="joint_loma")
+            self.assertEqual({item["name"] for item in joint}, {"LoMa default", "LoMa joint fine-tuned"})
+            self.assertEqual(next(item for item in joint if "joint" in item["name"])["values"][0], 0.9)
+            matcher = prepare_series_data(records, animal="Lynx", metric="top_1")
+            self.assertNotIn("LoMa fine-tuned", {item["name"] for item in matcher})
+
     def test_matcher_fine_tuned_variant_remains_in_matcher_series(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"

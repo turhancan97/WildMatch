@@ -362,6 +362,27 @@ def _is_descriptor_record(record: Mapping[str, Any]) -> bool:
     )
 
 
+def _is_joint_record(record: Mapping[str, Any]) -> bool:
+    """Descriptor and matcher fine-tuned together, loaded as a complete model.
+
+    Vismatch records these with checkpoint_components=full, i.e. the
+    ``full-fine-tuned`` variant (lynx-finetuning ``joint`` presets).
+    """
+    return (
+        str(record.get("checkpoint_component") or "").lower() == "full"
+        or str(record.get("checkpoint") or "").lower() == "full-fine-tuned"
+    )
+
+
+# Fine-tuning families reported in their own tables, never merged with the
+# matcher-only fine-tuned rows of the main/ablation tables.
+SEPARATE_FAMILIES = {"descriptor": _is_descriptor_record, "joint": _is_joint_record}
+
+
+def _is_separate_family_record(record: Mapping[str, Any]) -> bool:
+    return any(predicate(record) for predicate in SEPARATE_FAMILIES.values())
+
+
 def select_latest_records(
     records: Iterable[Mapping[str, Any]], animal: str, split_protocol: str | None = None
 ) -> list[dict[str, Any]]:
@@ -454,7 +475,7 @@ def build_main_rows(
     candidate_k = _effective_main_candidate(candidate_k, split_protocol)
     selected = [
         record for record in select_latest_records(records, animal, split_protocol)
-        if include_descriptor or not _is_descriptor_record(record)
+        if include_descriptor or not _is_separate_family_record(record)
     ]
     rows: list[dict[str, Any]] = []
     groups: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = {}
@@ -490,7 +511,7 @@ def build_ablation_rows(
     budgets = _effective_table_budgets(budgets, split_protocol)
     selected = [
         record for record in select_latest_records(records, animal, split_protocol)
-        if include_descriptor or not _is_descriptor_record(record)
+        if include_descriptor or not _is_separate_family_record(record)
     ]
     rows: list[dict[str, Any]] = []
     groups: dict[tuple[str, str, str, str, str, str], list[dict[str, Any]]] = {}
@@ -521,15 +542,18 @@ def build_descriptor_rows(
     budgets: Sequence[int],
     candidate_k: int | None = None,
     split_protocol: str | None = None,
+    family: str = "descriptor",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Build descriptor-specific rows with the matching default/context baselines."""
+    """Build rows for one separate fine-tuning family (``descriptor`` or ``joint``)
+    together with the matching default matcher and cosine/WildFusion context."""
+    in_family = SEPARATE_FAMILIES[family]
     selected = select_latest_records(records, animal, split_protocol)
     matcher = str(matcher).lower()
     relevant = [
         record for record in selected
         if (
             (record.get("method_key") == "vismatch" and str(record.get("matcher", "")).lower() == matcher
-             and (_is_descriptor_record(record) or str(record.get("checkpoint", "")).lower() == "default"))
+             and (in_family(record) or str(record.get("checkpoint", "")).lower() == "default"))
             or record.get("method_key") in {"cosine", "wildfusion"}
         )
     ]
@@ -584,7 +608,7 @@ def _checkpoint_display(value: Any) -> Any:
         "matcher-fine-tuned": "fine-tuned",
         "descriptor-fine-tuned": "descriptor fine-tuned",
         "extractor-fine-tuned": "extractor fine-tuned",
-        "full-fine-tuned": "full fine-tuned",
+        "full-fine-tuned": "joint fine-tuned",
     }
     return labels.get(str(value).lower(), value)
 
@@ -952,49 +976,52 @@ def write_animal_tables(
     for path, content in outputs.items():
         path.write_text(content, encoding="utf-8")
     selected = select_latest_records(records, animal, split_protocol)
-    for descriptor_matcher, family_label in (("rdd-lightglue", "rdd"), ("loma", "loma")):
-        if not any(
-            _is_descriptor_record(record)
-            and record.get("method_key") == "vismatch"
-            and str(record.get("matcher", "")).lower() == descriptor_matcher
-            for record in selected
-        ):
-            continue
-        descriptor_main, descriptor_ablation = build_descriptor_rows(
-            records,
-            animal=animal,
-            matcher=descriptor_matcher,
-            budgets=budgets,
-            candidate_k=main_candidate_k,
-            split_protocol=split_protocol,
-        )
-        descriptor_outputs = {
-            output_dir / f"{stem}_descriptor_{family_label}_main.tex": render_latex(
-                descriptor_main,
+    for family, in_family in SEPARATE_FAMILIES.items():
+        for family_matcher, matcher_label in (("rdd-lightglue", "rdd"), ("loma", "loma")):
+            if not any(
+                in_family(record)
+                and record.get("method_key") == "vismatch"
+                and str(record.get("matcher", "")).lower() == family_matcher
+                for record in selected
+            ):
+                continue
+            family_main, family_ablation = build_descriptor_rows(
+                records,
                 animal=animal,
-                split_protocol=split_protocol,
-                table_name=f"descriptor {family_label} main",
+                matcher=family_matcher,
+                budgets=budgets,
                 candidate_k=main_candidate_k,
-                generated_at=generated_at,
-                detailed_comments=detailed_comments,
-                compact_ablation=True,
-            ),
-            output_dir / f"{stem}_descriptor_{family_label}_main.csv": render_csv(descriptor_main),
-            output_dir / f"{stem}_descriptor_{family_label}_ablation.tex": render_latex(
-                descriptor_ablation,
-                animal=animal,
                 split_protocol=split_protocol,
-                table_name=f"descriptor {family_label} ablation",
-                candidate_k=None,
-                generated_at=generated_at,
-                detailed_comments=detailed_comments,
-                compact_ablation=True,
-            ),
-            output_dir / f"{stem}_descriptor_{family_label}_ablation.csv": render_csv(descriptor_ablation),
-        }
-        for path, content in descriptor_outputs.items():
-            path.write_text(content, encoding="utf-8")
-        outputs.update(descriptor_outputs)
+                family=family,
+            )
+            prefix = f"{stem}_{family}_{matcher_label}"
+            family_outputs = {
+                output_dir / f"{prefix}_main.tex": render_latex(
+                    family_main,
+                    animal=animal,
+                    split_protocol=split_protocol,
+                    table_name=f"{family} {matcher_label} main",
+                    candidate_k=main_candidate_k,
+                    generated_at=generated_at,
+                    detailed_comments=detailed_comments,
+                    compact_ablation=True,
+                ),
+                output_dir / f"{prefix}_main.csv": render_csv(family_main),
+                output_dir / f"{prefix}_ablation.tex": render_latex(
+                    family_ablation,
+                    animal=animal,
+                    split_protocol=split_protocol,
+                    table_name=f"{family} {matcher_label} ablation",
+                    candidate_k=None,
+                    generated_at=generated_at,
+                    detailed_comments=detailed_comments,
+                    compact_ablation=True,
+                ),
+                output_dir / f"{prefix}_ablation.csv": render_csv(family_ablation),
+            }
+            for path, content in family_outputs.items():
+                path.write_text(content, encoding="utf-8")
+            outputs.update(family_outputs)
     return list(outputs)
 
 

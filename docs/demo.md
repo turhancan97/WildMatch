@@ -19,7 +19,9 @@ to the matcher and a few queries rank another lynx first by a small margin.
 
 - **Score** is the matcher's image score: the summed confidence of the mutual-nearest
   matches above the threshold, divided by the smaller keypoint count, as in the paper.
-- **Rank** orders the ten gallery renders by that score for the chosen query.
+- **Rank** orders the ten gallery renders by that score for the chosen query. The gallery
+  render of the query's own individual carries a red inner frame; hover a thumbnail for
+  its details.
 - **Lines** are the strongest correspondences; their weight follows confidence, and
   hovering one shows its exact value. Every match is available through the slider.
 - **Synthetic**: the images are rendered lynxes, the paper's test data are camera-trap

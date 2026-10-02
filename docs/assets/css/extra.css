@@ -543,24 +543,36 @@
   color: var(--wm-red-dark);
 }
 
-/* Synthetic match demo (docs/assets/js/synthetic-demo.js). */
-.wm-demo-strip {
+/* Synthetic match demo (docs/assets/js/synthetic-demo.js): two compact filmstrips. */
+.wm-demo-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-  gap: 0.6rem;
-  margin: 0.75rem 0;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.wm-demo-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem;
+  scrollbar-width: thin;
 }
 
 .wm-demo-card {
+  flex: 0 0 auto;
   display: grid;
-  gap: 0.2rem;
+  gap: 0.1rem;
   justify-items: center;
-  padding: 0.4rem 0.4rem 0.5rem;
+  padding: 0.15rem;
   border: 2px solid var(--wm-grey);
-  border-radius: 0.3rem;
+  border-radius: 0.25rem;
   background: var(--md-default-bg-color);
   font: inherit;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
+  line-height: 1.2;
   color: var(--md-default-fg-color--light);
   cursor: pointer;
 }
@@ -574,20 +586,23 @@
   box-shadow: 0 0 0 2px var(--wm-blue-75);
 }
 
+/* The gallery render of the query's own individual: a thin inner line in brand red. */
+.wm-demo-card.is-same img {
+  outline: 2px solid var(--wm-red);
+  outline-offset: -2px;
+}
+
 .wm-demo-card img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
+  width: 3.6rem;
+  height: 3.6rem;
   object-fit: cover;
-  border-radius: 0.2rem;
+  border-radius: 0.15rem;
 }
 
-.wm-demo-rank {
-  font-weight: 700;
-  color: var(--md-default-fg-color);
-}
-
-.wm-demo-cardscore {
+.wm-demo-cap {
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--md-default-fg-color);
 }
 
 .wm-demo-verdict {
@@ -632,8 +647,8 @@
 }
 
 .wm-demo-label {
-  margin: 0.75rem 0 0.25rem;
-  font-size: 0.8rem;
+  margin: 0;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--wm-grey-heading);
 }

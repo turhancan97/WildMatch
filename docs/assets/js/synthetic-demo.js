@@ -34,8 +34,8 @@ export async function mountSyntheticDemo(root) {
   const controls = el("div", { class: "wm-controls wm-controls--inline" });
   const caption = el("p", { class: "wm-match-caption" });
   root.append(
-    el("p", { class: "wm-demo-label", text: "1. Choose a query render" }), queryStrip,
-    el("p", { class: "wm-demo-label", text: "2. Gallery, ranked by matching score (one render per individual)" }), strip,
+    el("div", { class: "wm-demo-row" }, [el("span", { class: "wm-demo-label", text: "Query" }), queryStrip]),
+    el("div", { class: "wm-demo-row" }, [el("span", { class: "wm-demo-label", text: "Gallery, ranked" }), strip]),
     stage, scoreLine, controls, caption,
   );
 
@@ -68,10 +68,10 @@ export async function mountSyntheticDemo(root) {
         class: `wm-demo-card${i === state.query ? " is-active" : ""}`, type: "button", role: "listitem",
         "aria-pressed": i === state.query ? "true" : "false",
         onclick: () => { state.query = i; state.index = 0; state.hover = null; buildQueryStrip(); buildStrip(); load(); },
+        title: `${q.identity.replace("_", " ")}: own individual at rank ${q.correct_rank}`,
       }, [
         el("img", { src: assetUrl(`demo/synthetic/${q.image.file}`), alt: `Query render of ${q.identity}` }),
-        el("span", { class: "wm-demo-rank", text: q.identity.replace("_", " ") }),
-        el("span", { class: `wm-demo-verdict ${q.correct_rank === 1 ? "is-same" : ""}`, text: q.correct_rank === 1 ? "correct at rank 1" : `correct at rank ${q.correct_rank}` }),
+        el("span", { class: "wm-demo-cap", text: q.identity.replace("lynx_", "lynx ") }),
       ]));
     });
   }
@@ -80,14 +80,13 @@ export async function mountSyntheticDemo(root) {
     strip.textContent = "";
     query().candidates.forEach((c, i) => {
       strip.append(el("button", {
-        class: `wm-demo-card${i === state.index ? " is-active" : ""}`, type: "button", role: "listitem",
+        class: `wm-demo-card${i === state.index ? " is-active" : ""}${c.same_individual ? " is-same" : ""}`, type: "button", role: "listitem",
         "aria-pressed": i === state.index ? "true" : "false",
         onclick: () => { state.index = i; state.hover = null; buildStrip(); load(); },
+        title: `rank ${c.rank}, ${c.identity.replace("_", " ")}, score ${c.score.toFixed(3)}${c.same_individual ? " (same individual)" : ""}`,
       }, [
         el("img", { src: assetUrl(`demo/synthetic/${c.image.file}`), alt: `Gallery render ${c.rank}, ${c.identity}` }),
-        el("span", { class: "wm-demo-rank", text: `#${c.rank}` }),
-        el("span", { class: "wm-demo-cardscore", text: `score ${c.score.toFixed(3)}` }),
-        el("span", { class: `wm-demo-verdict ${c.same_individual ? "is-same" : ""}`, text: c.same_individual ? "same individual" : "other individual" }),
+        el("span", { class: "wm-demo-cap", text: `#${c.rank} · ${c.score.toFixed(2)}` }),
       ]));
     });
   }

@@ -984,9 +984,9 @@ confidence; first placed on the home page below the hero, then moved to its own
 `docs/demo.md` page (nav tab "Demo" after Home, a "Demo" hero button and a one-line pointer
 on the home page) on 2026-10-02 because the home page had become dense (user request);
 labelled synthetic with attribution.
-`synthetic-demo.js` (`#wm-synthetic-demo`) renders the query strip (red active frame, "correct
-at rank N" per query), the ranked candidate strip (blue active frame, score and same/other
-label), the pair canvas with confidence-weighted lines and hover tooltips, and shows a pending
+`synthetic-demo.js` (`#wm-synthetic-demo`) renders two compact filmstrips (inline labels "Query" and "Gallery, ranked";
+small thumbnails; captions `lynx N` and `#rank · score`; blue active frame; the gallery render
+of the query's own individual has a red inner frame; details in the title tooltip), the pair canvas with confidence-weighted lines and hover tooltips, and shows a pending
 note until the export exists. `tests/test_export_synthetic_demo.py` covers the GPU-free
 helpers (mask application, RLE decoding, row lookup, ranking, payload, `INDIVIDUALS`
 consistency) and validates the committed export when present.

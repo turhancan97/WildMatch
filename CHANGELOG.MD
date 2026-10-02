@@ -96,6 +96,9 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: demo and match-viewer canvases now fit the page width (height derived from the
   available width, redrawn on resize) instead of overflowing sideways; fixed the demo's
   recursive image callback that left the canvas blank.
+- 2026-10-02: the demo's query and gallery selectors became two compact filmstrips (inline
+  label, small thumbnails, rank and score caption, red inner frame on the query's own
+  individual) to shorten the page (user request).
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

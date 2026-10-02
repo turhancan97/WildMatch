@@ -831,10 +831,10 @@ paper repository's `context.md`: tints 40 %/75 % toward white (`#89b2cd`/`#cedfe
 `#e29184`/`#f3d1cc`), neutrals `#6d6e71` for small text and `#58595b` for headings,
 `#d1d3d4` for decoration only. `mkdocs.yml` sets `primary: custom` and `accent: custom`
 and `docs/assets/css/extra.css` maps them (links, hero title and "ours" rows blue; red
-accents, status pill and warnings; grey rules). The header bar is copper `#ab673a`
-(user request 2026-10-02, with `#8a5230`/`#c9916b` as Material's dark/light steps and the
-`theme-color` meta) because the logo's blue head vanished against a blue header; copper is
-chrome only and never a chart series colour. Icons come from the paper's
+accents, status pill and warnings; grey rules). The header bar is white with dark grey
+text in the light scheme and the dark neutral `#2b3036` in the dark scheme (user decision
+2026-10-02, after a blue bar hid the logo's blue head and a copper `#ab673a` bar was
+rejected), with a hairline `#d1d3d4` rule under header and tabs and brand-blue active tabs. Icons come from the paper's
 `paper/figures/icons/` set (copied to `docs/assets/icons/`, blue and grey variants plus a
 `docs/assets/icons/`). The WildMatch logo package is excluded from the paper
 repository by its `.gitignore` (`/paper/figures/logo/`, so the logo stays out of the

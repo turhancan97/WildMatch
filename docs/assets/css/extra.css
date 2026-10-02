@@ -17,11 +17,12 @@
   --wm-grey: #d1d3d4;
   --wm-grey-text: #6d6e71;
   --wm-grey-heading: #58595b;
-  /* Header bar colour (user request 2026-10-02): a copper tone distinct from the
-     logo's blue head, which disappeared against a blue header. */
-  --wm-header: #ab673a;
-  --wm-header-dark: #8a5230;
-  --wm-header-light: #c9916b;
+  /* Header bar (user request 2026-10-02): white with dark grey text, as the logo
+     package presents the mark; a blue bar hid the logo's blue head and a copper bar
+     clashed. The dark scheme uses the brand's dark neutral instead. */
+  --wm-header: #ffffff;
+  --wm-header-dark: #f2f3f3;
+  --wm-header-light: #ffffff;
   --wm-hero-gap: 1.25rem;
 }
 
@@ -30,8 +31,37 @@
   --md-primary-fg-color: var(--wm-header);
   --md-primary-fg-color--light: var(--wm-header-light);
   --md-primary-fg-color--dark: var(--wm-header-dark);
-  --md-primary-bg-color: #ffffff;
-  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+  /* Text and icons on the white bar. */
+  --md-primary-bg-color: var(--wm-grey-heading);
+  --md-primary-bg-color--light: var(--wm-grey-text);
+}
+
+/* White bar needs a hairline to separate from the page; Material only adds its shadow
+   after scrolling. Tabs underline in brand blue. */
+.md-header {
+  border-bottom: 1px solid var(--wm-grey);
+}
+
+.md-tabs {
+  border-bottom: 1px solid var(--wm-grey);
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: var(--wm-blue);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: #2b3036;
+  --md-primary-fg-color--light: #3b3f44;
+  --md-primary-fg-color--dark: #1e2227;
+  --md-primary-bg-color: #e6e7e8;
+  --md-primary-bg-color--light: #b3b5b8;
+}
+
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  border-bottom-color: #3b3f44;
 }
 
 [data-md-color-accent="custom"] {

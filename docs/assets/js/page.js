@@ -1,0 +1,33 @@
+// Entry module: mounts each interactive component where its mount point exists.
+import { mountExplorer } from "./explorer.js";
+import { mountResultsTable } from "./results-table.js";
+import { mountTrainingCost } from "./training-cost.js";
+import { mountMatchViewer } from "./match-viewer.js";
+
+const MOUNTS = [
+  ["wm-accuracy-explorer", mountExplorer],
+  ["wm-results-table", mountResultsTable],
+  ["wm-training-cost", mountTrainingCost],
+  ["wm-match-viewer", mountMatchViewer],
+];
+
+function mountAll() {
+  for (const [id, mount] of MOUNTS) {
+    const root = document.getElementById(id);
+    if (root && !root.dataset.wmMounted) {
+      root.dataset.wmMounted = "1";
+      mount(root).catch((error) => {
+        root.textContent = `This view failed to initialise (${error.message}).`;
+      });
+    }
+  }
+}
+
+// Material exposes document$ for instant navigation; fall back to DOMContentLoaded.
+if (window.document$ && typeof window.document$.subscribe === "function") {
+  window.document$.subscribe(mountAll);
+} else if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", mountAll);
+} else {
+  mountAll();
+}

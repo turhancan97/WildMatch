@@ -752,6 +752,32 @@ def command_candidates(args: argparse.Namespace) -> None:
         plt.close(figure)
 
 
+def web_export_pair(out_dir: Path, key: str, label: str, raw_q: Image.Image, raw_g: Image.Image,
+                    kq: np.ndarray, kg: np.ndarray, confidences: np.ndarray, match_count: int, score: float,
+                    query_path: str, gallery_path: str, long_side: int) -> Dict[str, Any]:
+    """Write web-sized raw photos and every correspondence for the project-page match viewer.
+
+    Keypoints are scaled from raw-photo pixels to the exported photo's pixels, so the
+    viewer draws them without knowing the raw size. Paths written are dataset-relative.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    entry: Dict[str, Any] = {"dataset": key, "label": label, "match_count": int(match_count), "score": float(score),
+                             "query_path": query_path, "gallery_path": gallery_path, "images": {}, "points": {}}
+    for side, raw, points in (("query", raw_q, kq), ("gallery", raw_g, kg)):
+        scale = min(1.0, long_side / max(raw.width, raw.height))
+        size = (max(1, round(raw.width * scale)), max(1, round(raw.height * scale)))
+        photo = raw.convert("RGB").resize(size, Image.LANCZOS) if scale < 1.0 else raw.convert("RGB")
+        name = f"{key}_{side}.jpg"
+        photo.save(out_dir / name, format="JPEG", quality=86, optimize=True, progressive=True)
+        entry["images"][side] = {"file": name, "width": size[0], "height": size[1]}
+        scaled = np.asarray(points, dtype=np.float64).reshape(-1, 2) * (size[0] / raw.width, size[1] / raw.height)
+        entry["points"][side] = [[round(float(x), 1), round(float(y), 1)] for x, y in scaled]
+    order = np.argsort(-np.asarray(confidences, dtype=np.float64), kind="stable")
+    entry["confidence"] = [round(float(c), 4) for c in np.asarray(confidences, dtype=np.float64)]
+    entry["order_by_confidence"] = [int(i) for i in order]
+    return entry
+
+
 def command_render(args: argparse.Namespace) -> None:
     validate_examples(EXAMPLES)
     _style(paper=True)
@@ -778,6 +804,7 @@ def command_render(args: argparse.Namespace) -> None:
         y = fig_h - (row + 1) * (cell_h + title) + 0.0
         axes.append(figure.add_axes((x / args.width, y / fig_h, cell_w / args.width, cell_h / fig_h)))
     sidecar = []
+    web_entries = []
     for index, (axis, example, (key, label)) in enumerate(zip(axes, EXAMPLES, PAPER_ORDER)):
         context = DatasetContext(key)
         row_q, row_g = context.row_of_path(example.query_path), context.row_of_path(example.gallery_path)
@@ -804,6 +831,17 @@ def command_render(args: argparse.Namespace) -> None:
             "score": float(result.score), "note": example.note,
             "background_dim": float(args.dim if example.dim is None else example.dim), "aspect": args.aspect,
         })
+        if args.web_export is not None:
+            web_entries.append(web_export_pair(args.web_export, key, label, raw_q, raw_g, kq, kg,
+                                               result.confidences, int(result.match_count), float(result.score),
+                                               example.query_path, example.gallery_path, args.web_long_side))
+    if args.web_export is not None:
+        args.web_export.mkdir(parents=True, exist_ok=True)
+        payload = {"generated_by": "scripts/plot_match_examples.py render --web-export", "method": "LoMa + WildMatch",
+                   "candidate_k": 50, "coordinates": "pixels on the exported photos (origin top-left)",
+                   "examples": web_entries}
+        (args.web_export / "match_examples.json").write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
+        print(f"[match-examples] wrote web assets to {args.web_export}")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for fmt, dpi in (("pdf", 300), ("png", 300)):
         figure.savefig(args.output_dir / f"match_examples.{fmt}", dpi=dpi, facecolor="white",
@@ -848,6 +886,10 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     render.add_argument("--aspect", type=float, default=4 / 3,
                         help="Width/height of each photo crop, shared by all panels")
     render.add_argument("--width", type=float, default=6.875, help="Figure width in inches (CVPR full text width)")
+    render.add_argument("--web-export", type=Path, default=None,
+                        help="Also write web-sized raw photos and all correspondences for the project-page "
+                             "match viewer into this directory (docs/assets/match for the page)")
+    render.add_argument("--web-long-side", type=int, default=1000, help="Long side of the exported web photos")
     return parser.parse_args(argv)
 
 

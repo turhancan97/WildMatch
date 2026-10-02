@@ -980,7 +980,10 @@ correspondence, confidences and confidence order, model settings and checkpoint 
 attribution, `synthetic: true`). User decisions: fine-tuned matcher only (no default-LoMa
 comparison, because the internal expert study found fine-tuned matches less intuitive and a
 side-by-side would invite that reading); strongest-N slider (default 10) with hover
-confidence; placed on the home page below the hero and labelled synthetic with attribution.
+confidence; first placed on the home page below the hero, then moved to its own
+`docs/demo.md` page (nav tab "Demo" after Home, a "Demo" hero button and a one-line pointer
+on the home page) on 2026-10-02 because the home page had become dense (user request);
+labelled synthetic with attribution.
 `synthetic-demo.js` (`#wm-synthetic-demo`) renders the query strip (red active frame, "correct
 at rank N" per query), the ranked candidate strip (blue active frame, score and same/other
 label), the pair canvas with confidence-weighted lines and hover tooltips, and shows a pending

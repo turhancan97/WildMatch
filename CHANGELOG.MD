@@ -91,6 +91,8 @@ kept under Unreleased until a project version is assigned.
   chosen by the same appearance rules from an A/B contact sheet. Export rerun on the GPU:
   7 of 10 queries correct at rank 1, three near-ties with another individual, stated on
   the page.
+- 2026-10-02: the synthetic demo moved from the home page to its own Demo page (user request);
+  the home page keeps a hero button and a one-line pointer.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

@@ -623,3 +623,19 @@
 .wm-controls--inline {
   margin-top: 0.25rem;
 }
+
+.wm-demo-label {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .wm-demo-label {
+  color: var(--md-default-fg-color);
+}
+
+.wm-demo-strip--queries .wm-demo-card.is-active {
+  border-color: var(--wm-red);
+  box-shadow: 0 0 0 2px var(--wm-red-75);
+}

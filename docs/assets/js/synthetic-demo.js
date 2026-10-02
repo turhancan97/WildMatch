@@ -1,5 +1,6 @@
-// Synthetic keypoint-match demo: one CzechLynx synthetic query render against six
-// gallery renders ranked by LoMa + WildMatch, with every correspondence and its
+// Synthetic keypoint-match demo: ten CzechLynx synthetic individuals, two renders each.
+// Visitors pick one of the ten query renders; its ten gallery candidates (one per
+// individual) are shown ranked by LoMa + WildMatch, with every correspondence and its
 // confidence. Data: docs/assets/demo/synthetic/synthetic_demo.json, written by
 // scripts/export_synthetic_demo.py from real matcher output.
 import { PALETTE, theme, onThemeChange, el, assetUrl } from "./wm-common.js";
@@ -19,37 +20,64 @@ export async function mountSyntheticDemo(root) {
     root.classList.add("wm-widget--pending");
     return;
   }
-  const state = { index: 0, count: 10, hover: null };
+  const state = { query: 0, index: 0, count: 10, hover: null };
   root.classList.remove("wm-widget");
   root.textContent = "";
 
+  const queryStrip = el("div", { class: "wm-demo-strip wm-demo-strip--queries", role: "list", "aria-label": "query renders" });
+  const strip = el("div", { class: "wm-demo-strip", role: "list", "aria-label": "ranked gallery renders" });
   const stage = el("div", { class: "wm-demo-stage" });
   const canvas = el("canvas", { class: "wm-match-canvas", role: "img" });
   const tooltip = el("div", { class: "wm-demo-tooltip", hidden: "" });
   stage.append(canvas, tooltip);
   const scoreLine = el("p", { class: "wm-demo-score" });
   const controls = el("div", { class: "wm-controls wm-controls--inline" });
-  const strip = el("div", { class: "wm-demo-strip", role: "list" });
   const caption = el("p", { class: "wm-match-caption" });
-  root.append(strip, stage, scoreLine, controls, caption);
+  root.append(
+    el("p", { class: "wm-demo-label", text: "1. Choose a query render" }), queryStrip,
+    el("p", { class: "wm-demo-label", text: "2. Gallery, ranked by matching score (one render per individual)" }), strip,
+    stage, scoreLine, controls, caption,
+  );
 
   const countInput = el("input", { type: "range", min: "0", max: "10", step: "1", value: "10", "aria-label": "matches drawn" });
   const countValue = el("span", { class: "wm-range-value", text: "10" });
   countInput.addEventListener("input", () => { state.count = Number(countInput.value); countValue.textContent = countInput.value; draw(); });
   controls.append(el("label", { class: "wm-control" }, [el("span", { text: "Strongest matches drawn" }), el("span", { class: "wm-range" }, [countInput, countValue])]));
 
-  const images = { query: new Image() };
-  let ready = { query: false, gallery: false };
-  images.query.onload = () => { ready.query = true; draw(); };
-  images.query.src = assetUrl(`demo/synthetic/${data.query.image.file}`);
-  const galleryImages = new Map();
+  const imageCache = new Map();
+  function image(file, onload) {
+    if (!imageCache.has(file)) {
+      const img = new Image();
+      img.src = assetUrl(`demo/synthetic/${file}`);
+      imageCache.set(file, img);
+    }
+    const img = imageCache.get(file);
+    if (img.complete && img.naturalWidth) onload(); else img.addEventListener("load", onload, { once: true });
+    return img;
+  }
 
-  function candidate() { return data.candidates[state.index]; }
+  function query() { return data.queries[state.query]; }
+  function candidate() { return query().candidates[state.index]; }
+
+  function buildQueryStrip() {
+    queryStrip.textContent = "";
+    data.queries.forEach((q, i) => {
+      queryStrip.append(el("button", {
+        class: `wm-demo-card${i === state.query ? " is-active" : ""}`, type: "button", role: "listitem",
+        "aria-pressed": i === state.query ? "true" : "false",
+        onclick: () => { state.query = i; state.index = 0; state.hover = null; buildQueryStrip(); buildStrip(); load(); },
+      }, [
+        el("img", { src: assetUrl(`demo/synthetic/${q.image.file}`), alt: `Query render of ${q.identity}` }),
+        el("span", { class: "wm-demo-rank", text: q.identity.replace("_", " ") }),
+        el("span", { class: `wm-demo-verdict ${q.correct_rank === 1 ? "is-same" : ""}`, text: q.correct_rank === 1 ? "correct at rank 1" : `correct at rank ${q.correct_rank}` }),
+      ]));
+    });
+  }
 
   function buildStrip() {
     strip.textContent = "";
-    data.candidates.forEach((c, i) => {
-      const card = el("button", {
+    query().candidates.forEach((c, i) => {
+      strip.append(el("button", {
         class: `wm-demo-card${i === state.index ? " is-active" : ""}`, type: "button", role: "listitem",
         "aria-pressed": i === state.index ? "true" : "false",
         onclick: () => { state.index = i; state.hover = null; buildStrip(); load(); },
@@ -58,22 +86,12 @@ export async function mountSyntheticDemo(root) {
         el("span", { class: "wm-demo-rank", text: `#${c.rank}` }),
         el("span", { class: "wm-demo-cardscore", text: `score ${c.score.toFixed(3)}` }),
         el("span", { class: `wm-demo-verdict ${c.same_individual ? "is-same" : ""}`, text: c.same_individual ? "same individual" : "other individual" }),
-      ]);
-      strip.append(card);
+      ]));
     });
   }
 
   function load() {
     const c = candidate();
-    ready.gallery = false;
-    if (!galleryImages.has(c.tag)) {
-      const img = new Image();
-      img.onload = () => { if (candidate().tag === c.tag) { ready.gallery = true; draw(); } };
-      img.src = assetUrl(`demo/synthetic/${c.image.file}`);
-      galleryImages.set(c.tag, img);
-    } else if (galleryImages.get(c.tag).complete) {
-      ready.gallery = true;
-    }
     countInput.max = String(c.match_count);
     if (state.count > c.match_count) state.count = c.match_count;
     if (state.count === 0 && c.match_count > 0) state.count = Math.min(10, c.match_count);
@@ -81,16 +99,15 @@ export async function mountSyntheticDemo(root) {
     draw();
   }
 
-  // Geometry of the current drawing, kept for hit-testing.
   let geom = null;
 
   function draw() {
-    const c = candidate();
-    const gallery = galleryImages.get(c.tag);
-    if (!ready.query || !ready.gallery || !gallery) return;
+    const q = query(), c = candidate();
+    const qImg = image(q.image.file, draw), gImg = image(c.image.file, draw);
+    if (!(qImg.complete && qImg.naturalWidth && gImg.complete && gImg.naturalWidth)) return;
     const t = theme();
-    const sQ = PHOTO_HEIGHT / data.query.image.height, sG = PHOTO_HEIGHT / c.image.height;
-    const wQ = Math.round(data.query.image.width * sQ), wG = Math.round(c.image.width * sG);
+    const sQ = PHOTO_HEIGHT / q.image.height, sG = PHOTO_HEIGHT / c.image.height;
+    const wQ = Math.round(q.image.width * sQ), wG = Math.round(c.image.width * sG);
     const width = wQ + GAP + wG;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr; canvas.height = PHOTO_HEIGHT * dpr;
@@ -98,8 +115,8 @@ export async function mountSyntheticDemo(root) {
     const ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, PHOTO_HEIGHT);
-    ctx.drawImage(images.query, 0, 0, wQ, PHOTO_HEIGHT);
-    ctx.drawImage(gallery, wQ + GAP, 0, wG, PHOTO_HEIGHT);
+    ctx.drawImage(qImg, 0, 0, wQ, PHOTO_HEIGHT);
+    ctx.drawImage(gImg, wQ + GAP, 0, wG, PHOTO_HEIGHT);
     const chosen = c.order_by_confidence.slice(0, state.count);
     const segments = [];
     const maxConf = c.confidence.length ? Math.max(...c.confidence) : 1;
@@ -122,13 +139,14 @@ export async function mountSyntheticDemo(root) {
       }
     }
     ctx.globalAlpha = 1;
-    tag(ctx, 8, 8, "Query (synthetic)", t); tag(ctx, wQ + GAP + 8, 8, `Rank ${c.rank} (synthetic)`, t);
-    geom = { segments, wQ };
-    canvas.setAttribute("aria-label", `Synthetic query render of ${data.query.identity} against gallery render of ${c.identity}, ranked ${c.rank} with score ${c.score.toFixed(3)}, ${chosen.length} of ${c.match_count} matches drawn`);
+    tag(ctx, 8, 8, `Query ${q.identity.replace("_", " ")} (synthetic)`, t);
+    tag(ctx, wQ + GAP + 8, 8, `Rank ${c.rank}: ${c.identity.replace("_", " ")} (synthetic)`, t);
+    geom = { segments };
+    canvas.setAttribute("aria-label", `Synthetic query render of ${q.identity} against gallery render of ${c.identity}, ranked ${c.rank} with score ${c.score.toFixed(3)}, ${chosen.length} of ${c.match_count} matches drawn`);
     scoreLine.textContent = "";
     scoreLine.append(
       el("strong", { text: `Score ${c.score.toFixed(3)}` }),
-      el("span", { text: ` · ${c.match_count} matches · rank ${c.rank} of ${data.candidates.length} · ` }),
+      el("span", { text: ` · ${c.match_count} matches · rank ${c.rank} of ${q.candidates.length} · ` }),
       el("span", { class: `wm-demo-verdict ${c.same_individual ? "is-same" : ""}`, text: c.same_individual ? "same individual as the query" : "a different individual" }),
     );
     caption.textContent = `${chosen.length} of ${c.match_count} matches drawn, strongest first; line weight follows confidence. Hover a match to read its confidence. ${data.attribution}`;
@@ -170,6 +188,7 @@ export async function mountSyntheticDemo(root) {
   });
   canvas.addEventListener("mouseleave", () => { tooltip.hidden = true; if (state.hover != null) { state.hover = null; draw(); } });
 
+  buildQueryStrip();
   buildStrip();
   load();
   onThemeChange(draw);

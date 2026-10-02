@@ -944,46 +944,49 @@ is named as the paper's protocol and `strict` as unused. Metadata files per data
 the launcher profiles.
 
 **Synthetic match demo (requested by the user via the paper session, decisions 2026-10-02).**
-`scripts/export_synthetic_demo.py` matches the renders in `RENDERS`: the paper's teaser
-selection (paths copied from the paper's `results/teaser_prep.py`: query `L173_0` in snow
-against six forest renders, one of them lynx 173 again) plus four more individuals added at
-the user's request on 2026-10-02 (lynx 27, 174, 289, 45; one render each), so the gallery
-holds ten different lynxes. The additions were chosen by appearance only, before any
-matching, with thresholds calibrated on the paper's own renders: side view (mask box at
-least 1.25x wider than tall), blue-pixel share <= 0.0066 and strongly saturated share <= 0.55
-inside the mask, mask share 0.18-0.42, long side 450-1400 px, random seed 11, then picked by
-eye from a 12-candidate sheet for scene variety; their scores were kept as they came
-(0.001-0.003, 2-5 matches). A first random pick (lynx 265, 226, 101, 206; mask share and
-size only) was rejected by the user: those renders had unnatural coats (blue patches, dense
-high-contrast spots) and two faced the camera, and the fine-tuned matcher gave them
-hundreds of confident matches (scores 0.29-0.62) although lynx 173 still ranked first. Keep
-this in mind when reading synthetic results: strongly textured synthetic coats attract
-confident correspondences; CzechLynx synthetic subset, Picek et
-al., Zenodo 17592004, CC BY 4.0) read from the local dataset
+`scripts/export_synthetic_demo.py` holds `INDIVIDUALS`: ten synthetic lynxes with two renders
+each (`query` = render A, `gallery` = render B), read from the local dataset
 (`/shared/sets/datasets/vision/czechlynx/CzechLynx_v2`, `CzechLynxDataset-Metadata-Synthetic.csv`,
-40,000 rows with COCO-RLE `mask`) with the fine-tuned LoMa matcher configured from the paper
-run `20260920T122915Z_0015f14a` (same checkpoint as the k=250 run `20260920T131759Z_612b4791`:
-`loma-b-finetuned-loma-mined-legacy/epoch_299`, matcher only, LoMa-B, 512 px, 512 keypoints,
-default threshold). The model input is the raw render with the dataset mask applied (black
-outside, exactly like `BenchmarkDatasetView`), so keypoints map straight onto the raw render,
-which the page displays resized to a 1000 px long side. The user allowed running it on the
-login node's V100 on 2026-10-02 (first result: lynx 173 ranks first with score 0.801 and 432
-matches; the five other individuals score 0.001 to 0.016 with 1 to 21 matches). Output
-`docs/assets/demo/synthetic/` holds the seven JPEGs and `synthetic_demo.json` (query, candidates ranked by score with identity,
-`same_individual`, every correspondence, confidences and confidence order, model settings
-and checkpoint SHA-256, attribution, `synthetic: true`). The prep.json scores are SIFT
-stand-ins and are never used. User decisions: fine-tuned matcher only (no default-LoMa
+40,000 rows with COCO-RLE `mask`; CzechLynx synthetic subset, Picek et al., Zenodo 17592004,
+CC BY 4.0). Every query is matched against the ten gallery renders, so each query has exactly
+one correct answer; visitors switch queries (user clarification 2026-10-02: ten *queries* to
+switch between, not ten gallery items for one query). The first six individuals (173, 129,
+242, 88, 79, 138) and lynx 173's two renders are the paper's teaser selection (paths from the
+paper's `results/teaser_prep.py`); the other query renders (lynx 27, 174, 289, 45) and all
+other gallery renders were chosen by appearance only, before any matching, with thresholds
+calibrated on the paper's renders: side view (mask box at least 1.25x wider than tall),
+blue-pixel share <= 0.0066 and strongly saturated share <= 0.55 inside the mask, mask share
+0.18-0.42, long side 450-1400 px, gallery renders preferring a different scene than the query
+render, all accepted from contact sheets by eye; scores were never used for selection. A
+first random pick of extra individuals (lynx 265, 226, 101, 206; mask share and size only)
+was rejected by the user because the renders had unnatural coats (blue patches, dense
+high-contrast spots) and two faced the camera, and the fine-tuned matcher gave them hundreds
+of confident matches (scores 0.29-0.62 against the lynx 173 query) although the correct
+render still ranked first. Result of the ten-query export (2026-10-02, kept as it came):
+7 of 10 queries rank their own individual first (scores 0.61-0.83, 350-440 matches); lynx 242,
+79 and 45 rank another lynx first by 0.004-0.025 (242 -> 289, 79 -> 27, 45 -> 27), and
+cross-individual scores are generally high (0.5-0.67) because synthetic coats come from a
+shared texture model, unlike the paper's six teaser negatives against the snow query, which
+score 0.001-0.016. The home page states this; never present the demo as a benchmark. The
+matcher is configured from the paper run `20260920T122915Z_0015f14a` (same checkpoint as the
+k=250 run `20260920T131759Z_612b4791`: `loma-b-finetuned-loma-mined-legacy/epoch_299`,
+matcher only, LoMa-B, 512 px, 512 keypoints, default threshold 0.10); the model input is the
+raw render with the dataset mask applied (black outside, exactly like `BenchmarkDatasetView`),
+so keypoints map straight onto the raw render, which the page displays resized to a 1000 px
+long side. The user allowed running the export on the login node's V100 (2026-10-02). Output
+`docs/assets/demo/synthetic/` holds twenty JPEGs (`Q_<identity>.jpg`, `G_<identity>.jpg`) and
+`synthetic_demo.json` (`gallery`, `queries` with ranked `candidates`, `correct_rank`, every
+correspondence, confidences and confidence order, model settings and checkpoint SHA-256,
+attribution, `synthetic: true`). User decisions: fine-tuned matcher only (no default-LoMa
 comparison, because the internal expert study found fine-tuned matches less intuitive and a
 side-by-side would invite that reading); strongest-N slider (default 10) with hover
-confidence; query against all six, ranked, including the different individuals; placed on
-the home page below the hero and labelled synthetic with attribution. `synthetic-demo.js`
-(`#wm-synthetic-demo`) renders the ranked candidate strip, the pair canvas with
-confidence-weighted lines and hover tooltips, and shows a pending note until the export
-exists. `tests/test_export_synthetic_demo.py` covers the GPU-free helpers (mask application,
-RLE decoding, row lookup, ranking, payload) and validates the committed export when present.
-An earlier version of the script read the paper's teaser crops and recovered the mask from
-their flat background colour; it was replaced the same day once the user pointed at the
-local renders and masks.
+confidence; placed on the home page below the hero and labelled synthetic with attribution.
+`synthetic-demo.js` (`#wm-synthetic-demo`) renders the query strip (red active frame, "correct
+at rank N" per query), the ranked candidate strip (blue active frame, score and same/other
+label), the pair canvas with confidence-weighted lines and hover tooltips, and shows a pending
+note until the export exists. `tests/test_export_synthetic_demo.py` covers the GPU-free
+helpers (mask application, RLE decoding, row lookup, ranking, payload, `INDIVIDUALS`
+consistency) and validates the committed export when present.
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

@@ -74,11 +74,14 @@ Individual animal re-identification from camera-trap imagery is an instance retr
 
 ## Try it on synthetic renders
 
-One synthetic query render of a lynx is matched against ten synthetic gallery renders of
-different individuals by LoMa + WildMatch, the matcher fine-tuned on CzechLynx. Pick a candidate to see its
+Ten synthetic lynxes, two renders each. Choose one of the ten query renders; LoMa +
+WildMatch, the matcher fine-tuned on CzechLynx, ranks the ten gallery renders, one per
+individual, so exactly one is the same animal. Pick a candidate to see its
 correspondences, drag the slider to show more of them, and hover a match to read its
 confidence. The matches and scores are real matcher output; the images are synthetic
-renders, not the paper's test data, and the scores are not a benchmark result.
+renders, not the paper's test data, and the scores are not a benchmark result. Synthetic
+coats are generated from a shared texture model, so different individuals can look alike
+to the matcher and a few queries rank another lynx first by a small margin.
 
 <div id="wm-synthetic-demo" class="wm-widget">Loading the synthetic match demo…</div>
 

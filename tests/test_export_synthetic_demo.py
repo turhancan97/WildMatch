@@ -69,23 +69,35 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
                                    matched_kpts0=None, matched_kpts1=None)
         kq = np.array([[1.0, 2.0], [3.0, 4.0]]); kg = np.array([[5.0, 6.0], [7.0, 8.0]])
         cands = [
-            D.candidate_record("L129_0", "x/synthetic_lynx_129/a.jpg", "lynx_173", (520, 520), result(0.02, [0.3, 0.9]), kq, kg),
-            D.candidate_record("L173_1", "x/synthetic_lynx_173/b.jpg", "lynx_173", (520, 520), result(0.4, [0.5, 0.8]), kq, kg),
+            D.candidate_record("G_lynx_129", "x/synthetic_lynx_129/a.jpg", "lynx_173", (520, 520), result(0.02, [0.3, 0.9]), kq, kg),
+            D.candidate_record("G_lynx_173", "x/synthetic_lynx_173/b.jpg", "lynx_173", (520, 520), result(0.4, [0.5, 0.8]), kq, kg),
         ]
-        payload = D.build_payload({"tag": "L173_0", "identity": "lynx_173", "image": {"file": "L173_0.jpg", "width": 520, "height": 520}},
-                                  cands, {"checkpoint_sha256": "abc"})
-        ranked = payload["candidates"]
-        self.assertEqual([c["tag"] for c in ranked], ["L173_1", "L129_0"])
+        queries = [{"tag": "Q_lynx_173", "identity": "lynx_173", "image": {"file": "Q_lynx_173.jpg", "width": 520, "height": 520},
+                    "candidates": cands}]
+        gallery = [{"tag": "G_lynx_173", "identity": "lynx_173", "image": {}}, {"tag": "G_lynx_129", "identity": "lynx_129", "image": {}}]
+        payload = D.build_payload(queries, gallery, {"checkpoint_sha256": "abc"})
+        ranked = payload["queries"][0]["candidates"]
+        self.assertEqual([c["tag"] for c in ranked], ["G_lynx_173", "G_lynx_129"])
         self.assertEqual([c["rank"] for c in ranked], [1, 2])
+        self.assertEqual(payload["queries"][0]["correct_rank"], 1)
         self.assertTrue(ranked[0]["same_individual"]); self.assertFalse(ranked[1]["same_individual"])
         self.assertEqual(ranked[1]["order_by_confidence"], [1, 0])
         self.assertTrue(payload["synthetic"])
         self.assertIn("CC BY 4.0", payload["attribution"])
+        self.assertEqual(len(payload["gallery"]), 2)
         json.dumps(payload)
+
+    def test_individuals_table_is_consistent(self):
+        paths = [p for sides in D.INDIVIDUALS.values() for p in sides.values()]
+        self.assertEqual(len(paths), len(set(paths)))
+        for identity, sides in D.INDIVIDUALS.items():
+            self.assertEqual(set(sides), {"query", "gallery"})
+            for rel in sides.values():
+                self.assertEqual(D.identity_of(rel), identity)
 
     def test_payload_rejects_private_paths(self):
         with self.assertRaises(ValueError):
-            D.build_payload({"tag": "q", "identity": "lynx_1", "source": "/shared/x.jpg", "image": {}}, [], {})
+            D.build_payload([{"tag": "q", "identity": "lynx_1", "source": "/shared/x.jpg", "image": {}, "candidates": []}], [], {})
 
 
 class CommittedDemoTests(unittest.TestCase):
@@ -97,20 +109,28 @@ class CommittedDemoTests(unittest.TestCase):
         data = json.loads(self.DEMO.read_text(encoding="utf-8"))
         self.assertTrue(data["synthetic"])
         self.assertIn("Picek", data["attribution"])
-        self.assertTrue((self.DEMO.parent / data["query"]["image"]["file"]).is_file())
-        scores = [c["score"] for c in data["candidates"]]
-        self.assertEqual(scores, sorted(scores, reverse=True))
-        for c in data["candidates"]:
-            self.assertTrue((self.DEMO.parent / c["image"]["file"]).is_file())
-            n = c["match_count"]
-            self.assertEqual(len(c["points"]["query"]), n)
-            self.assertEqual(len(c["points"]["gallery"]), n)
-            self.assertEqual(len(c["confidence"]), n)
-            self.assertEqual(sorted(c["order_by_confidence"]), list(range(n)))
-            for side in ("query", "gallery"):
-                size = data["query"]["image"] if side == "query" else c["image"]
-                for x, y in c["points"][side]:
-                    self.assertTrue(-1 <= x <= size["width"] and -1 <= y <= size["height"], (c["tag"], side, x, y))
+        gallery = {g["tag"]: g for g in data["gallery"]}
+        self.assertEqual(len(gallery), len(data["queries"]))
+        for g in gallery.values():
+            self.assertTrue((self.DEMO.parent / g["image"]["file"]).is_file())
+        for q in data["queries"]:
+            self.assertTrue((self.DEMO.parent / q["image"]["file"]).is_file())
+            scores = [c["score"] for c in q["candidates"]]
+            self.assertEqual(scores, sorted(scores, reverse=True))
+            self.assertEqual(len(q["candidates"]), len(gallery))
+            self.assertEqual(sum(c["same_individual"] for c in q["candidates"]), 1)
+            self.assertIsNotNone(q["correct_rank"])
+            for c in q["candidates"]:
+                self.assertIn(c["tag"], gallery)
+                n = c["match_count"]
+                self.assertEqual(len(c["points"]["query"]), n)
+                self.assertEqual(len(c["points"]["gallery"]), n)
+                self.assertEqual(len(c["confidence"]), n)
+                self.assertEqual(sorted(c["order_by_confidence"]), list(range(n)))
+                for side in ("query", "gallery"):
+                    size = q["image"] if side == "query" else c["image"]
+                    for x, y in c["points"][side]:
+                        self.assertTrue(-1 <= x <= size["width"] and -1 <= y <= size["height"], (q["tag"], c["tag"], side, x, y))
         text = self.DEMO.read_text(encoding="utf-8")
         self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
 

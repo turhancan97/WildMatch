@@ -85,6 +85,12 @@ kept under Unreleased until a project version is assigned.
   selection by appearance instead, so lynx 27, 174, 289 and 45 were picked before matching
   with thresholds calibrated on the paper's renders (side view, natural colours) and their
   scores kept as they came (0.001-0.003). Export rerun on the local GPU and recommitted.
+- 2026-10-02: the synthetic demo became a ten-query demo (user clarification): ten individuals
+  with two renders each, render A as query and the ten render-B images as the shared
+  gallery, a query strip to switch between them, `correct_rank` per query; gallery renders
+  chosen by the same appearance rules from an A/B contact sheet. Export rerun on the GPU:
+  7 of 10 queries correct at rank 1, three near-ties with another individual, stated on
+  the page.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

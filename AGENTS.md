@@ -796,7 +796,7 @@ method text, dataset table, figure captions, headline numbers, open items) is st
 on purpose; re-read it before writing page text. The paper's LaTeX source is cloned
 read-only at `/home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper` (GitHub
 `turhancan97/ECIR-Animal-ReID-Paper`, approved by the user 2026-10-02; snapshot of
-`226037a`, refresh with `git pull` since the paper changes until the 2026-10-05
+`2773089`, refresh with `git pull` since the paper changes until the 2026-10-05
 deadline). `paper/main.tex` inputs `paper/tex/{abstract,intro,related,method_v2_mp,
 setup,results,conclusion}.tex` (not `method.tex` or the `_method*.tex` drafts); tables
 in `paper/tables/` and figures in `paper/figures/` come from `results/make_tables.py`

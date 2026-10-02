@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: the project page's Demo page was split into a `docs/demo/` section (user
+  request, the single page had become cluttered): a hub `demo/index.md` with one card per
+  demo (thumbnails from `scripts/build_demo_cards.py`, composed from the committed demo
+  exports) and five pages in narrative order (before/after, rank changes, mined pairs,
+  background masking, synthetic matching), each with a lead line and a back button. No
+  JavaScript changed; each page now loads only its own widget. Tests in
+  `tests/test_build_demo_cards.py`; `mkdocs build --strict` passes.
 - 2026-10-02: project page scaffold (MkDocs Material) on the local `project-page`
   branch: `mkdocs.yml`, `requirements-docs.txt` (mkdocs-material 9.7.7), `docs/` pages
   (home with abstract and authors, method, datasets, results, qualitative, training cost,

@@ -982,7 +982,9 @@ comparison, because the internal expert study found fine-tuned matches less intu
 side-by-side would invite that reading); strongest-N slider (default 10) with hover
 confidence; first placed on the home page below the hero, then moved to its own
 `docs/demo.md` page (nav tab "Demo" after Home, a "Demo" hero button and a one-line pointer
-on the home page) on 2026-10-02 because the home page had become dense (user request);
+on the home page) on 2026-10-02 because the home page had become dense (user request), and
+then to `docs/demo/synthetic.md` when the Demo page was split into a section (see "Demo
+section" below);
 labelled synthetic with attribution.
 `synthetic-demo.js` (`#wm-synthetic-demo`) renders two compact filmstrips (inline labels "Query" and "Gallery, ranked";
 small thumbnails; captions `lynx N` and `#rank · score`; blue active frame; the gallery render
@@ -1150,6 +1152,27 @@ filmstrip and three method columns of five ranked thumbnails with the true indiv
 blue. Tests in `tests/test_export_rank_change_demo.py` check the stable shortlist ranking, the
 category logic and the committed export's internal consistency (counts add up, top-1 flags
 match true ranks).
+
+**Demo section (user request 2026-10-02, replacing the single cluttered Demo page).** The
+five demos live on their own pages under `docs/demo/` and the "Demo" tab opens a hub,
+`docs/demo/index.md` (Material `navigation.indexes`), with one card per demo (thumbnail,
+one sentence, link) in the paper's narrative order chosen by the user: `before-after.md`,
+`rank-changes.md`, `mined-pairs.md`, `masking.md`, `synthetic.md`; Material's prev/next
+footer walks them in that order. Each page keeps its former section text and mount point,
+opens with a one-line "What to look for" lead (`{ .wm-lead }`) and ends with a button back
+to the hub; the hub carries the shared "How to read the demos" notes and attributions, the
+synthetic page keeps its own "How to read it". `page.js` is unchanged: it mounts whatever
+`#wm-*` mount point the current page has, so each demo page loads only its own widget.
+Card thumbnails (480 x 300 JPEG, `docs/assets/demo/cards/<page>.jpg`) are composed by
+`scripts/build_demo_cards.py` (CPU, Pillow) from photos already committed under
+`docs/assets/demo/`, never from dataset files: the Czech Lynx before/after pair, the first
+rescued rank-change query with its fine-tuned top 3 (blue rule under correct ones), the first
+mined-pairs anchor with two positives (blue) and two hard negatives (red), the lynx 173
+gallery render half raw / half SAM 3-masked, and lynx 173's two renders. Rerun it after a
+demo re-export. Hub card styles are `.wm-hub` / `.wm-hub-card` in `extra.css` (brand-blue
+hover and image rule). `tests/test_build_demo_cards.py` covers the compose helpers, the
+fail-closed builders and the committed cards against the hub's references and pages.
+Home-page links point at `demo/index.md`. Strict build verified 2026-10-02.
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

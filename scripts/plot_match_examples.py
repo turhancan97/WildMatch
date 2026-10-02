@@ -602,12 +602,14 @@ def points_outside_boxes(points: np.ndarray, boxes: Sequence[Tuple[float, float,
 def draw_paper_pair(axis, query: Image.Image, gallery: Image.Image, foregrounds, kq: np.ndarray,
                     kg: np.ndarray, confidences: np.ndarray, count: int, aspect: float,
                     match_count: int, dim: float, height: int = 420, gutter: int = 6,
-                    spacing: float = 0.12, font_size: float = 6.0, side_tags: bool = True) -> int:
+                    spacing: float = 0.12, font_size: float = 6.0, side_tags: bool = True,
+                    show_tags: bool = True) -> int:
     """Paper panel: padded-trimmed, background-dimmed, fixed-aspect photos with spread lines.
 
     Corner tags are drawn first; matches with an endpoint under a tag are dropped
     before the ``count`` spread matches are chosen, so no dot hides behind a label.
-    ``side_tags`` adds the "Query"/"Top-1 match" tags (the paper shows them once).
+    ``side_tags`` adds the "Query"/"Top-1 match" tags (the paper shows them once);
+    ``show_tags=False`` draws no tag at all, leaving the photos text-free.
     """
     from matplotlib import patheffects
     from matplotlib.collections import LineCollection
@@ -626,8 +628,10 @@ def draw_paper_pair(axis, query: Image.Image, gallery: Image.Image, foregrounds,
     axis.set_axis_off()
 
     pad = 0.035 * height
-    tags = [_corner_tag(axis, canvas.width - pad, height - pad, f"{match_count} matches", "right", "bottom", font_size)]
-    if side_tags:
+    tags = []
+    if show_tags:
+        tags.append(_corner_tag(axis, canvas.width - pad, height - pad, f"{match_count} matches", "right", "bottom", font_size))
+    if show_tags and side_tags:
         tags.append(_corner_tag(axis, pad, pad, "Query", "left", "top", font_size))
         tags.append(_corner_tag(axis, q_img.width + gutter + pad, pad, "Top-1 match", "left", "top", font_size))
     renderer = axis.figure.canvas.get_renderer()
@@ -820,7 +824,8 @@ def command_render(args: argparse.Namespace) -> None:
         drawn = draw_paper_pair(axis, raw_q, raw_g, foregrounds, kq, kg, result.confidences,
                                 args.paper_matches, args.aspect, int(result.match_count),
                                 dim=args.dim if example.dim is None else example.dim,
-                                height=args.photo_height, font_size=args.tag_size, side_tags=index == 0)
+                                height=args.photo_height, font_size=args.tag_size, side_tags=index == 0,
+                                show_tags=not args.no_tags)
         axis.set_title(f"({chr(ord('a') + index)}) {label}", fontsize=args.title_size, pad=1.5)
         sidecar.append({
             "dataset": key, "label": label, "run": RUNS[key], "checkpoint": context.checkpoint_path,
@@ -844,11 +849,11 @@ def command_render(args: argparse.Namespace) -> None:
         print(f"[match-examples] wrote web assets to {args.web_export}")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for fmt, dpi in (("pdf", 300), ("png", 300)):
-        figure.savefig(args.output_dir / f"match_examples.{fmt}", dpi=dpi, facecolor="white",
+        figure.savefig(args.output_dir / f"{args.output_stem}.{fmt}", dpi=dpi, facecolor="white",
                        metadata={"Creator": "scripts/plot_match_examples.py"})
     plt.close(figure)
-    (args.output_dir / "match_examples.json").write_text(json.dumps(sidecar, indent=2) + "\n", encoding="utf-8")
-    print(f"[match-examples] wrote {args.output_dir / 'match_examples.pdf'}")
+    (args.output_dir / f"{args.output_stem}.json").write_text(json.dumps(sidecar, indent=2) + "\n", encoding="utf-8")
+    print(f"[match-examples] wrote {args.output_dir / (args.output_stem + '.pdf')}")
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -881,6 +886,9 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     render.add_argument("--photo-height", type=int, default=260,
                         help="Embedded pixel height per photo (260 is about 300 dpi at three panels per row)")
     render.add_argument("--columns", type=int, default=3, help="Panels per row; a short last row is centred")
+    render.add_argument("--no-tags", action="store_true",
+                        help="No text on the photos (no Query/Top-1 match/match-count tags); titles stay")
+    render.add_argument("--output-stem", default="match_examples", help="Output file stem")
     render.add_argument("--tag-size", type=float, default=6.5, help="Corner tag font size in points")
     render.add_argument("--title-size", type=float, default=9.0, help="Panel title font size in points")
     render.add_argument("--aspect", type=float, default=4 / 3,

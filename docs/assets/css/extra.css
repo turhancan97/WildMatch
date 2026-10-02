@@ -937,3 +937,76 @@
   color: var(--wm-blue);
   font-weight: 600;
 }
+
+/* Demo hub: one card per demo page (docs/demo/index.md). */
+.wm-hub {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.md-typeset a.wm-hub-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  background: var(--md-default-bg-color);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.md-typeset a.wm-hub-card:hover,
+.md-typeset a.wm-hub-card:focus-visible {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0.2rem 0.8rem rgba(58, 126, 171, 0.25);
+  transform: translateY(-2px);
+  color: inherit;
+}
+
+.md-typeset a.wm-hub-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-bottom: 3px solid var(--wm-blue);
+  margin: 0;
+}
+
+.md-typeset a.wm-hub-card h3 {
+  margin: 0.8rem 1rem 0.3rem;
+  font-size: 0.95rem;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .md-typeset a.wm-hub-card h3 {
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset a.wm-hub-card p {
+  margin: 0 1rem 0.8rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--md-default-fg-color--light);
+  flex: 1;
+}
+
+.md-typeset a.wm-hub-card .wm-hub-more {
+  margin: 0 1rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--wm-blue);
+}
+
+.md-typeset a.wm-hub-card .wm-hub-more::after {
+  content: " \2192";
+}
+
+/* The lead line under each demo page title. */
+.md-typeset .wm-lead {
+  color: var(--md-default-fg-color--light);
+  font-style: italic;
+  margin-top: -0.4rem;
+}

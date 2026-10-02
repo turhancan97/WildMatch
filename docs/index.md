@@ -48,7 +48,7 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 [Paper](paper.md){ .md-button .md-button--primary }
 [Results](results.md){ .md-button }
 [Code](code.md){ .md-button }
-[Demo](demo.md){ .md-button }
+[Demo](demo/index.md){ .md-button }
 [Reproduce](reproduce/index.md){ .md-button }
 </div>
 
@@ -73,7 +73,7 @@ Individual animal re-identification from camera-trap imagery is an instance retr
 3. **Transfer to unseen individuals**, and an analysis of where in the matching
    pipeline identity supervision should be applied.
 
-Try the matcher yourself on the [interactive demo](demo.md): ten synthetic lynxes, real
+Try the matcher yourself on the [interactive demo](demo/index.md): ten synthetic lynxes, real
 matches and confidences from the fine-tuned model.
 
 ## How it works

@@ -88,7 +88,13 @@ plugins:
 
 nav:
   - Home: index.md
-  - Demo: demo.md
+  - Demo:
+      - demo/index.md
+      - Before and after: demo/before-after.md
+      - Rank changes: demo/rank-changes.md
+      - Mined pairs: demo/mined-pairs.md
+      - Background masking: demo/masking.md
+      - Synthetic matching: demo/synthetic.md
   - Method: method.md
   - Datasets: datasets.md
   - Results: results.md

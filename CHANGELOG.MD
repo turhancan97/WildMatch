@@ -132,6 +132,11 @@ kept under Unreleased until a project version is assigned.
   the CzechLynx LoMa mining index with the per-collection reports (pretrained scores), picks
   ten anchors by appearance, re-matches the 100 pairs for correspondences, and
   `mined-pairs-demo.js` shows anchor, five positives and five hard negatives with scores.
+- 2026-10-02: rank-change explorer (user request): `scripts/export_rank_change_demo.py` ranks
+  all CzechLynx test queries under cosine (probe feature cache), default and fine-tuned LoMa
+  (run `scores.npz`), reproducing the paper's Top-1 counts, and exports whole-split category
+  counts plus a random sample per category; `rank-change-demo.js` shows filters, query strip
+  and three top-5 columns with the true individual highlighted.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

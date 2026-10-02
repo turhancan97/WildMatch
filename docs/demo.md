@@ -11,6 +11,16 @@ qualitative figure.
 
 <div id="wm-before-after" class="wm-widget" data-pair="0">Loading the before/after demo…</div>
 
+## Rank changes: where fine-tuning helps and where it does not
+
+Pick a query from the CzechLynx test split and compare its top 5 under cosine retrieval,
+default LoMa and LoMa + WildMatch, with gallery photos of the true individual framed in
+blue. The filters select queries that fine-tuning rescued, still gets wrong, regressed on,
+or already had right; the counts above the examples are over the whole test split, and the
+examples themselves are a random sample of each category.
+
+<div id="wm-rank-change" class="wm-widget">Loading the rank-change explorer…</div>
+
 ## Mined pairs: what weak supervision looks like
 
 WildMatch never sees a keypoint label. Its training signal is a set of image pairs mined

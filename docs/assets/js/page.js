@@ -7,6 +7,7 @@ import { mountSyntheticDemo } from "./synthetic-demo.js";
 import { mountMaskingDemo } from "./masking-demo.js";
 import { mountBeforeAfter } from "./before-after-demo.js";
 import { mountMinedPairs } from "./mined-pairs-demo.js";
+import { mountRankChange } from "./rank-change-demo.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -17,6 +18,7 @@ const MOUNTS = [
   ["wm-masking-demo", mountMaskingDemo],
   ["wm-before-after", mountBeforeAfter],
   ["wm-mined-pairs", mountMinedPairs],
+  ["wm-rank-change", mountRankChange],
 ];
 
 function mountAll() {

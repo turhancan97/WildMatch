@@ -1127,6 +1127,30 @@ hard negative outscores the best positive under the pretrained matcher (median m
 0.107 positive vs 0.098 negative), which is why the page says the pools overlap before
 fine-tuning. Tests in `tests/test_export_mined_pairs_demo.py`.
 
+**Rank-change explorer (user request 2026-10-02).** `scripts/export_rank_change_demo.py` ranks every
+CzechLynx closed test query under the paper's three k=250 runs: cosine
+(`cosine/default/20260919T223430Z_5463f66e`, whose dense score matrix was never persisted, so
+the MegaDescriptor-L embeddings are re-read from the probe's own feature cache through
+`probe_runner.load_dataset_splits/load_backbone/build_transforms/make_dataset_view/
+extract_deep_features_with_cache` with the run's `config.snapshot.yaml`; both cache lookups hit
+on 2026-10-02, so no extraction ran), default LoMa (`vismatch/loma/20260920T131759Z_daf95fda`)
+and fine-tuned LoMa (`vismatch/loma/20260920T131759Z_612b4791`), the last two from their
+`scores.npz` shortlists. Ranking uses the shared stable rule; the true rank is the first gallery
+position with the query's identity, `null` when the identity is outside the 250 shortlist.
+Rank-1 counts over all 11,924 queries reproduce the paper exactly (cosine 1,934 = 16.2 %,
+default 5,480 = 46.0 %, fine-tuned 5,858 = 49.1 %). Categories by rank-1 correctness: rescued
+(fine-tuned right, default wrong) 1,020; regressed 642; already right 4,838; still wrong 5,424.
+The page shows these whole-split counts and a seeded random sample (8 rescued, 8 still wrong,
+4 regressed, 4 already right; seed 5), never an appearance-based pick, so failures are shown
+honestly. Output `docs/assets/demo/rank_change/`: 346 raw photos at 320 px and
+`rank_change.json` (per query: identity, category, per method true rank and top 5 with
+identity, score, correct flag). `rank-change-demo.js` (`#wm-rank-change`, Demo page section
+"Rank changes", before the mined-pairs browser) has category tabs with counts, a query
+filmstrip and three method columns of five ranked thumbnails with the true individual framed
+blue. Tests in `tests/test_export_rank_change_demo.py` check the stable shortlist ranking, the
+category logic and the committed export's internal consistency (counts add up, top-1 flags
+match true ranks).
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

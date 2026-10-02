@@ -1104,6 +1104,29 @@ selector over the eight datasets. This is the one place the page shows the defau
 next to the fine-tuned one; the user asked for it explicitly as the most direct visual
 argument. Tests in `tests/test_export_before_after_demo.py`.
 
+**Mined-pairs browser (user request 2026-10-02).** `scripts/export_mined_pairs_demo.py` (GPU for
+the correspondences; `--no-matches` for CPU) joins the CzechLynx time-closed LoMa mining
+outputs in `rdd-parallel-benchmark/outputs/czechlynx-time-closed/legacy/loma/`: the combined
+training index (`strong-matches_train_combined.json`, 3,009 anchors, paths relative to the
+canonical view `CzechLynx_processed_time_closed`) with the 360 per-collection reports
+(`strong-matches_train_<id>.json`), which keep every mined pair's pretrained-LoMa score. View
+frames are symlinks into `CzechLynx_v2/CzechLynx_masked/...`; the raw photo is the same file
+under `CzechLynx_v2/CzechLynx/...` (verified for all anchors). Anchors are chosen by
+appearance only (full 5+5 pools, one per individual, warm-pixel share >= 0.5 and animal share
+>= 0.10 on the anchor's raw photo, seed 3, ten anchors); partners are exactly the mined ones,
+including night and infrared frames. Each anchor/partner pair is re-matched with the
+pretrained matcher on the masked images so the page can draw the correspondences behind the
+score; recomputed scores differ from the mined ones by up to 0.04 (single-image extraction
+versus the mining run's cached features), and both are stored. Output
+`docs/assets/demo/mined_pairs/` (109 photos at 560 px long side, `mined_pairs.json`).
+`mined-pairs-demo.js` (`#wm-mined-pairs`, Demo page section "Mined pairs: what weak supervision
+looks like", after the before/after demo) shows an anchor filmstrip, two rows of five cards
+(positives blue, hard negatives red) with score bars and identities, and the pair canvas with
+hover confidences for the selected partner. In 530 of the 2,830 full-pool anchors the best
+hard negative outscores the best positive under the pretrained matcher (median mined scores
+0.107 positive vs 0.098 negative), which is why the page says the pools overlap before
+fine-tuning. Tests in `tests/test_export_mined_pairs_demo.py`.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

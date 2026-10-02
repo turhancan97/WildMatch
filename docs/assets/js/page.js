@@ -6,6 +6,7 @@ import { mountMatchViewer } from "./match-viewer.js";
 import { mountSyntheticDemo } from "./synthetic-demo.js";
 import { mountMaskingDemo } from "./masking-demo.js";
 import { mountBeforeAfter } from "./before-after-demo.js";
+import { mountMinedPairs } from "./mined-pairs-demo.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -15,6 +16,7 @@ const MOUNTS = [
   ["wm-synthetic-demo", mountSyntheticDemo],
   ["wm-masking-demo", mountMaskingDemo],
   ["wm-before-after", mountBeforeAfter],
+  ["wm-mined-pairs", mountMinedPairs],
 ];
 
 function mountAll() {

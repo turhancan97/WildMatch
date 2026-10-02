@@ -762,3 +762,98 @@
   font-weight: 600;
   margin-right: 0.4rem;
 }
+
+/* Mined-pairs browser: two pools of five cards with score bars. */
+.wm-mp-pools {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+
+.wm-mp-pool {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.wm-mp-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.wm-mp-card {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border: 2px solid var(--wm-grey);
+  border-radius: 0.25rem;
+  background: var(--md-default-bg-color);
+  font: inherit;
+  font-size: 0.62rem;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.wm-mp-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.15rem;
+}
+
+.wm-mp-card.is-active {
+  box-shadow: 0 0 0 2px var(--wm-grey);
+}
+
+.wm-mp-card.is-pos.is-active {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+.wm-mp-card.is-neg.is-active {
+  border-color: var(--wm-red);
+  box-shadow: 0 0 0 2px var(--wm-red-75);
+}
+
+.wm-mp-bar {
+  display: block;
+  height: 4px;
+  background: var(--wm-grey);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.wm-mp-fill {
+  display: block;
+  height: 100%;
+  background: var(--wm-grey-text);
+}
+
+.wm-mp-card.is-pos .wm-mp-fill {
+  background: var(--wm-blue);
+}
+
+.wm-mp-card.is-neg .wm-mp-fill {
+  background: var(--wm-red);
+}
+
+.wm-demo-label.is-pos {
+  color: var(--wm-blue);
+}
+
+.wm-demo-label.is-neg {
+  color: var(--wm-red);
+}
+
+.wm-mp-card .wm-demo-cap {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+@media (max-width: 44.9375em) {
+  .wm-mp-row {
+    grid-template-columns: repeat(5, minmax(4rem, 1fr));
+    overflow-x: auto;
+  }
+}

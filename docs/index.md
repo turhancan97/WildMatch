@@ -18,13 +18,13 @@ hide:
 
 # WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification
 
-<p class="wm-subtitle">Adapting a pretrained keypoint matcher to a wildlife domain with identity labels only, without keypoint or correspondence annotation.</p>
-
 </div>
 
 </div>
 
 <div class="wm-hero-text" markdown>
+
+<p class="wm-subtitle">Adapting a pretrained keypoint matcher to a wildlife domain with identity labels only, without keypoint or correspondence annotation.</p>
 
 <p class="wm-authors">
 Turhan Can Kargin<sup>*1,2</sup> ·

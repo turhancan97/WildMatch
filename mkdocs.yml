@@ -1,0 +1,102 @@
+# Project page for the WildMatch manuscript. Source lives in docs/, the built site
+# goes to site/ (gitignored) and is deployed to the gh-pages branch with
+# `mkdocs gh-deploy`. The manuscript is under double-blind review until the
+# ECIR 2027 notification (2026-12-07): this configuration lives on the local
+# `project-page` branch and must not be pushed or deployed before then.
+site_name: WildMatch
+site_description: Weakly supervised image matcher adaptation for wildlife re-identification
+# Placeholder until the repository rename; GitHub Pages URLs carry the repository name.
+site_url: https://turhancan97.github.io/explainable_individual_reidentification/
+repo_url: https://github.com/turhancan97/explainable_individual_reidentification
+repo_name: explainable_individual_reidentification
+edit_uri: ""
+docs_dir: docs
+site_dir: site
+strict: true
+copyright: Figures and text are drafts of a manuscript under review.
+
+theme:
+  name: material
+  custom_dir: overrides
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  # WildMatch logo package (kept out of the paper repository by its .gitignore;
+  # web-sized copies made from reports/project_page/logo/).
+  logo: assets/logo/wildmatch-tile-192.png
+  favicon: assets/favicon.ico
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - assets/css/extra.css
+
+extra_javascript:
+  # Interactive figures (results explorer, training-cost plot) use Plotly from a
+  # pinned CDN build; the page modules are added in docs/assets/js/ as they land.
+  - path: https://cdn.plot.ly/plotly-2.35.2.min.js
+    defer: true
+  - path: assets/js/page.js
+    type: module
+  - assets/js/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Method: method.md
+  - Datasets: datasets.md
+  - Results: results.md
+  - Qualitative: qualitative.md
+  - Training cost: compute.md
+  - Reproduce:
+      - reproduce/index.md
+      - Pair mining: reproduce/mining.md
+      - Matcher fine-tuning: reproduce/finetuning.md
+      - Evaluation: reproduce/probing.md
+  - Code: code.md
+  - Paper: paper.md

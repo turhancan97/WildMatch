@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{#
+  Review-period banner. The manuscript is under double-blind review until the
+  ECIR 2027 notification (2026-12-07); the page is built locally and not deployed
+  before then. Remove this block, or the whole override, at publication time.
+#}
+{% block announce %}
+  <span class="wm-announce">
+    Manuscript under review. This page is a private draft and is not published.
+  </span>
+{% endblock %}
+
+{# WildMatch favicon set (team logo package); mkdocs.yml points theme.favicon at the .ico. #}
+{% block extrahead %}
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'assets/logo/favicon-32.png' | url }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ 'assets/logo/favicon-192.png' | url }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ 'assets/logo/apple-touch-icon-180.png' | url }}">
+  <meta name="theme-color" content="#3a7eab">
+{% endblock %}

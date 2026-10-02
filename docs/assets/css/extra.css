@@ -1,0 +1,490 @@
+/* Project-page styling on top of MkDocs Material.
+
+   Brand palette (team decision 2026-09-28, recorded in the paper repository's
+   context.md): blue #3a7eab, red #cf4832, grey #d1d3d4. Validated extension:
+   tints 40 % / 75 % toward white, neutrals #6d6e71 (small text, 5.1:1 on white)
+   and #58595b (headings, 7.0:1); #d1d3d4 is decoration only (1.5:1). */
+
+:root {
+  --wm-blue: #3a7eab;
+  --wm-blue-dark: #2d6386;
+  --wm-blue-40: #89b2cd;
+  --wm-blue-75: #cedfea;
+  --wm-red: #cf4832;
+  --wm-red-dark: #a93a28;
+  --wm-red-40: #e29184;
+  --wm-red-75: #f3d1cc;
+  --wm-grey: #d1d3d4;
+  --wm-grey-text: #6d6e71;
+  --wm-grey-heading: #58595b;
+  --wm-hero-gap: 1.25rem;
+}
+
+/* Material palette hooks: `primary: custom` / `accent: custom` in mkdocs.yml. */
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: var(--wm-blue);
+  --md-primary-fg-color--light: var(--wm-blue-40);
+  --md-primary-fg-color--dark: var(--wm-blue-dark);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--wm-red);
+  --md-accent-fg-color--transparent: rgba(207, 72, 50, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+/* Light scheme: brand greys for text hierarchy, blue links. */
+[data-md-color-scheme="default"] {
+  --md-typeset-a-color: var(--wm-blue);
+  --md-default-fg-color--light: var(--wm-grey-text);
+  --md-default-fg-color--lighter: var(--wm-grey);
+  --md-typeset-table-color: var(--wm-grey);
+  --md-code-hl-color: var(--wm-blue-75);
+}
+
+[data-md-color-scheme="default"] .md-typeset h1,
+[data-md-color-scheme="default"] .md-typeset h2,
+[data-md-color-scheme="default"] .md-typeset h3 {
+  color: var(--wm-grey-heading);
+}
+
+/* Dark scheme: lighter tints keep contrast on the slate background. */
+[data-md-color-scheme="slate"] {
+  --md-typeset-a-color: var(--wm-blue-40);
+  --md-accent-fg-color: var(--wm-red-40);
+  --md-accent-fg-color--transparent: rgba(226, 145, 132, 0.14);
+}
+
+.wm-announce {
+  font-weight: 600;
+}
+
+/* Landing-page hero (docs/index.md, rendered through md_in_html): logo column
+   plus text column on wide screens, stacked on narrow ones. */
+.wm-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 18rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem 0 1rem;
+  border-bottom: 3px solid var(--wm-grey);
+  margin-bottom: 1.5rem;
+}
+
+.wm-hero-text {
+  display: grid;
+  gap: var(--wm-hero-gap);
+}
+
+.md-typeset .wm-hero-logo p {
+  margin: 0;
+}
+
+.md-typeset img.wm-logo {
+  width: 100%;
+  max-width: 18rem;
+  height: auto;
+  display: block;
+}
+
+/* Header tile: white rounded square from the logo package. */
+.md-header__button.md-logo img {
+  height: 1.6rem;
+  width: 1.6rem;
+  border-radius: 0.3rem;
+}
+
+@media (max-width: 59.9375em) {
+  .wm-hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .wm-hero-text {
+    justify-items: center;
+  }
+
+  .wm-buttons {
+    justify-content: center;
+  }
+
+  .md-typeset img.wm-logo {
+    max-width: 14rem;
+  }
+}
+
+.md-typeset .wm-hero h1 {
+  margin: 0;
+  font-size: 2.1rem;
+  line-height: 1.2;
+  color: var(--wm-blue);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .wm-hero h1 {
+  color: var(--wm-blue-40);
+}
+
+.wm-hero .wm-subtitle {
+  font-size: 1.15rem;
+  color: var(--md-default-fg-color--light);
+  margin: 0;
+}
+
+.wm-authors {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.wm-authors sup {
+  font-size: 0.7em;
+  color: var(--wm-grey-text);
+}
+
+.wm-affiliations {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.6;
+}
+
+.wm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0;
+}
+
+.md-typeset .wm-buttons .md-button {
+  margin: 0;
+  border-color: var(--wm-blue);
+  color: var(--wm-blue);
+}
+
+.md-typeset .wm-buttons .md-button--primary {
+  background-color: var(--wm-blue);
+  color: #ffffff;
+}
+
+.md-typeset .wm-buttons .md-button:hover {
+  background-color: var(--wm-red);
+  border-color: var(--wm-red);
+  color: #ffffff;
+}
+
+.wm-status {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--wm-red-75);
+  color: var(--wm-red-dark);
+}
+
+[data-md-color-scheme="slate"] .wm-status {
+  background: rgba(207, 72, 50, 0.25);
+  color: var(--wm-red-40);
+}
+
+/* Icon cards (paper icon set, blue variant). */
+.wm-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.wm-card {
+  border: 1px solid var(--wm-grey);
+  border-top: 4px solid var(--wm-blue);
+  border-radius: 0.3rem;
+  padding: 1rem 1rem 0.9rem;
+  background: var(--md-default-bg-color);
+}
+
+.wm-card img {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.md-typeset .wm-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .wm-card h3 {
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .wm-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Figure blocks with captions. */
+.wm-figure {
+  margin: 1.5rem 0;
+}
+
+.wm-figure img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.2rem;
+}
+
+.wm-figure figcaption {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.5rem;
+}
+
+/* Mount points for the interactive components (filled by assets/js modules). */
+.wm-widget {
+  min-height: 24rem;
+  border: 1px dashed var(--wm-grey);
+  border-radius: 0.3rem;
+  display: grid;
+  place-items: center;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.85rem;
+  margin: 1rem 0 1.5rem;
+}
+
+/* Compact numeric tables; rows for our method carry the blue tint. */
+.wm-numeric td,
+.wm-numeric th {
+  white-space: nowrap;
+}
+
+.wm-ours {
+  background: var(--wm-blue-75);
+}
+
+[data-md-color-scheme="slate"] .wm-ours {
+  background: rgba(58, 126, 171, 0.3);
+}
+
+/* Admonitions in brand colours: notes blue, warnings red. */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: var(--wm-blue);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: var(--wm-blue-75);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: var(--wm-blue);
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-color: var(--wm-red);
+}
+
+.md-typeset .warning > .admonition-title,
+.md-typeset .warning > summary {
+  background-color: var(--wm-red-75);
+}
+
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .warning > summary::before {
+  background-color: var(--wm-red);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .note > .admonition-title,
+[data-md-color-scheme="slate"] .md-typeset .note > summary {
+  background-color: rgba(58, 126, 171, 0.25);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .warning > .admonition-title,
+[data-md-color-scheme="slate"] .md-typeset .warning > summary {
+  background-color: rgba(207, 72, 50, 0.25);
+}
+
+@media (max-width: 44.9375em) {
+  .md-typeset .wm-hero h1 {
+    font-size: 1.6rem;
+  }
+}
+
+/* Interactive components (docs/assets/js). */
+.wm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--wm-grey);
+  border-left: 4px solid var(--wm-blue);
+  border-radius: 0.3rem;
+}
+
+.wm-control {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-control--wide {
+  flex: 1 1 100%;
+}
+
+.wm-select {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color);
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.2rem;
+  padding: 0.3rem 0.5rem;
+  min-width: 11rem;
+}
+
+.wm-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+}
+
+.wm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color);
+  cursor: pointer;
+}
+
+.wm-check input {
+  accent-color: var(--wm-blue);
+}
+
+.wm-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--wm-swatch, var(--wm-grey));
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.wm-plot {
+  width: 100%;
+  min-height: 24rem;
+}
+
+.wm-table-view {
+  margin: 0.5rem 0 1.5rem;
+  font-size: 0.8rem;
+}
+
+.wm-table-view summary {
+  cursor: pointer;
+  color: var(--wm-blue);
+}
+
+.wm-table-wrap {
+  overflow-x: auto;
+  margin: 0 0 0.5rem;
+}
+
+.md-typeset table.wm-results {
+  font-size: 0.72rem;
+}
+
+.md-typeset .wm-results th.wm-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.md-typeset .wm-results th.wm-sortable::after {
+  content: " ↕";
+  color: var(--wm-grey);
+}
+
+.md-typeset .wm-results th.is-asc::after {
+  content: " ↑";
+  color: var(--wm-blue);
+}
+
+.md-typeset .wm-results th.is-desc::after {
+  content: " ↓";
+  color: var(--wm-blue);
+}
+
+.wm-table-foot {
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .wm-button {
+  margin: 0;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.75rem;
+  border-color: var(--wm-blue);
+  color: var(--wm-blue);
+}
+
+.md-typeset .wm-button:hover {
+  background: var(--wm-blue);
+  color: #ffffff;
+}
+
+.wm-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wm-range input {
+  accent-color: var(--wm-blue);
+  width: 10rem;
+}
+
+.wm-range-value {
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--md-default-fg-color);
+}
+
+.wm-match-stage {
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.wm-match-canvas {
+  display: block;
+  border-radius: 0.2rem;
+}
+
+.wm-match-caption {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-widget--pending,
+.wm-widget--error {
+  min-height: 6rem;
+}
+
+.wm-widget--error {
+  border-color: var(--wm-red);
+  color: var(--wm-red-dark);
+}

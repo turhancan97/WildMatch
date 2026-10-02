@@ -1,0 +1,105 @@
+{
+ "generated_at": "2026-10-02T12:09:17+00:00",
+ "paper_commit": "9e78102de698eeffbc655629b32190cb49a84799",
+ "dataset": "czechlynx",
+ "k": 250,
+ "gpu_hours_note": "training steps at epoch 299, GPU-hours on RTX 4090; from the paper's make_tables.py",
+ "rows": [
+  {
+   "matcher": "loma",
+   "matcher_label": "LoMa",
+   "variant": "default",
+   "variant_label": "none (default)",
+   "k": 250,
+   "top_5": 0.552331,
+   "balanced_top_1": 0.31256,
+   "delta_balanced_top_1": null,
+   "gpu_hours": null,
+   "run_id": "20260920T131759Z_daf95fda"
+  },
+  {
+   "matcher": "loma",
+   "matcher_label": "LoMa",
+   "variant": "descriptor",
+   "variant_label": "descriptor branch",
+   "k": 250,
+   "top_5": 0.561305,
+   "balanced_top_1": 0.286365,
+   "delta_balanced_top_1": -0.026195,
+   "gpu_hours": 77.0,
+   "run_id": "20260922T162143Z_1006fbbf"
+  },
+  {
+   "matcher": "loma",
+   "matcher_label": "LoMa",
+   "variant": "matcher",
+   "variant_label": "matching module (ours)",
+   "k": 250,
+   "top_5": 0.583445,
+   "balanced_top_1": 0.346567,
+   "delta_balanced_top_1": 0.034007,
+   "gpu_hours": 5.1,
+   "run_id": "20260920T131759Z_612b4791"
+  },
+  {
+   "matcher": "loma",
+   "matcher_label": "LoMa",
+   "variant": "joint",
+   "variant_label": "both",
+   "k": 250,
+   "top_5": 0.598792,
+   "balanced_top_1": 0.349031,
+   "delta_balanced_top_1": 0.036471,
+   "gpu_hours": 84.0,
+   "run_id": "20261001T103754Z_b650b69d"
+  },
+  {
+   "matcher": "rdd-lightglue",
+   "matcher_label": "RDD-LightGlue",
+   "variant": "default",
+   "variant_label": "none (default)",
+   "k": 250,
+   "top_5": 0.560047,
+   "balanced_top_1": 0.334343,
+   "delta_balanced_top_1": null,
+   "gpu_hours": null,
+   "run_id": "20260920T131928Z_c58f1072"
+  },
+  {
+   "matcher": "rdd-lightglue",
+   "matcher_label": "RDD-LightGlue",
+   "variant": "descriptor",
+   "variant_label": "descriptor branch",
+   "k": 250,
+   "top_5": 0.498323,
+   "balanced_top_1": 0.257428,
+   "delta_balanced_top_1": -0.076915,
+   "gpu_hours": 89.0,
+   "run_id": "20260922T170336Z_455ce43e"
+  },
+  {
+   "matcher": "rdd-lightglue",
+   "matcher_label": "RDD-LightGlue",
+   "variant": "matcher",
+   "variant_label": "matching module (ours)",
+   "k": 250,
+   "top_5": 0.568182,
+   "balanced_top_1": 0.343605,
+   "delta_balanced_top_1": 0.009262,
+   "gpu_hours": 5.0,
+   "run_id": "20260929T233543Z_bb42aaad"
+  },
+  {
+   "matcher": "rdd-lightglue",
+   "matcher_label": "RDD-LightGlue",
+   "variant": "joint",
+   "variant_label": "both",
+   "k": 250,
+   "top_5": 0.590406,
+   "balanced_top_1": 0.356819,
+   "delta_balanced_top_1": 0.022476,
+   "gpu_hours": 103.0,
+   "run_id": "20261001T095156Z_a98fc966"
+  }
+ ]
+}

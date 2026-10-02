@@ -127,17 +127,27 @@ def load_pairs(root: Path, metadata: Path, split: str, n_same: int, n_diff: int,
     return pairs, layout
 
 
-def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: int, top_k: int):
+def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: int, top_k: int,
+                   joint_checkpoint: Optional[Path] = None):
+    """Default LoMa, the matcher-only fine-tuned LoMa and, optionally, the joint
+    (descriptor + matcher) checkpoint, which the loader requires to be used as ``full``."""
     from reid.methods.vismatch import VismatchMatcherBackend, _choose_vismatch_device
     from reid.methods.vismatch_profiles import default_matcher_threshold
 
     threshold = default_matcher_threshold("loma")
     dev = _choose_vismatch_device(device)
-    default = VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="default", loma_arch=loma_arch,
-                                     resize_max=resize_max)
-    tuned = VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="custom", checkpoint_path=str(checkpoint),
-                                   checkpoint_components="matcher_only", loma_arch=loma_arch, resize_max=resize_max)
-    return {"default": default, "fine-tuned": tuned}, threshold
+    backends = {
+        "default": VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="default", loma_arch=loma_arch,
+                                          resize_max=resize_max),
+        "fine-tuned": VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="custom",
+                                             checkpoint_path=str(checkpoint), checkpoint_components="matcher_only",
+                                             loma_arch=loma_arch, resize_max=resize_max),
+    }
+    if joint_checkpoint is not None:
+        backends["joint"] = VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="custom",
+                                                   checkpoint_path=str(joint_checkpoint), checkpoint_components="full",
+                                                   loma_arch=loma_arch, resize_max=resize_max)
+    return backends, threshold
 
 
 def analyze(layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int) -> List[Dict[str, Any]]:
@@ -148,7 +158,7 @@ def analyze(layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir
 
     out_dir.mkdir(parents=True, exist_ok=True)
     records: List[Dict[str, Any]] = []
-    fig, axes = plt.subplots(len(pairs), 2, figsize=(16, 4.2 * len(pairs)), squeeze=False)
+    fig, axes = plt.subplots(len(pairs), len(backends), figsize=(8 * len(backends), 4.2 * len(pairs)), squeeze=False)
     feature_cache: Dict[Tuple[str, str, str], Any] = {}
 
     def features(name, backend, rel, masked_input: bool):
@@ -220,7 +230,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--split", default="train", help="metadata split value to draw pairs from (train = database)")
     parser.add_argument("--split-col", default="split"); parser.add_argument("--identity-col", default="identity")
     parser.add_argument("--mask-col", default=None, help="COCO-RLE mask column (CzechLynx: mask); omit for pre-masked datasets")
-    parser.add_argument("--checkpoint", type=Path, required=True, help="fine-tuned LoMa matcher checkpoint")
+    parser.add_argument("--checkpoint", type=Path, required=True, help="fine-tuned LoMa matcher checkpoint (matcher only)")
+    parser.add_argument("--joint-checkpoint", type=Path, default=None,
+                        help="joint descriptor + matcher LoMa checkpoint (loaded with checkpoint_components=full)")
     parser.add_argument("--n-same", type=int, default=4)
     parser.add_argument("--n-diff", type=int, default=2)
     parser.add_argument("--seed", type=int, default=0)
@@ -234,10 +246,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     pinned = [tuple(p.split(",", 1)) for p in args.pin]
     pairs, layout = load_pairs(args.root, args.metadata, args.split, args.n_same, args.n_diff, args.seed, pinned,
                                args.identity_col, args.split_col, args.mask_col)
-    backends, threshold = build_backends(args.device, args.checkpoint, args.loma_arch, args.resize_max, args.top_k)
+    backends, threshold = build_backends(args.device, args.checkpoint, args.loma_arch, args.resize_max, args.top_k,
+                                         args.joint_checkpoint)
     records = analyze(layout, pairs, backends, args.out, args.draw_top)
     summary: Dict[str, Any] = {"checkpoint": str(args.checkpoint), "checkpoint_sha256": sha256_file(args.checkpoint),
-                               "threshold": threshold, "pairs": len(pairs), "mask_source": "dataset RLE" if args.mask_col else "pre-masked image threshold"}
+                               "threshold": threshold, "pairs": len(pairs), "mask_source": "dataset RLE" if args.mask_col else "pre-masked image threshold",
+                               "joint_checkpoint": str(args.joint_checkpoint) if args.joint_checkpoint else None,
+                               "joint_checkpoint_sha256": sha256_file(args.joint_checkpoint) if args.joint_checkpoint else None}
     for name in backends:
         rows = [r for r in records if r["matcher"] == name]
         fr = [r["frac_matches_on_animal"] for r in rows if r["frac_matches_on_animal"] is not None]

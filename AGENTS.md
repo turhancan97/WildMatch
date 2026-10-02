@@ -1069,7 +1069,17 @@ scenes 0.52 and 0.62 through background correspondences (0.003 and 0.001 on mask
 and collapses to 3-13 matches where no shared scene exists. Confidence gained by fine-tuning
 flows into repeated background texture when the mask is absent, so masking at inference is a
 hard requirement; this is the mechanism behind the paper's mask-dependence limitation. The
-script takes `--mask-col/--identity-col/--split-col` so either layout works.
+script takes `--mask-col/--identity-col/--split-col` so either layout works, and
+`--joint-checkpoint` adds the joint descriptor + matcher checkpoint (`checkpoint_components=full`)
+as a third column. Same CzechLynx subset with the joint `epoch_299` (SHA `a91cbac9...`,
+2026-10-02): on raw photos the joint model behaves like the matcher-only one (36 % of matches on
+the animal versus 39 % and 49 %, 200-370 matches with 59-83 % touching the background on most same pairs, mean raw
+score 0.36 same / 0.16 different versus 0.50 / 0.29 for matcher-only and 0.07 / 0.03 for
+default); it scores the two shared-scene different-lynx pairs lower (0.013, 0.161 versus 0.524,
+0.617) but two other different pairs higher (0.285, 0.178 versus 0.003, 0.002), one of which it
+also scores 0.132 on masked inputs. Training the descriptor therefore does not restore an
+animal focus without masks either; keypoint locations are identical across the three models
+because the detector stays frozen.
 
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points

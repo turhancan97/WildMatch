@@ -121,6 +121,9 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-02: the same analysis on a CzechLynx subset with exact RLE masks (13 pairs): default
   49 % of matches on the animal, fine-tuned 39 %; two different-lynx pairs in similar scenes
   score 0.52 and 0.62 through background matches. The script now supports RLE-masked layouts.
+- 2026-10-02: `--joint-checkpoint` adds the joint descriptor + matcher LoMa model to the
+  background analysis; on the CzechLynx subset it is as background-prone as the matcher-only
+  model (36 % of matches on the animal) and still scores some different-lynx pairs high.
 - 2026-10-02: paper clone at `2773089` (intro names the triplet margin objective; the
   match figure switched to the text-free render and its caption to "of the 350 to 420
   matches found for each pair, lines show the 10 most confident"); the page's match figure

@@ -242,4 +242,6 @@ kaggle_runs/
 cache/
 
 # dataset
-dataset/
+dataset/video/explainer/audio/*.wav
+video/explainer/media/
+video/explainer/out/

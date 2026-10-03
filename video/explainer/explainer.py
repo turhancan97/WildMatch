@@ -48,14 +48,17 @@ def shot_end(shot: int) -> float:
     return float(s["start"]) + float(s["duration"]) + GAP
 
 
+PAIR_DIR = HERE / "pair"          # lynx 086 pair matched on the CPU with both matchers (sidecar.json)
+ASSETS = HERE / "assets"          # ten database tiles and the lynx 029 pools (assets.json)
+
+
 def load_pair():
-    data = json.loads((DEMO / "before_after" / "before_after.json").read_text(encoding="utf-8"))
+    data = json.loads((PAIR_DIR / "before_after.json").read_text(encoding="utf-8"))
     return next(p for p in data["pairs"] if p["dataset"] == "lynx_closed")
 
 
-def load_anchor():
-    data = json.loads((DEMO / "mined_pairs" / "mined_pairs.json").read_text(encoding="utf-8"))
-    return data["anchors"][0]
+def load_assets():
+    return json.loads((ASSETS / "assets.json").read_text(encoding="utf-8"))
 
 
 def photo(path: Path, height: float) -> ImageMobject:
@@ -64,10 +67,41 @@ def photo(path: Path, height: float) -> ImageMobject:
     return img
 
 
-def pixel_to_point(img: ImageMobject, xy, px_w: int, px_h: int):
+def padding_box(path: Path, threshold: int = 8):
+    """(left, top, right, bottom) of the content inside black padding bands, in source pixels."""
+    from PIL import Image
+    arr = np.asarray(Image.open(path).convert("L"))
+    rows = np.flatnonzero(arr.mean(axis=1) > threshold)
+    cols = np.flatnonzero(arr.mean(axis=0) > threshold)
+    return int(cols[0]), int(rows[0]), int(cols[-1]) + 1, int(rows[-1]) + 1
+
+
+def stamp_free(path: Path, height: float, strip: float = 0.07) -> ImageMobject:
+    """Photo with its bottom camera-stamp strip cropped away (display only)."""
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    img = ImageMobject(np.asarray(im.crop((0, 0, im.width, int(im.height * (1 - strip))))))
+    img.set(height=height)
+    return img
+
+
+def photo_trimmed(path: Path, height: float):
+    """ImageMobject of the photo without its padding bands, plus the crop box used."""
+    from PIL import Image
+    box = padding_box(path)
+    img = ImageMobject(np.asarray(Image.open(path).convert("RGB").crop(box)))
+    img.set(height=height)
+    return img, box
+
+
+def pixel_to_point(img: ImageMobject, xy, box):
+    """Source-pixel coordinate -> scene point for a photo shown without its padding (``box``)."""
     x, y = xy
+    left, top, right, bottom = box
+    if not (left <= x < right and top <= y < bottom):
+        return None
     ul = img.get_corner(UL)
-    return ul + RIGHT * (x / px_w) * img.width + DOWN * (y / px_h) * img.height
+    return ul + RIGHT * ((x - left) / (right - left)) * img.width + DOWN * ((y - top) / (bottom - top)) * img.height
 
 
 def label(text: str, size: float = 28, color: str = INK, **kw) -> Text:
@@ -83,17 +117,17 @@ class Explainer(Scene):
     def construct(self) -> None:
         self.camera.background_color = WHITE
         pair = load_pair()
-        anchor = load_anchor()
+        assets = load_assets()
         self.shot_1_2(pair)
-        self.shot_3_4(anchor)
+        self.shot_3_4(assets)
         self.shot_5()
         self.shot_6(pair)
-        self.shot_7()
+        self.shot_7(pair)
 
     # ------------------------------------------------------------------ shots 1 and 2
     def pair_images(self, pair, height=4.6):
-        q = photo(DEMO / "before_after" / pair["query"]["image"]["file"], height)
-        g = photo(DEMO / "before_after" / pair["gallery"]["image"]["file"], height)
+        q, self.q_box = photo_trimmed(PAIR_DIR / pair["query"]["image"]["file"], height)
+        g, self.g_box = photo_trimmed(PAIR_DIR / pair["gallery"]["image"]["file"], height)
         q.move_to(LEFT * 3.1 + UP * 0.3)
         g.move_to(RIGHT * 3.1 + UP * 0.3)
         return q, g
@@ -101,13 +135,14 @@ class Explainer(Scene):
     def correspondences(self, pair, q, g, which: str, count: int, stroke: float):
         res = pair["results"][which]
         qp, gp = res["points"]["query"], res["points"]["gallery"]
-        qw, qh = pair["query"]["image"]["width"], pair["query"]["image"]["height"]
-        gw, gh = pair["gallery"]["image"]["width"], pair["gallery"]["image"]["height"]
-        order = res["order_by_confidence"][:count]
         lines, dots = VGroup(), VGroup()
-        for i in order:
-            a = pixel_to_point(q, qp[i], qw, qh)
-            b = pixel_to_point(g, gp[i], gw, gh)
+        for i in res["order_by_confidence"]:
+            if len(lines) >= count:
+                break
+            a = pixel_to_point(q, qp[i], self.q_box)
+            b = pixel_to_point(g, gp[i], self.g_box)
+            if a is None or b is None:
+                continue
             lines.add(Line(a, b, color=LINE, stroke_width=stroke, stroke_opacity=0.85))
             dots.add(Dot(a, radius=0.035, color=LINE), Dot(b, radius=0.035, color=LINE))
         return lines, dots
@@ -136,17 +171,14 @@ class Explainer(Scene):
         self.play(FadeOut(Group(q, g, tag_q, tag_g, lines, dots, title, box, t1)), run_time=0.6)
 
     # ------------------------------------------------------------------ shots 3 and 4
-    def shot_3_4(self, anchor) -> None:
-        folder = DEMO / "mined_pairs"
-        records = [anchor["anchor"]] + anchor["positives"][:5] + anchor["negatives"][:4]
-        identities = [anchor["identity"]] + [p["identity"] for p in anchor["positives"][:5]] + [n["identity"] for n in anchor["negatives"][:4]]
-        imgs = Group(*[photo(folder / r["image"]["file"], 1.75) for r in records])
+    def shot_3_4(self, assets) -> None:
+        tiles = assets["database_tiles"]
+        imgs = Group(*[photo(ASSETS / t["file"], 1.75) for t in tiles])
         imgs.arrange_in_grid(rows=2, cols=5, buff=0.35).move_to(UP * 0.1)
         tags = VGroup()
-        for img, ident in zip(imgs, identities):
-            name = ident.replace("lynx_", "lynx ")
+        for img, t in zip(imgs, tiles):
             pill = RoundedRectangle(corner_radius=0.1, width=1.3, height=0.34, color=BLUE, fill_color=BLUE, fill_opacity=0.12, stroke_width=1.5)
-            txt = label(name, 17, BLUE)
+            txt = label(t["identity"].replace("lynx_", "lynx "), 17, BLUE)
             pill.next_to(img, DOWN, buff=0.08)
             txt.move_to(pill)
             tags.add(VGroup(pill, txt))
@@ -154,38 +186,43 @@ class Explainer(Scene):
         self.play(FadeIn(title), run_time=0.6)
         self.play(LaggedStart(*[FadeIn(i, shift=UP * 0.2) for i in imgs], lag_ratio=0.08), run_time=2.4)
         self.play(LaggedStart(*[FadeIn(t, scale=0.6) for t in tags], lag_ratio=0.06), run_time=1.6)
-        self.fill_to(shot_end(3))
-        # shot 4: anchor to the centre, positives left, negatives right
+        self.fill_to(shot_end(3) - 0.6)
+        self.play(FadeOut(Group(imgs, tags)), run_time=0.6)
+        # shot 4: one anchor, its mined positives (same animal) and hard negatives (other animals)
+        pools = assets["pools"]
         title2 = label("The pretrained matcher scores the anchor against the rest", 30, INK).to_edge(UP, buff=0.35)
-        self.play(Transform(title, title2), run_time=0.8)
-        anchor_img, anchor_tag = imgs[0], tags[0]
-        pos = list(zip(imgs[1:6], tags[1:6], anchor["positives"][:5]))
-        neg = list(zip(imgs[6:10], tags[6:10], anchor["negatives"][:4]))
-        anchor_target = anchor_img.copy().set(height=2.6).move_to(ORIGIN + DOWN * 0.1)
-        moves = [anchor_img.animate.set(height=2.6).move_to(ORIGIN + DOWN * 0.1),
-                 anchor_tag.animate.next_to(anchor_target, DOWN, buff=0.1)]
+        self.play(Transform(title, title2), run_time=0.6)
+        anchor_img = stamp_free(ASSETS / pools["anchor"]["file"], 2.6).move_to(ORIGIN + DOWN * 0.1)
+        anchor_tag = VGroup(RoundedRectangle(corner_radius=0.1, width=1.3, height=0.34, color=BLUE, fill_color=BLUE, fill_opacity=0.12, stroke_width=1.5),
+                            label(pools["anchor"]["identity"].replace("lynx_", "lynx "), 17, BLUE))
+        anchor_tag[1].move_to(anchor_tag[0]); anchor_tag.next_to(anchor_img, DOWN, buff=0.1)
+        anchor_word = label("anchor", 20, MUTED).next_to(anchor_img, UP, buff=0.12)
+        self.play(FadeIn(anchor_img, scale=0.9), FadeIn(anchor_tag), FadeIn(anchor_word), run_time=0.8)
         def column(items, x, color):
-            anims, frames, scores = [], VGroup(), VGroup()
+            imgs_c, frames, scores, tags_c = Group(), VGroup(), VGroup(), VGroup()
             ys = np.linspace(2.0, -2.4, len(items))
-            for (img, tag, rec), y in zip(items, ys):
-                target = img.copy().set(height=1.0).move_to(RIGHT * x + UP * y)
-                anims.append(img.animate.set(height=1.0).move_to(RIGHT * x + UP * y))
-                anims.append(tag.animate.scale(0.75).next_to(target, DOWN if False else RIGHT * np.sign(x), buff=0.12))
-                frames.add(SurroundingRectangle(target, color=color, buff=0.03, stroke_width=3))
-                scores.add(label(f"{rec['mined_score']:.2f}", 18, color).next_to(target, LEFT * np.sign(x), buff=0.12))
-            return anims, frames, scores
-        pos_anims, pos_frames, pos_scores = column(pos, -4.6, BLUE)
-        neg_anims, neg_frames, neg_scores = column(neg, 4.6, RED)
-        self.play(*moves, *pos_anims, *neg_anims, run_time=2.2)
+            for rec, y in zip(items, ys):
+                img = photo(ASSETS / rec["file"], 1.0).move_to(RIGHT * x + UP * y)
+                imgs_c.add(img)
+                frames.add(SurroundingRectangle(img, color=color, buff=0.03, stroke_width=3))
+                scores.add(label(f"{rec['mined_score']:.2f}", 18, color).next_to(img, LEFT * np.sign(x), buff=0.14))
+                tags_c.add(label(rec["identity"].replace("lynx_", "lynx "), 15, color).next_to(img, RIGHT * np.sign(x), buff=0.14))
+            return imgs_c, frames, scores, tags_c
+        pos_imgs, pos_frames, pos_scores, pos_tags = column(pools["positives"], -4.6, BLUE)
+        neg_imgs, neg_frames, neg_scores, neg_tags = column(pools["negatives"], 4.6, RED)
         pos_head = label("positives: same animal", 22, BLUE).move_to(LEFT * 4.6 + UP * 2.95)
         neg_head = label("hard negatives: other animals", 22, RED).move_to(RIGHT * 4.6 + UP * 2.95)
-        self.play(FadeIn(pos_frames), FadeIn(pos_head), run_time=1.0)
-        self.play(LaggedStart(*[FadeIn(s) for s in pos_scores], lag_ratio=0.1), run_time=1.0)
-        self.wait(1.2)
-        self.play(FadeIn(neg_frames), FadeIn(neg_head), run_time=1.0)
-        self.play(LaggedStart(*[FadeIn(s) for s in neg_scores], lag_ratio=0.1), run_time=1.0)
+        rays = VGroup(*[Line(anchor_img.get_left(), img.get_right(), color=GREY, stroke_width=1.5) for img in pos_imgs]
+                      + [Line(anchor_img.get_right(), img.get_left(), color=GREY, stroke_width=1.5) for img in neg_imgs])
+        self.play(LaggedStart(*[Create(r) for r in rays], lag_ratio=0.05), run_time=1.0)
+        self.play(LaggedStart(*[FadeIn(i, shift=LEFT * 0.3) for i in pos_imgs], lag_ratio=0.1), FadeIn(pos_head), run_time=1.4)
+        self.play(FadeIn(pos_frames), LaggedStart(*[FadeIn(sc) for sc in pos_scores], lag_ratio=0.1), FadeIn(pos_tags), run_time=1.0)
+        self.wait(1.0)
+        self.play(LaggedStart(*[FadeIn(i, shift=RIGHT * 0.3) for i in neg_imgs], lag_ratio=0.1), FadeIn(neg_head), run_time=1.4)
+        self.play(FadeIn(neg_frames), LaggedStart(*[FadeIn(sc) for sc in neg_scores], lag_ratio=0.1), FadeIn(neg_tags), run_time=1.0)
         self.fill_to(shot_end(4) - 0.6)
-        self.play(FadeOut(Group(imgs, tags, title, pos_frames, neg_frames, pos_scores, neg_scores, pos_head, neg_head)), run_time=0.6)
+        self.play(FadeOut(Group(anchor_img, anchor_tag, anchor_word, title, rays, pos_imgs, neg_imgs, pos_frames, neg_frames,
+                                pos_scores, neg_scores, pos_tags, neg_tags, pos_head, neg_head)), run_time=0.6)
 
     # ------------------------------------------------------------------ shot 5
     def shot_5(self) -> None:
@@ -196,16 +233,16 @@ class Explainer(Scene):
         axis_label = VGroup(ticks, label("matcher score", 22, MUTED).next_to(ticks, DOWN, buff=0.15))
         p = Dot(axis.n2p(0.24), radius=0.13, color=BLUE)
         n = Dot(axis.n2p(0.16), radius=0.13, color=RED)
-        p_tag = label("positive", 20, BLUE).next_to(p, UP, buff=0.15)
-        n_tag = label("hard negative", 20, RED).next_to(n, UP, buff=0.15)
+        p_tag = label("positive", 20, BLUE).next_to(p, UP, buff=0.6)
+        n_tag = label("hard negative", 20, RED).next_to(n, DOWN, buff=0.55)
         self.play(FadeIn(title), Create(axis), FadeIn(axis_label), run_time=1.2)
         self.play(FadeIn(p, scale=0.5), FadeIn(n, scale=0.5), FadeIn(p_tag), FadeIn(n_tag), run_time=0.8)
         self.wait(0.8)
         p2, n2 = axis.n2p(0.72), axis.n2p(0.12)
-        brace = Brace(Line(n2, p2), DOWN, buff=0.12, color=INK)
-        brace_txt = label("margin", 22, INK).next_to(brace, DOWN, buff=0.1)
+        brace = Brace(Line(n2, p2), UP, buff=0.12, color=INK)
+        brace_txt = label("margin", 22, INK).next_to(brace, UP, buff=0.1)
         self.play(p.animate.move_to(p2), n.animate.move_to(n2),
-                  p_tag.animate.next_to(p2, UP, buff=0.15), n_tag.animate.next_to(n2, UP, buff=0.15),
+                  p_tag.animate.next_to(p2, UP, buff=0.6), n_tag.animate.next_to(n2, DOWN, buff=0.55),
                   run_time=1.6, rate_func=rate_functions.ease_in_out_sine)
         self.play(FadeIn(brace), FadeIn(brace_txt), FadeOut(axis_label), run_time=0.8)
         # the three blocks: only the matching module changes
@@ -263,20 +300,35 @@ class Explainer(Scene):
         self.play(FadeOut(Group(q, g, title, lines, dots, count, before, rows, head)), run_time=0.6)
 
     # ------------------------------------------------------------------ shot 7
-    def shot_7(self) -> None:
-        cells = VGroup()
-        for name in DATASETS:
-            arrow = Arrow(DOWN * 0.35, UP * 0.35, color=BLUE, buff=0, stroke_width=5, max_tip_length_to_length_ratio=0.35)
-            txt = label(name, 20, INK)
-            cells.add(VGroup(arrow, txt).arrange(DOWN, buff=0.12))
-        cells.arrange_in_grid(rows=2, cols=4, buff=(0.9, 0.5)).move_to(UP * 1.1)
-        head = label("Eight wildlife datasets", 26, MUTED).next_to(cells, UP, buff=0.4)
+    def shot_7(self, pair) -> None:
+        keys = ["lynx_closed", "hyena", "leopard", "nyala", "salamander", "sea_star", "whale_shark", "turtle"]
+        files = {k: DEMO / "before_after" / f"{k}_query.jpg" for k in keys}
+        files["lynx_closed"] = PAIR_DIR / pair["query"]["image"]["file"]
+        cells = Group()
+        for key, name in zip(keys, DATASETS):
+            img = photo(files[key], 1.9)
+            # crop every photo to the same 4:3 cell so the grid is even
+            if img.width > img.height * 4 / 3:
+                img.set(width=img.height * 4 / 3) if False else None
+            frame = SurroundingRectangle(img, color=GREY, buff=0, stroke_width=1.5)
+            cells.add(Group(img, frame, label(name, 20, INK).next_to(img, DOWN, buff=0.12)))
+        cells.arrange_in_grid(rows=2, cols=4, buff=(0.45, 0.4)).move_to(UP * 0.35)
+        head = label("Eight wildlife datasets", 26, MUTED).to_edge(UP, buff=0.35)
         self.play(FadeIn(head), LaggedStart(*[FadeIn(c, shift=UP * 0.3) for c in cells], lag_ratio=0.08), run_time=2.0)
-        cost = label("about 5 GPU-hours of training", 24, INK).move_to(DOWN * 1.5)
+        cost = label("about 5 GPU-hours of training", 24, INK).to_edge(DOWN, buff=0.45)
         self.play(FadeIn(cost), run_time=0.8)
-        self.wait(1.4)
-        logo = ImageMobject(str(LOGO)).set(height=3.6)
-        self.play(FadeOut(cost), FadeOut(cells), FadeOut(head), run_time=0.6)
-        logo.move_to(ORIGIN)
-        self.play(FadeIn(logo, scale=0.95), run_time=1.0)
+        self.wait(1.6)
+        # ending: the photos spread into a faint collage and the logo comes up over it
+        collage_files = [f for f in files.values()] + sorted((ASSETS).glob("db_*.jpg"))
+        collage = Group(*[photo(f, 1.6) for f in collage_files])
+        collage.arrange_in_grid(rows=3, cols=6, buff=0.12).scale_to_fit_width(config.frame_width + 0.4).move_to(ORIGIN)
+        for img in collage:
+            img.set_opacity(0.0)
+        self.add(collage)
+        self.play(FadeOut(cells), FadeOut(head), FadeOut(cost),
+                  *[img.animate.set_opacity(0.18) for img in collage], run_time=1.2)
+        logo = ImageMobject(str(LOGO)).set(height=3.6).move_to(ORIGIN)
+        panel = RoundedRectangle(corner_radius=0.25, width=logo.width + 1.2, height=logo.height + 0.8, color=WHITE, fill_color=WHITE, fill_opacity=0.85, stroke_width=0)
+        panel.move_to(ORIGIN)
+        self.play(FadeIn(panel), FadeIn(logo, scale=0.95), run_time=1.0)
         self.fill_to(shot_end(7) + 0.4)

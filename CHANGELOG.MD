@@ -13,6 +13,9 @@ kept under Unreleased until a project version is assigned.
   First full render the same day: `explainer.py` (seven Manim shots on the demo exports),
   `candidates.py` (real top-5 lists for shot 6), `build.py` (narration mux, captions,
   transcript); shot 6 wording corrected to the measured candidate list.
+  Second render after the user's review: lynx 041 daylight pair (CPU-matched, real lists
+  2/5 -> 5/5), ten different lynxes, lynx 029 pools, separated margin labels, dataset photos
+  and a collage ending; selection sheets under `reports/project_page/explainer/`.
 - 2026-10-03: project-page review pass (all suggestions approved by the user): seven nav tabs
   (Results section with Qualitative and Training cost; Paper & Code merged), Results reordered
   with at-a-glance tiles and a "Why it works" group, match viewer removed in favour of the

@@ -1,0 +1,105 @@
+{
+ "database_tiles": [
+  {
+   "identity": "lynx_199",
+   "file": "db_lynx_199.jpg"
+  },
+  {
+   "identity": "lynx_031",
+   "file": "db_lynx_031.jpg"
+  },
+  {
+   "identity": "lynx_041",
+   "file": "db_lynx_041.jpg"
+  },
+  {
+   "identity": "lynx_173",
+   "file": "db_lynx_173.jpg"
+  },
+  {
+   "identity": "lynx_117",
+   "file": "db_lynx_117.jpg"
+  },
+  {
+   "identity": "lynx_122",
+   "file": "db_lynx_122.jpg"
+  },
+  {
+   "identity": "lynx_254",
+   "file": "db_lynx_254.jpg"
+  },
+  {
+   "identity": "lynx_290",
+   "file": "db_lynx_290.jpg"
+  },
+  {
+   "identity": "lynx_205",
+   "file": "db_lynx_205.jpg"
+  },
+  {
+   "identity": "lynx_029",
+   "file": "db_lynx_029.jpg"
+  }
+ ],
+ "pools": {
+  "anchor": {
+   "identity": "lynx_029",
+   "file": "anchor.jpg"
+  },
+  "positives": [
+   {
+    "identity": "lynx_029",
+    "file": "pos0.jpg",
+    "mined_score": 0.3849
+   },
+   {
+    "identity": "lynx_029",
+    "file": "pos1.jpg",
+    "mined_score": 0.3783
+   },
+   {
+    "identity": "lynx_029",
+    "file": "pos2.jpg",
+    "mined_score": 0.286
+   },
+   {
+    "identity": "lynx_029",
+    "file": "pos3.jpg",
+    "mined_score": 0.2402
+   },
+   {
+    "identity": "lynx_029",
+    "file": "pos4.jpg",
+    "mined_score": 0.1385
+   }
+  ],
+  "negatives": [
+   {
+    "identity": "lynx_030",
+    "file": "neg0.jpg",
+    "mined_score": 0.1834
+   },
+   {
+    "identity": "lynx_105",
+    "file": "neg1.jpg",
+    "mined_score": 0.1824
+   },
+   {
+    "identity": "lynx_200",
+    "file": "neg2.jpg",
+    "mined_score": 0.1804
+   },
+   {
+    "identity": "lynx_070",
+    "file": "neg3.jpg",
+    "mined_score": 0.1645
+   },
+   {
+    "identity": "lynx_021",
+    "file": "neg4.jpg",
+    "mined_score": 0.1644
+   }
+  ]
+ },
+ "source": "docs/assets/demo/mined_pairs (raw photos; thin black padding bands trimmed)"
+}

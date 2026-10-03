@@ -1,5 +1,5 @@
 {
- "query_source": "CzechLynx/foe_bohemia/lynx_041/22605_lynx_041.jpg",
+ "query_source": "CzechLynx/foe_bohemia/lynx_041/23504_lynx_041.jpg",
  "k": 250,
  "methods": {
   "default": {
@@ -7,29 +7,29 @@
    "query_identity": "lynx_041",
    "top5": [
     {
+     "identity": "lynx_141",
+     "score": 0.0481,
+     "correct": false
+    },
+    {
      "identity": "lynx_041",
-     "score": 0.108,
+     "score": 0.0464,
      "correct": true
     },
     {
+     "identity": "lynx_295",
+     "score": 0.0459,
+     "correct": false
+    },
+    {
+     "identity": "lynx_133",
+     "score": 0.0446,
+     "correct": false
+    },
+    {
      "identity": "lynx_041",
-     "score": 0.0941,
+     "score": 0.043,
      "correct": true
-    },
-    {
-     "identity": "lynx_062",
-     "score": 0.0664,
-     "correct": false
-    },
-    {
-     "identity": "lynx_180",
-     "score": 0.0659,
-     "correct": false
-    },
-    {
-     "identity": "lynx_085",
-     "score": 0.0572,
-     "correct": false
     }
    ]
   },
@@ -39,28 +39,28 @@
    "top5": [
     {
      "identity": "lynx_041",
-     "score": 0.7445,
+     "score": 0.7205,
      "correct": true
     },
     {
      "identity": "lynx_041",
-     "score": 0.7341,
+     "score": 0.6996,
      "correct": true
     },
     {
      "identity": "lynx_041",
-     "score": 0.7151,
+     "score": 0.6858,
      "correct": true
     },
     {
      "identity": "lynx_041",
-     "score": 0.7147,
+     "score": 0.6732,
      "correct": true
     },
     {
-     "identity": "lynx_243",
-     "score": 0.6905,
-     "correct": false
+     "identity": "lynx_041",
+     "score": 0.6521,
+     "correct": true
     }
    ]
   }

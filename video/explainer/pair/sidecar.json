@@ -1,0 +1,11 @@
+[
+ {
+  "dataset": "lynx_closed",
+  "label": "Czech Lynx",
+  "checkpoint": "/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+  "checkpoint_sha256": "a7cb990e399d371886d1eb4495f3737367e7a931454bc00375985b9428e37f49",
+  "query_path": "CzechLynx/foe_bohemia/lynx_041/23504_lynx_041.jpg",
+  "gallery_path": "CzechLynx/foe_bohemia/lynx_041/18829_lynx_041.jpg",
+  "probe_score": 0.7204581499099731
+ }
+]

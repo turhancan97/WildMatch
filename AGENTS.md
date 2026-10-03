@@ -1339,9 +1339,28 @@ right individual rises to the top" to "photos of the right individual fill the t
 candidate list" and only that shot was re-synthesised (total 78.5 s). Render command and
 checks: `manim -qh --fps 30 --media_dir media -o explainer.mp4 explainer.py Explainer` then
 `python build.py`; frames inspected per shot before the full render (headers that overflowed
-the frame were shortened). Still open: user review of the video, hosting (unlisted), the
-home-page embed with a click-to-load facade and the transcript, and a test that pins the
-transcript's two numbers.
+the frame were shortened). User review of the first render (2026-10-03) asked for: a cleaner lynx pair without
+padding bands or camera stamps, ten different lynxes in the database shot, cleaner pool
+photos, non-overlapping labels in the margin shot, one photo per dataset instead of arrows,
+and a photo collage fading behind the logo. Second render the same day: the pair is now
+lynx 041 (query 23504, gallery 18829, daylight, both photos over 600 px), chosen from
+`reports/project_page/explainer/pair_sheet2.jpg`, a sheet of the daylight match-candidate
+pairs filtered by size, padding and by their real k=250 lists (fine-tuned top 5 must hold
+more correct photos than the default's: this pair goes from 2/5 at 0.05 to 5/5 at 0.72-0.65);
+the two earlier picks were rejected because lynx 133's fine-tuned list held one correct photo
+and lynx 086's query was 208 px. The pair is matched on the CPU with both matchers through
+`scripts/export_before_after_demo.export(..., device="cpu", sidecar=video/explainer/pair/
+sidecar.json)` into `video/explainer/pair/` (recorded probe score 0.720, recomputed 0.713);
+`candidates.py <before_after.json>` writes its real lists. `video/explainer/assets/` holds
+ten database tiles of ten different individuals picked by eye from the mined-pairs photos
+(`lynx_identities_sheet.jpg`) and the lynx 029 pools (the cleanest anchor row on
+`anchor_pools_sheet.jpg`; thin padding bands trimmed, the anchor's bottom stamp strip cropped
+for display only). The scene trims the pair's padding bands and maps correspondences through
+the crop box, puts the "positive" label above the brace and "hard negative" below the ticks,
+shows the eight datasets as the before/after query photos, and ends with an 18-photo collage
+at 18 % opacity under a translucent panel with the logo. Still open: user review of the
+second render, hosting (unlisted), the home-page embed with a click-to-load facade and the
+transcript, and a test that pins the transcript's two numbers.
 
 **Publication checklist (keep current; tick items as they close).**
 

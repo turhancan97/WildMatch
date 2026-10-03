@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Real candidate lists for the explainer's shot 6: the top-5 gallery identities of the
-before/after demo's CzechLynx query under the paper's k=250 default and fine-tuned LoMa
+explainer's CzechLynx query (first argument: a before_after.json; default: the demo export) under the paper's k=250 default and fine-tuned LoMa
 runs, read from their ``scores.npz`` with the shared stable ranking rule. Writes
 ``candidates.json`` next to this file. Run in the ex-reid environment from the repository
 root::
@@ -24,7 +24,8 @@ from scripts import export_score_separation as sep  # noqa: E402
 
 
 def main() -> None:
-    pair = json.loads((REPO / "docs/assets/demo/before_after/before_after.json").read_text(encoding="utf-8"))
+    pair_file = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "docs/assets/demo/before_after/before_after.json"
+    pair = json.loads(pair_file.read_text(encoding="utf-8"))
     query_source = next(p for p in pair["pairs"] if p["dataset"] == "lynx_closed")["query"]["source"]
     runs = sep.paper_runs(sep.DEFAULT_PAPER_REPO, "CzechLynx_split-time_closed")
     out = {"query_source": query_source, "k": sep.MAIN_K, "methods": {}}

@@ -1,8 +1,8 @@
 # Project page for the WildMatch manuscript. Source lives in docs/, the built site
 # goes to site/ (gitignored) and is deployed to the gh-pages branch with
-# `mkdocs gh-deploy`. While the manuscript is unpublished this configuration lives
-# on the local `project-page` branch and must not be pushed or deployed (see
-# AGENTS.md, "Project page").
+# `mkdocs gh-deploy`. While the manuscript is unpublished the repository is private and
+# the site must not be deployed or the repository made public (see AGENTS.md, "Project
+# page").
 site_name: WildMatch
 site_description: Weakly supervised image matcher adaptation for wildlife re-identification
 # Placeholder until the repository rename; GitHub Pages URLs carry the repository name.

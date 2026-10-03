@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-03: the repository was made private (user) and `project-page` was fast-forwarded
+  into `main`; the page sources now live on `main`. Embargo rule updated: no deployment, no
+  public visibility and the explainer stays unlisted until the notification date.
 - 2026-10-03: video explainer started: narration script and shot list in `video/explainer/script.md`
   (Manim + Kokoro); the user approved the script and the separate `wm-video` conda environment
   (recipe in `video/explainer/ENVIRONMENT.md`); both tools smoke-tested.

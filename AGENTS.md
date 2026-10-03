@@ -536,6 +536,8 @@ Typical activation:
 
 Do not create or switch to another environment unless the user explicitly requests
 it or the shared environment is unavailable.
+The only other repository environment is `wm-video` (explainer video tooling, see
+`video/explainer/ENVIRONMENT.md`); never install video dependencies into `ex-reid`.
 
 ## Configuration and data contracts
 
@@ -1310,6 +1312,20 @@ confirmation. `overrides/main.html` adds Open Graph and Twitter card tags with
 `docs/assets/logo/wildmatch-social.png` (1200 x 630, the full-name logo, which already carries the tagline, centred on
 white over a brand-blue rule; rendered with Pillow). `test_project_page_numbers` reads the
 moved pages.
+
+**Video explainer (started 2026-10-03, user request).** A 70-80 s 3Blue1Brown-style animation
+for the home page, built with Manim Community and narrated with Kokoro-82M (open weights,
+stock voice, user decision over ElevenLabs). Source lives in `video/explainer/` (outside
+`docs/` so MkDocs does not render it): `script.md` holds the narration and shot list, which
+the user approves before any rendering. Rules: no venue or submission status, no author
+names on screen, only two spoken numbers ("eight datasets", "about five GPU-hours"), real
+correspondences and mining pools reused from the demo exports, captions and a transcript
+under the embed, the MP4 hosted unlisted and never committed, unlisted until the
+notification date like the rest of the page. Script approved by the user on 2026-10-03.
+Tooling runs in the separate `wm-video` conda environment (user approval 2026-10-03; recipe
+and install pitfalls in `video/explainer/ENVIRONMENT.md`: Manim 0.21.0, Kokoro 0.9.4, ffmpeg,
+pango with harfbuzz for the ManimPango build; voice `af_heart`, speed 0.95, about 134 words
+per minute). The `ex-reid` environment is unchanged.
 
 **Publication checklist (keep current; tick items as they close).**
 

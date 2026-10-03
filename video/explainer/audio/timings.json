@@ -42,13 +42,13 @@
   {
    "shot": 6,
    "start": 57.73,
-   "duration": 9.15,
-   "words": 23,
-   "text": "After adaptation the matcher finds many more correspondences on the animal, and the right individual rises to the top of the candidate list."
+   "duration": 9.75,
+   "words": 24,
+   "text": "After adaptation the matcher finds many more correspondences on the animal, and photos of the right individual fill the top of the candidate list."
   },
   {
    "shot": 7,
-   "start": 67.47,
+   "start": 68.08,
    "duration": 9.88,
    "words": 21,
    "text": "Across eight wildlife datasets, accuracy improves with about five GPU-hours of training, and every match can be inspected, line by line."

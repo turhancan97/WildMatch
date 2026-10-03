@@ -10,6 +10,9 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-03: video explainer started: narration script and shot list in `video/explainer/script.md`
   (Manim + Kokoro); the user approved the script and the separate `wm-video` conda environment
   (recipe in `video/explainer/ENVIRONMENT.md`); both tools smoke-tested.
+  First full render the same day: `explainer.py` (seven Manim shots on the demo exports),
+  `candidates.py` (real top-5 lists for shot 6), `build.py` (narration mux, captions,
+  transcript); shot 6 wording corrected to the measured candidate list.
 - 2026-10-03: project-page review pass (all suggestions approved by the user): seven nav tabs
   (Results section with Qualitative and Training cost; Paper & Code merged), Results reordered
   with at-a-glance tiles and a "Why it works" group, match viewer removed in favour of the

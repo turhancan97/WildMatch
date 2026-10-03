@@ -1,6 +1,6 @@
 # WildMatch explainer: narration script and shot list
 
-Status: draft for the user's approval (2026-10-03). Target length 70 to 80 seconds at a
+Status: approved by the user on 2026-10-03; shot 6 wording adjusted the same day to match the real candidate list (the default matcher already ranked this query's individual first). Target length 70 to 80 seconds at a
 calm 135 words per minute. Narration: Kokoro-82M, stock English voice. Animation: Manim
 Community, brand palette (blue #3a7eab for "ours", red #cf4832 for negatives, grey
 #d1d3d4 for structure), white background to match the page. No venue, no submission
@@ -17,7 +17,7 @@ is on the page.
 | 3 | A database of photos tiles in; each gets a small name tag. The tags glow blue. | 17–25 | What every monitoring project does have is identity labels: which photos show the same animal. WildMatch uses nothing else. |
 | 4 | One photo becomes the anchor; the pretrained matcher scores it against the others; the five highest same-identity photos gather on the left in blue, the five highest other-identity photos on the right in red. | 25–40 | The pretrained matcher scores each photo against the rest. Its highest-scoring photos of the same animal become positives. Its highest-scoring photos of other animals become hard negatives: the pairs it gets wrong. |
 | 5 | A horizontal score axis; a blue dot (positive) and a red dot (negative) sit close; a bracket labelled "margin" appears; the blue dot is pushed right, the red left. Only the "matching module" block highlights; detector and descriptor stay grey. | 40–55 | Training then asks for one thing: the score with a positive must beat the score with a hard negative by a margin. Only the matching module changes; the keypoints and descriptors stay as they were. |
-| 6 | Back to the first lynx pair: many more lines appear, all on the coat; a ranked list of candidates reorders so the true match moves to the top. | 55–68 | After adaptation the matcher finds many more correspondences on the animal, and the right individual rises to the top of the candidate list. |
+| 6 | Back to the first lynx pair: many more lines appear, all on the coat; the real top-5 candidate list of this query (from the paper's k=250 runs, `candidates.json`) switches from the default matcher (two correct of five, scores close) to the fine-tuned one (four correct of five, scores far apart). | 55–68 | After adaptation the matcher finds many more correspondences on the animal, and photos of the right individual fill the top of the candidate list. |
 | 7 | Eight small dataset icons with upward arrows; a clock showing five GPU-hours; the WildMatch wordmark. | 68–78 | Across eight wildlife datasets, accuracy improves with about five GPU-hours of training, and every match can be inspected, line by line. |
 
 ## Production notes

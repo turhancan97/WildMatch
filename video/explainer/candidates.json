@@ -1,0 +1,68 @@
+{
+ "query_source": "CzechLynx/foe_bohemia/lynx_041/22605_lynx_041.jpg",
+ "k": 250,
+ "methods": {
+  "default": {
+   "run_id": "20260920T131759Z_daf95fda",
+   "query_identity": "lynx_041",
+   "top5": [
+    {
+     "identity": "lynx_041",
+     "score": 0.108,
+     "correct": true
+    },
+    {
+     "identity": "lynx_041",
+     "score": 0.0941,
+     "correct": true
+    },
+    {
+     "identity": "lynx_062",
+     "score": 0.0664,
+     "correct": false
+    },
+    {
+     "identity": "lynx_180",
+     "score": 0.0659,
+     "correct": false
+    },
+    {
+     "identity": "lynx_085",
+     "score": 0.0572,
+     "correct": false
+    }
+   ]
+  },
+  "finetuned": {
+   "run_id": "20260920T131759Z_612b4791",
+   "query_identity": "lynx_041",
+   "top5": [
+    {
+     "identity": "lynx_041",
+     "score": 0.7445,
+     "correct": true
+    },
+    {
+     "identity": "lynx_041",
+     "score": 0.7341,
+     "correct": true
+    },
+    {
+     "identity": "lynx_041",
+     "score": 0.7151,
+     "correct": true
+    },
+    {
+     "identity": "lynx_041",
+     "score": 0.7147,
+     "correct": true
+    },
+    {
+     "identity": "lynx_243",
+     "score": 0.6905,
+     "correct": false
+    }
+   ]
+  }
+ }
+}

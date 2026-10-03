@@ -1326,6 +1326,22 @@ Tooling runs in the separate `wm-video` conda environment (user approval 2026-10
 and install pitfalls in `video/explainer/ENVIRONMENT.md`: Manim 0.21.0, Kokoro 0.9.4, ffmpeg,
 pango with harfbuzz for the ManimPango build; voice `af_heart`, speed 0.95, about 134 words
 per minute). The `ex-reid` environment is unchanged.
+First full render on 2026-10-03: `video/explainer/explainer.py` (one `Explainer` scene, seven
+shots cut to `audio/timings.json` through `fill_to`, which waits until the renderer clock
+reaches each shot's end; brand palette; `Text` only, no LaTeX, because the environment has
+none), `build.py` (muxes `audio/narration.wav` onto the Manim render with ffmpeg, writes
+`out/wildmatch_explainer.{mp4,srt}` and `out/transcript.md`; `out/`, `media/` and the WAVs are
+gitignored, `narration.mp3` and `timings.json` are committed). Shot 6 shows this query's real
+top-5 under both k=250 runs from `candidates.json` (`candidates.py`, ex-reid): the default
+matcher already ranked lynx 041 first (two of five correct, 0.11 vs 0.07) and the fine-tuned
+one has four of five correct (0.74 vs 0.69), so the shot 6 narration was changed from "the
+right individual rises to the top" to "photos of the right individual fill the top of the
+candidate list" and only that shot was re-synthesised (total 78.5 s). Render command and
+checks: `manim -qh --fps 30 --media_dir media -o explainer.mp4 explainer.py Explainer` then
+`python build.py`; frames inspected per shot before the full render (headers that overflowed
+the frame were shortened). Still open: user review of the video, hosting (unlisted), the
+home-page embed with a click-to-load facade and the transcript, and a test that pins the
+transcript's two numbers.
 
 **Publication checklist (keep current; tick items as they close).**
 

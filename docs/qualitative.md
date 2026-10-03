@@ -40,6 +40,6 @@ into population estimates.
 
 ## Challenging images
 
-See [Known data problems](datasets.md#known-data-problems) for the raw-photo examples of
+See [Known data problems](datasets/challenges.md) for the raw-photo examples of
 overexposure, insufficient detail, empty frames, corruption and blur that remain in
 every method's database and query sets.

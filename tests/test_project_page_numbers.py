@@ -54,7 +54,7 @@ class TranscribedNumbersTests(unittest.TestCase):
         cls.cost = json.loads((DATA / "training_cost.json").read_text(encoding="utf-8"))
         cls.results_md = (DOCS / "results.md").read_text(encoding="utf-8")
         cls.compute_md = (DOCS / "compute.md").read_text(encoding="utf-8")
-        cls.datasets_md = (DOCS / "datasets.md").read_text(encoding="utf-8")
+        cls.datasets_md = (DOCS / "datasets" / "index.md").read_text(encoding="utf-8")
 
     def _table_with_header(self, text, first_header):
         for table in markdown_tables(text):

@@ -182,7 +182,7 @@ the classifier). See [Training cost](compute.md) for the curves.
 
 ## Generalization to unseen identities
 
-Under the [unseen-identity protocol](datasets.md#unseen-identity-protocol-czechlynx),
+Under the [unseen-identity protocol](datasets/index.md#unseen-identity-protocol-czechlynx),
 both fine-tuned matchers beat their defaults and WildFusion at every budget and in both
 metrics, including the exhaustive budget \(k = 160\). Cosine retrieval scores the whole
 gallery and does not depend on \(k\). Cells give top-5 / balanced top-1.

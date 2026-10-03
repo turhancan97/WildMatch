@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-02: project-page Datasets section with a "Data challenges" subpage (user request):
+  `scripts/export_data_challenges.py` ranks audit candidates into raw-photo review sheets and
+  exports the user-approved examples (48 photos in seven categories, noise vs inherent
+  difficulties) and the audit summary; `data-challenges.js` renders the galleries and the
+  per-dataset flag table. `docs/datasets.md` moved to `docs/datasets/index.md`. Tests in
+  `tests/test_export_data_challenges.py`.
 - 2026-10-02: project-page "Rare and common individuals" view (user idea). `scripts/export_frequency_bins.py`
   bins the paper's k=250 queries by gallery images per individual and reports Top-1/Top-5 of both LoMa
   matchers, the shortlist ceiling and bootstrap intervals on the gain; `frequency-bins.js` draws it on

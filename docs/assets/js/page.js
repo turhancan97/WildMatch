@@ -11,6 +11,7 @@ import { mountRankChange } from "./rank-change-demo.js";
 import { mountScoreSeparation } from "./score-separation-demo.js";
 import { mountBudgetTradeoff } from "./budget-tradeoff.js";
 import { mountFrequencyBins } from "./frequency-bins.js";
+import { mountChallenge, mountImageQualityTable } from "./data-challenges.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -25,6 +26,14 @@ const MOUNTS = [
   ["wm-score-separation", mountScoreSeparation],
   ["wm-budget-tradeoff", mountBudgetTradeoff],
   ["wm-frequency-bins", mountFrequencyBins],
+  ["wm-challenge-overexposure", mountChallenge],
+  ["wm-challenge-empty_frame", mountChallenge],
+  ["wm-challenge-insufficient_detail", mountChallenge],
+  ["wm-challenge-corruption", mountChallenge],
+  ["wm-challenge-blur", mountChallenge],
+  ["wm-challenge-night_infrared", mountChallenge],
+  ["wm-challenge-occlusion", mountChallenge],
+  ["wm-image-quality-table", mountImageQualityTable],
 ];
 
 function mountAll() {

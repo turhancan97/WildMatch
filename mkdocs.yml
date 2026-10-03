@@ -96,7 +96,9 @@ nav:
       - Background masking: demo/masking.md
       - Synthetic matching: demo/synthetic.md
   - Method: method.md
-  - Datasets: datasets.md
+  - Datasets:
+      - datasets/index.md
+      - Data challenges: datasets/challenges.md
   - Results: results.md
   - Qualitative: qualitative.md
   - Training cost: compute.md

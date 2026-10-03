@@ -1256,6 +1256,37 @@ both brand blue; small bins fainter), the shortlist ceiling as grey diamonds, th
 points above each bin, a table with intervals, and dataset/metric selectors defaulting to
 Top-5 (the paper's primary metric). Tests in `tests/test_export_frequency_bins.py`.
 
+**Datasets section and Data challenges page (user request 2026-10-02).** `docs/datasets.md`
+moved to `docs/datasets/index.md` (nav section "Datasets" with `navigation.indexes`; links in
+`qualitative.md`, `results.md` and `tests/test_project_page_numbers.py` updated) and gained a
+subpage `docs/datasets/challenges.md` that shows the confirmed examples behind the paper's
+data-quality figure in far more detail. `scripts/export_data_challenges.py` has two steps:
+`candidates` ranks images per category from the image-quality audit CSVs
+(`experiments/image-quality/<dataset>.csv`, original metadata `row_index`; the audit drops
+rows outside the two split sides, so containment, not equal length, is checked), resolves
+the RAW photo (never the masked input: `original_path` for Salamander, `masked_images/` ->
+`images/` for WildlifeReID-10k, the metadata path for CzechLynx) and writes review contact
+sheets to the gitignored `reports/project_page/data_challenges/`; `render` exports the
+`EXAMPLES` list (web JPEGs at 900 px and `challenges.json` with audit measurements, flags,
+query Top-1 over completed runs and source SHA-256) to `docs/assets/datasets/challenges/`
+(48 photos, 3.2 MB) and the audit summary to `docs/data/image_quality_summary.json`
+(`summary.csv` rows of the eight page datasets, `lynx_closed` for CzechLynx, BelugaID
+excluded). Categories: noise = overexposure, empty frame, insufficient detail, corruption,
+blur; difficulties = night/infrared frames, occlusion; mask-only problems (provider mask
+failures on Sea star and Whale shark, masks on branches, finger-split masks, dark animals
+undercounted by the brightness threshold) are text only, following the paper figure's rule.
+The 48 examples were proposed by the assistant from the sheets and approved by the user on
+2026-10-02; rejected as false positives: Hyena overexposure candidates (identifiable), lynx
+frames with the animal at the edge (truncation, not emptiness), dark Leopard/Hyena frames
+flagged empty, Whale shark spot close-ups flagged tiny (provider mask specks), all Nyala
+tiny/blur candidates (full-body, sharp), CzechLynx 29895 (purple IR cast, not corruption),
+Salamander 63 (no finger visible) and 1280 (uncertain). `data-challenges.js` mounts one
+gallery per category (`#wm-challenge-<key>`, raw photo, caption with dataset, side, the
+ranking measurement and query Top-1 where available, full-size copy on click) plus
+`#wm-image-quality-table` (per-dataset flag counts, flagged share, flagged vs clean query
+Top-1, runs). Tests in `tests/test_export_data_challenges.py` (examples valid and unique,
+every category has examples and a mount point, export matches `EXAMPLES`, no private paths).
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,

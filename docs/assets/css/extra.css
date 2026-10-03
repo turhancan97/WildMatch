@@ -1105,3 +1105,49 @@
 .md-typeset table.wm-ss-table tr.wm-fb-small th {
   color: var(--md-default-fg-color--light);
 }
+
+/* Data challenges: raw-photo example galleries and the audit table. */
+.wm-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.md-typeset figure.wm-gallery-item {
+  margin: 0;
+  width: auto;
+}
+
+.md-typeset .wm-gallery-item a {
+  display: block;
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  background: #000;
+}
+
+.md-typeset .wm-gallery-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  margin: 0;
+  transition: transform 0.15s ease;
+}
+
+.md-typeset .wm-gallery-item a:hover img {
+  transform: scale(1.03);
+}
+
+.md-typeset .wm-gallery-item figcaption {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  margin: 0.3rem 0 0;
+  color: var(--md-default-fg-color--light);
+  text-align: left;
+}
+
+.md-typeset table.wm-iq-table {
+  font-size: 0.7rem;
+}

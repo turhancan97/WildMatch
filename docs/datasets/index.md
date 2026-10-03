@@ -63,14 +63,15 @@ image-level split.
 ## Known data problems
 
 <figure class="wm-figure" markdown>
-![Examples of challenging images](assets/figures/data_quality_examples.png)
+![Examples of challenging images](../assets/figures/data_quality_examples.png)
 <figcaption>Examples of challenging images in the benchmark datasets. Raw frames that are overexposed (a), show too little of the animal to see its markings (b), contain no visible animal (c), are corrupted (d), or are blurred (e). Such images remain in the database and query sets of all methods.</figcaption>
 </figure>
 
-Further problems visible only in the masks, not in the raw photos, are described in the
-text rather than shown: CzechLynx masks that segment branches or glare, provider mask
-failures on a few Sea star and Whale shark images, and Salamander masks split by the
-handler's finger. None of these images were removed.
+The [Data challenges](challenges.md) page shows many more confirmed examples per problem,
+separates dataset noise from inherent difficulties such as night frames and occlusion, and
+reports how many images each audit flag caught and whether flagged queries are less
+accurate. Problems visible only in the masks, not in the raw photos, are described there in
+text.
 
 ## Licensing
 

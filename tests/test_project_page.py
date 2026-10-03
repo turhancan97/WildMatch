@@ -120,6 +120,14 @@ class ProjectPageContentTests(unittest.TestCase):
             for phrase in FORBIDDEN_PHRASES:
                 self.assertNotIn(phrase, text, f"{path}: contains {phrase!r}")
 
+    def test_explainer_video_id_is_well_formed(self):
+        home = (DOCS_DIR / "index.md").read_text(encoding="utf-8")
+        match = re.search(r'id="wm-explainer"[^>]*data-youtube="([^"]*)"', home)
+        self.assertIsNotNone(match, "home page has no explainer mount point")
+        video_id = match.group(1)
+        if video_id:
+            self.assertRegex(video_id, r"^[A-Za-z0-9_-]{11}$", "YouTube IDs are 11 URL-safe characters")
+
     def test_relative_links_and_images_resolve(self):
         link = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
         for page in DOCS_DIR.rglob("*.md"):

@@ -1383,9 +1383,9 @@ track, which serves the private draft. `build.py` now also writes `docs/data/exp
 the MP4 is never committed). `tests/test_project_page_numbers.py::ExplainerTranscriptTests`
 pins the transcript to the committed timings and its two spoken numbers to the page data
 (eight paper datasets in `results.json`; LoMa matcher-only GPU-hours in `adapt.json` round to
-five) and forbids venue or status words in the narration. When the video is hosted: set
-`data-youtube` on the home page, keep `data-src` as the fallback or remove it, and tick the
-checklist item.
+five) and forbids venue or status words in the narration. The user uploaded the video unlisted on 2026-10-03 (YouTube ID `9i3iE8Bs6n8`, youtu.be/9i3iE8Bs6n8);
+`data-youtube` on the home page carries it and the local MP4 stays as the `data-src` fallback
+for offline previews. It must stay unlisted until the notification date.
 
 **Publication checklist (keep current; tick items as they close).**
 
@@ -1405,9 +1405,9 @@ checklist item.
   retrain, and re-check `tests/test_project_page_numbers.py`.
 - [ ] Check in a browser at phone width: hub cards, data-challenge galleries, the two-panel
   Plotly views, and dark mode of the PNG figures.
-- [ ] Upload `video/explainer/out/wildmatch_explainer.mp4` unlisted (YouTube or Vimeo) with
-  the `.srt` captions, put the video ID in `data-youtube` on `docs/index.md`, and check the
-  embed and transcript on the built page.
+- [x] Upload the explainer unlisted and put the video ID in `data-youtube` on `docs/index.md`
+  (done 2026-10-03, `9i3iE8Bs6n8`). Before publication: replace the description's "to follow"
+  line with the page URL and switch the video from unlisted to public.
 - [ ] Merge `project-page` into `main` and run `mkdocs gh-deploy` (user) only after the
   notification date; verify the social card and favicon on the live URL.
 

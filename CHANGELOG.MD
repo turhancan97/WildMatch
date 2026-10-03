@@ -23,6 +23,7 @@ kept under Unreleased until a project version is assigned.
   Approved as final. Home-page embed added: click-to-load facade with a poster frame, hosted
   player by video ID or local MP4 fallback for the draft, transcript from the committed
   timings, and a test pinning the two spoken numbers to the page data.
+  Hosted unlisted on YouTube (`9i3iE8Bs6n8`); the embed now loads the hosted player.
 - 2026-10-03: project-page review pass (all suggestions approved by the user): seven nav tabs
   (Results section with Qualitative and Training cost; Paper & Code merged), Results reordered
   with at-a-glance tiles and a "Why it works" group, match viewer removed in favour of the

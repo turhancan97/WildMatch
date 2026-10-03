@@ -61,7 +61,7 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 
 ## In 78 seconds
 
-<div id="wm-explainer" class="wm-widget" data-youtube="" data-src="../assets/video/wildmatch_explainer.mp4" data-track="../assets/video/wildmatch_explainer.vtt">Loading the explainer…</div>
+<div id="wm-explainer" class="wm-widget" data-youtube="9i3iE8Bs6n8" data-src="../assets/video/wildmatch_explainer.mp4" data-track="../assets/video/wildmatch_explainer.vtt">Loading the explainer…</div>
 
 ## Abstract
 

@@ -7,6 +7,41 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-03: repository cleanup outside the project page (each item approved by the user).
+  Scripts and configs: `probe.sh` now loads the existing LoMa checkpoint
+  `loma-b-finetuned-loma-mined-legacy/epoch_299` (the old `loma-b-finetuned-trainval-4gpu`
+  path no longer exists); the three single-job Slurm wrappers no longer run `conda init bash`,
+  which edited `~/.bashrc` on every job; requirements.txt lists wildlife-tools and
+  wildlife-datasets once, pinned to the git commits installed in ex-reid (`e762a6c4`,
+  `fc702c3c`); the 21 MB annotation notebook was committed without its outputs (17 KB).
+  Generated artifacts: Hydra's job log moved from the repository root to
+  `logs/hydra/<job>.log` (`hydra.run.dir` in both configs, working directory unchanged,
+  new config test) and the old 688 KB root `probe.log` was deleted; the project block of
+  `.gitignore` is grouped and commented, its duplicate `cache/` entry and commented-out
+  shell-script block are gone, and the generated-folder patterns are anchored to the root,
+  because `results/` also matched `docs/results/` and would have ignored new page files
+  there (the set of ignored files is unchanged).
+  Tests: a passing run now prints only the progress dots and summary; two leaked file
+  handles are closed, and console prints, an argparse usage message, a tqdm bar and a
+  pycocotools/NumPy 2 deprecation warning are captured in the tests that trigger them. No
+  assertion changed.
+  README: repository tree updated to today's layout, a section listing the paper, data,
+  log and project-page scripts, and a short summary that links to AGENTS.md instead of
+  copying its research-validity and parallel-submission sections; dangling `train/probe`
+  reference and an orphaned troubleshooting line fixed.
+  AGENTS.md (1,613 -> 1,000 lines): the narrative history of the paper figures, the
+  training-cost ablation and the project-page build moved unchanged to the new tracked
+  `notes/history.md`, replaced by short rule summaries and a page-component table; ticked
+  future-work items removed; duplicated statements on mask hashing, test-split selection,
+  calibration and legacy checkpoint discovery merged with cross-references; four facts
+  that only README carried were added (historical mAP caveat, coverage and candidate field
+  names, `rerank_mAP_at_k` for matcher ablations, `tasks.tsv`). Stale facts corrected: the
+  embargo text (private repository, page on `main`), the RDD retrain status (not started;
+  Hyena and Leopard checkpoints renamed, not lost, verified by SHA-256; only ATRW, CowDataset
+  and StripeSpotter missing; two relaxed-score pilot directories), Known-issue line numbers,
+  and two garbled paragraphs. New Known issue: several wildlife launcher profiles default to
+  renamed `legacy/` checkpoint folders (Turtle, Whale Shark, Beluga, Leopard, Hyena); the
+  launcher was not changed.
 - 2026-10-03: the repository was made private (user) and `project-page` was fast-forwarded
   into `main`; the page sources now live on `main`. Embargo rule updated: no deployment, no
   public visibility and the explainer stays unlisted until the notification date.

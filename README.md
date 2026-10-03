@@ -18,43 +18,35 @@ The code is organized into reusable modules under `reid/` and thin CLI entrypoin
 
 ```text
 .
-├── conf/
-│   ├── finetune.yaml
-│   └── probe.yaml
-├── config/
-│   └── kaggle_jaguar.yaml
-├── experiments/
-│   ├── probe/
-│   └── finetune/
-├── reports/
-│   └── runs.csv
-├── models/
-│   └── model.py
-├── reid/
-│   ├── data/
-│   │   └── dataset_view.py
-│   ├── engine/
-│   │   ├── finetune_runner.py
-│   │   └── probe_runner.py
-│   ├── evaluation/
-│   │   └── metrics.py
-│   ├── features/
-│   │   └── containers.py
-│   ├── training/
-│   │   ├── accumulation.py
-│   │   └── checkpointing.py
-│   ├── config_defaults.py
-│   └── utils/
-│       ├── io.py
-│       └── repro.py
-├── tests/
-│   └── test_shared_utils.py
-├── train/
-│   ├── finetune.py
-│   └── probe.py
-├── requirements.txt
-└── environment.yml
+├── conf/                 Hydra configs: probe.yaml, finetune.yaml
+├── config/               standalone Jaguar config (kaggle_jaguar.yaml)
+├── models/               backbone factory, ViT CLS adapter, training objectives
+├── reid/                 library code
+│   ├── data/             dataset views, COCO-RLE masking, split safety checks
+│   ├── engine/           finetune, probe and Jaguar runners
+│   ├── evaluation/       metrics, stable ranking, candidate scoring
+│   ├── features/         feature containers
+│   ├── methods/          Vismatch (profiles, batching, checkpoints), WildFusion calibration
+│   ├── reporting/        manifests, run index, paper tables and figures, W&B names
+│   ├── training/         checkpointing, accumulation, class weights
+│   └── utils/            I/O, fingerprints, cache identities, reproducibility
+├── train/                CLI entrypoints: finetune.py, probe.py
+├── scripts/              analysis, export and plotting tools (see below)
+├── tests/                dependency-light unit tests
+├── notebooks/            dataset annotation viewer (outputs stripped)
+├── probe.sh, finetune.sh, kaggle_jaguar_submit.sh      single-job Slurm wrappers
+├── probe-parallel-czechlynx.sh, probe-parallel-wildlife.sh   Slurm array launchers
+├── mkdocs.yml, docs/, overrides/   project page (MkDocs Material)
+├── video/explainer/      explainer video sources (Manim + Kokoro, wm-video env)
+├── AGENTS.md             operating guide, decisions and open work
+├── notes/history.md      narrative history moved out of AGENTS.md
+└── CHANGELOG.MD          chronological record of changes
 ```
+
+Generated and ignored: `experiments/` (one directory per run), `reports/` (run index,
+paper tables, figures), `logs/` (Slurm and Hydra logs), `benchmark_runs/`,
+`kaggle_runs/`, `wandb/`, `site/` (page build) and `dataset/` (symlinks to the shared
+datasets). `results/`, `cache/` and `visualizations/` appear only when old workflows run.
 
 ## Installation
 
@@ -212,7 +204,7 @@ future parallel tasks.
 
 ### Kaggle Jaguar Re-ID (new standalone pipeline)
 
-This repository now includes a dedicated competition pipeline that keeps existing `train/probe` behavior unchanged:
+This repository now includes a dedicated competition pipeline that keeps the existing `train/finetune.py` and `train/probe.py` behavior unchanged:
 - finetune backbone with ArcFace
 - local validation (identity-balanced mAP on stratified train/val split)
 - Stage A retrieval (`cosine` or `wildfusion`)
@@ -839,74 +831,58 @@ python -m unittest discover -s tests -p 'test_*.py'
 - mask decoding errors with `no_background: true`
   - Verify metadata has valid `mask` field (JSON string or COCO-RLE dict).
 - CUDA mismatch or availability issues
-
-## Research-validity reporting
-
-The reported retrieval metrics now follow a documented primary/diagnostic split:
-
-- `mAP` includes every query. Queries without a relevant gallery identity contribute
-  AP=0; `mAP_eligible` retains the eligible-query-only diagnostic, while
-  `mAP_query_coverage`, `num_queries_with_gallery_match`, and
-  `num_queries_without_gallery_match` expose coverage.
-- `mAP` and `mAP_eligible` are reported only when `score_coverage` is `1.0`. A
-  shortlist method scores `candidate_k` of the gallery and leaves the rest at `-inf`,
-  ordered by original database index; grading that tail measures metadata row order
-  rather than the matcher, so both fields become `nan` there. Use `mAP_at_k`.
-- `mAP_at_k` is the primary retrieval metric for shortlist methods and is computed the
-  same way for full-matrix methods, keeping `cosine`, `wildfusion`, and `vismatch`
-  comparable. It truncates at `benchmark.candidate_k`, gives no credit to unscored
-  positions, and divides by `min(relevant, k)` so a query whose identity never reached
-  the shortlist scores 0.
-- The retrieval result splits into three readable parts: `recall_at_k` (did the
-  shortlist contain the identity at all), `rerank_mAP_at_k` (given that it did, how well
-  was it ordered), and `mAP_at_k` (end-to-end). Matcher ablations should compare
-  `rerank_mAP_at_k`, which does not charge every matcher for the same Stage-A misses.
-- Cutoffs are validated before model loading: Vismatch `top_k` values must fit inside
-  `benchmark.candidate_k`. The old independent `benchmark.map_at_k`, Vismatch
-  `candidate_k`, and WildFusion `B` overrides are unsupported; use `benchmark.candidate_k`.
-- Each probe run writes `scores.npz`, a sparse COO record of the scored matrix entries,
-  so metrics can be recomputed without repeating a matcher run.
-- Historical `mAP` values in `reports/runs.csv` predate this gate, are not comparable
-  across methods, and cannot be recomputed because those runs did not persist scores.
-- Linear and efficient probes report identity-level retrieval as primary. Their
-  image-level metrics remain available as `image_top_1`, `image_top_5`, `image_top_10`,
--  and `image_mAP` diagnostics. Identity scores are read directly from the classifier's
-  per-identity output columns, so a gallery holding many images per identity no longer
-  fails metric computation. Open-world classification fields make unseen query
-  identities explicit; use the policy and coverage fields when comparing these probes
-  with retrieval methods.
-- All ranking and visualization paths use deterministic descending score order with
-  original database index as the tie-breaker, including the run-local
-  `visualizations/index.csv`, so the index resolves ties identically to the prediction
-  grid it annotates and to the reported metrics.
-- Vismatch and WildFusion use shortlist-constrained ranking. Vismatch scores only
-  Stage-A candidates; unscored positions are `-inf` and are excluded from the final
-  ranking. Vismatch reports `candidate_hit_rate`/`candidate_recall_at_k` plus
-  `num_candidate_pairs`, `num_unscored_pairs`, and `candidate_fraction`.
-
-Split safety checks retain path-overlap detection and now compute SHA-256 hashes for
-resolved image files. Identical content across protected splits fails closed, with
-sample paths and missing/unreadable files recorded in `safety_checks/summary.json`.
-Feature caches similarly include image content, metadata, preprocessing, image variant,
-model/checkpoint weights, and matcher-profile identities. This adds I/O but prevents
-stale features when a file or model changes at the same path.
-
-LoMa descriptor exports may omit standard BatchNorm running-stat buffers. The loader
-keeps those non-learned buffers at the active model defaults while retaining strict
-validation for descriptor parameters and tensor shapes.
-
-Automatic checkpoint discovery recursively searches `experiments/finetune/` before
-legacy `results/`, ignores failed/incomplete runs and full resume checkpoints, and
-prefers completed canonical model-only files before tagged historical files. Explicit
-checkpoint paths retain highest priority. Finetune reports reload the best checkpoint
-for primary metrics and retain final-epoch metrics separately. The current test split
-is still the model-selection split; this limitation has not been changed.
-
   - Adjust device/AMP settings in config.
 
+## Scripts beyond training and probing
 
-### Immutable parallel probe submissions
+Paper tables and figures (all read completed runs under `experiments/`):
 
-The selected dataset launcher snapshots every submission under `logs/parallel_run/submissions/<submission_id>/`. The snapshot contains the copied `probe.yaml`, `tasks.tsv`, and `manifest.json`. Array tasks receive the manifest through `--export` and use only that record for dataset, matcher, checkpoint, and `candidate_k` values; changing the working configuration or launcher variables after `sbatch` does not change a submitted task.
+- `scripts/export_paper_tables.py`: per-animal LaTeX and audit CSV tables.
+- `scripts/plot_paper_figures.py`: accuracy against candidate budget k.
+- `scripts/plot_training_cost.py`: test accuracy against training GPU-hours (CzechLynx closed).
+- `scripts/eval_loma_epoch_curve.sh`: Slurm array that evaluates intermediate LoMa checkpoints for that plot.
+- `scripts/plot_match_examples.py`: qualitative figure, one fine-tuned LoMa match per dataset.
+- `scripts/plot_data_quality_examples.py`: confirmed low-quality examples as raw photos.
+- `scripts/export_class_balance.py`: per-identity image counts and imbalance statistics.
+- `scripts/audit_image_quality.py`: heuristic low-quality image flags for review by eye.
 
-Dataset/checkpoint ownership is declared in each launcher's `DATASET_PROFILES`. The CzechLynx launcher has the CzechLynx profile active; the Wildlife launcher contains templates for NyalaData, WhaleSharkID, BelugaID, ZindiTurtleRecall, ATRW, Giraffes, LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset, StripeSpotter, and SeaStarReID2023. Exactly one profile must be active; zero or multiple profiles fail before task generation. Default LoMa and RDD checkpoint paths are derived from the active profile's animal name, while explicit overrides are still checked against that animal. Custom checkpoints are checked for existence, ownership, and SHA-256 content identity before model loading or cache creation. Use the selected dataset launcher with `--list-tasks` or `--dry-run` to inspect the immutable task grid. Keep `probe.sh` unchanged, and do not edit a submission manifest or its checkpoint after submission.
+Data preparation:
+
+- `scripts/build_unseen_eval_metadata.py`: unseen-identity gallery/query split.
+- `scripts/segment_with_sam3.py`: SAM 3 background removal and pre-masked metadata (`lynx-app` env, A100/H100).
+
+Run and log inspection:
+
+- `scripts/summarize_runs.py`: filter and sort `reports/runs.csv`.
+- `scripts/summarize_logs.py`: index the organized Slurm task logs.
+- `scripts/probe_parallel_manifest.py`, `scripts/probe_log_metadata.py`: helpers called by the parallel launchers.
+
+Project page exporters (write committed files under `docs/`; GPU where noted):
+
+- `scripts/export_project_page_data.py`: results, curves and page figures from the paper's results snapshot.
+- `scripts/export_score_separation.py`, `scripts/export_frequency_bins.py`, `scripts/export_budget_tradeoff.py`: the "why it works" views.
+- `scripts/export_before_after_demo.py` (GPU), `scripts/export_rank_change_demo.py`, `scripts/export_mined_pairs_demo.py` (GPU), `scripts/export_masking_demo.py`, `scripts/export_synthetic_demo.py` (GPU): the demos.
+- `scripts/export_data_challenges.py`: the data-challenges galleries.
+- `scripts/build_demo_cards.py`: Demo hub thumbnails.
+- `scripts/analyze_background_matches.py` (GPU): analysis only, writes to `reports/`.
+
+The project page builds with `mkdocs build --strict` (dependencies in
+`requirements-docs.txt`). The explainer video is built from `video/explainer/`; see
+`video/explainer/ENVIRONMENT.md`. AGENTS.md ("Project page") holds the page's rules and
+publication checklist.
+
+## Research validity and parallel submissions
+
+AGENTS.md is the single source for these rules; read its "Research-validity reporting
+policy" and "Immutable parallel probe submissions" sections. In short:
+
+- Ties are broken by original database index everywhere (metrics, shortlists, visualizations).
+- Shortlist methods (Vismatch, WildFusion) report `mAP_at_k`; full-matrix `mAP` is emitted only
+  when every gallery position is scored, and is `nan` otherwise.
+- `recall_at_k`, `rerank_mAP_at_k` and `mAP_at_k` separate shortlist reach from matcher ordering.
+- Every probe run writes `scores.npz`, so metrics can be recomputed without rerunning a matcher.
+- Feature caches are keyed on image content, metadata, preprocessing, image variant and model
+  or checkpoint weights; mask contents are not hashed yet.
+- The parallel launchers snapshot each submission (config copy, task table, manifest) under
+  `logs/parallel_run/submissions/`; tasks read only that snapshot, and custom checkpoints are
+  checked for owner and SHA-256 before loading.

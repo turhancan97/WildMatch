@@ -2,10 +2,13 @@
 
 import csv
 import importlib.util
+import io
 import json
 import sys
 import tempfile
 import unittest
+import warnings
+from contextlib import redirect_stdout
 from pathlib import Path
 
 import numpy as np
@@ -70,7 +73,11 @@ class MaskingDemoHelpersTests(unittest.TestCase):
                     wr.writerow({"path": r["path"], "masked_path": "x", "n_detections": "2", "best_score": "0.91",
                                  "threshold_used": "0.5", "prompt_used": "Lynx", "merge": "union",
                                  "fg_fraction": str(sam3_mask.mean()), "bbox": "", "mask": _rle(sam3_mask)})
-            payload = M.export(root, "meta.csv", sam3, out, renders)
+            # The exporter prints a per-render report, and pycocotools 2.x triggers a NumPy 2
+            # DeprecationWarning inside its RLE decoder; neither is our code under test.
+            with redirect_stdout(io.StringIO()), warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"pycocotools\.")
+                payload = M.export(root, "meta.csv", sam3, out, renders)
             self.assertEqual([g["key"] for g in payload["groups"]], ["synthetic"])
             items = payload["groups"][0]["items"]
             self.assertEqual(len(items), 2)
@@ -81,7 +88,8 @@ class MaskingDemoHelpersTests(unittest.TestCase):
             self.assertTrue((out / "Q_lynx_1.jpg").is_file())
             self.assertTrue((out / "Q_lynx_1_sam3.png").is_file())
             self.assertTrue((out / "Q_lynx_1_dataset.png").is_file())
-            self.assertEqual(Image.open(out / "Q_lynx_1_sam3.png").size, (w, h))
+            with Image.open(out / "Q_lynx_1_sam3.png") as exported_mask:
+                self.assertEqual(exported_mask.size, (w, h))
             self.assertIn("Lynx", payload["run"]["prompts"])
             text = (out / "masking_demo.json").read_text(encoding="utf-8")
             self.assertNotIn("/home/", text)
@@ -122,7 +130,8 @@ class CommittedMaskingDemoTests(unittest.TestCase):
                     if file is None:
                         continue
                     self.assertTrue((self.DEMO.parent / file).is_file(), file)
-                self.assertEqual(Image.open(self.DEMO.parent / item["sam3_mask"]).size, (item["image"]["width"], item["image"]["height"]))
+                with Image.open(self.DEMO.parent / item["sam3_mask"]) as sam3_mask:
+                    self.assertEqual(sam3_mask.size, (item["image"]["width"], item["image"]["height"]))
                 if item["dataset_mask"] is None:
                     self.assertIsNone(item["iou_with_dataset_mask"]); self.assertIsNone(item["reference_mask_source"])
                 else:

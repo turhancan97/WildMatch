@@ -1,6 +1,8 @@
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import List
 
@@ -464,10 +466,12 @@ class ResearchValidityTests(unittest.TestCase):
                 root=root, label_col="identity", run_dir=root / "run",
             )
             # Open-set retrieval continues and still reports the coverage gap.
-            summary = run_split_safety_checks(**kwargs, require_b_labels_in_a=False)
+            # Safety checks print a console report; capture it to keep test output clean.
+            with redirect_stdout(io.StringIO()):
+                summary = run_split_safety_checks(**kwargs, require_b_labels_in_a=False)
             self.assertEqual(summary["num_unseen_labels_b_in_a"], 1)
             # Closed-set classification fails instead.
-            with self.assertRaises(ValueError) as ctx:
+            with self.assertRaises(ValueError) as ctx, redirect_stdout(io.StringIO()):
                 run_split_safety_checks(**kwargs, require_b_labels_in_a=True)
             self.assertIn("closed-set", str(ctx.exception))
 
@@ -483,7 +487,7 @@ class ResearchValidityTests(unittest.TestCase):
             root = Path(tmp)
             (root / "a.jpg").write_bytes(b"same")
             (root / "b.jpg").write_bytes(b"same")
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError), redirect_stdout(io.StringIO()):
                 run_split_safety_checks(
                     df_a=pd.DataFrame({"path": ["a.jpg"], "label": ["one"]}),
                     df_b=pd.DataFrame({"path": ["b.jpg"], "label": ["one"]}),

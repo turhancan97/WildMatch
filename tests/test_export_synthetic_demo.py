@@ -4,6 +4,7 @@ import importlib.util
 import json
 import sys
 import unittest
+import warnings
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -41,6 +42,9 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
             D.apply_mask(Image.fromarray(array, "RGB"), np.zeros((5, 6), dtype=np.uint8))
 
     def test_decode_rle_round_trip(self):
+        # pycocotools 2.x calls np.array(copy=False) internally; NumPy 2 warns. Not our code.
+        self.enterContext(warnings.catch_warnings())
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"pycocotools\.")
         from pycocotools import mask as mask_utils
         mask = np.zeros((7, 9), dtype=np.uint8); mask[2:5, 3:8] = 1
         rle = mask_utils.encode(np.asfortranarray(mask))

@@ -54,6 +54,19 @@ class HydraConfigurationTests(unittest.TestCase):
         self.assertEqual(finetune.dataset.image_variant, "background")
         self.assertEqual(finetune.train.epochs, 30)
 
+    def test_hydra_job_log_stays_out_of_repository_root(self):
+        for name in ("probe", "finetune"):
+            with initialize_config_dir(version_base="1.3", config_dir=str(CONF_DIR)):
+                cfg = compose(config_name=name, return_hydra_config=True)
+            hydra_cfg = cfg.hydra
+            self.assertEqual(
+                OmegaConf.to_container(hydra_cfg.run, resolve=False)["dir"],
+                "${hydra:runtime.cwd}/logs/hydra",
+                name,
+            )
+            self.assertFalse(hydra_cfg.job.chdir, name)
+            self.assertIsNone(hydra_cfg.output_subdir, name)
+
     def test_nested_dotlist_overrides_convert_types(self):
         cfg = compose_config(
             "probe",

@@ -1,4 +1,6 @@
+import io
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -81,7 +83,7 @@ class VismatchBatchingTests(unittest.TestCase):
                 vismatch_module,
                 "_to_image_tensor",
                 return_value=torch.zeros((3, 16, 16), dtype=torch.float32),
-            ):
+            ), redirect_stderr(io.StringIO()):  # tqdm progress bar
                 features = vismatch_module._extract_split_features(
                     FakeDataset(),
                     "query",

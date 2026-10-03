@@ -65,8 +65,10 @@ wandb:
   name: null
 
 hydra:
+  # Hydra writes its job log (<job name>.log) into run.dir. Keep it out of the
+  # repository root; the working directory itself is unchanged (chdir: false).
   run:
-    dir: ${hydra:runtime.cwd}
+    dir: ${hydra:runtime.cwd}/logs/hydra
   job:
     chdir: false
   output_subdir: null

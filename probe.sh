@@ -12,7 +12,6 @@
 
 nvidia-smi -L
 
-conda init bash
 source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
 conda activate ex-reid
 
@@ -20,5 +19,5 @@ python train/probe.py \
         benchmark.method=vismatch \
         benchmark.methods.vismatch.matcher=loma \
         benchmark.methods.vismatch.checkpoint_source=custom \
-        benchmark.methods.vismatch.checkpoint_path=/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/loma-b-finetuned-trainval-4gpu/epoch_299/model.safetensors \
+        benchmark.methods.vismatch.checkpoint_path=/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors \
         benchmark.methods.vismatch.checkpoint_components=matcher_only

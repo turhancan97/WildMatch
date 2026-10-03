@@ -1,6 +1,9 @@
+from contextlib import redirect_stderr
+import io
 from pathlib import Path
 import tempfile
 import unittest
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -41,6 +44,9 @@ class MergeInstancesTests(unittest.TestCase):
         self.assertEqual((count, best), (0, 0.0))
 
     def test_rle_roundtrip(self):
+        # pycocotools 2.x calls np.array(copy=False) internally; NumPy 2 warns. Not our code.
+        self.enterContext(warnings.catch_warnings())
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"pycocotools\.")
         mask = np.zeros((7, 9), dtype=bool)
         mask[2:5, 1:8] = True
         self.assertTrue(np.array_equal(decode_mask(encode_mask(mask)), mask))
@@ -59,7 +65,8 @@ class ParsingTests(unittest.TestCase):
             parse_threshold_overrides(["0.1"])
 
     def test_a_step_is_required(self):
-        with self.assertRaises(SystemExit):
+        # argparse prints its usage message to stderr before exiting; keep test output clean.
+        with self.assertRaises(SystemExit), redirect_stderr(io.StringIO()):
             parse_args(["--root", "r", "--csv", "c.csv"])
 
 

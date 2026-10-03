@@ -14,10 +14,8 @@ scipy
 protobuf
 einops
 timm
-wildlife-datasets
-wildlife-tools
-git+https://github.com/WildlifeDatasets/wildlife-tools
-git+https://github.com/WildlifeDatasets/wildlife-datasets@develop
+wildlife-tools @ git+https://github.com/WildlifeDatasets/wildlife-tools.git@e762a6c4de60ff1be4ae9edb4c2b6ec572fee982
+wildlife-datasets @ git+https://github.com/WildlifeDatasets/wildlife-datasets.git@fc702c3ceb17e68cc1ed822db4c6b9c5e90cca42
 vismatch @ git+https://github.com/gmberton/vismatch.git@4a743b75749a3770af59d275483ed341dea51ff0
 tqdm
 wandb

@@ -152,7 +152,8 @@ class ExportProjectPageDataTests(unittest.TestCase):
 
     def test_missing_series_fails_closed(self):
         path = self.results / "NyalaData_split_ablation.csv"
-        rows = [r for r in csv.DictReader(path.open(encoding="utf-8")) if r["checkpoint"] != "fine-tuned"]
+        with path.open(encoding="utf-8") as handle:
+            rows = [r for r in csv.DictReader(handle) if r["checkpoint"] != "fine-tuned"]
         _write(path, rows)
         with self.assertRaises(ValueError):
             E.export(self.paper, self.results, self.out, None)

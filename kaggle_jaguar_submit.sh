@@ -11,7 +11,6 @@
 
 nvidia-smi -L
 
-conda init bash
 source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
 conda activate ex-reid
 

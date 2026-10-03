@@ -218,33 +218,33 @@ __marimo__/
 #macos
 .DS_Store
 
-# Results
-experiments/
-reports/
-results/
-benchmark_runs/
-logs/
-visualizations/
-wandb/
+# ---------------------------------------------------------------------------
+# Project-specific entries
+# ---------------------------------------------------------------------------
 
-# # shell scripts
-# finetune.sh
-# probe.sh
+# Generated experiment outputs, reports and logs (never edit by hand; see AGENTS.md).
+# Anchored to the root so docs/results/ and other nested folders are not ignored.
+/experiments/
+/reports/
+/results/
+/benchmark_runs/
+/kaggle_runs/
+/logs/
+/visualizations/
+/wandb/
+/cache/
 
-# cache 
-cache/
+# Datasets (symlinks to the shared cluster storage)
+/dataset/
 
-# pdfs
+# PDFs (paper figures are regenerated under reports/figures/)
 *.pdf
 
-# kaggle runs
-kaggle_runs/
-cache/
-
-# dataset
-dataset/
+# Explainer video build outputs (only narration.mp3, timings.json and sources are tracked)
 video/explainer/audio/*.wav
 video/explainer/media/
 video/explainer/out/
+
+# Local copies of the explainer for the project page (the MP4 is never committed)
 docs/assets/video/*.mp4
 docs/assets/video/*.vtt

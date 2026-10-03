@@ -206,12 +206,12 @@ class Explainer(Scene):
         box = RoundedRectangle(corner_radius=0.15, width=9.6, height=0.9, color=GREY, fill_color="#f3f4f4", fill_opacity=1)
         box.to_edge(DOWN, buff=1.05)
         t1 = label("trained on buildings, streets and landmarks", 26, INK).move_to(box)
-        self.play(FadeIn(box), Write(t1), run_time=1.4)
+        self.play(FadeOut(tag_q), FadeOut(tag_g), FadeIn(box), Write(t1), run_time=1.4)
         t2 = label("wildlife photos: identity labels, no keypoint labels", 26, RED).move_to(box)
         self.wait(2.2)
         self.play(Transform(t1, t2), run_time=1.0)
         self.fill_to(shot_end(2) - 0.6)
-        self.play(FadeOut(Group(q, g, tag_q, tag_g, lines, dots, title, box, t1)), run_time=0.6)
+        self.play(FadeOut(Group(q, g, lines, dots, title, box, t1)), run_time=0.6)
 
     # ------------------------------------------------------------------ shots 3 and 4
     def shot_3_4(self, assets) -> None:

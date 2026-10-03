@@ -1371,9 +1371,21 @@ cause is Manim's Cairo renderer, which lists the moving mobjects' family members
 `play()` and keeps drawing them, so a caption replaced by swapping submobjects stayed
 visible behind the new box. `install_captions` now keeps one persistent box and text and
 morphs them with `become()` (opacity 0 between captions), and the 0.25 s caption overlap
-was removed; all 19 boundaries were checked frame by frame. Still open: user review of the fourth render, hosting (unlisted), the
-home-page embed with a click-to-load facade and the transcript, and a test that pins the
-transcript's two numbers.
+was removed; all 19 boundaries were checked frame by frame. The user approved the fourth render as final (2026-10-03). Page
+integration the same day: `docs/assets/js/explainer-video.js` (`#wm-explainer`, home page
+section "In 78 seconds" between the hero and the abstract) is a click-to-load facade: a
+committed poster frame (`docs/assets/video/explainer_poster.jpg`, the shot 6 frame) and a play
+button; on click it loads the hosted player when `data-youtube` holds a video ID
+(youtube-nocookie, captions on) or otherwise a local `<video>` from `data-src` with a WebVTT
+track, which serves the private draft. `build.py` now also writes `docs/data/explainer.json`
+(shot texts and start times for the transcript under the embed) and copies the MP4 and a
+`.vtt` into `docs/assets/video/`, which `.gitignore` excludes (only the poster is committed;
+the MP4 is never committed). `tests/test_project_page_numbers.py::ExplainerTranscriptTests`
+pins the transcript to the committed timings and its two spoken numbers to the page data
+(eight paper datasets in `results.json`; LoMa matcher-only GPU-hours in `adapt.json` round to
+five) and forbids venue or status words in the narration. When the video is hosted: set
+`data-youtube` on the home page, keep `data-src` as the fallback or remove it, and tick the
+checklist item.
 
 **Publication checklist (keep current; tick items as they close).**
 
@@ -1393,6 +1405,9 @@ transcript's two numbers.
   retrain, and re-check `tests/test_project_page_numbers.py`.
 - [ ] Check in a browser at phone width: hub cards, data-challenge galleries, the two-panel
   Plotly views, and dark mode of the PNG figures.
+- [ ] Upload `video/explainer/out/wildmatch_explainer.mp4` unlisted (YouTube or Vimeo) with
+  the `.srt` captions, put the video ID in `data-youtube` on `docs/index.md`, and check the
+  embed and transcript on the built page.
 - [ ] Merge `project-page` into `main` and run `mkdocs gh-deploy` (user) only after the
   notification date; verify the social card and favicon on the live URL.
 

@@ -12,6 +12,7 @@ import { mountBudgetTradeoff } from "./budget-tradeoff.js";
 import { mountFrequencyBins } from "./frequency-bins.js";
 import { mountChallenge, mountImageQualityTable } from "./data-challenges.js";
 import { mountResultsGlance } from "./results-glance.js";
+import { mountExplainerVideo } from "./explainer-video.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -34,6 +35,7 @@ const MOUNTS = [
   ["wm-challenge-occlusion", mountChallenge],
   ["wm-image-quality-table", mountImageQualityTable],
   ["wm-results-glance", mountResultsGlance],
+  ["wm-explainer", mountExplainerVideo],
 ];
 
 function mountAll() {

@@ -162,5 +162,34 @@ class TranscribedNumbersTests(unittest.TestCase):
             self.assertEqual(page, paper[name], name)
 
 
+class ExplainerTranscriptTests(unittest.TestCase):
+    """The video narration states two numbers; both must follow from the page data."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.transcript = json.loads((DATA / "explainer.json").read_text(encoding="utf-8"))
+        cls.text = " ".join(shot["text"] for shot in cls.transcript["shots"])
+        cls.results = json.loads((DATA / "results.json").read_text(encoding="utf-8"))
+        cls.adapt = json.loads((DATA / "adapt.json").read_text(encoding="utf-8"))
+
+    def test_transcript_matches_committed_timings(self):
+        timings = json.loads((Path(__file__).resolve().parents[1] / "video" / "explainer" / "audio" / "timings.json").read_text(encoding="utf-8"))
+        self.assertEqual([s["text"] for s in self.transcript["shots"]], [s["text"] for s in timings["shots"]])
+
+    def test_eight_datasets(self):
+        self.assertIn("eight wildlife datasets", self.text)
+        paper_datasets = [d for d in self.results["datasets"] if d["key"] != "czechlynx_unseen"]
+        self.assertEqual(len(paper_datasets), 8)
+
+    def test_about_five_gpu_hours(self):
+        self.assertIn("about five GPU-hours", self.text)
+        row = next(r for r in self.adapt["rows"] if r["matcher"] == "loma" and r["variant"] == "matcher")
+        self.assertEqual(round(row["gpu_hours"]), 5)
+
+    def test_no_venue_or_status_in_transcript(self):
+        for phrase in ("ECIR", "submitted", "under review", "accepted"):
+            self.assertNotIn(phrase.lower(), self.text.lower())
+
+
 if __name__ == "__main__":
     unittest.main()

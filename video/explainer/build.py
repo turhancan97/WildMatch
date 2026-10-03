@@ -83,6 +83,20 @@ def main() -> None:
         "-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart", str(final),
     ], check=True)
     srt = write_captions(timings, args.out)
+    # page copies: transcript data (committed) and a local video for the private draft (ignored)
+    page_data = HERE.parents[1] / "docs" / "data" / "explainer.json"
+    page_data.write_text(json.dumps({
+        "generated_from": "video/explainer/audio/timings.json",
+        "duration_s": round(timings["shots"][-1]["start"] + timings["shots"][-1]["duration"], 1),
+        "voice_note": "Kokoro-82M (open weights, stock voice af_heart)",
+        "shots": [{"shot": s["shot"], "start": s["start"], "text": s["text"]} for s in timings["shots"]],
+    }, indent=1) + "\n", encoding="utf-8")
+    local = HERE.parents[1] / "docs" / "assets" / "video"
+    local.mkdir(parents=True, exist_ok=True)
+    for name in ("wildmatch_explainer.mp4",):
+        (local / name).write_bytes((args.out / name).read_bytes())
+    vtt = local / "wildmatch_explainer.vtt"
+    vtt.write_text("WEBVTT\n\n" + srt.read_text(encoding="utf-8").replace(",", "."), encoding="utf-8")
     probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(final)],
                            capture_output=True, text=True, check=True)
     print(f"[explainer] {final} ({float(probe.stdout):.1f} s, {final.stat().st_size // 1024} KB); captions {srt}")

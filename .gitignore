@@ -246,3 +246,5 @@ dataset/
 video/explainer/audio/*.wav
 video/explainer/media/
 video/explainer/out/
+docs/assets/video/*.mp4
+docs/assets/video/*.vtt

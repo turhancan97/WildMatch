@@ -1358,9 +1358,17 @@ ten database tiles of ten different individuals picked by eye from the mined-pai
 for display only). The scene trims the pair's padding bands and maps correspondences through
 the crop box, puts the "positive" label above the brace and "hard negative" below the ticks,
 shows the eight datasets as the before/after query photos, and ends with an 18-photo collage
-at 18 % opacity under a translucent panel with the logo. Still open: user review of the
-second render, hosting (unlisted), the home-page embed with a click-to-load facade and the
-transcript, and a test that pins the transcript's two numbers.
+at 18 % opacity under a translucent panel with the logo. The user approved the second render and asked for three more things (2026-10-03), done in
+the third render: the database rows no longer collide with the name tags (row gap 0.85),
+burned-in subtitles in a reserved bottom band on every shot (`install_captions`: a
+`VGroup` with an updater that swaps the caption on the renderer clock, using
+`build.split_caption` at 92 characters; content moved up to leave the band free; the
+captions are brought to the front over the closing collage), and the typeface is Computer
+Modern, the 3Blue1Brown/LaTeX face: `fonts/cmr10.ttf` and `cmss10.ttf` copied from
+matplotlib's bundled fonts (AMS/Knuth licence) and registered with `manimpango` at import;
+no LaTeX is needed. Still open: user review of the third render, hosting (unlisted), the
+home-page embed with a click-to-load facade and the transcript, and a test that pins the
+transcript's two numbers.
 
 **Publication checklist (keep current; tick items as they close).**
 

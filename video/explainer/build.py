@@ -34,7 +34,7 @@ def srt_time(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def split_caption(text: str, max_chars: int = 84) -> list[str]:
+def split_caption(text: str, max_chars: int = 92) -> list[str]:
     """Split a shot's narration into caption lines at sentence ends, then at commas."""
     parts = re.split(r"(?<=[.:;])\s+", text.strip())
     out: list[str] = []

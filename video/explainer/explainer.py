@@ -36,8 +36,17 @@ INK = "#58595b"
 MUTED = "#6d6e71"
 LINE = "#19c2d6"
 DATASETS = ["CzechLynx", "Hyena", "Leopard", "Nyala", "Salamander", "Sea star", "Whale shark", "Turtle"]
-FONT_KW = {"font": "DejaVu Sans"}
+FONT = "cmr10"  # Computer Modern Roman, the LaTeX / 3Blue1Brown typeface (fonts/, from matplotlib)
+FONT_KW = {"font": FONT}
+import manimpango  # noqa: E402
+for _font_file in sorted((HERE / "fonts").glob("*.ttf")):
+    manimpango.register_font(str(_font_file))
 
+import sys  # noqa: E402
+sys.path.insert(0, str(HERE))
+from build import split_caption  # noqa: E402
+
+CAPTION_Y = -3.45
 TIMINGS = json.loads((HERE / "audio" / "timings.json").read_text(encoding="utf-8"))
 GAP = float(TIMINGS["gap_s"])
 SHOTS = {s["shot"]: s for s in TIMINGS["shots"]}
@@ -114,8 +123,42 @@ class Explainer(Scene):
         if remaining > 0.05:
             self.wait(remaining)
 
+    def install_captions(self) -> None:
+        """Burned-in subtitles in the bottom band, synchronised with the narration timings."""
+        pieces = []
+        for shot in TIMINGS["shots"]:
+            parts = split_caption(shot["text"], 92)
+            words = [len(part.split()) for part in parts]
+            total = sum(words) or 1
+            t = float(shot["start"])
+            for part, w in zip(parts, words):
+                dur = float(shot["duration"]) * w / total
+                pieces.append((t, t + dur + 0.25, part))
+                t += dur
+        holder = VGroup()
+        holder.current = None
+        scene = self
+
+        def update(m, dt):
+            now = scene.renderer.time
+            active = next((piece for piece in pieces if piece[0] <= now < piece[1]), None)
+            key = active[2] if active else None
+            if key != m.current:
+                m.current = key
+                m.submobjects = []
+                if key:
+                    txt = Text(key, font_size=25, color=INK, **FONT_KW).move_to(UP * CAPTION_Y)
+                    box = RoundedRectangle(corner_radius=0.12, width=txt.width + 0.6, height=txt.height + 0.36,
+                                           fill_color=WHITE, fill_opacity=0.88, stroke_width=0).move_to(txt)
+                    m.add(box, txt)
+
+        holder.add_updater(update)
+        self.captions = holder
+        self.add(holder)
+
     def construct(self) -> None:
         self.camera.background_color = WHITE
+        self.install_captions()
         pair = load_pair()
         assets = load_assets()
         self.shot_1_2(pair)
@@ -128,8 +171,8 @@ class Explainer(Scene):
     def pair_images(self, pair, height=4.6):
         q, self.q_box = photo_trimmed(PAIR_DIR / pair["query"]["image"]["file"], height)
         g, self.g_box = photo_trimmed(PAIR_DIR / pair["gallery"]["image"]["file"], height)
-        q.move_to(LEFT * 3.1 + UP * 0.3)
-        g.move_to(RIGHT * 3.1 + UP * 0.3)
+        q.move_to(LEFT * 3.1 + UP * 0.55)
+        g.move_to(RIGHT * 3.1 + UP * 0.55)
         return q, g
 
     def correspondences(self, pair, q, g, which: str, count: int, stroke: float):
@@ -161,7 +204,7 @@ class Explainer(Scene):
         # shot 2: the matcher's training domain, and no labels to retrain it
         self.play(lines.animate.set_stroke(opacity=0.18), dots.animate.set_opacity(0.3), run_time=0.8)
         box = RoundedRectangle(corner_radius=0.15, width=9.6, height=0.9, color=GREY, fill_color="#f3f4f4", fill_opacity=1)
-        box.to_edge(DOWN, buff=0.35)
+        box.to_edge(DOWN, buff=1.05)
         t1 = label("trained on buildings, streets and landmarks", 26, INK).move_to(box)
         self.play(FadeIn(box), Write(t1), run_time=1.4)
         t2 = label("wildlife photos: identity labels, no keypoint labels", 26, RED).move_to(box)
@@ -174,7 +217,7 @@ class Explainer(Scene):
     def shot_3_4(self, assets) -> None:
         tiles = assets["database_tiles"]
         imgs = Group(*[photo(ASSETS / t["file"], 1.75) for t in tiles])
-        imgs.arrange_in_grid(rows=2, cols=5, buff=0.35).move_to(UP * 0.1)
+        imgs.arrange_in_grid(rows=2, cols=5, buff=(0.35, 0.85)).move_to(UP * 0.45)
         tags = VGroup()
         for img, t in zip(imgs, tiles):
             pill = RoundedRectangle(corner_radius=0.1, width=1.3, height=0.34, color=BLUE, fill_color=BLUE, fill_opacity=0.12, stroke_width=1.5)
@@ -200,7 +243,7 @@ class Explainer(Scene):
         self.play(FadeIn(anchor_img, scale=0.9), FadeIn(anchor_tag), FadeIn(anchor_word), run_time=0.8)
         def column(items, x, color):
             imgs_c, frames, scores, tags_c = Group(), VGroup(), VGroup(), VGroup()
-            ys = np.linspace(2.0, -2.4, len(items))
+            ys = np.linspace(2.0, -2.0, len(items))
             for rec, y in zip(items, ys):
                 img = photo(ASSETS / rec["file"], 1.0).move_to(RIGHT * x + UP * y)
                 imgs_c.add(img)
@@ -251,7 +294,7 @@ class Explainer(Scene):
         for name in names:
             box = RoundedRectangle(corner_radius=0.12, width=3.6, height=0.9, color=GREY, fill_color="#f3f4f4", fill_opacity=1, stroke_width=2)
             blocks.add(VGroup(box, label(name, 22, MUTED).move_to(box)))
-        blocks.arrange(RIGHT, buff=0.4).move_to(DOWN * 2.2)
+        blocks.arrange(RIGHT, buff=0.4).move_to(DOWN * 1.9)
         frozen = VGroup(*[label("frozen", 18, MUTED).next_to(b, DOWN, buff=0.1) for b in blocks[:2]])
         self.wait(1.0)
         self.play(LaggedStart(*[FadeIn(b, shift=UP * 0.2) for b in blocks], lag_ratio=0.15), run_time=1.2)
@@ -312,10 +355,10 @@ class Explainer(Scene):
                 img.set(width=img.height * 4 / 3) if False else None
             frame = SurroundingRectangle(img, color=GREY, buff=0, stroke_width=1.5)
             cells.add(Group(img, frame, label(name, 20, INK).next_to(img, DOWN, buff=0.12)))
-        cells.arrange_in_grid(rows=2, cols=4, buff=(0.45, 0.4)).move_to(UP * 0.35)
+        cells.arrange_in_grid(rows=2, cols=4, buff=(0.45, 0.35)).move_to(UP * 0.55)
         head = label("Eight wildlife datasets", 26, MUTED).to_edge(UP, buff=0.35)
         self.play(FadeIn(head), LaggedStart(*[FadeIn(c, shift=UP * 0.3) for c in cells], lag_ratio=0.08), run_time=2.0)
-        cost = label("about 5 GPU-hours of training", 24, INK).to_edge(DOWN, buff=0.45)
+        cost = label("about 5 GPU-hours of training", 24, INK).move_to(DOWN * 2.55)
         self.play(FadeIn(cost), run_time=0.8)
         self.wait(1.6)
         # ending: the photos spread into a faint collage and the logo comes up over it
@@ -325,10 +368,12 @@ class Explainer(Scene):
         for img in collage:
             img.set_opacity(0.0)
         self.add(collage)
+        self.bring_to_front(self.captions)
         self.play(FadeOut(cells), FadeOut(head), FadeOut(cost),
                   *[img.animate.set_opacity(0.18) for img in collage], run_time=1.2)
         logo = ImageMobject(str(LOGO)).set(height=3.6).move_to(ORIGIN)
         panel = RoundedRectangle(corner_radius=0.25, width=logo.width + 1.2, height=logo.height + 0.8, color=WHITE, fill_color=WHITE, fill_opacity=0.85, stroke_width=0)
         panel.move_to(ORIGIN)
         self.play(FadeIn(panel), FadeIn(logo, scale=0.95), run_time=1.0)
+        self.bring_to_front(self.captions)
         self.fill_to(shot_end(7) + 0.4)

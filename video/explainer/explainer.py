@@ -133,9 +133,15 @@ class Explainer(Scene):
             t = float(shot["start"])
             for part, w in zip(parts, words):
                 dur = float(shot["duration"]) * w / total
-                pieces.append((t, t + dur + 0.25, part))
+                pieces.append((t, t + dur, part))
                 t += dur
-        holder = VGroup()
+        # One persistent box and text, morphed in place with become(): the Cairo renderer
+        # keeps a list of the moving mobjects' family members for the whole of each play(),
+        # so swapping submobjects would leave the old caption drawn behind the new one.
+        txt = Text("caption", font_size=25, color=INK, **FONT_KW).move_to(UP * CAPTION_Y)
+        box = RoundedRectangle(corner_radius=0.12, width=1, height=0.6, fill_color=WHITE, fill_opacity=0.88, stroke_width=0).move_to(txt)
+        holder = VGroup(box, txt)
+        holder.set_opacity(0)
         holder.current = None
         scene = self
 
@@ -143,14 +149,17 @@ class Explainer(Scene):
             now = scene.renderer.time
             active = next((piece for piece in pieces if piece[0] <= now < piece[1]), None)
             key = active[2] if active else None
-            if key != m.current:
-                m.current = key
-                m.submobjects = []
-                if key:
-                    txt = Text(key, font_size=25, color=INK, **FONT_KW).move_to(UP * CAPTION_Y)
-                    box = RoundedRectangle(corner_radius=0.12, width=txt.width + 0.6, height=txt.height + 0.36,
-                                           fill_color=WHITE, fill_opacity=0.88, stroke_width=0).move_to(txt)
-                    m.add(box, txt)
+            if key == m.current:
+                return
+            m.current = key
+            if key is None:
+                m.set_opacity(0)
+                return
+            new_txt = Text(key, font_size=25, color=INK, **FONT_KW).move_to(UP * CAPTION_Y)
+            new_box = RoundedRectangle(corner_radius=0.12, width=new_txt.width + 0.6, height=new_txt.height + 0.36,
+                                       fill_color=WHITE, fill_opacity=0.88, stroke_width=0).move_to(new_txt)
+            m[1].become(new_txt)
+            m[0].become(new_box)
 
         holder.add_updater(update)
         self.captions = holder

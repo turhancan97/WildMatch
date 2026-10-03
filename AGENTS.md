@@ -1366,7 +1366,12 @@ burned-in subtitles in a reserved bottom band on every shot (`install_captions`:
 captions are brought to the front over the closing collage), and the typeface is Computer
 Modern, the 3Blue1Brown/LaTeX face: `fonts/cmr10.ttf` and `cmss10.ttf` copied from
 matplotlib's bundled fonts (AMS/Knuth licence) and registered with `manimpango` at import;
-no LaTeX is needed. Still open: user review of the third render, hosting (unlisted), the
+no LaTeX is needed. The user then reported old captions showing through new ones; the
+cause is Manim's Cairo renderer, which lists the moving mobjects' family members once per
+`play()` and keeps drawing them, so a caption replaced by swapping submobjects stayed
+visible behind the new box. `install_captions` now keeps one persistent box and text and
+morphs them with `become()` (opacity 0 between captions), and the 0.25 s caption overlap
+was removed; all 19 boundaries were checked frame by frame. Still open: user review of the fourth render, hosting (unlisted), the
 home-page embed with a click-to-load facade and the transcript, and a test that pins the
 transcript's two numbers.
 

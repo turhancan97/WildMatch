@@ -18,6 +18,8 @@ kept under Unreleased until a project version is assigned.
   and a collage ending; selection sheets under `reports/project_page/explainer/`.
   Third render: Computer Modern typeface (matplotlib's cmr10, registered with manimpango),
   burned-in subtitles in a bottom band, database rows spaced from their tags.
+  Fourth render: captions morph one persistent mobject in place (Cairo kept replaced
+  submobjects on screen, so new captions were drawn over old ones).
 - 2026-10-03: project-page review pass (all suggestions approved by the user): seven nav tabs
   (Results section with Qualitative and Training cost; Paper & Code merged), Results reordered
   with at-a-glance tiles and a "Why it works" group, match viewer removed in favour of the

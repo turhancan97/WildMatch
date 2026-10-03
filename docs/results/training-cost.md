@@ -8,8 +8,8 @@ training GPU-hours on RTX 4090 GPUs. The default LoMa matcher and cosine retriev
 no training and are drawn as flat lines.
 
 <figure class="wm-figure" markdown>
-![Training cost against top-5 and balanced top-1 at k = 250](assets/figures/page/training_cost_k250.svg#only-light)
-![Training cost against top-5 and balanced top-1 at k = 250](assets/figures/page/training_cost_k250_dark.svg#only-dark)
+![Training cost against top-5 and balanced top-1 at k = 250](../assets/figures/page/training_cost_k250.svg#only-light)
+![Training cost against top-5 and balanced top-1 at k = 250](../assets/figures/page/training_cost_k250_dark.svg#only-dark)
 <figcaption>Top-5 (left) and balanced top-1 (right) against cumulative training GPU-hours. The fine-tuned LoMa curve starts at the default matcher's accuracy at zero cost; the grey curves are the three class-weighted classifiers, each ending at its final epoch.</figcaption>
 </figure>
 

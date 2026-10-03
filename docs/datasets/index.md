@@ -63,7 +63,7 @@ image-level split.
 ## Known data problems
 
 <figure class="wm-figure" markdown>
-![Examples of challenging images](../assets/figures/data_quality_examples.png)
+![Examples of challenging images](../assets/figures/data_quality_examples_web.jpg)
 <figcaption>Examples of challenging images in the benchmark datasets. Raw frames that are overexposed (a), show too little of the animal to see its markings (b), contain no visible animal (c), are corrupted (d), or are blurred (e). Such images remain in the database and query sets of all methods.</figcaption>
 </figure>
 
@@ -78,11 +78,11 @@ text.
 | Dataset | License as far as recorded |
 |---|---|
 | Hyena, Leopard (LILA BC) | CDLA-Permissive |
-| CzechLynx synthetic renders (teaser only) | CC BY 4.0, Zenodo record 17592004 |
-| Nyala, Sea star, Whale shark, Turtle | See the WildlifeReID-10k distribution |
-| Salamander (AnimalCLEF 2025, Kaggle) | Open item |
-| CzechLynx photographs | Open item |
+| CzechLynx synthetic renders (demos) | CC BY 4.0, Zenodo record 17592004 |
+| Nyala, Sea star, Whale shark, Turtle | See the WildlifeReID-10k distribution; web display to be confirmed |
+| Salamander (AnimalCLEF 2025, Kaggle) | Shown with the dataset team's permission; Kaggle competition rules restrict redistribution |
+| CzechLynx photographs | Web display to be confirmed with the dataset authors |
 
 !!! warning "Open item"
-    Image licenses must allow redistribution before any photograph on this page is
-    published.
+    Web display of the CzechLynx and WildlifeReID-10k photographs other than Hyena and
+    Leopard must be confirmed with the dataset authors before the page is published.

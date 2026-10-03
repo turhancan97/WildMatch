@@ -1287,12 +1287,56 @@ ranking measurement and query Top-1 where available, full-size copy on click) pl
 Top-1, runs). Tests in `tests/test_export_data_challenges.py` (examples valid and unique,
 every category has examples and a mount point, export matches `EXAMPLES`, no private paths).
 
+**Review pass and restructuring (2026-10-03, user asked for one pass and approved every
+suggestion).** Nav reduced from ten tabs to seven: Results is a section (`docs/results/index.md`,
+`results/qualitative.md`, `results/training-cost.md`; the former `results.md`, `qualitative.md`
+and `compute.md`) and Code merged into `docs/paper.md` as "Paper & Code" (sections Citation,
+Acknowledgements placeholder, Contact, Code with the repository map and third-party table);
+`code.md` is gone and the home hero has four buttons. Results order: at-a-glance tiles
+(`#wm-results-glance`, `results-glance.js`: datasets with higher Top-5, median Top-5 and
+balanced Top-1 gains with ranges, training GPU-hours from `adapt.json`), main results, the
+explorer, all numbers, unseen identities, applicability beyond LoMa, what to adapt, matcher
+versus classifier, then "Why it works" with score separation, rare and common individuals and
+the cost of k as subsections (intro tightened). The Qualitative page lost its match viewer
+(`match-viewer.js` deleted) because the before/after demo shows the same eight pairs with
+more information; it links there instead. The home pointer now sends readers to the
+before/after demo rather than the synthetic one. Web copies of the two heavy PNG figures
+(`match_examples_web.jpg` 283 KB, `data_quality_examples_web.jpg` 96 KB, 1,600 px wide,
+made with Pillow from the paper PNGs) replace the 2.7 MB and 2.2 MB originals on the pages;
+the originals stay in `docs/assets/figures/` for the manuscript. The licensing table says the
+synthetic renders are used in demos, Salamander is shown with the team's permission under
+Kaggle's redistribution rules, and CzechLynx and the other WildlifeReID-10k photographs await
+confirmation. `overrides/main.html` adds Open Graph and Twitter card tags with
+`docs/assets/logo/wildmatch-social.png` (1200 x 630, the full-name logo, which already carries the tagline, centred on
+white over a brand-blue rule; rendered with Pillow). `test_project_page_numbers` reads the
+moved pages.
+
+**Publication checklist (keep current; tick items as they close).**
+
+- [ ] Settle the two "Draft" admonitions with the authors: the masking sentence on Method
+  and the cost-gap explanation on Training cost; then remove the admonitions.
+- [ ] Rename the GitHub repository; update `site_url`, `repo_url`, `repo_name` in
+  `mkdocs.yml`, the links on Paper & Code, and remove the provisional-name note there.
+- [ ] Remove the draft banner (`{% block announce %}` in `overrides/main.html`), the
+  "Draft page" warning on Home, the `copyright` draft line, and change the status pill
+  text when the preprint is online ("available online", venue only after acceptance).
+- [ ] Add the preprint link and the authors' BibTeX entry on Paper & Code; fill the
+  Acknowledgements section.
+- [ ] Confirm web display rights for CzechLynx photographs and the WildlifeReID-10k
+  sub-datasets other than Hyena and Leopard; update the licensing table.
+- [ ] Rerun the exporters after the final paper results snapshot (`export_project_page_data`,
+  `export_score_separation`, `export_budget_tradeoff`, `export_frequency_bins`) and the RDD
+  retrain, and re-check `tests/test_project_page_numbers.py`.
+- [ ] Check in a browser at phone width: hub cards, data-challenge galleries, the two-panel
+  Plotly views, and dark mode of the PNG figures.
+- [ ] Merge `project-page` into `main` and run `mkdocs gh-deploy` (user) only after the
+  notification date; verify the social card and favicon on the live URL.
+
 **Plan.** Step 1 (done 2026-10-02): scaffold with real text from the brief, static
 copies of the current figures under `docs/assets/figures/`, mount points
 (`#wm-accuracy-explorer`, `#wm-results-table`, `#wm-match-viewer`,
 `#wm-training-cost`) for the interactive components, and Reproduce stubs. Step 2 (done, see above; the match-example photos for the viewer are still to be
-exported from `match_examples.json`). Step 3 (done, see above). Step 4 (done, see above). Step 5 (done, see above). Step 6: repository rename, image-license check for every
-published photograph, then the first deploy after the notification.
+exported from `match_examples.json`). Step 3 (done, see above). Step 4 (done, see above). Step 5 (done, see above). Step 6: the publication checklist above.
 
 ## Vismatch matcher policy
 

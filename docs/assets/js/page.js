@@ -2,7 +2,6 @@
 import { mountExplorer } from "./explorer.js";
 import { mountResultsTable } from "./results-table.js";
 import { mountTrainingCost } from "./training-cost.js";
-import { mountMatchViewer } from "./match-viewer.js";
 import { mountSyntheticDemo } from "./synthetic-demo.js";
 import { mountMaskingDemo } from "./masking-demo.js";
 import { mountBeforeAfter } from "./before-after-demo.js";
@@ -12,12 +11,12 @@ import { mountScoreSeparation } from "./score-separation-demo.js";
 import { mountBudgetTradeoff } from "./budget-tradeoff.js";
 import { mountFrequencyBins } from "./frequency-bins.js";
 import { mountChallenge, mountImageQualityTable } from "./data-challenges.js";
+import { mountResultsGlance } from "./results-glance.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
   ["wm-results-table", mountResultsTable],
   ["wm-training-cost", mountTrainingCost],
-  ["wm-match-viewer", mountMatchViewer],
   ["wm-synthetic-demo", mountSyntheticDemo],
   ["wm-masking-demo", mountMaskingDemo],
   ["wm-before-after", mountBeforeAfter],
@@ -34,6 +33,7 @@ const MOUNTS = [
   ["wm-challenge-night_infrared", mountChallenge],
   ["wm-challenge-occlusion", mountChallenge],
   ["wm-image-quality-table", mountImageQualityTable],
+  ["wm-results-glance", mountResultsGlance],
 ];
 
 function mountAll() {

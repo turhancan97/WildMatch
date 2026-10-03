@@ -45,9 +45,8 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 </p>
 
 <div class="wm-buttons" markdown>
-[Paper](paper.md){ .md-button .md-button--primary }
-[Results](results.md){ .md-button }
-[Code](code.md){ .md-button }
+[Paper & Code](paper.md){ .md-button .md-button--primary }
+[Results](results/index.md){ .md-button }
 [Demo](demo/index.md){ .md-button }
 [Reproduce](reproduce/index.md){ .md-button }
 </div>
@@ -73,8 +72,9 @@ Individual animal re-identification from camera-trap imagery is an instance retr
 3. **Transfer to unseen individuals**, and an analysis of where in the matching
    pipeline identity supervision should be applied.
 
-Try the matcher yourself on the [interactive demo](demo/index.md): ten synthetic lynxes, real
-matches and confidences from the fine-tuned model.
+See the change on real photos in the [before and after demo](demo/before-after.md): the same
+query and gallery pair scored by the default matcher and by WildMatch, with every
+correspondence drawn. Four more [interactive views](demo/index.md) follow it.
 
 ## How it works
 
@@ -116,7 +116,7 @@ At test time the adapted matcher scores the candidates of a query and returns a 
 
 
 <figure class="wm-figure" markdown>
-![LoMa + WildMatch matches on correct top-1 retrievals](assets/figures/match_examples.png)
+![LoMa + WildMatch matches on correct top-1 retrievals](assets/figures/match_examples_web.jpg)
 <figcaption>LoMa + WildMatch matches on correct top-1 retrievals (k = 50). For each dataset, a query (left) and its top-1 gallery image (right) of the same individual. Of the 350 to 420 matches found for each pair, lines show the 10 most confident. Matching uses background-removed inputs; the matches are drawn on the original photos.</figcaption>
 </figure>
 

@@ -99,13 +99,13 @@ nav:
   - Datasets:
       - datasets/index.md
       - Data challenges: datasets/challenges.md
-  - Results: results.md
-  - Qualitative: qualitative.md
-  - Training cost: compute.md
+  - Results:
+      - results/index.md
+      - Qualitative: results/qualitative.md
+      - Training cost: results/training-cost.md
   - Reproduce:
       - reproduce/index.md
       - Pair mining: reproduce/mining.md
       - Matcher fine-tuning: reproduce/finetuning.md
       - Evaluation: reproduce/probing.md
-  - Code: code.md
-  - Paper: paper.md
+  - Paper & Code: paper.md

@@ -1151,3 +1151,8 @@
 .md-typeset table.wm-iq-table {
   font-size: 0.7rem;
 }
+
+/* Results at-a-glance tiles. */
+.wm-kpis--glance {
+  margin: 0.25rem 0 1.25rem;
+}

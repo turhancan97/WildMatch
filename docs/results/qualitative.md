@@ -6,20 +6,18 @@ One correct top-1 retrieval per dataset with the fine-tuned LoMa matcher at
 \(k = 50\). The query is on the left, its top-1 gallery image of the same individual on
 the right. Of the 350 to 420 matches found for each pair, lines show the 10 most
 confident, chosen for spatial spread. Matching uses background-removed inputs, and the
-matches are drawn on the original photos; the interactive viewer below gives every
-pair's match count.
+matches are drawn on the original photos.
 
 <figure class="wm-figure" markdown>
-![LoMa + WildMatch matches on correct top-1 retrievals](assets/figures/match_examples.png)
+![LoMa + WildMatch matches on correct top-1 retrievals](../assets/figures/match_examples_web.jpg)
 <figcaption>Panels in alphabetical dataset order: Czech Lynx, Hyena, Leopard, Nyala, Salamander, Sea Star, Turtle, Whale Shark.</figcaption>
 </figure>
 
 ### Explore the matches
 
-Pick a dataset, choose how many correspondences to draw, and switch between the
-strongest matches, a spatially spread selection (as in the figure) and every match.
-
-<div id="wm-match-viewer" class="wm-widget">Loading the match viewer…</div>
+The [before and after demo](../demo/before-after.md) shows these eight pairs
+interactively: every correspondence with its confidence, the match count, and the same
+pair under the default matcher for comparison.
 
 How the examples were chosen: candidates are correct top-1 queries from the run's
 stored score matrix, excluding pairs from the same encounter or capture day where the
@@ -40,6 +38,6 @@ into population estimates.
 
 ## Challenging images
 
-See [Known data problems](datasets/challenges.md) for the raw-photo examples of
+See [Known data problems](../datasets/challenges.md) for the raw-photo examples of
 overexposure, insufficient detail, empty frames, corruption and blur that remain in
 every method's database and query sets.

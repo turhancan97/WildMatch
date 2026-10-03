@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-03: project-page review pass (all suggestions approved by the user): seven nav tabs
+  (Results section with Qualitative and Training cost; Paper & Code merged), Results reordered
+  with at-a-glance tiles and a "Why it works" group, match viewer removed in favour of the
+  before/after demo, home pointer retargeted, web-sized figure copies, licensing table updated,
+  Open Graph/Twitter preview tags with a social card, Acknowledgements placeholder, and a
+  publication checklist in AGENTS.md.
 - 2026-10-02: project-page Datasets section with a "Data challenges" subpage (user request):
   `scripts/export_data_challenges.py` ranks audit candidates into raw-photo review sheets and
   exports the user-approved examples (48 photos in seven categories, noise vs inherent

@@ -25,7 +25,7 @@ to the matcher and a few queries rank another lynx first by a small margin.
 - **Lines** are the strongest correspondences; their weight follows confidence, and
   hovering one shows its exact value. Every match is available through the slider.
 - **Synthetic**: the images are rendered lynxes, the paper's test data are camera-trap
-  photographs. See [Qualitative](../qualitative.md) for matches on real photos, or the
+  photographs. See [Qualitative](../results/qualitative.md) for matches on real photos, or the
   [before/after demo](before-after.md) for the same matcher on real pairs.
 
 <small>Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo

@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: package refactor started (approved plan: `wildmatch` package with uv,
+  `pyproject.toml`, `src/` layout, single CLI, dataset registry, portable paths, CPU/CUDA
+  extras, Apache-2.0). Phase 0 on `main`: tag `paper-v1` on `4bad498` (the paper code, pushed);
+  `notes/parity_reference.md` defines the reference runs every refactor phase must reproduce
+  (SalamanderID2025 at k=50 with seven methods, to be run by the user from `paper-v1`, and the
+  four existing JaguarReID `split_v2` k=10 runs). Work continues on branch
+  `refactor/wildmatch-package`.
 - 2026-10-04: standalone Kaggle Jaguar submission workflow deleted (user decision):
   `reid/engine/kaggle_jaguar_runner.py`, `scripts/kaggle_jaguar_submit.py`,
   `config/kaggle_jaguar.yaml` (the `config/` folder is gone with it) and

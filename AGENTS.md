@@ -34,6 +34,8 @@ single-label animal-species classifier: identity labels represent individual ani
 - notebooks/: dataset annotation viewer; commit it with outputs stripped.
 - notes/history.md: narrative history moved out of this guide (2026-10-03); new history goes
   to CHANGELOG.MD.
+- notes/parity_reference.md: reference runs for the `wildmatch` package refactor (see
+  "Package refactor").
 
 ## Standard commands
 
@@ -557,6 +559,20 @@ wildlife-tools and wildlife-datasets are pinned (2026-10-03) to the git commits 
 ex-reid, `e762a6c4` and `fc702c3c` (the latter from the `develop` branch); before that
 requirements.txt listed each twice, from PyPI and from an unpinned git URL. The shared ex-reid environment must have an importable, non-broken Vismatch installation; it must not depend on a missing editable checkout.
 Default paths are specific to the original shared compute environment.
+
+## Package refactor (in progress since 2026-10-04)
+
+The repository is being turned into the installable `wildmatch` package (uv + `pyproject.toml`,
+`src/` layout, one `wildmatch` CLI, a dataset registry, portable paths with a `paths=gmum`
+cluster profile, CPU and CUDA extras, a conda route kept) on branch
+`refactor/wildmatch-package`, phase by phase, each phase reviewed by the user. The approved
+plan (32 user decisions) is in the session plan; mining and matcher fine-tuning from the
+sibling repositories will be merged in later and get empty `mining/` and `matcher_finetune/`
+slots now. `main` keeps the paper code: tag `paper-v1` (commit `4bad498`) marks the state
+behind the paper's numbers. Every phase that touches execution must reproduce the reference
+runs listed in `notes/parity_reference.md` (cosine, WildFusion and RDD-LightGlue scores within
+1e-4 with identical Top-1, LoMa within 1e-2, the probe within seed noise). Until the branch is
+merged, all other rules in this guide describe `main`.
 
 ## Known issues (open)
 

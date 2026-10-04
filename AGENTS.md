@@ -677,7 +677,7 @@ regenerated. Checked the same day: task tables, manifest task records, checkpoin
 per-task Hydra overrides equal the launchers' for the parity, Jaguar and CzechLynx joint grids;
 `wildmatch tables` writes the 84 table files byte-identical to `paper-v1` from the main
 checkout's runs, and `wildmatch figures` the 72 figure files with pixel-identical PNGs (PDFs
-differ only in `Creator` and timestamp). Parity run 4 (array 524200, the `parity` sweep): 6/6 retrieval pairs bit-identical to run 2 with unchanged cache fingerprints; the linear probe was still running.
+differ only in `Creator` and timestamp). Parity run 4 (array 524200, the `parity` sweep): 7/7 pairs bit-identical to run 2, linear probe included, with unchanged cache fingerprints. **Phase 3 parity holds.**
 
 ## Known issues (open)
 

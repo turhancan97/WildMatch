@@ -9,8 +9,8 @@ kept under Unreleased until a project version is assigned.
 
 - 2026-10-04 (branch): Phase 3 parity run 4 (array 524200, `wildmatch sweep parity --submit`):
   cosine, WildFusion and default/fine-tuned LoMa and RDD-LightGlue are bit-identical to run 2
-  (max score difference 0, no Top-1 change) with unchanged Vismatch cache fingerprints; the
-  frozen weighted linear probe was still running.
+  (max score difference 0, no Top-1 change) with unchanged Vismatch cache fingerprints, and so
+  is the frozen weighted linear probe: 7/7 pairs, Phase 3 parity holds.
 - 2026-10-04 (branch): refactor Phase 3, CLI, sweeps and layout. One `wildmatch` command
   (`[project.scripts]`, `python -m wildmatch`) with `evaluate`, `finetune-backbone`, `sweep`,
   `sweep-task`, `summarize-runs`, `summarize-logs`, `tables`, `figures`, `build-unseen-split`,

@@ -82,7 +82,7 @@ wildmatch sweep parity --list-tasks          # packaged spec or a YAML path; wri
 wildmatch sweep my_sweep.yaml --submit        # Slurm array (slurm/sweep_task.sbatch); --local runs here
 wildmatch summarize-runs --format markdown
 wildmatch summarize-logs --write-index
-wildmatch tables
+wildmatch tables                    # --inputs paper (default) | current | all, see "Experiment artifacts"
 wildmatch figures
 wildmatch class-balance
 wildmatch audit --dataset leopard --limit 400  # dev subset
@@ -279,7 +279,24 @@ Paper tables are generated with `wildmatch tables` from completed
 run-local manifests under `experiments/`, never from the aggregate benchmark
 CSV. The exporter discovers animals, split protocols, and methods automatically,
 selects the newest completed run for each split/method/matcher/backbone/train-mode/weighting/checkpoint/budget
-identity, and writes ignored generated files under `reports/paper_tables/`. Main tables use
+identity, and writes ignored generated files under `reports/paper_tables/`.
+The input table is not part of that identity, so both `wildmatch tables` and `wildmatch figures`
+first filter runs by the `dataset.metadata_file` in their `config.snapshot.yaml` (`--inputs`, added
+2026-10-04 on branch `fix/exporter-inputs`): `paper` (default) keeps, for the twelve WildlifeReID-10k
+animals, only runs on `registry.paper_inputs.metadata_file` (the team masks), `current` only runs on
+the registry's `metadata_file` (SAM 3), `all` everything (the earlier behaviour); other animals are
+never filtered, and a run without a readable snapshot is dropped by `paper`/`current`. Before the
+filter, the SAM 3 sweeps had silently replaced the paper's rows for all six paper WildlifeReID-10k
+datasets (28 of 84 table files and 4 of 72 figures changed). Checked 2026-10-04 against the Phase 3
+`paper-v1` output: `--inputs paper` writes the 84 table files byte-identical except the four
+SalamanderID2025 files and the 72 figures with pixel-identical PNGs. The Salamander difference came
+from the refactor's parity runs, which had been written to `experiments/probe/SalamanderID2025/`
+and, being newest, replaced the paper's 2026-09-30 runs in the tables (already in the Phase 3
+reference). On 2026-10-04 the 21 runs were moved (user decision) to `experiments/parity-reference/`
+(Phase 0 reference, array 524155), `experiments/parity-phase1-run1/` (524163) and
+`experiments/parity-phase1-run2/` (524170), keeping their `probe/...` paths; all 35 Salamander rows
+now come from runs in the paper's results snapshot (Top-1/Top-5/balanced Top-1 unchanged, mAP@k
+within 0.02 points). Parity runs never go under `experiments/probe/`. Main tables use
 `candidate_k=50` and use the compact paired default/fine-tuned layout with
 same-budget gain arrows; ablation tables use `[10, 50, 100, 250, 500, 1000]` and show
 missing configurations as `--`. LaTeX displays percentage points and labels
@@ -661,7 +678,8 @@ Pull request #2 merged the branch into `main` on 2026-10-04 (`a58ba68`, merge co
 The refactor ran in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`)
 so Slurm jobs from the main checkout kept running the paper code. It was removed on 2026-10-04
 after its run directories (the SAM 3 sweep `wildlife_sam3`, parity runs 1-4 under
-`experiments/probe/SalamanderID2025/` and `experiments/parity-phase{2,3}/`) were copied into this
+`experiments/probe/SalamanderID2025/`, since moved to `experiments/parity-{reference,phase1-run1,phase1-run2}/`,
+and `experiments/parity-phase{2,3}/`) were copied into this
 checkout's `experiments/` and verified by checksum. Its logs, run index (`reports/runs.csv`) and
 legacy CSVs are archived under `logs/archive/wildmatch-refactor-worktree/`, outside the live
 `logs/parallel_run/` tree, because their task records point at the removed worktree; hence

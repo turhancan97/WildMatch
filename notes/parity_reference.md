@@ -61,6 +61,13 @@ Salamander reference runs (array 524155, 2026-10-04, code at `69fc403` = `paper-
 The refactor's parity runs use a fresh feature cache (`parity_v2`), so feature extraction is
 re-run in the new environment instead of reusing these runs' cached features.
 
+**Locations (moved 2026-10-04).** The runs of the Phase 0 reference (array 524155) and of parity
+runs 1 (524163) and 2 (524170) were first written under `experiments/probe/SalamanderID2025/`,
+where they replaced the paper's runs in the tables. They now live in
+`experiments/parity-reference/`, `experiments/parity-phase1-run1/` and
+`experiments/parity-phase1-run2/` (each with the original `probe/SalamanderID2025/...` path), so
+`parity_check.py` takes e.g. `--reference-root experiments/parity-reference/probe`.
+
 ## Parity results on `refactor/wildmatch-package`
 
 | Run | Array | Scope | Result |

@@ -34,6 +34,21 @@ kept under Unreleased until a project version is assigned.
 - 2026-10-04 (branch `fix/probe-epoch-metrics`): classifier probes no longer build the image-level
   query x database matrix every epoch; per-epoch retrieval metrics run only with W&B, identity level
   only. Reported metrics unchanged (computed after training as before).
+- 2026-10-04: moved the 21 SalamanderID2025 parity runs (Phase 0 reference 524155, parity runs 1
+  and 2, 524163 and 524170) out of `experiments/probe/` into `experiments/parity-reference/`,
+  `experiments/parity-phase1-run1/` and `experiments/parity-phase1-run2/` (user decision): as the
+  newest runs they had replaced the paper's 2026-09-30 runs in the Salamander tables. All 35
+  Salamander table rows now come from the paper snapshot's runs (Top-1/Top-5/balanced Top-1
+  unchanged, mAP@k within 0.02 points). `reports/runs.csv` and the task logs still name the old
+  paths (no rebuild tool; not edited by hand).
+- 2026-10-04 (branch `fix/exporter-inputs`): `wildmatch tables` and `wildmatch figures` take
+  `--inputs paper|current|all` (default `paper`) and filter runs by the `dataset.metadata_file` in
+  their config snapshot before picking the newest run per identity. Without it the SAM 3 sweeps
+  silently replaced the paper's rows of the six paper WildlifeReID-10k datasets (28 of 84 table
+  files, 4 of 72 figures). With `paper`, the tables are byte-identical to the Phase 3 `paper-v1`
+  output except SalamanderID2025, whose newest runs are the refactor parity runs (same Top-1/Top-5/
+  balanced Top-1, mAP@k within 0.03 points, other runtimes; recorded under Known issues), and the
+  72 figure PNGs are pixel-identical. Tests in `tests/test_export_inputs.py`.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

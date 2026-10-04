@@ -10,7 +10,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+import yaml
+
 DEFAULT_ABLATION_BUDGETS = (10, 50, 100, 250, 500, 1000)
+# Which input table a run must have read to be exported (see filter_records_by_inputs).
+INPUT_SELECTIONS = ("paper", "current", "all")
 UNSEEN_EVAL_TABLE_BUDGETS = (10, 50, 100, 160)
 SHORTLIST_METHODS = {"wildfusion", "vismatch", "local_lightglue"}
 METHOD_LABELS = {
@@ -202,6 +206,21 @@ def _classifier_probe_weighting(manifest: Mapping[str, Any], metrics: Mapping[st
     return "unknown" if method in {"linear_probe", "efficient_probe"} else ""
 
 
+def _metadata_file(manifest_path: Path) -> str:
+    """The ``dataset.metadata_file`` the run read, from its config snapshot ("" when unreadable)."""
+    try:
+        snapshot = yaml.load(
+            manifest_path.with_name("config.snapshot.yaml").read_text(encoding="utf-8"),
+            Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader),
+        )
+    except (OSError, yaml.YAMLError):
+        return ""
+    dataset = snapshot.get("dataset") if isinstance(snapshot, Mapping) else None
+    if not isinstance(dataset, Mapping):
+        return ""
+    return str(dataset.get("metadata_file") or "")
+
+
 def _record_from_manifest(manifest_path: Path) -> dict[str, Any] | None:
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -268,6 +287,7 @@ def _record_from_manifest(manifest_path: Path) -> dict[str, Any] | None:
         "total_runtime_min": None if total_runtime_sec is None else total_runtime_sec / 60.0,
         "run_id": run_id,
         "manifest_path": manifest_path.as_posix(),
+        "metadata_file": _metadata_file(manifest_path),
         "_sort_token": (str(manifest.get("run_utc") or ""), run_id),
     }
     classifier_fields = (
@@ -323,6 +343,52 @@ def discover_records(experiment_root: Path) -> list[dict[str, Any]]:
         if record is not None:
             records.append(record)
     return records
+
+
+def registry_input_tables() -> dict[str, dict[str, str]]:
+    """Per animal, the paper's and the current input table, for registry entries that have both.
+
+    Only entries with ``registry.paper_inputs`` appear (the WildlifeReID-10k animals, whose
+    paper runs read the team's masks while new runs read the SAM 3 tables).
+    """
+    from wildmatch.data.registry import load_registry
+
+    tables: dict[str, dict[str, str]] = {}
+    for key, entry in load_registry().items():
+        paper_inputs = entry.registry.get("paper_inputs")
+        if not paper_inputs:
+            continue
+        animal = str(entry.animal)
+        if animal in tables:
+            raise ValueError(f"registry entry {key!r}: a second paper_inputs table for animal {animal!r}")
+        tables[animal] = {"paper": str(paper_inputs.metadata_file), "current": str(entry.metadata_file)}
+    return tables
+
+
+def filter_records_by_inputs(
+    records: Iterable[Mapping[str, Any]],
+    inputs: str,
+    tables: Mapping[str, Mapping[str, str]] | None = None,
+) -> list[dict[str, Any]]:
+    """Keep the runs that read the selected input table.
+
+    The exporters keep the newest run per identity, and the input table is not part of that
+    identity, so without this filter a new run on the SAM 3 inputs silently replaces the
+    paper's run. ``paper`` keeps runs that read ``registry.paper_inputs.metadata_file``,
+    ``current`` runs that read the registry's ``metadata_file``, ``all`` everything (the old
+    behaviour). Animals without a ``paper_inputs`` table are never filtered.
+    """
+    if inputs not in INPUT_SELECTIONS:
+        raise ValueError(f"inputs must be one of {', '.join(INPUT_SELECTIONS)}, got {inputs!r}")
+    if inputs == "all":
+        return [dict(record) for record in records]
+    tables = registry_input_tables() if tables is None else tables
+    kept = []
+    for record in records:
+        table = tables.get(str(record.get("animal")))
+        if table is None or record.get("metadata_file") == table[inputs]:
+            kept.append(dict(record))
+    return kept
 
 
 def discover_animals(records: Iterable[Mapping[str, Any]]) -> list[str]:
@@ -1047,19 +1113,20 @@ def export_tables(
     budgets: Sequence[int] = DEFAULT_ABLATION_BUDGETS,
     generated_at: str | None = None,
     detailed_comments: bool = False,
+    inputs: str = "paper",
 ) -> list[Path]:
     if main_candidate_k <= 0:
         raise ValueError("main_candidate_k must be positive")
     budgets = tuple(int(budget) for budget in budgets)
     if not budgets or any(budget <= 0 for budget in budgets):
         raise ValueError("budgets must contain positive integers")
-    records = discover_records(experiment_root)
+    records = filter_records_by_inputs(discover_records(experiment_root), inputs)
     selected_animals = sorted(set(animals or discover_animals(records)))
     if not selected_animals:
         raise ValueError(f"no completed probe animals found under {experiment_root / 'probe'}")
     unknown = sorted(set(selected_animals) - set(discover_animals(records)))
     if unknown:
-        raise ValueError(f"no completed probe records found for animal(s): {', '.join(unknown)}")
+        raise ValueError(f"no completed probe records found for animal(s) with --inputs {inputs}: {', '.join(unknown)}")
     outputs: list[Path] = []
     for animal in selected_animals:
         available_splits = discover_splits(records, animal)

@@ -74,6 +74,13 @@ def parse_args(argv=None, prog=None) -> argparse.Namespace:
     )
     parser.set_defaults(shared_y=None)
     parser.add_argument(
+        "--inputs",
+        choices=["paper", "current", "all"],
+        default="paper",
+        help="Runs to use for datasets with two input tables (WildlifeReID-10k): paper = the team masks "
+        "the paper's runs read (default), current = the registry's SAM 3 tables, all = newest run regardless.",
+    )
+    parser.add_argument(
         "--label-endpoints",
         action="store_true",
         help="Annotate the last available point of each series with its label.",
@@ -103,6 +110,7 @@ def main(argv=None, prog=None) -> None:
         shared_y=args.shared_y,
         label_endpoints=args.label_endpoints,
         exclude_methods=args.exclude_methods,
+        inputs=args.inputs,
     )
     for output in outputs:
         print(output)

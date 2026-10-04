@@ -16,6 +16,38 @@ The code is the installable `wildmatch` package under `src/wildmatch/`, run thro
 `wildmatch` command (`wildmatch --help` lists the subcommands). (The package refactor is in
 progress on this branch; see AGENTS.md, "Package refactor".)
 
+## Quickstart
+
+```bash
+# 1. Install (Python 3.12; pick one PyTorch build: --extra cpu or --extra cu126)
+uv sync --extra cu126 --extra matchers --group dev
+source .venv/bin/activate                     # or prefix the commands below with `uv run`
+
+# 2. Data: see what each registry dataset needs, then download or rebuild it
+wildmatch prepare status
+wildmatch prepare download zindi              # raw WildlifeReID-10k (Kaggle credentials)
+wildmatch prepare build zindi                 # split table; prints the SAM 3 masking command
+wildmatch prepare finish zindi                # pre-masked metadata, after the masks exist
+
+# 3. Fine-tuned matcher checkpoints of the paper (Hugging Face Hub)
+wildmatch weights download --dataset zindi
+
+# 4. One evaluation (Hydra overrides)
+wildmatch evaluate dataset=zindi benchmark.method=vismatch \
+    benchmark.methods.vismatch.matcher=loma benchmark.candidate_k=250
+
+# 5. A grid of evaluations (sweep spec: datasets x budgets x methods)
+wildmatch sweep example --list-tasks          # src/wildmatch/conf/sweep/example.yaml
+wildmatch sweep my_sweep.yaml --local         # or --submit on Slurm
+
+# 6. Results
+wildmatch summarize-runs --format markdown
+wildmatch tables && wildmatch figures
+```
+
+`wildmatch --help` lists every command. The sections below describe installation options,
+data locations, the dataset registry and each workflow in detail.
+
 ## Repository Structure
 
 ```text
@@ -798,7 +830,12 @@ Run the tests (pytest; the tests are unittest-style classes):
 ```bash
 uv run pytest                       # or: python -m pytest, inside the conda env
 uv run pytest -m "not gpu and not data"    # what runs on any machine (no datasets, no GPU)
+uv run ruff check src paper tests          # lint
+uv run ruff format --check src paper tests # formatting
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the lint, format and CPU test steps with the CPU
+PyTorch build, and builds the project page with `mkdocs build --strict`, on every push.
 
 ## Troubleshooting
 
@@ -863,3 +900,9 @@ policy" and "Immutable parallel probe submissions" sections. In short:
 - Sweeps snapshot each submission (config copy, spec, task table, manifest) under
   `logs/parallel_run/submissions/`; tasks read only that snapshot, and custom checkpoints are
   checked for owner and SHA-256 before loading.
+
+## Licence
+
+The code is licensed under Apache-2.0 (`LICENSE`, `NOTICE`). Dependencies, model weights and
+datasets keep their own licences; see `THIRD_PARTY_LICENSES.md`. MegaDescriptor-L weights are
+CC BY-NC 4.0 (non-commercial), and work that uses the SAM 3 masks must acknowledge SAM.

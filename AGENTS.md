@@ -831,22 +831,18 @@ reproduction, and the measured impact so it can be picked up without re-investig
   Fix: give the probes a validation split distinct from the query/test split, or stop
   logging per-epoch test metrics.
 
-- **Vismatch qualitative top-1 can point at an unscored pair.**
-  When a query row is entirely `-inf`, `stable_rank_1d(...)[0]` returns database index 0
-  and a meaningless match image is drawn instead of the query being skipped.
-
-- **`_predict_class_probabilities` runs under grad during probe training.**
-  The training-loop calls in `run_linear_probe` and `run_efficient_probe`
-  (`src/wildmatch/evaluate/probe_runner.py`, the `train_probs = _predict_class_probabilities(...)`
-  lines; re-checked 2026-10-04) build a graph for the softmax and then detach it. Wasteful, not
-  incorrect.
-
-- **`_to_hwc_uint8` would destroy float images.**
-  `BenchmarkDatasetView._to_hwc_uint8` (`src/wildmatch/data/dataset_view.py`; re-checked 2026-10-04)
-  casts non-uint8 input with `np.clip(arr, 0, 255).astype(np.uint8)`, so float images in `[0, 1]`
-  become `{0, 1}` before masking. Not
-  triggered today because the base dataset yields PIL images, but it would silently blacken
-  inputs if a transform were ever applied before the view.
+- **Fixed on branch `fix/small-known-bugs` (2026-10-04; merge after sweep 524499 finishes).**
+  None of the three affected reported numbers; `tests/test_small_known_bugs.py` pins them.
+  - Vismatch qualitative top-1 for a query with nothing scored (row all `-inf`) pointed at
+    database index 0 and drew a meaningless match. `scored_rank1` in
+    `src/wildmatch/matchers/vismatch.py` now returns None and the query is skipped; the count is
+    printed and stored as `vismatch_match_skipped_unscored` in the method artifacts.
+  - The training-set `_predict_class_probabilities` calls in `run_linear_probe` and
+    `run_efficient_probe` built an unused autograd graph; they now run under `torch.no_grad()`
+    on detached inputs (logging only, values unchanged).
+  - `BenchmarkDatasetView._to_hwc_uint8` cast float images in `[0, 1]` straight to uint8 (all
+    black); float input with maximum <= 1 is now scaled by 255 before clipping. Not triggered
+    today (the base datasets yield PIL images).
 
 - **Checkpoint fingerprints contain absolute paths (found 2026-10-04).** The Vismatch checkpoint
   fingerprint, part of the feature-cache key, includes the requested checkpoint path and the

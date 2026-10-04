@@ -1233,7 +1233,8 @@ def run_linear_probe(
             y = y.to(device)
             embeddings = model(x)
             loss = objective(embeddings, y)
-            train_probs = _predict_class_probabilities(objective, embeddings).detach().cpu().numpy()
+            with torch.no_grad():  # logging only: no graph for the softmax
+                train_probs = _predict_class_probabilities(objective, embeddings.detach()).cpu().numpy()
             train_probs_list.append(train_probs)
             train_targets_list.append(y.detach().cpu().numpy())
             (loss / float(accumulation_group_size(i, total_batches, int(lp_cfg.accumulation_steps)))).backward()
@@ -1502,7 +1503,8 @@ def run_efficient_probe(
             y = y.to(device)
             patch_tokens = _forward_patch_tokens(model, x, number_of_patches=number_of_patches)
             loss = objective(patch_tokens, y)
-            train_probs = _predict_class_probabilities(objective, patch_tokens).detach().cpu().numpy()
+            with torch.no_grad():  # logging only: no graph for the softmax
+                train_probs = _predict_class_probabilities(objective, patch_tokens.detach()).cpu().numpy()
             train_probs_list.append(train_probs)
             train_targets_list.append(y.detach().cpu().numpy())
             (loss / float(accumulation_group_size(i, total_batches, int(ep_cfg.accumulation_steps)))).backward()

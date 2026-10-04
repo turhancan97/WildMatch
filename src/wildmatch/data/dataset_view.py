@@ -83,6 +83,10 @@ class BenchmarkDatasetView(Dataset):
         if arr.ndim not in (2, 3):
             raise ValueError(f"Unsupported image shape at row index {idx}: {arr.shape}")
         if arr.dtype != np.uint8:
+            if np.issubdtype(arr.dtype, np.floating) and arr.size and float(np.nanmax(arr)) <= 1.0:
+                # Float images in [0, 1] (for example after ToTensor) are scaled to [0, 255] first,
+                # as torchvision's ToPILImage does; casting them directly would give {0, 1}.
+                arr = arr * 255.0
             arr = np.clip(arr, 0, 255).astype(np.uint8)
         return arr
 

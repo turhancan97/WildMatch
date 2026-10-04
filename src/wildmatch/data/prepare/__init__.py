@@ -96,6 +96,49 @@ def _masks_name(entry) -> str:
     return "masks.csv"
 
 
+def _retry_masks_name(entry) -> str:
+    return _masks_name(entry).replace(".csv", "_retry.csv")
+
+
+def _read_masks(entry, out: Path) -> pd.DataFrame:
+    """The mask table, with rows from a ``retry-empty`` run replacing the empty ones."""
+    masks = pd.read_csv(out / _masks_name(entry))
+    retry_path = out / _retry_masks_name(entry)
+    if retry_path.is_file():
+        retry = pd.read_csv(retry_path)
+        unknown = set(retry["path"]) - set(masks["path"])
+        if unknown:
+            raise SystemExit(f"{retry_path} has rows that are not in {_masks_name(entry)}, e.g. {sorted(unknown)[:2]}")
+        masks = pd.concat([masks[~masks["path"].isin(retry["path"])], retry]).set_index("path").loc[masks["path"]].reset_index()
+    if "full_frame" in masks.columns:
+        masks["full_frame"] = masks["full_frame"].fillna(False).astype(bool)
+    return masks
+
+
+def retry_empty(key: str, profile: Optional[str], output: Optional[Path], overwrite: bool) -> Optional[List[str]]:
+    """Write the rows whose mask is empty and return the SAM 3 command that redoes only them."""
+    from wildmatch.data.prepare import sources
+
+    entry = load_dataset(key, profile)
+    block = _prepare_block(entry)
+    out = output or Path(str(entry.root))
+    masks = pd.read_csv(out / _masks_name(entry))
+    empty = set(masks.loc[masks["n_detections"] == 0, "path"])
+    if not empty:
+        return None
+    table = pd.read_csv(_split_table_path(entry, out))
+    rows = table[table["path"].isin(empty)]
+    retry_csv = _split_table_path(entry, out).with_name(_split_table_path(entry, out).stem + "_empty.csv")
+    sources.write_new(rows, retry_csv, overwrite)
+    print(f"wrote {retry_csv} ({len(rows)} rows with an empty mask)")
+    arguments = _sam3_arguments(entry, out)
+    arguments[arguments.index("--csv") + 1] = str(retry_csv)
+    arguments[arguments.index("--masks-csv") + 1] = _retry_masks_name(entry)
+    prompts = [str(p) for p in (block.get("retry_prompts") or [])] + ["Animal"]
+    return ["python", str(SAM3_SCRIPT), *arguments, "--fallback-prompts", *prompts,
+            "--empty-policy", "full_frame", "--overwrite", "--segment"]
+
+
 def _split_table_path(entry, out: Path) -> Path:
     if _prepare_block(entry)["builder"] == "wildlifereid10k":
         return out / "wildmatch_prepare" / f"{entry.animal}_split.csv"
@@ -150,7 +193,7 @@ def finish(key: str, profile: Optional[str], output: Optional[Path], overwrite: 
     block = _prepare_block(entry)
     out = output or Path(str(entry.root))
     source = pd.read_csv(_split_table_path(entry, out))
-    masks = pd.read_csv(out / _masks_name(entry))
+    masks = _read_masks(entry, out)
     mapping = sam3_masks.parse_mapping(str(block.get("split_map") or "")) or None
     metadata = sam3_masks.build_masked_metadata(source, masks, out, split_col=str(entry.split_col),
                                                 split_map=mapping, split_map_column=block.get("split_map_column"))
@@ -216,6 +259,10 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
     for command in (build_parser, finish_parser):
         command.add_argument("--output-dir", type=Path, help="write here instead of the registry root (trials)")
         command.add_argument("--overwrite", action="store_true")
+    retry = sub.add_parser("retry-empty", help="redo the images whose SAM 3 mask is empty (extra prompts, then the whole image)")
+    retry.add_argument("dataset", help="registry key")
+    retry.add_argument("--output-dir", type=Path)
+    retry.add_argument("--overwrite", action="store_true")
     compare = sub.add_parser("compare-masks", help="IoU of new SAM 3 masks against the masked files on disk")
     compare.add_argument("dataset", help="registry key")
     compare.add_argument("--masks-csv", type=Path, required=True)
@@ -254,6 +301,18 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
         print("Next, on a GPU node in the SAM 3 environment (not V100), e.g. sbatch slurm/sam3_masks.sbatch <arguments>, from the repository root:\n  "
               + " ".join(command) + f"\nthen: wildmatch prepare finish {args.dataset}"
               + (f" --output-dir {args.output_dir}" if args.output_dir else ""))
+        return 0
+    if args.action == "retry-empty":
+        from wildmatch.data.prepare.sources import SourceError
+
+        try:
+            command = retry_empty(args.dataset, profile, args.output_dir, args.overwrite)
+        except SourceError as exc:
+            parser.exit(1, f"{parser.prog}: {exc}\n")
+        if command is None:
+            print(f"{args.dataset}: no empty masks")
+        else:
+            print("Next, on a GPU node (sbatch slurm/sam3_masks.sbatch <arguments>):\n  " + " ".join(command))
         return 0
     if args.action == "finish":
         print(f"wrote {finish(args.dataset, profile, args.output_dir, args.overwrite)}")

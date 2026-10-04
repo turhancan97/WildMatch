@@ -12,7 +12,9 @@ Two independent steps, selected by flags:
     detection are retried at ``--fallback-threshold`` and then with each
     ``--fallback-prompts`` entry; ``--threshold-override PATH=T`` pins a lower first
     threshold for individually reviewed images. Nothing is ever dropped: an image
-    that still has no detection gets an empty mask and ``n_detections=0``.
+    that still has no detection gets an empty mask and ``n_detections=0``, or, with
+    ``--empty-policy full_frame``, the whole image (``full_frame=True`` in the mask table; used for
+    close-ups where the animal fills the frame, so SAM 3 finds no separate object).
     Writes ``<out-dir>/masked_images/<relative path>`` (background set to 0, JPEG
     q95) and ``<out-dir>/masks.csv`` (full-size COCO-RLE mask, best score,
     foreground fraction, instance count, threshold and prompt used).
@@ -94,6 +96,10 @@ def ensure_directory(path: Path, attempts: int = 5) -> None:
                 return
             time.sleep(0.2 * (attempt + 1))
     path.mkdir(parents=True, exist_ok=True)
+
+
+# Mask-table columns written only by newer runs; carried into the metadata when present.
+OPTIONAL_COLUMNS = {"full_frame": "sam3_full_frame"}
 
 
 class MetadataError(ValueError):
@@ -189,14 +195,18 @@ def build_masked_metadata(
     if clash:
         raise MetadataError(f"source already has columns {clash}")
 
-    joined = source.merge(masks[["path", "masked_path", "mask", *SAM3_COLUMNS]], on="path",
+    optional = [column for column in OPTIONAL_COLUMNS if column in masks.columns]
+    joined = source.merge(masks[["path", "masked_path", "mask", *SAM3_COLUMNS, *optional]], on="path",
                           how="left", validate="one_to_one")
     absent = [p for p in joined["masked_path"] if not (Path(root) / p).is_file()]
     if absent:
         raise MetadataError(f"{len(absent)} masked images do not exist, e.g. {absent[:3]}")
 
-    out = joined.rename(columns={"path": "original_path", "masked_path": "path", **SAM3_COLUMNS})
-    columns = list(source.columns) + ["original_path", "mask", *SAM3_COLUMNS.values()]
+    renames = {"path": "original_path", "masked_path": "path", **SAM3_COLUMNS,
+               **{column: OPTIONAL_COLUMNS[column] for column in optional}}
+    out = joined.rename(columns=renames)
+    columns = list(source.columns) + ["original_path", "mask", *SAM3_COLUMNS.values(),
+                                      *[OPTIONAL_COLUMNS[column] for column in optional]]
     if split_map:
         if not split_col or not split_map_column:
             raise MetadataError("--split-map needs --split-col and --split-map-column")
@@ -270,8 +280,10 @@ def run_segmentation(args: argparse.Namespace) -> None:
                 mask, n_det, score = detect(processor.set_text_prompt(prompt=prompt, state=base))
                 used_prompt = prompt
         width, height = image.size
+        full_frame = False
         if mask is None:
-            mask = np.zeros((height, width), dtype=bool)
+            full_frame = args.empty_policy == "full_frame"
+            mask = np.ones((height, width), dtype=bool) if full_frame else np.zeros((height, width), dtype=bool)
         pixels = np.asarray(image).copy()
         pixels[~mask] = 0
         masked_rel = Path(args.masked_dir) / rel
@@ -283,7 +295,7 @@ def run_segmentation(args: argparse.Namespace) -> None:
             "best_score": round(score, 4), "threshold_used": used_threshold, "prompt_used": used_prompt,
             "merge": args.merge, "fg_fraction": round(float(mask.mean()), 4),
             "bbox": json.dumps([int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if len(xs) else []),
-            "mask": encode_mask(mask),
+            "mask": encode_mask(mask), "full_frame": full_frame,
         })
         if n % 50 == 0:
             print(f"[sam3] {n}/{len(meta)} images, {(time.time() - t0) / n:.2f} s/img", flush=True)
@@ -323,6 +335,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--split-map-column", default=None, help="e.g. split_train_test")
     p.add_argument("--masks-csv", default=MASKS_FILE, help="mask table path inside --out-dir")
     p.add_argument("--masked-dir", default=MASKED_DIR, help="folder for masked images inside --out-dir")
+    p.add_argument("--empty-policy", choices=["empty", "full_frame"], default="empty",
+                   help="when nothing is detected: an empty mask (black image) or the whole image, flagged")
     p.add_argument("--overwrite", action="store_true", help="replace existing masked images, mask table or metadata")
     args = p.parse_args(argv)
     if not args.segment and args.write_metadata is None:

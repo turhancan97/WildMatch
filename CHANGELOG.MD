@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): empty SAM 3 masks (BelugaID 1,125, SeaStar 42, WhaleShark 39, a few
+  elsewhere) are redone: `wildmatch prepare retry-empty` reruns only those images with per-dataset
+  `retry_prompts`, and `sam3_masks.py --empty-policy full_frame` keeps the whole image when still
+  nothing is detected (flag `sam3_full_frame`); `finish` merges the retry table. Compare-masks
+  results for the full run recorded in AGENTS.md.
 - 2026-10-04 (branch): `sam3_masks.py` creates output folders with a retry: three of the twelve
   WildlifeReID-10k SAM 3 jobs (ATRW, WhaleSharkID, ZindiTurtleRecall; 524321, 524331, 524332)
   died with `FileExistsError` when several jobs created `masked_images_sam3/` at once on the

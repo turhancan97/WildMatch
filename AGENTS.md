@@ -828,6 +828,15 @@ reproduction, and the measured impact so it can be picked up without re-investig
   2026-10-04; the masks (one `slurm/sam3_masks.sbatch` job per entry) and `prepare finish` follow,
   then the affected results are rerun on the new inputs. Until `finish` has run, sweeps on these
   entries fail at load (`prepare status` shows the missing tables).
+  Full run (jobs 524321-524336, RTX 4090, 2026-10-04): median IoU against the paper's masks 0.98-0.999
+  for every entry checked (ATRW's low cases are dark photos, a measurement artefact). Empty masks:
+  BelugaID 1,125 (top-down crops of the back; no prompt fires), SeaStar 42 and WhaleShark 39
+  (full-frame close-ups where the paper's masks kept only a speck), a few elsewhere. Decision
+  (user, 2026-10-04): rerun the empty images with `registry.prepare.retry_prompts` plus "Animal",
+  and keep the whole image when still nothing is detected (`--empty-policy full_frame`, flagged as
+  `sam3_full_frame` in the metadata). `wildmatch prepare retry-empty <key>` writes
+  `<animal>_split_empty.csv` and prints the job; `finish` merges `masks_<animal>_retry.csv` over the
+  empty rows.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

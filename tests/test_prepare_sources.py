@@ -140,6 +140,36 @@ class PrepareStepTests(unittest.TestCase):
         self.assertEqual(len(scores), len(table))
         self.assertTrue((scores.iou == 1.0).all())
 
+    def test_retry_empty_and_finish_merge(self):
+        self.run_with_entry(P.build, "hyena", None, None, None, False)
+        table = pd.read_csv(self.root / "wildmatch_prepare" / "HyenaID2022_split.csv")
+        full, none = np.ones((4, 6), bool), np.zeros((4, 6), bool)
+        for path in table.path:
+            target = self.root / "masked_images" / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(np.full((4, 6, 3), 200, np.uint8)).save(target)
+        def masks(rows, mask, detections, **extra):
+            return pd.DataFrame({"path": rows, "masked_path": "masked_images/" + rows, "mask": sam3_masks.encode_mask(mask),
+                                 "best_score": 0.9, "fg_fraction": float(mask.mean()), "n_detections": detections,
+                                 "threshold_used": 0.5, "prompt_used": "hyena", **extra})
+        first = pd.concat([masks(table.path[:1], none, 0), masks(table.path[1:], full, 1)])
+        first.to_csv(self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv", index=False)
+        self.entry.registry.prepare.retry_prompts = ["dog"]
+        command = self.run_with_entry(P.retry_empty, "hyena", None, None, False)
+        retry_csv = self.root / "wildmatch_prepare" / "HyenaID2022_split_empty.csv"
+        self.assertEqual(pd.read_csv(retry_csv).path.tolist(), [table.path[0]])
+        self.assertEqual(command[command.index("--csv") + 1], str(retry_csv))
+        self.assertEqual(command[command.index("--masks-csv") + 1], "wildmatch_prepare/masks_HyenaID2022_retry.csv")
+        self.assertEqual(command[command.index("--fallback-prompts") + 1: command.index("--fallback-prompts") + 3], ["dog", "Animal"])
+        self.assertIn("full_frame", command)
+        masks(table.path[:1], full, 0, full_frame=True).to_csv(
+            self.root / "wildmatch_prepare" / "masks_HyenaID2022_retry.csv", index=False)
+        target = self.run_with_entry(P.finish, "hyena", None, None, False)
+        metadata = pd.read_csv(target)
+        self.assertEqual(metadata.path.str.replace("masked_images/", "").tolist(), table.path.tolist())  # order kept
+        self.assertEqual(metadata.sam3_full_frame.tolist(), [True] + [False] * (len(table) - 1))
+        self.assertTrue((metadata["mask"] == sam3_masks.encode_mask(full)).all())
+
     def test_builders_without_build_step_refuse(self):
         self.entry.registry.prepare.builder = "official"
         with self.assertRaises(SystemExit):
@@ -155,7 +185,7 @@ class RegistryPrepareBlockTests(unittest.TestCase):
             block = entry.registry.get("prepare")
             if block is None or block.builder != "wildlifereid10k":
                 continue
-            self.assertEqual(set(block), {"builder", "include", "merge", "masked_dir"}, key)
+            self.assertEqual(set(block), {"builder", "include", "merge", "masked_dir", "retry_prompts"}, key)
             self.assertEqual(block.merge, "largest", key)
             self.assertEqual(str(entry.metadata_file), f"metadata_sam3/metadata_{entry.animal}.csv", key)
             self.assertEqual(set(entry.registry.paper_inputs), {"metadata_file"}, key)

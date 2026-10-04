@@ -36,6 +36,8 @@ registry:
     # merging all ("union") gave Nyala IoU >= 0.9 for 64 % of images, "best" 95 %, "largest" 99 %.
     merge: largest
     masked_dir: masked_images_sam3
+    # Extra prompts for images with an empty mask (`wildmatch prepare retry-empty`); still empty -> whole image.
+    retry_prompts: ["turtle"]
   # The table the paper's runs read (team masks, 2026-02/08); paper tooling that analyses those
   # runs uses it. New runs use metadata_file above (decided 2026-10-04: publish the SAM 3 masks).
   paper_inputs:

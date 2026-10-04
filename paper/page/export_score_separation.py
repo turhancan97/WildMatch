@@ -22,6 +22,7 @@ matrix shape must equal the split sizes, and the Top-1 recomputed from ``scores.
 the shared stable rule must equal the run's ``metrics.json`` ``top_1`` (which also proves
 the identity order is right). CPU only; needs pandas, numpy and PyYAML.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -119,14 +120,22 @@ def paper_runs(paper_repo: Path, stem: str) -> Dict[str, Dict[str, Any]]:
     table = pd.read_csv(paper_repo / "results" / f"{stem}_ablation.csv")
     runs: Dict[str, Dict[str, Any]] = {}
     for key, (label, _) in MATCHERS.items():
-        rows = table[(table["method"].str.lower() == "vismatch") & (table["matcher"].str.lower() == "loma")
-                     & (table["checkpoint"].str.lower() == label) & (table["candidate_k"].astype(float) == MAIN_K)]
+        rows = table[
+            (table["method"].str.lower() == "vismatch")
+            & (table["matcher"].str.lower() == "loma")
+            & (table["checkpoint"].str.lower() == label)
+            & (table["candidate_k"].astype(float) == MAIN_K)
+        ]
         if len(rows) != 1:
             raise ValueError(f"{stem}: expected one {label} LoMa row at k={MAIN_K}, found {len(rows)}")
         row = rows.iloc[0]
-        runs[key] = {"run_id": str(row["run_id"]), "manifest_path": str(row["manifest_path"]),
-                     "top_1": float(row["top_1"]), "top_5": float(row["top_5"]),
-                     "balanced_top_1": float(row["balanced_top_1"])}
+        runs[key] = {
+            "run_id": str(row["run_id"]),
+            "manifest_path": str(row["manifest_path"]),
+            "top_1": float(row["top_1"]),
+            "top_5": float(row["top_5"]),
+            "balanced_top_1": float(row["balanced_top_1"]),
+        }
     return runs
 
 
@@ -142,29 +151,48 @@ def split_labels(run_dir: Path) -> Tuple[np.ndarray, np.ndarray]:
 def load_run(run_dir: Path, expected_run_id: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, Any]]:
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
     if manifest.get("status") != "completed" or manifest.get("run_id") != expected_run_id:
-        raise ValueError(f"{run_dir}: manifest status/run_id {manifest.get('status')}/{manifest.get('run_id')} "
-                         f"does not match the paper's {expected_run_id}")
+        raise ValueError(
+            f"{run_dir}: manifest status/run_id {manifest.get('status')}/{manifest.get('run_id')} "
+            f"does not match the paper's {expected_run_id}"
+        )
     with np.load(run_dir / "scores.npz") as data:
-        return data["rows"].astype(np.int64), data["cols"].astype(np.int64), data["values"].astype(np.float32), {
-            "shape": tuple(int(x) for x in data["shape"]), "metrics": json.loads((run_dir / "metrics.json").read_text(encoding="utf-8"))}
+        return (
+            data["rows"].astype(np.int64),
+            data["cols"].astype(np.int64),
+            data["values"].astype(np.float32),
+            {
+                "shape": tuple(int(x) for x in data["shape"]),
+                "metrics": json.loads((run_dir / "metrics.json").read_text(encoding="utf-8")),
+            },
+        )
 
 
-def summarise(rows: np.ndarray, cols: np.ndarray, values: np.ndarray, same: np.ndarray, n_query: int,
-              edges: np.ndarray, margin_edges: np.ndarray) -> Dict[str, Any]:
+def summarise(
+    rows: np.ndarray,
+    cols: np.ndarray,
+    values: np.ndarray,
+    same: np.ndarray,
+    n_query: int,
+    edges: np.ndarray,
+    margin_edges: np.ndarray,
+) -> Dict[str, Any]:
     pos, neg = values[same], values[~same]
     counts_same, counts_diff = histogram(pos, edges), histogram(neg, edges)
     margin = per_query_margins(rows, values, same, n_query)
     finite = margin[np.isfinite(margin)]
     return {
-        "same": counts_same.tolist(), "different": counts_diff.tolist(),
+        "same": counts_same.tolist(),
+        "different": counts_diff.tolist(),
         "margin": histogram(finite, margin_edges).tolist(),
         "stats": {
-            "n_same": int(len(pos)), "n_different": int(len(neg)),
+            "n_same": int(len(pos)),
+            "n_different": int(len(neg)),
             "median_same": float(np.median(pos)) if len(pos) else None,
             "median_different": float(np.median(neg)) if len(neg) else None,
             "mean_same": float(pos.mean()) if len(pos) else None,
             "mean_different": float(neg.mean()) if len(neg) else None,
-            "auroc": auroc(pos, neg), "overlap": overlap_coefficient(counts_same, counts_diff),
+            "auroc": auroc(pos, neg),
+            "overlap": overlap_coefficient(counts_same, counts_diff),
             "n_queries_with_margin": int(len(finite)),
             "median_margin": float(np.median(finite)) if len(finite) else None,
             "positive_margin_fraction": float((finite > 0).mean()) if len(finite) else None,
@@ -172,8 +200,9 @@ def summarise(rows: np.ndarray, cols: np.ndarray, values: np.ndarray, same: np.n
     }
 
 
-def export_dataset(stem: str, key: str, label: str, paper_repo: Path, edges: np.ndarray,
-                   margin_edges: np.ndarray) -> Dict[str, Any]:
+def export_dataset(
+    stem: str, key: str, label: str, paper_repo: Path, edges: np.ndarray, margin_edges: np.ndarray
+) -> Dict[str, Any]:
     runs = paper_runs(paper_repo, stem)
     out: Dict[str, Any] = {"key": key, "label": label, "stem": stem, "k": MAIN_K, "runs": {}, "matchers": {}}
     labels: Optional[Tuple[np.ndarray, np.ndarray]] = None
@@ -193,7 +222,9 @@ def export_dataset(stem: str, key: str, label: str, paper_repo: Path, edges: np.
         top1 = float(np.mean((top >= 0) & (db_labels[np.clip(top, 0, None)] == q_labels)))
         recorded = float(info["metrics"]["top_1"])
         if abs(top1 - recorded) > 1e-9:
-            raise ValueError(f"{run_dir}: recomputed Top-1 {top1:.6f} != recorded {recorded:.6f}; identity order unverified")
+            raise ValueError(
+                f"{run_dir}: recomputed Top-1 {top1:.6f} != recorded {recorded:.6f}; identity order unverified"
+            )
         if abs(recorded - run["top_1"]) > 1e-9:
             raise ValueError(f"{run_dir}: metrics.json Top-1 {recorded:.6f} != paper CSV {run['top_1']:.6f}")
         out["runs"][mkey] = {**run, "top_1_recomputed": top1, "n_pairs": int(len(values))}
@@ -203,8 +234,9 @@ def export_dataset(stem: str, key: str, label: str, paper_repo: Path, edges: np.
     return out
 
 
-def build_payload(datasets: List[Dict[str, Any]], edges: np.ndarray, margin_edges: np.ndarray,
-                  paper_commit: Optional[str]) -> Dict[str, Any]:
+def build_payload(
+    datasets: List[Dict[str, Any]], edges: np.ndarray, margin_edges: np.ndarray, paper_commit: Optional[str]
+) -> Dict[str, Any]:
     return {
         "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "generated_by": "paper/page/export_score_separation.py",
@@ -214,12 +246,12 @@ def build_payload(datasets: List[Dict[str, Any]], edges: np.ndarray, margin_edge
         "bin_edges": [round(float(x), 6) for x in edges],
         "margin_bin_edges": [round(float(x), 6) for x in margin_edges],
         "score_definition": "LoMa image score: summed confidence of the mutual-nearest matches above the "
-                            "threshold, divided by the smaller keypoint count; computed on background-removed inputs.",
+        "threshold, divided by the smaller keypoint count; computed on background-removed inputs.",
         "population": f"all query/candidate pairs of the {MAIN_K} MegaDescriptor-L candidates per query (the pairs the "
-                      "matcher ranks); 'different individual' therefore means hard shortlist candidates, not random pairs. "
-                      "Both matchers rank the identical shortlist.",
+        "matcher ranks); 'different individual' therefore means hard shortlist candidates, not random pairs. "
+        "Both matchers rank the identical shortlist.",
         "margin_definition": "per query: best same-individual score minus best different-individual score, over "
-                             "queries whose shortlist holds at least one same-individual candidate.",
+        "queries whose shortlist holds at least one same-individual candidate.",
         "datasets": datasets,
     }
 
@@ -248,10 +280,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for stem, key, label in selected:
         result = export_dataset(stem, key, label, args.paper_repo, edges, margin_edges)
         stats = {m: result["matchers"][m]["stats"] for m in result["matchers"]}
-        print(f"[score-separation] {label}: AUROC default {stats['default']['auroc']:.3f} -> fine-tuned "
-              f"{stats['finetuned']['auroc']:.3f}; overlap {stats['default']['overlap']:.3f} -> "
-              f"{stats['finetuned']['overlap']:.3f}; positive margin {stats['default']['positive_margin_fraction']:.3f} "
-              f"-> {stats['finetuned']['positive_margin_fraction']:.3f}", flush=True)
+        print(
+            f"[score-separation] {label}: AUROC default {stats['default']['auroc']:.3f} -> fine-tuned "
+            f"{stats['finetuned']['auroc']:.3f}; overlap {stats['default']['overlap']:.3f} -> "
+            f"{stats['finetuned']['overlap']:.3f}; positive margin {stats['default']['positive_margin_fraction']:.3f} "
+            f"-> {stats['finetuned']['positive_margin_fraction']:.3f}",
+            flush=True,
+        )
         datasets.append(result)
     payload = build_payload(datasets, edges, margin_edges, paper_commit(args.paper_repo))
     text = json.dumps(payload, indent=1)

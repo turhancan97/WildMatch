@@ -109,7 +109,12 @@ def _read_masks(entry, out: Path) -> pd.DataFrame:
         unknown = set(retry["path"]) - set(masks["path"])
         if unknown:
             raise SystemExit(f"{retry_path} has rows that are not in {_masks_name(entry)}, e.g. {sorted(unknown)[:2]}")
-        masks = pd.concat([masks[~masks["path"].isin(retry["path"])], retry]).set_index("path").loc[masks["path"]].reset_index()
+        masks = (
+            pd.concat([masks[~masks["path"].isin(retry["path"])], retry])
+            .set_index("path")
+            .loc[masks["path"]]
+            .reset_index()
+        )
     if "full_frame" in masks.columns:
         masks["full_frame"] = masks["full_frame"].fillna(False).astype(bool)
     return masks
@@ -135,8 +140,17 @@ def retry_empty(key: str, profile: Optional[str], output: Optional[Path], overwr
     arguments[arguments.index("--csv") + 1] = str(retry_csv)
     arguments[arguments.index("--masks-csv") + 1] = _retry_masks_name(entry)
     prompts = [str(p) for p in (block.get("retry_prompts") or [])] + ["Animal"]
-    return ["python", str(SAM3_SCRIPT), *arguments, "--fallback-prompts", *prompts,
-            "--empty-policy", "full_frame", "--overwrite", "--segment"]
+    return [
+        "python",
+        str(SAM3_SCRIPT),
+        *arguments,
+        "--fallback-prompts",
+        *prompts,
+        "--empty-policy",
+        "full_frame",
+        "--overwrite",
+        "--segment",
+    ]
 
 
 def _split_table_path(entry, out: Path) -> Path:
@@ -148,17 +162,42 @@ def _split_table_path(entry, out: Path) -> Path:
 def _sam3_arguments(entry, out: Path) -> List[str]:
     block, root = _prepare_block(entry), Path(str(entry.root))
     if block["builder"] == "wildlifereid10k":
-        return ["--root", str(root / "images"), "--csv", str(_split_table_path(entry, out)), "--out-dir", str(out),
-                "--masks-csv", _masks_name(entry), "--prompt-column", "prompt",
-                "--merge", str(block.get("merge") or "union"), "--masked-dir", str(block.get("masked_dir") or "masked_images")]
-    arguments = ["--root", str(out), "--csv", _split_table_path(entry, out).name, "--out-dir", str(out),
-                 "--prompt", str(block["prompt"]), "--merge", str(block.get("merge") or "union")]
+        return [
+            "--root",
+            str(root / "images"),
+            "--csv",
+            str(_split_table_path(entry, out)),
+            "--out-dir",
+            str(out),
+            "--masks-csv",
+            _masks_name(entry),
+            "--prompt-column",
+            "prompt",
+            "--merge",
+            str(block.get("merge") or "union"),
+            "--masked-dir",
+            str(block.get("masked_dir") or "masked_images"),
+        ]
+    arguments = [
+        "--root",
+        str(out),
+        "--csv",
+        _split_table_path(entry, out).name,
+        "--out-dir",
+        str(out),
+        "--prompt",
+        str(block["prompt"]),
+        "--merge",
+        str(block.get("merge") or "union"),
+    ]
     for item in block.get("threshold_override") or []:
         arguments += ["--threshold-override", str(item)]
     return arguments
 
 
-def build(key: str, profile: Optional[str], source: Optional[Path], output: Optional[Path], overwrite: bool) -> List[str]:
+def build(
+    key: str, profile: Optional[str], source: Optional[Path], output: Optional[Path], overwrite: bool
+) -> List[str]:
     """Write the split table (and, for Salamander, copy the images); returns the SAM 3 command."""
     from wildmatch.data.prepare import sources
 
@@ -195,8 +234,14 @@ def finish(key: str, profile: Optional[str], output: Optional[Path], overwrite: 
     source = pd.read_csv(_split_table_path(entry, out))
     masks = _read_masks(entry, out)
     mapping = sam3_masks.parse_mapping(str(block.get("split_map") or "")) or None
-    metadata = sam3_masks.build_masked_metadata(source, masks, out, split_col=str(entry.split_col),
-                                                split_map=mapping, split_map_column=block.get("split_map_column"))
+    metadata = sam3_masks.build_masked_metadata(
+        source,
+        masks,
+        out,
+        split_col=str(entry.split_col),
+        split_map=mapping,
+        split_map_column=block.get("split_map_column"),
+    )
     target = out / str(entry.metadata_file)
     if target.exists() and not overwrite:
         raise SystemExit(f"{target} already exists; pass --overwrite or choose --output-dir")
@@ -224,7 +269,7 @@ def compare_masks(key: str, profile: Optional[str], masks_csv: Path, threshold: 
     old_table = root / str(paper.metadata_file) if paper is not None else _metadata_path(entry)
     old = pd.read_csv(old_table)
     prefix = "masked_images/"
-    old_by_source = {str(p)[len(prefix):] if str(p).startswith(prefix) else str(p): str(p) for p in old["path"]}
+    old_by_source = {str(p)[len(prefix) :] if str(p).startswith(prefix) else str(p): str(p) for p in old["path"]}
     rows = []
     for record in pd.read_csv(masks_csv).itertuples():
         name = str(record.path)
@@ -236,8 +281,14 @@ def compare_masks(key: str, profile: Optional[str], masks_csv: Path, threshold: 
             rows.append({"path": name, "iou": float("nan"), "note": "size differs"})
             continue
         union = np.logical_or(previous, current).sum()
-        rows.append({"path": name, "iou": float(np.logical_and(previous, current).sum() / union) if union else 1.0,
-                     "old_fg": float(previous.mean()), "new_fg": float(current.mean())})
+        rows.append(
+            {
+                "path": name,
+                "iou": float(np.logical_and(previous, current).sum() / union) if union else 1.0,
+                "old_fg": float(previous.mean()),
+                "new_fg": float(current.mean()),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -252,14 +303,20 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
     download.add_argument("dataset", help="registry key")
     build_parser = sub.add_parser("build", help="rebuild the split table from the source and print the SAM 3 command")
     build_parser.add_argument("dataset", help="registry key")
-    build_parser.add_argument("--source", type=Path, help="source folder (WildlifeReID-10k: the dataset root; "
-                              "Salamander: the extracted animal-clef-2025 competition folder)")
+    build_parser.add_argument(
+        "--source",
+        type=Path,
+        help="source folder (WildlifeReID-10k: the dataset root; "
+        "Salamander: the extracted animal-clef-2025 competition folder)",
+    )
     finish_parser = sub.add_parser("finish", help="join the SAM 3 masks into the registry's metadata file")
     finish_parser.add_argument("dataset", help="registry key")
     for command in (build_parser, finish_parser):
         command.add_argument("--output-dir", type=Path, help="write here instead of the registry root (trials)")
         command.add_argument("--overwrite", action="store_true")
-    retry = sub.add_parser("retry-empty", help="redo the images whose SAM 3 mask is empty (extra prompts, then the whole image)")
+    retry = sub.add_parser(
+        "retry-empty", help="redo the images whose SAM 3 mask is empty (extra prompts, then the whole image)"
+    )
     retry.add_argument("dataset", help="registry key")
     retry.add_argument("--output-dir", type=Path)
     retry.add_argument("--overwrite", action="store_true")
@@ -288,8 +345,10 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
         print(f"paths profile: {profile}")
         return 0 if all(report["ready"] for report in reports) else 1
     if args.action == "download":
-        print(f"downloaded raw data into {download_raw(args.dataset, profile)}; "
-              f"run `wildmatch prepare status --dataset {args.dataset}` for what is still missing")
+        print(
+            f"downloaded raw data into {download_raw(args.dataset, profile)}; "
+            f"run `wildmatch prepare status --dataset {args.dataset}` for what is still missing"
+        )
         return 0
     if args.action == "build":
         from wildmatch.data.prepare.sources import SourceError
@@ -298,9 +357,12 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
             command = build(args.dataset, profile, args.source, args.output_dir, args.overwrite)
         except SourceError as exc:
             parser.exit(1, f"{parser.prog}: {exc}\n")
-        print("Next, on a GPU node in the SAM 3 environment (not V100), e.g. sbatch slurm/sam3_masks.sbatch <arguments>, from the repository root:\n  "
-              + " ".join(command) + f"\nthen: wildmatch prepare finish {args.dataset}"
-              + (f" --output-dir {args.output_dir}" if args.output_dir else ""))
+        print(
+            "Next, on a GPU node in the SAM 3 environment (not V100), e.g. sbatch slurm/sam3_masks.sbatch <arguments>, from the repository root:\n  "
+            + " ".join(command)
+            + f"\nthen: wildmatch prepare finish {args.dataset}"
+            + (f" --output-dir {args.output_dir}" if args.output_dir else "")
+        )
         return 0
     if args.action == "retry-empty":
         from wildmatch.data.prepare.sources import SourceError
@@ -322,8 +384,10 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
         if table.empty:
             parser.exit(1, f"{parser.prog}: no rows of {args.masks_csv} match {args.dataset}'s metadata\n")
         iou = table["iou"].dropna()
-        print(f"{len(table)} images: IoU mean {iou.mean():.3f}, median {iou.median():.3f}, "
-              f"share >= 0.9: {(iou >= 0.9).mean():.2f}, share < 0.5: {(iou < 0.5).mean():.2f}")
+        print(
+            f"{len(table)} images: IoU mean {iou.mean():.3f}, median {iou.median():.3f}, "
+            f"share >= 0.9: {(iou >= 0.9).mean():.2f}, share < 0.5: {(iou < 0.5).mean():.2f}"
+        )
         print(table.sort_values("iou").head(10).to_string(index=False))
         return 0
     if args.action == "jaguar":
@@ -336,10 +400,25 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
     output = args.output_dir or Path(str(source.root)) / UNSEEN_OUTPUT
     from wildmatch.data import unseen_split
 
-    argv_unseen = ["--metadata", str(_metadata_path(source)), "--output-dir", str(output),
-                   "--label-col", str(source.label_col), "--source-split-col", str(source.split_col),
-                   "--dataset", str(source.name), "--database-value", str(source.database_split_value),
-                   "--query-value", str(source.query_split_value), "--root", str(source.root), *UNSEEN_ARGS]
+    argv_unseen = [
+        "--metadata",
+        str(_metadata_path(source)),
+        "--output-dir",
+        str(output),
+        "--label-col",
+        str(source.label_col),
+        "--source-split-col",
+        str(source.split_col),
+        "--dataset",
+        str(source.name),
+        "--database-value",
+        str(source.database_split_value),
+        "--query-value",
+        str(source.query_split_value),
+        "--root",
+        str(source.root),
+        *UNSEEN_ARGS,
+    ]
     if args.force:
         argv_unseen.append("--force")
     return unseen_split.main(argv_unseen, prog=f"{parser.prog} unseen-split")

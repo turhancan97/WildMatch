@@ -24,17 +24,26 @@ class Command(NamedTuple):
 
 COMMANDS: Dict[str, Command] = {
     "evaluate": Command("wildmatch.entrypoints:probe", "run one evaluation (Hydra overrides)", hydra=True),
-    "finetune-backbone": Command("wildmatch.entrypoints:finetune", "fine-tune the ArcFace backbone (Hydra overrides)", hydra=True),
-    "sweep": Command("wildmatch.sweep.runner:sweep_main", "build, freeze and run a method x budget grid (Slurm or local)"),
+    "finetune-backbone": Command(
+        "wildmatch.entrypoints:finetune", "fine-tune the ArcFace backbone (Hydra overrides)", hydra=True
+    ),
+    "sweep": Command(
+        "wildmatch.sweep.runner:sweep_main", "build, freeze and run a method x budget grid (Slurm or local)"
+    ),
     "sweep-task": Command("wildmatch.sweep.runner:sweep_task_main", "run one task of a frozen sweep submission"),
     "summarize-runs": Command("wildmatch.reporting.summarize_runs:main", "list completed runs from reports/runs.csv"),
     "summarize-logs": Command("wildmatch.sweep.logs:main", "list sweep task logs; rebuild logs/index.csv"),
     "tables": Command("wildmatch.reporting.export_tables:main", "export LaTeX/CSV result tables from experiments/"),
     "figures": Command("wildmatch.reporting.export_figures:main", "plot accuracy versus candidate budget"),
     "build-unseen-split": Command("wildmatch.data.unseen_split:main", "build the unseen-identity evaluation split"),
-    "class-balance": Command("wildmatch.reporting.class_balance:main", "per-identity image counts of every dataset split"),
+    "class-balance": Command(
+        "wildmatch.reporting.class_balance:main", "per-identity image counts of every dataset split"
+    ),
     "audit": Command("wildmatch.data.image_quality:main", "flag candidate low-quality images for review"),
-    "prepare": Command("wildmatch.data.prepare:main", "check, download or rebuild datasets (status, download, build, finish, compare-masks, jaguar, unseen-split)"),
+    "prepare": Command(
+        "wildmatch.data.prepare:main",
+        "check, download or rebuild datasets (status, download, build, finish, compare-masks, jaguar, unseen-split)",
+    ),
     "weights": Command("wildmatch.weights:main", "list, verify, download or stage the paper checkpoints"),
 }
 

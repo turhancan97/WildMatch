@@ -152,9 +152,13 @@ def _variant(row: Mapping[str, Any]) -> Dict[str, str]:
             raise SweepError(f"{method} variant must specify class_weighting weighted or unweighted")
     else:
         if variant["train_mode"] != "-":
-            raise SweepError(f"only classifier-probe variants may specify train_mode; got '{variant['train_mode']}' for {method}")
+            raise SweepError(
+                f"only classifier-probe variants may specify train_mode; got '{variant['train_mode']}' for {method}"
+            )
         if variant["class_weighting"] != "-":
-            raise SweepError(f"only classifier-probe variants may specify class_weighting; got '{variant['class_weighting']}' for {method}")
+            raise SweepError(
+                f"only classifier-probe variants may specify class_weighting; got '{variant['class_weighting']}' for {method}"
+            )
     label = variant["checkpoint"]
     if label not in CHECKPOINT_LABELS:
         raise SweepError(f"unknown checkpoint label {label!r}; expected one of {', '.join(CHECKPOINT_LABELS)}")
@@ -180,8 +184,10 @@ def _checkpoint_path(entry: DictConfig, overrides: Mapping[str, Any], label: str
         return str(override)
     value = OmegaConf.select(entry, f"registry.checkpoints.{label}.{matcher}")
     if value in (None, ""):
-        raise SweepError(f"{entry.registry.key} has no {label} {matcher} checkpoint in the registry; "
-                         "name one with checkpoint_path or dataset_overrides")
+        raise SweepError(
+            f"{entry.registry.key} has no {label} {matcher} checkpoint in the registry; "
+            "name one with checkpoint_path or dataset_overrides"
+        )
     return str(value)
 
 
@@ -190,9 +196,15 @@ def _check_unseen_eval(entry: DictConfig) -> None:
     if not metadata.is_absolute():
         metadata = Path(str(entry.root)) / metadata
     if not metadata.is_file():
-        raise SweepError(f"{UNSEEN_EVAL_KEY} metadata file does not exist: {metadata} "
-                         "(build it with `wildmatch build-unseen-split`; set CZECHLYNX_UNSEEN_EVAL_METADATA_FILE)")
-    if (str(entry.split_col), str(entry.database_split_value), str(entry.query_split_value)) != ("unseen_eval_split", "database", "query"):
+        raise SweepError(
+            f"{UNSEEN_EVAL_KEY} metadata file does not exist: {metadata} "
+            "(build it with `wildmatch build-unseen-split`; set CZECHLYNX_UNSEEN_EVAL_METADATA_FILE)"
+        )
+    if (str(entry.split_col), str(entry.database_split_value), str(entry.query_split_value)) != (
+        "unseen_eval_split",
+        "database",
+        "query",
+    ):
         raise SweepError(f"{UNSEEN_EVAL_KEY} must use unseen_eval_split with database/query values")
 
 
@@ -226,34 +238,49 @@ def build_tasks(spec: Mapping[str, Any], profile: Optional[str] = None) -> List[
                 if label != "default":
                     path = _checkpoint_path(entry, overrides, label, matcher, variant["checkpoint_path"])
                     owner = descriptor_owner if label == "descriptor-fine-tuned" else animal
-                tasks.append({
-                    "profile_id": str(key),
-                    "dataset_name": str(entry.name),
-                    "animal": animal,
-                    "root": str(entry.root),
-                    "metadata_file": str(entry.metadata_file),
-                    "label_col": str(entry.label_col),
-                    "mask_col": str(entry.mask_col),
-                    "no_background": _text(bool(entry.no_background)),
-                    "image_variant": str(entry.image_variant),
-                    "split_col": str(entry.split_col),
-                    "database_split_value": str(entry.database_split_value),
-                    "query_split_value": str(entry.query_split_value),
-                    "calibration_size": str(int(entry.calibration_size)),
-                    "method": method,
-                    "matcher": matcher,
-                    "checkpoint_label": label,
-                    "checkpoint_path": path,
-                    "checkpoint_owner": owner,
-                    "checkpoint_components": variant["components"],
-                    "loma_arch": LOMA_ARCH if matcher == "loma" else "-",
-                    "train_mode": variant["train_mode"],
-                    "class_weighting": variant["class_weighting"],
-                    "candidate_k": str(candidate_k),
-                    "evaluation_animal": evaluation_animal,
-                })
-    identities = [tuple(task[field] for field in ("profile_id", "candidate_k", "method", "matcher", "checkpoint_label",
-                                                    "train_mode", "class_weighting")) for task in tasks]
+                tasks.append(
+                    {
+                        "profile_id": str(key),
+                        "dataset_name": str(entry.name),
+                        "animal": animal,
+                        "root": str(entry.root),
+                        "metadata_file": str(entry.metadata_file),
+                        "label_col": str(entry.label_col),
+                        "mask_col": str(entry.mask_col),
+                        "no_background": _text(bool(entry.no_background)),
+                        "image_variant": str(entry.image_variant),
+                        "split_col": str(entry.split_col),
+                        "database_split_value": str(entry.database_split_value),
+                        "query_split_value": str(entry.query_split_value),
+                        "calibration_size": str(int(entry.calibration_size)),
+                        "method": method,
+                        "matcher": matcher,
+                        "checkpoint_label": label,
+                        "checkpoint_path": path,
+                        "checkpoint_owner": owner,
+                        "checkpoint_components": variant["components"],
+                        "loma_arch": LOMA_ARCH if matcher == "loma" else "-",
+                        "train_mode": variant["train_mode"],
+                        "class_weighting": variant["class_weighting"],
+                        "candidate_k": str(candidate_k),
+                        "evaluation_animal": evaluation_animal,
+                    }
+                )
+    identities = [
+        tuple(
+            task[field]
+            for field in (
+                "profile_id",
+                "candidate_k",
+                "method",
+                "matcher",
+                "checkpoint_label",
+                "train_mode",
+                "class_weighting",
+            )
+        )
+        for task in tasks
+    ]
     if len(set(identities)) != len(identities):
         raise SweepError("the sweep repeats a task (same dataset, budget, method, matcher, checkpoint and probe mode)")
     return tasks

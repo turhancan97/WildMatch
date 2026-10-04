@@ -30,6 +30,7 @@ from wildmatch.matchers.vismatch_profiles import (
 try:
     from wildmatch.data.dataset_view import BenchmarkDatasetView
     from wildmatch.features.containers import normalize_features
+
     HAS_DATASET_DEPS = True
 except ModuleNotFoundError:
     HAS_DATASET_DEPS = False
@@ -39,6 +40,7 @@ try:
         resolve_configured_model_checkpoint,
         resolve_model_checkpoint,
     )
+
     HAS_CHECKPOINT_DEPS = True
 except ModuleNotFoundError:
     HAS_CHECKPOINT_DEPS = False
@@ -211,17 +213,11 @@ class CsvRuntimeTests(unittest.TestCase):
 
 class AccumulationTests(unittest.TestCase):
     def test_divisible_batches_step_only_at_accumulation_boundaries(self):
-        flags = [
-            should_step_accumulated_gradients(i, total_batches=4, accumulation_steps=2)
-            for i in range(4)
-        ]
+        flags = [should_step_accumulated_gradients(i, total_batches=4, accumulation_steps=2) for i in range(4)]
         self.assertEqual(flags, [False, True, False, True])
 
     def test_partial_final_group_is_flushed(self):
-        flags = [
-            should_step_accumulated_gradients(i, total_batches=5, accumulation_steps=2)
-            for i in range(5)
-        ]
+        flags = [should_step_accumulated_gradients(i, total_batches=5, accumulation_steps=2) for i in range(5)]
         self.assertEqual(flags, [False, True, False, True, True])
 
     def test_invalid_accumulation_steps_fail(self):
@@ -302,29 +298,38 @@ class VismatchProfileTests(unittest.TestCase):
         # Keep the user's current Stage-A default intact while validating that
         # Vismatch remains a shipped, independently selectable public method.
         self.assertRegex(probe, r'(?m)^  method: "(?:vismatch|wildfusion)"')
-        self.assertIn('    vismatch:', probe)
-        self.assertNotIn('    rdd:', probe)
-        self.assertIn('      local_top_k: 512', probe)
-        self.assertIn('loma', probe)
+        self.assertIn("    vismatch:", probe)
+        self.assertNotIn("    rdd:", probe)
+        self.assertIn("      local_top_k: 512", probe)
+        self.assertIn("loma", probe)
+
     def test_image_variant_cache_identity_is_explicit_and_stable(self):
         from wildmatch.utils.cache_identity import build_dataset_cache_identity, validate_image_variant
 
-        base = type("DatasetConfig", (), {
-            "root": "/tmp/dataset",
-            "metadata_file": "metadata_with_background/metadata_NyalaData.csv",
-            "image_variant": "background",
-        })()
+        base = type(
+            "DatasetConfig",
+            (),
+            {
+                "root": "/tmp/dataset",
+                "metadata_file": "metadata_with_background/metadata_NyalaData.csv",
+                "image_variant": "background",
+            },
+        )()
         identity = build_dataset_cache_identity(base)
         self.assertEqual(identity["image_variant"], "background")
         self.assertEqual(identity["metadata_file"], "metadata_with_background/metadata_NyalaData.csv")
         self.assertNotIn("/tmp/", identity["metadata_file"])
         self.assertEqual(validate_image_variant("NO_BACKGROUND"), "no_background")
 
-        masked = type("DatasetConfig", (), {
-            "root": "/tmp/dataset",
-            "metadata_file": "metadata_no_background/metadata_NyalaData.csv",
-            "image_variant": "no_background",
-        })()
+        masked = type(
+            "DatasetConfig",
+            (),
+            {
+                "root": "/tmp/dataset",
+                "metadata_file": "metadata_no_background/metadata_NyalaData.csv",
+                "image_variant": "no_background",
+            },
+        )()
         masked_identity = build_dataset_cache_identity(masked)
         self.assertNotEqual(identity, masked_identity)
         with self.assertRaises(ValueError):

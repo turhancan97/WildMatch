@@ -57,7 +57,7 @@ def wildlifereid10k_table(metadata: pd.DataFrame, animal: str, include: Optional
     identity = rows["identity"].astype(str)
     if not identity.str.startswith(prefix).all():
         raise SourceError(f"{animal} identities do not all start with {prefix!r}")
-    identity = identity.str[len(prefix):]
+    identity = identity.str[len(prefix) :]
     if identity.str.fullmatch(r"\d+").all():
         # Numeric identities were split as integers (ATRW, CowDataset, NyalaData); the
         # splitter sorts identities, and string order ("10" < "2") gives another split.
@@ -70,19 +70,22 @@ def wildlifereid10k_table(metadata: pd.DataFrame, animal: str, include: Optional
     if split.isna().any():
         raise SourceError(f"{int(split.isna().sum())} {animal} rows got no split")
     species = rows["species"].astype(str)
-    return pd.DataFrame({
-        "identity": identity,
-        "path": rows["path"].astype(str).str.replace(r"^images/", "", regex=True),
-        "split": split,
-        "species": species,
-        "prompt": species.map(lambda s: SPECIES_PROMPTS.get(s, s)),
-    })
+    return pd.DataFrame(
+        {
+            "identity": identity,
+            "path": rows["path"].astype(str).str.replace(r"^images/", "", regex=True),
+            "split": split,
+            "species": species,
+            "prompt": species.map(lambda s: SPECIES_PROMPTS.get(s, s)),
+        }
+    )
 
 
 def salamander_table(metadata: pd.DataFrame) -> pd.DataFrame:
     """The ``split_time_closed.csv`` table from the AnimalCLEF2025 metadata."""
-    rows = metadata[(metadata["dataset"] == "SalamanderID2025") & (metadata["split"] == "database")
-                    & metadata["date"].notna()].copy()
+    rows = metadata[
+        (metadata["dataset"] == "SalamanderID2025") & (metadata["split"] == "database") & metadata["date"].notna()
+    ].copy()
     if rows.empty:
         raise SourceError("no dated SalamanderID2025 database rows in the AnimalCLEF2025 metadata")
     date = pd.to_datetime(rows["date"])
@@ -91,8 +94,10 @@ def salamander_table(metadata: pd.DataFrame) -> pd.DataFrame:
     rows["split"] = ((dates > 1) & (date == latest)).map({True: "query", False: "database"})
     rows["path"] = rows["split"] + "/images/" + rows["path"].str.split("/").str[-1]
     database_views = rows[rows["split"] == "database"].groupby("identity")["orientation"].agg(set)
-    rows["cross_view"] = [split == "query" and view not in database_views.get(identity, set())
-                          for split, view, identity in zip(rows["split"], rows["orientation"], rows["identity"])]
+    rows["cross_view"] = [
+        split == "query" and view not in database_views.get(identity, set())
+        for split, view, identity in zip(rows["split"], rows["orientation"], rows["identity"])
+    ]
     columns = ["image_id", "identity", "path", "date", "orientation", "split", "cross_view"]
     return rows.sort_values(["split", "identity", "date", "image_id"])[columns]
 

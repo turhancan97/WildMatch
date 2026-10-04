@@ -46,18 +46,26 @@ PROBE_JOB_DIR = ROOT_DIR / "logs/parallel_run/CzechLynx_v2/CzechLynx/split-time_
 from wildmatch.paths import path as _profile_path  # noqa: E402
 
 _FINETUNING_REPO = _profile_path("external.finetuning_repo")  # lynx-finetuning checkout; None when unset
-LOMA_TRAIN_LOG = (_FINETUNING_REPO / "logs" / "czechlynx-loma-ft" / "czechlynx-loma-ft-508111.out") if _FINETUNING_REPO else None
+LOMA_TRAIN_LOG = (
+    (_FINETUNING_REPO / "logs" / "czechlynx-loma-ft" / "czechlynx-loma-ft-508111.out") if _FINETUNING_REPO else None
+)
 LOMA_TRAIN_GPUS = 4  # sacct 508111: gres/gpu=4 on rtx4090_batch node c20
 # Whole-job wall time (sacct ElapsedRaw) for --cost job: training, evaluation passes,
 # setup and checkpointing. Probe keys are Slurm array task ids of job 508523.
 # Probe tasks use their launcher metadata start/end times (within 3 s of sacct).
 LOMA_JOB_ELAPSED_SEC = 8026
 COST_MODES = {
-    "train": ("training_cost", "Training GPU-hours (RTX 4090)",
-              "pure training steps only; evaluation, validation, setup, mining and caching excluded"),
-    "job": ("training_cost_job", "Whole-job GPU-hours (RTX 4090)",
-             "whole Slurm job: training, per-epoch evaluation/validation, setup and checkpointing; "
-             "one-off overhead charged at epoch 0; mining and caching excluded"),
+    "train": (
+        "training_cost",
+        "Training GPU-hours (RTX 4090)",
+        "pure training steps only; evaluation, validation, setup, mining and caching excluded",
+    ),
+    "job": (
+        "training_cost_job",
+        "Whole-job GPU-hours (RTX 4090)",
+        "whole Slurm job: training, per-epoch evaluation/validation, setup and checkpointing; "
+        "one-off overhead charged at epoch 0; mining and caching excluded",
+    ),
 }
 LOMA_CHECKPOINT_ROOT = _profile_path("checkpoint_root") / "czechlynx-time-closed" / "loma-b-finetuned-loma-mined-legacy"
 PROBE_ROOT = ROOT_DIR / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
@@ -99,8 +107,10 @@ OPTIONAL_CURVE_METRICS = ("balanced_top_1",)
 
 
 # ── pure parsers (unit-tested) ────────────────────────────────────────────────
-_PROBE_EPOCH = re.compile(r"\[linear_probe\] epoch (\d+)/(\d+) .*?val_top1=([0-9.]+) val_top5=([0-9.]+) "
-                          r"val_top10=([0-9.]+)(?: val_balanced_top1=([0-9.]+|nan))?")
+_PROBE_EPOCH = re.compile(
+    r"\[linear_probe\] epoch (\d+)/(\d+) .*?val_top1=([0-9.]+) val_top5=([0-9.]+) "
+    r"val_top10=([0-9.]+)(?: val_balanced_top1=([0-9.]+|nan))?"
+)
 _TQDM_DONE = re.compile(r"\[linear_probe\]\[train\] epoch (\d+)/\d+: 100%\|[^\[]*\[((?:\d+:)?\d+:\d+)<")
 _LOMA_EPOCH = re.compile(r'"epoch":\s*(\d+),.*?"time/train_s":\s*([0-9.eE+-]+)', re.S)
 _CHECKPOINT_EPOCH = re.compile(r"epoch_(\d+)")
@@ -110,8 +120,11 @@ def parse_probe_epochs(text: str) -> Dict[int, Dict[str, float]]:
     """Per-epoch query-split Top-1/5/10 from ``[linear_probe] epoch N/M`` log lines."""
     epochs: Dict[int, Dict[str, float]] = {}
     for match in _PROBE_EPOCH.finditer(text):
-        epochs[int(match.group(1))] = {"top_1": float(match.group(3)), "top_5": float(match.group(4)),
-                                       "top_10": float(match.group(5))}
+        epochs[int(match.group(1))] = {
+            "top_1": float(match.group(3)),
+            "top_5": float(match.group(4)),
+            "top_10": float(match.group(5)),
+        }
         if match.group(6) is not None:
             epochs[int(match.group(1))]["balanced_top_1"] = float(match.group(6))
     return epochs
@@ -147,12 +160,15 @@ def parse_loma_train_seconds(text: str) -> Dict[int, float]:
 
 def parse_loma_eval_seconds(text: str) -> Dict[int, float]:
     """Per-epoch ``time/epoch_eval_s`` (validation) from the LoMa training log."""
-    return {int(epoch): float(value) for epoch, value in
-            re.findall(r'"epoch":\s*(\d+),.*?"time/epoch_eval_s":\s*([0-9.eE+-]+)', text, flags=re.S)}
+    return {
+        int(epoch): float(value)
+        for epoch, value in re.findall(r'"epoch":\s*(\d+),.*?"time/epoch_eval_s":\s*([0-9.eE+-]+)', text, flags=re.S)
+    }
 
 
-def job_cumulative_gpu_hours(train: Mapping[int, float], evaluation: Mapping[int, float],
-                             job_seconds: float, gpus: int) -> Dict[int, float]:
+def job_cumulative_gpu_hours(
+    train: Mapping[int, float], evaluation: Mapping[int, float], job_seconds: float, gpus: int
+) -> Dict[int, float]:
     """Whole-job GPU-hours up to each epoch: overhead up front, then training plus evaluation.
 
     The overhead is everything the job spent outside the per-epoch loops (setup,
@@ -225,21 +241,30 @@ def probe_series(cost: str = "train", job_dir: Path = PROBE_JOB_DIR, allow_incom
                 continue
         last = max(epochs)
         if set(epochs) != set(seconds) or last != max(seconds):
-            raise ValueError(f"{meta_path.name}: metric epochs {sorted(epochs)[-1]} and timing epochs "
-                             f"{sorted(seconds)[-1]} disagree")
-        curve_metrics = list(CURVE_METRICS) + [m for m in OPTIONAL_CURVE_METRICS
-                                               if all(m in values for values in epochs.values())]
+            raise ValueError(
+                f"{meta_path.name}: metric epochs {sorted(epochs)[-1]} and timing epochs {sorted(seconds)[-1]} disagree"
+            )
+        curve_metrics = list(CURVE_METRICS) + [
+            m for m in OPTIONAL_CURVE_METRICS if all(m in values for values in epochs.values())
+        ]
         if not complete:
             if cost == "job":
                 raise ValueError(f"{meta_path.name}: --cost job needs finished tasks (whole-job time)")
-            series.append({
-                "train_mode": meta["train_mode"], "class_weighting": meta["class_weighting"],
-                "run": None, "complete": False, "log": str(out_path.relative_to(ROOT_DIR)),
-                "curve_metrics": curve_metrics,
-                "points": [{"epoch": e, "gpu_hours": h, **{m: epochs[e][m] for m in curve_metrics}}
-                           for e, h in sorted(cumulative_gpu_hours(seconds, gpus=1).items())],
-                "final": None,
-            })
+            series.append(
+                {
+                    "train_mode": meta["train_mode"],
+                    "class_weighting": meta["class_weighting"],
+                    "run": None,
+                    "complete": False,
+                    "log": str(out_path.relative_to(ROOT_DIR)),
+                    "curve_metrics": curve_metrics,
+                    "points": [
+                        {"epoch": e, "gpu_hours": h, **{m: epochs[e][m] for m in curve_metrics}}
+                        for e, h in sorted(cumulative_gpu_hours(seconds, gpus=1).items())
+                    ],
+                    "final": None,
+                }
+            )
             print(f"[training-cost] {meta['train_mode']} probe still running: using epochs 1-{last}")
             continue
         run_dir = Path(meta["experiment_run_directory"])
@@ -247,8 +272,10 @@ def probe_series(cost: str = "train", job_dir: Path = PROBE_JOB_DIR, allow_incom
         metrics = _json(run_dir / "metrics.json")
         for metric in curve_metrics:
             if abs(epochs[last][metric] - float(metrics[metric])) > TOP1_TOLERANCE:
-                raise ValueError(f"{meta_path.name}: epoch-{last} logged {metric} {epochs[last][metric]} differs "
-                                 f"from the run's {metrics[metric]}; the log is not the test-split metric")
+                raise ValueError(
+                    f"{meta_path.name}: epoch-{last} logged {metric} {epochs[last][metric]} differs "
+                    f"from the run's {metrics[metric]}; the log is not the test-split metric"
+                )
         if cost == "job":
             # The run's linear_probe_train_sec covers training plus the per-epoch test
             # evaluation; spread that evaluation time evenly over the epochs.
@@ -257,17 +284,25 @@ def probe_series(cost: str = "train", job_dir: Path = PROBE_JOB_DIR, allow_incom
             hours = job_cumulative_gpu_hours(seconds, {e: per_eval for e in seconds}, _task_seconds(meta), gpus=1)
         else:
             hours = cumulative_gpu_hours(seconds, gpus=1)
-        series.append({
-            "train_mode": meta["train_mode"], "class_weighting": meta["class_weighting"],
-            "run": run_dir.name, "complete": True, "log": str(out_path.relative_to(ROOT_DIR)),
-            "curve_metrics": curve_metrics,
-            "points": [{"epoch": e, "gpu_hours": hours[e], **{m: epochs[e][m] for m in curve_metrics}}
-                       for e in sorted(epochs)],
-            "final": {m: float(metrics[m]) for m, _ in PANELS},
-        })
+        series.append(
+            {
+                "train_mode": meta["train_mode"],
+                "class_weighting": meta["class_weighting"],
+                "run": run_dir.name,
+                "complete": True,
+                "log": str(out_path.relative_to(ROOT_DIR)),
+                "curve_metrics": curve_metrics,
+                "points": [
+                    {"epoch": e, "gpu_hours": hours[e], **{m: epochs[e][m] for m in curve_metrics}}
+                    for e in sorted(epochs)
+                ],
+                "final": {m: float(metrics[m]) for m, _ in PANELS},
+            }
+        )
     if sorted(item["train_mode"] for item in series) != ["all", "classifier", "partial"]:
-        raise ValueError(f"expected one {CLASS_WEIGHTING} probe per train mode in {job_dir} "
-                         f"(running ones need --allow-incomplete)")
+        raise ValueError(
+            f"expected one {CLASS_WEIGHTING} probe per train mode in {job_dir} (running ones need --allow-incomplete)"
+        )
     return series
 
 
@@ -291,8 +326,13 @@ def _loma_run_record(run_dir: Path, candidate_k: int) -> Optional[dict]:
     if sha256_file(path) != component["sha256"]:
         raise ValueError(f"{run_dir}: checkpoint {path} changed since the run")
     metrics = _json(run_dir / "metrics.json")
-    return {"epoch": checkpoint_epoch(str(path)), "run": run_dir.name, "checkpoint": str(path),
-            "checkpoint_sha256": component["sha256"], **{m: float(metrics[m]) for m, _ in PANELS}}
+    return {
+        "epoch": checkpoint_epoch(str(path)),
+        "run": run_dir.name,
+        "checkpoint": str(path),
+        "checkpoint_sha256": component["sha256"],
+        **{m: float(metrics[m]) for m, _ in PANELS},
+    }
 
 
 def loma_series(candidate_k: int, cost: str = "train") -> dict:
@@ -300,8 +340,9 @@ def loma_series(candidate_k: int, cost: str = "train") -> dict:
         raise ValueError("no lynx-finetuning checkout configured (paths external.finetuning_repo)")
     log = LOMA_TRAIN_LOG.read_text(errors="ignore")
     if cost == "job":
-        hours = job_cumulative_gpu_hours(parse_loma_train_seconds(log), parse_loma_eval_seconds(log),
-                                         LOMA_JOB_ELAPSED_SEC, gpus=LOMA_TRAIN_GPUS)
+        hours = job_cumulative_gpu_hours(
+            parse_loma_train_seconds(log), parse_loma_eval_seconds(log), LOMA_JOB_ELAPSED_SEC, gpus=LOMA_TRAIN_GPUS
+        )
     else:
         hours = cumulative_gpu_hours(parse_loma_train_seconds(log), gpus=LOMA_TRAIN_GPUS)
     final_run = PROBE_ROOT / "vismatch/loma" / LOMA_RUNS_BY_K[candidate_k][0]
@@ -323,14 +364,20 @@ def loma_series(candidate_k: int, cost: str = "train") -> dict:
     points = []
     for epoch in sorted(by_epoch):
         points.append({**by_epoch[epoch], "gpu_hours": hours[epoch]})
-    return {"points": points, "missing_epochs": missing, "train_log": str(LOMA_TRAIN_LOG),
-            "total_train_gpu_hours": hours[max(hours)]}
+    return {
+        "points": points,
+        "missing_epochs": missing,
+        "train_log": str(LOMA_TRAIN_LOG),
+        "total_train_gpu_hours": hours[max(hours)],
+    }
 
 
 def references(candidate_k: int) -> Dict[str, dict]:
     out = {}
-    runs = {"Cosine (no training)": COSINE_RUN,
-            LOMA_START: PROBE_ROOT / "vismatch/loma" / LOMA_RUNS_BY_K[candidate_k][1]}
+    runs = {
+        "Cosine (no training)": COSINE_RUN,
+        LOMA_START: PROBE_ROOT / "vismatch/loma" / LOMA_RUNS_BY_K[candidate_k][1],
+    }
     for name, run_dir in runs.items():
         metrics = _json(run_dir / "metrics.json")
         out[name] = {"run": run_dir.name, **{m: float(metrics[m]) for m, _ in PANELS}}
@@ -340,19 +387,38 @@ def references(candidate_k: int) -> Dict[str, dict]:
 # ── figure ────────────────────────────────────────────────────────────────────
 def _style() -> None:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    plt.rcParams.update({
-        "font.family": "serif", "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
-        "mathtext.fontset": "stix", "pdf.fonttype": 42, "ps.fonttype": 42,
-        "axes.linewidth": 0.6, "axes.spines.top": False, "axes.spines.right": False,
-        "xtick.major.width": 0.6, "ytick.major.width": 0.6,
-    })
+
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
+            "mathtext.fontset": "stix",
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+            "axes.linewidth": 0.6,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "xtick.major.width": 0.6,
+            "ytick.major.width": 0.6,
+        }
+    )
 
 
-def render(probes: List[dict], loma: dict, refs: Dict[str, dict], out_dir: Path, width: float,
-           font_size: float, stem: str, xlabel: str = COST_MODES["train"][1],
-           panels: Sequence[Tuple[str, str]] = PANELS, x_scale: str = "linear") -> None:
+def render(
+    probes: List[dict],
+    loma: dict,
+    refs: Dict[str, dict],
+    out_dir: Path,
+    width: float,
+    font_size: float,
+    stem: str,
+    xlabel: str = COST_MODES["train"][1],
+    panels: Sequence[Tuple[str, str]] = PANELS,
+    x_scale: str = "linear",
+) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
     from matplotlib.ticker import FuncFormatter, MaxNLocator
@@ -369,24 +435,52 @@ def render(probes: List[dict], loma: dict, refs: Dict[str, dict], out_dir: Path,
         for probe in probes:
             style = PROBE_STYLES[probe["train_mode"]]
             if metric in probe["curve_metrics"]:
-                axis.plot([p["gpu_hours"] for p in probe["points"]], [100 * p[metric] for p in probe["points"]],
-                          color=style["color"], linewidth=1.2, zorder=2)
+                axis.plot(
+                    [p["gpu_hours"] for p in probe["points"]],
+                    [100 * p[metric] for p in probe["points"]],
+                    color=style["color"],
+                    linewidth=1.2,
+                    zorder=2,
+                )
             # Final epoch of a finished run: the reported number. A running probe's curve
             # simply ends at its last logged epoch, without a marker.
             if probe["final"] is not None:
-                axis.plot([probe["points"][-1]["gpu_hours"]], [100 * probe["final"][metric]], marker=style["marker"],
-                          markersize=4.5, color=style["color"], linestyle="none", zorder=3)
+                axis.plot(
+                    [probe["points"][-1]["gpu_hours"]],
+                    [100 * probe["final"][metric]],
+                    marker=style["marker"],
+                    markersize=4.5,
+                    color=style["color"],
+                    linestyle="none",
+                    zorder=3,
+                )
         # The fine-tuned LoMa curve starts from the default weights at zero training cost.
         # A log axis cannot show 0, so there the default-LoMa reference line carries it.
         xs = [0.0] + [p["gpu_hours"] for p in loma["points"]]
         ys = [100 * refs[LOMA_START][metric]] + [100 * p[metric] for p in loma["points"]]
         start = 0 if x_scale == "linear" else 1
         axis.plot(xs[start:], ys[start:], color=LOMA_STYLE["color"], linewidth=1.6, zorder=4)
-        axis.plot(xs[1:], ys[1:], color=LOMA_STYLE["color"], marker=LOMA_STYLE["marker"], markersize=4.5,
-                  linestyle="none", zorder=5)
+        axis.plot(
+            xs[1:],
+            ys[1:],
+            color=LOMA_STYLE["color"],
+            marker=LOMA_STYLE["marker"],
+            markersize=4.5,
+            linestyle="none",
+            zorder=5,
+        )
         if x_scale == "linear":
-            axis.plot(xs[:1], ys[:1], color=LOMA_STYLE["color"], marker=LOMA_STYLE["marker"], markersize=4.5,
-                      markerfacecolor="white", linestyle="none", zorder=5, clip_on=False)
+            axis.plot(
+                xs[:1],
+                ys[:1],
+                color=LOMA_STYLE["color"],
+                marker=LOMA_STYLE["marker"],
+                markersize=4.5,
+                markerfacecolor="white",
+                linestyle="none",
+                zorder=5,
+                clip_on=False,
+            )
             axis.set_xlim(0, x_max)
             axis.xaxis.set_major_locator(MaxNLocator(integer=True))
         else:
@@ -400,26 +494,65 @@ def render(probes: List[dict], loma: dict, refs: Dict[str, dict], out_dir: Path,
         axis.grid(axis="y", color="#e6e6e6", linewidth=0.5, zorder=0)
         y_top = 1.15 * max(max(line.get_ydata()) for line in axis.get_lines() if len(line.get_ydata()))
         axis.set_ylim(0, y_top)
-    handles = [Line2D([], [], color=LOMA_STYLE["color"], marker=LOMA_STYLE["marker"], linewidth=1.6,
-                      markersize=4.5, label=LOMA_STYLE["label"])]
+    handles = [
+        Line2D(
+            [],
+            [],
+            color=LOMA_STYLE["color"],
+            marker=LOMA_STYLE["marker"],
+            linewidth=1.6,
+            markersize=4.5,
+            label=LOMA_STYLE["label"],
+        )
+    ]
     for mode in ("classifier", "partial", "all"):
         style = PROBE_STYLES[mode]
-        handles.append(Line2D([], [], color=style["color"], marker=style["marker"], markersize=4.5,
-                              linewidth=1.2, label=style["label"]))
-    handles += [Line2D([], [], color=style["color"], linestyle=style["linestyle"], linewidth=1.0, label=name)
-                for name, style in REFERENCE_STYLES.items()]
-    figure.legend(handles=handles, loc="lower center", ncol=3, frameon=False, fontsize=font_size - 1.5,
-                  handlelength=2.4, columnspacing=1.5, bbox_to_anchor=(0.5, -0.01))
+        handles.append(
+            Line2D(
+                [],
+                [],
+                color=style["color"],
+                marker=style["marker"],
+                markersize=4.5,
+                linewidth=1.2,
+                label=style["label"],
+            )
+        )
+    handles += [
+        Line2D([], [], color=style["color"], linestyle=style["linestyle"], linewidth=1.0, label=name)
+        for name, style in REFERENCE_STYLES.items()
+    ]
+    figure.legend(
+        handles=handles,
+        loc="lower center",
+        ncol=3,
+        frameon=False,
+        fontsize=font_size - 1.5,
+        handlelength=2.4,
+        columnspacing=1.5,
+        bbox_to_anchor=(0.5, -0.01),
+    )
     figure.tight_layout(rect=(0, 0.17, 1, 1), w_pad=1.2)
     out_dir.mkdir(parents=True, exist_ok=True)
     for fmt in ("pdf", "png"):
-        figure.savefig(out_dir / f"{stem}.{fmt}", dpi=300, facecolor="white",
-                       metadata={"Creator": "paper/figures/plot_training_cost.py"})
+        figure.savefig(
+            out_dir / f"{stem}.{fmt}",
+            dpi=300,
+            facecolor="white",
+            metadata={"Creator": "paper/figures/plot_training_cost.py"},
+        )
     plt.close(figure)
 
 
-def write_tables(probes: List[dict], loma: dict, refs: Dict[str, dict], out_dir: Path, stem: str,
-                 candidate_k: int, cost_note: str = COST_MODES["train"][2]) -> None:
+def write_tables(
+    probes: List[dict],
+    loma: dict,
+    refs: Dict[str, dict],
+    out_dir: Path,
+    stem: str,
+    candidate_k: int,
+    cost_note: str = COST_MODES["train"][2],
+) -> None:
     import csv
 
     rows = []
@@ -427,31 +560,60 @@ def write_tables(probes: List[dict], loma: dict, refs: Dict[str, dict], out_dir:
     for probe in probes:
         for point in probe["points"]:
             final = point is probe["points"][-1]
-            rows.append({"method": "linear_probe", "train_mode": probe["train_mode"],
-                         "class_weighting": probe["class_weighting"], "epoch": point["epoch"],
-                         "gpu_hours": round(point["gpu_hours"], 4),
-                         **{m: (probe["final"][m] if final and probe["final"] else point.get(m, "")) for m in metrics},
-                         "run": probe["run"]})
+            rows.append(
+                {
+                    "method": "linear_probe",
+                    "train_mode": probe["train_mode"],
+                    "class_weighting": probe["class_weighting"],
+                    "epoch": point["epoch"],
+                    "gpu_hours": round(point["gpu_hours"], 4),
+                    **{m: (probe["final"][m] if final and probe["final"] else point.get(m, "")) for m in metrics},
+                    "run": probe["run"],
+                }
+            )
     for point in loma["points"]:
-        rows.append({"method": "vismatch_loma_finetuned", "train_mode": "matcher", "class_weighting": "",
-                     "epoch": point["epoch"], "gpu_hours": round(point["gpu_hours"], 4),
-                     **{m: point[m] for m in metrics}, "run": point["run"]})
+        rows.append(
+            {
+                "method": "vismatch_loma_finetuned",
+                "train_mode": "matcher",
+                "class_weighting": "",
+                "epoch": point["epoch"],
+                "gpu_hours": round(point["gpu_hours"], 4),
+                **{m: point[m] for m in metrics},
+                "run": point["run"],
+            }
+        )
     for name, ref in refs.items():
-        rows.append({"method": name, "train_mode": "", "class_weighting": "", "epoch": "", "gpu_hours": 0.0,
-                     **{m: ref[m] for m in metrics}, "run": ref["run"]})
+        rows.append(
+            {
+                "method": name,
+                "train_mode": "",
+                "class_weighting": "",
+                "epoch": "",
+                "gpu_hours": 0.0,
+                **{m: ref[m] for m in metrics},
+                "run": ref["run"],
+            }
+        )
     with (out_dir / f"{stem}.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
     sidecar = {
-        "dataset": "CzechLynx_v2/CzechLynx", "split_protocol": "split-time_closed", "candidate_k": candidate_k,
-        "gpu": "RTX 4090 (rtx4090_batch)", "cost": cost_note,
+        "dataset": "CzechLynx_v2/CzechLynx",
+        "split_protocol": "split-time_closed",
+        "candidate_k": candidate_k,
+        "gpu": "RTX 4090 (rtx4090_batch)",
+        "cost": cost_note,
         "curves": "test split, no epoch selection",
         "probe_job_dirs": sorted({p["log"].rsplit("/", 1)[0] for p in probes}),
-        "probes": [{k: v for k, v in p.items() if k != "points"} | {"train_gpu_hours": p["points"][-1]["gpu_hours"],
-                                                                   "last_epoch": p["points"][-1]["epoch"]}
-                   for p in probes],
-        "loma": loma, "references": refs,
+        "probes": [
+            {k: v for k, v in p.items() if k != "points"}
+            | {"train_gpu_hours": p["points"][-1]["gpu_hours"], "last_epoch": p["points"][-1]["epoch"]}
+            for p in probes
+        ],
+        "loma": loma,
+        "references": refs,
     }
     (out_dir / f"{stem}.json").write_text(json.dumps(sidecar, indent=2) + "\n", encoding="utf-8")
 
@@ -461,20 +623,43 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=ROOT_DIR / "reports/figures")
     parser.add_argument("--width", type=float, default=6.875, help="Figure width in inches (CVPR text width)")
     parser.add_argument("--font-size", type=float, default=9.0)
-    parser.add_argument("--probe-job-dir", type=Path, default=PROBE_JOB_DIR,
-                        help="logs/parallel_run/.../job-<id> holding the weighted probe tasks")
-    parser.add_argument("--allow-incomplete", action="store_true",
-                        help="draw still-running probes up to their last logged epoch (no final marker)")
-    parser.add_argument("--metrics", default=",".join(m for m, _ in PANELS),
-                        help="comma-separated panels in order, from: " + ", ".join(m for m, _ in PANELS))
+    parser.add_argument(
+        "--probe-job-dir",
+        type=Path,
+        default=PROBE_JOB_DIR,
+        help="logs/parallel_run/.../job-<id> holding the weighted probe tasks",
+    )
+    parser.add_argument(
+        "--allow-incomplete",
+        action="store_true",
+        help="draw still-running probes up to their last logged epoch (no final marker)",
+    )
+    parser.add_argument(
+        "--metrics",
+        default=",".join(m for m, _ in PANELS),
+        help="comma-separated panels in order, from: " + ", ".join(m for m, _ in PANELS),
+    )
     parser.add_argument("--output-stem", default=None, help="override the output file stem")
-    parser.add_argument("--x-scale", choices=("linear", "log"), default="linear",
-                        help="log spreads the first LoMa epoch (0.02 GPU-h) from the rest; zero-cost "
-                             "methods then appear only as reference lines")
-    parser.add_argument("--cost", choices=sorted(COST_MODES), default="train",
-                        help="train: pure training steps (both arms); job: whole Slurm job, conservative")
-    parser.add_argument("--candidate-k", type=int, default=50, choices=sorted(LOMA_RUNS_BY_K),
-                        help="LoMa shortlist budget; outputs other than k=50 get a _k<k> suffix")
+    parser.add_argument(
+        "--x-scale",
+        choices=("linear", "log"),
+        default="linear",
+        help="log spreads the first LoMa epoch (0.02 GPU-h) from the rest; zero-cost "
+        "methods then appear only as reference lines",
+    )
+    parser.add_argument(
+        "--cost",
+        choices=sorted(COST_MODES),
+        default="train",
+        help="train: pure training steps (both arms); job: whole Slurm job, conservative",
+    )
+    parser.add_argument(
+        "--candidate-k",
+        type=int,
+        default=50,
+        choices=sorted(LOMA_RUNS_BY_K),
+        help="LoMa shortlist budget; outputs other than k=50 get a _k<k> suffix",
+    )
     return parser.parse_args(argv)
 
 
@@ -494,9 +679,11 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     loma, refs = loma_series(k, args.cost), references(k)
     render(probes, loma, refs, args.output_dir, args.width, args.font_size, stem, xlabel, panels, args.x_scale)
     write_tables(probes, loma, refs, args.output_dir, stem, k, note)
-    print(f"[training-cost] LoMa: {len(loma['points'])} points, {loma['total_train_gpu_hours']:.2f} GPU-h ({args.cost} cost) "
-          f"in total; {CLASS_WEIGHTING} probes: " + ", ".join(f"{p['train_mode']} {p['points'][-1]['gpu_hours']:.2f} GPU-h"
-                                           for p in probes))
+    print(
+        f"[training-cost] LoMa: {len(loma['points'])} points, {loma['total_train_gpu_hours']:.2f} GPU-h ({args.cost} cost) "
+        f"in total; {CLASS_WEIGHTING} probes: "
+        + ", ".join(f"{p['train_mode']} {p['points'][-1]['gpu_hours']:.2f} GPU-h" for p in probes)
+    )
     print(f"[training-cost] wrote {args.output_dir / (stem + '.pdf')}")
 
 

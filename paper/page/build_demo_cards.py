@@ -17,6 +17,7 @@ Cards (in the hub's narrative order):
 Run ``python paper/page/build_demo_cards.py`` after re-exporting a demo; the script fails
 closed when a referenced export is missing.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,8 +48,13 @@ def cover(image: Image.Image, size: Tuple[int, int]) -> Image.Image:
     return resized.crop((left, top, left + width, top + height))
 
 
-def compose_row(images: Sequence[Image.Image], size: Tuple[int, int] = CARD_SIZE, gutter: int = GUTTER,
-                rules: Sequence[Tuple[int, int, int] | None] | None = None, rule_height: int = 6) -> Image.Image:
+def compose_row(
+    images: Sequence[Image.Image],
+    size: Tuple[int, int] = CARD_SIZE,
+    gutter: int = GUTTER,
+    rules: Sequence[Tuple[int, int, int] | None] | None = None,
+    rule_height: int = 6,
+) -> Image.Image:
     """Lay ``images`` side by side in equal columns; ``rules`` draws a coloured bar under a column."""
     if not images:
         raise ValueError("compose_row needs at least one image")
@@ -69,8 +75,9 @@ def compose_row(images: Sequence[Image.Image], size: Tuple[int, int] = CARD_SIZE
     return canvas
 
 
-def compose_split(raw: Image.Image, mask: Image.Image, size: Tuple[int, int] = CARD_SIZE,
-                  divider: Tuple[int, int, int] = RED) -> Image.Image:
+def compose_split(
+    raw: Image.Image, mask: Image.Image, size: Tuple[int, int] = CARD_SIZE, divider: Tuple[int, int, int] = RED
+) -> Image.Image:
     """Left half raw photo, right half the masked model input (black outside the mask)."""
     raw = cover(raw.convert("RGB"), size)
     mask = cover(mask.convert("L"), size).point(lambda v: 255 if v > 127 else 0)

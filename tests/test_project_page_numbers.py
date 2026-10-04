@@ -28,7 +28,8 @@ def markdown_tables(text):
                 continue
             rows.append(cells)
         elif rows:
-            tables.append(rows); rows = []
+            tables.append(rows)
+            rows = []
     if rows:
         tables.append(rows)
     return tables
@@ -66,7 +67,12 @@ class TranscribedNumbersTests(unittest.TestCase):
     def test_what_to_adapt_table_matches_adapt_json(self):
         table = self._table_with_header(self.results_md, "Matcher")
         rows = {(r["matcher_label"], r["variant"]): r for r in self.adapt["rows"]}
-        variant_of = {"none (default)": "default", "descriptor": "descriptor", "matching module (ours)": "matcher", "both": "joint"}
+        variant_of = {
+            "none (default)": "default",
+            "descriptor": "descriptor",
+            "matching module (ours)": "matcher",
+            "both": "joint",
+        }
         checked = 0
         for cells in table[1:]:
             matcher, variant = plain(cells[0]), plain(cells[1])
@@ -87,9 +93,13 @@ class TranscribedNumbersTests(unittest.TestCase):
         unseen = self.curves["unseen"]
         ks = [int(re.sub(r"\D", "", h)) for h in table[0][1:]]
         self.assertEqual(ks, unseen["ks"])
-        series_for = {"LoMa default": "loma_default", "LoMa + WildMatch": "loma_finetuned",
-                      "RDD-LightGlue default": "rdd_default", "RDD + WildMatch": "rdd_finetuned",
-                      "WildFusion": "wildfusion"}
+        series_for = {
+            "LoMa default": "loma_default",
+            "LoMa + WildMatch": "loma_finetuned",
+            "RDD-LightGlue default": "rdd_default",
+            "RDD + WildMatch": "rdd_finetuned",
+            "WildFusion": "wildfusion",
+        }
         flat_for = {"MegaDescriptor-L cosine": "cosine_megadescriptor", "DINOv3-L cosine": "cosine_dinov3"}
         checked = 0
         for cells in table[1:]:
@@ -113,10 +123,22 @@ class TranscribedNumbersTests(unittest.TestCase):
         expected = {
             "Cosine retrieval (MegaDescriptor-L)": (0.0, cz["flats"]["cosine_megadescriptor"]),
             "LoMa default": (0.0, k250("loma_default")),
-            "LoMa + WildMatch": (self.cost["series"]["loma_finetuned"]["points"][-1]["gpu_hours"], k250("loma_finetuned")),
-            "Classifier, frozen backbone (weighted)": (self.cost["series"]["classifier_frozen"]["points"][-1]["gpu_hours"], cz["flats"]["classifier_frozen"]),
-            "Classifier, partially fine-tuned (weighted)": (self.cost["series"]["classifier_partial"]["points"][-1]["gpu_hours"], cz["flats"]["classifier_partial"]),
-            "Classifier, fully fine-tuned (weighted)": (self.cost["series"]["classifier_full"]["points"][-1]["gpu_hours"], cz["flats"]["classifier_full"]),
+            "LoMa + WildMatch": (
+                self.cost["series"]["loma_finetuned"]["points"][-1]["gpu_hours"],
+                k250("loma_finetuned"),
+            ),
+            "Classifier, frozen backbone (weighted)": (
+                self.cost["series"]["classifier_frozen"]["points"][-1]["gpu_hours"],
+                cz["flats"]["classifier_frozen"],
+            ),
+            "Classifier, partially fine-tuned (weighted)": (
+                self.cost["series"]["classifier_partial"]["points"][-1]["gpu_hours"],
+                cz["flats"]["classifier_partial"],
+            ),
+            "Classifier, fully fine-tuned (weighted)": (
+                self.cost["series"]["classifier_full"]["points"][-1]["gpu_hours"],
+                cz["flats"]["classifier_full"],
+            ),
         }
         checked = 0
         for cells in table[1:]:
@@ -139,10 +161,20 @@ class TranscribedNumbersTests(unittest.TestCase):
         self.assertEqual(min(gains, key=lambda k: gains[k][0]), "sea_star")
         self.assertTrue(all(g[0] > 0 for g in gains.values()))
         self.assertEqual({k for k, g in gains.items() if g[1] < 0}, {"leopard", "turtle"})
-        bal_wins = sum(D[k]["series"]["loma_finetuned"]["points"]["250"]["balanced_top_1"] > D[k]["flats"]["classifier_full"]["balanced_top_1"] for k in D)
-        top5_wins = sum(D[k]["series"]["loma_finetuned"]["points"]["250"]["top_5"] > D[k]["flats"]["classifier_full"]["top_5"] for k in D)
+        bal_wins = sum(
+            D[k]["series"]["loma_finetuned"]["points"]["250"]["balanced_top_1"]
+            > D[k]["flats"]["classifier_full"]["balanced_top_1"]
+            for k in D
+        )
+        top5_wins = sum(
+            D[k]["series"]["loma_finetuned"]["points"]["250"]["top_5"] > D[k]["flats"]["classifier_full"]["top_5"]
+            for k in D
+        )
         self.assertEqual((bal_wins, top5_wins), (8, 7))
-        self.assertLess(D["sea_star"]["series"]["loma_finetuned"]["points"]["250"]["top_5"], D["sea_star"]["flats"]["classifier_full"]["top_5"])
+        self.assertLess(
+            D["sea_star"]["series"]["loma_finetuned"]["points"]["250"]["top_5"],
+            D["sea_star"]["flats"]["classifier_full"]["top_5"],
+        )
 
     @pytest.mark.data
     @unittest.skipUnless(PAPER_TABLE.is_file(), "paper clone not present")
@@ -175,7 +207,11 @@ class ExplainerTranscriptTests(unittest.TestCase):
         cls.adapt = json.loads((DATA / "adapt.json").read_text(encoding="utf-8"))
 
     def test_transcript_matches_committed_timings(self):
-        timings = json.loads((Path(__file__).resolve().parents[1] / "video" / "explainer" / "audio" / "timings.json").read_text(encoding="utf-8"))
+        timings = json.loads(
+            (Path(__file__).resolve().parents[1] / "video" / "explainer" / "audio" / "timings.json").read_text(
+                encoding="utf-8"
+            )
+        )
         self.assertEqual([s["text"] for s in self.transcript["shots"]], [s["text"] for s in timings["shots"]])
 
     def test_eight_datasets(self):

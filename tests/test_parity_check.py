@@ -21,14 +21,36 @@ sys.modules["parity_check"] = PC  # dataclasses resolve their module through sys
 _SPEC.loader.exec_module(PC)
 
 
-def _write_run(root: Path, run_id: str, *, method="vismatch", variant="rdd-lightglue", k=50,
-               values=None, rows=None, cols=None, metrics=None, status="completed"):
+def _write_run(
+    root: Path,
+    run_id: str,
+    *,
+    method="vismatch",
+    variant="rdd-lightglue",
+    k=50,
+    values=None,
+    rows=None,
+    cols=None,
+    metrics=None,
+    status="completed",
+):
     run_dir = root / "SalamanderID2025" / "split" / method / variant / run_id
     run_dir.mkdir(parents=True)
-    (run_dir / "run_manifest.json").write_text(json.dumps({
-        "status": status, "run_id": run_id, "dataset": "SalamanderID2025", "animal": "SalamanderID2025",
-        "split_protocol": "split", "model": "megadescriptor-l", "method": method, "variant": variant,
-        "checkpoint_variant": "default"}))
+    (run_dir / "run_manifest.json").write_text(
+        json.dumps(
+            {
+                "status": status,
+                "run_id": run_id,
+                "dataset": "SalamanderID2025",
+                "animal": "SalamanderID2025",
+                "split_protocol": "split",
+                "model": "megadescriptor-l",
+                "method": method,
+                "variant": variant,
+                "checkpoint_variant": "default",
+            }
+        )
+    )
     (run_dir / "config.snapshot.yaml").write_text(yaml.safe_dump({"benchmark": {"candidate_k": k, "methods": {}}}))
     (run_dir / "metrics.json").write_text(json.dumps(metrics or {"top_1": 0.5, "top_5": 0.8}))
     rows = np.array([0, 0, 1, 1]) if rows is None else rows
@@ -78,8 +100,14 @@ class ParityCheckTests(unittest.TestCase):
         self.assertEqual(_run(self.ref, self.new), 1)
         ref2, new2 = Path(self.tmp.name) / "ref2", Path(self.tmp.name) / "new2"
         _write_run(ref2, "20260101T000000Z_a", method="linear_probe", variant="default", metrics={"top_1": 0.5})
-        _write_run(new2, "20260102T000000Z_b", method="linear_probe", variant="default", metrics={"top_1": 0.505},
-                   values=np.array([0.1, 0.9, 0.5, 0.4]))
+        _write_run(
+            new2,
+            "20260102T000000Z_b",
+            method="linear_probe",
+            variant="default",
+            metrics={"top_1": 0.505},
+            values=np.array([0.1, 0.9, 0.5, 0.4]),
+        )
         self.assertEqual(_run(ref2, new2), 0)
 
     def test_missing_reference_and_newest_run_selection(self):

@@ -12,6 +12,7 @@ try:
     import torch
     import wildmatch.matchers.vismatch as vismatch_module
     from wildmatch.matchers.vismatch_profiles import FrameFeatures
+
     HAS_VISMATCH_RUNTIME = True
 except ModuleNotFoundError:
     HAS_VISMATCH_RUNTIME = False
@@ -52,9 +53,7 @@ class VismatchBatchingTests(unittest.TestCase):
             @staticmethod
             def prepare_image(image):
                 shape = tuple(int(value) for value in image.shape[-2:])
-                return vismatch_module.PreparedImage(
-                    tensor=image.unsqueeze(0), source_size=shape, processed_size=shape
-                )
+                return vismatch_module.PreparedImage(tensor=image.unsqueeze(0), source_size=shape, processed_size=shape)
 
             @staticmethod
             def _feature():
@@ -75,15 +74,19 @@ class VismatchBatchingTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             (Path(temp_dir) / "one.jpg").write_bytes(b"one")
             (Path(temp_dir) / "two.jpg").write_bytes(b"two")
-            with mock.patch.object(
-                vismatch_module,
-                "_load_raw_rgb_image",
-                return_value=np.zeros((16, 16, 3), dtype=np.uint8),
-            ), mock.patch.object(
-                vismatch_module,
-                "_to_image_tensor",
-                return_value=torch.zeros((3, 16, 16), dtype=torch.float32),
-            ), redirect_stderr(io.StringIO()):  # tqdm progress bar
+            with (
+                mock.patch.object(
+                    vismatch_module,
+                    "_load_raw_rgb_image",
+                    return_value=np.zeros((16, 16, 3), dtype=np.uint8),
+                ),
+                mock.patch.object(
+                    vismatch_module,
+                    "_to_image_tensor",
+                    return_value=torch.zeros((3, 16, 16), dtype=torch.float32),
+                ),
+                redirect_stderr(io.StringIO()),
+            ):  # tqdm progress bar
                 features = vismatch_module._extract_split_features(
                     FakeDataset(),
                     "query",
@@ -121,10 +124,7 @@ class VismatchBatchingTests(unittest.TestCase):
 
         self.assertEqual(batches, [[(0, 0), (0, 1)], [(0, 2)], [(1, 0)]])
         for batch in batches:
-            shapes = {
-                (len(query[q].keypoints), len(database[d].keypoints))
-                for q, d in batch
-            }
+            shapes = {(len(query[q].keypoints), len(database[d].keypoints)) for q, d in batch}
             self.assertEqual(len(shapes), 1)
 
     def test_candidate_results_are_scattered_to_original_matrix_positions(self):

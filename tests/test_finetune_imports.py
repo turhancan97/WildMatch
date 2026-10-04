@@ -20,14 +20,22 @@ class FinetuneImportTests(unittest.TestCase):
         import ast
 
         tree = ast.parse(source)
-        imported = {alias.asname or alias.name for node in ast.walk(tree)
-                    if isinstance(node, ast.ImportFrom) for alias in node.names}
+        imported = {
+            alias.asname or alias.name
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+        }
         self.assertIn("file_identity", imported)
 
     @unittest.skipUnless(shutil.which("ruff"), "ruff not installed")
     def test_no_undefined_names_in_the_package(self):
-        result = subprocess.run(["ruff", "check", "--select", "F821", "--output-format", "concise", "src"],
-                                cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(
+            ["ruff", "check", "--select", "F821", "--output-format", "concise", "src"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
         self.assertEqual(result.returncode, 0, result.stdout)
 
 

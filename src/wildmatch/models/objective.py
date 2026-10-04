@@ -135,7 +135,11 @@ class SoftmaxLossEP(nn.Module):
         q = cls_token.reshape(bsz, self.num_queries, self.num_heads, emb // self.num_heads).permute(0, 2, 1, 3)
         k = x.reshape(bsz, num_tokens, self.num_heads, emb // self.num_heads).permute(0, 2, 1, 3)
         q = q * self.scale
-        v = self.v(x).reshape(bsz, num_tokens, self.num_queries, emb // (self.d_out * self.num_queries)).permute(0, 2, 1, 3)
+        v = (
+            self.v(x)
+            .reshape(bsz, num_tokens, self.num_queries, emb // (self.d_out * self.num_queries))
+            .permute(0, 2, 1, 3)
+        )
 
         attn = q @ k.transpose(-2, -1)
         attn = attn.softmax(dim=-1)

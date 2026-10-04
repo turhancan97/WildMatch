@@ -12,12 +12,54 @@ class UnseenEvalMetadataTests(unittest.TestCase):
         image_dir = root / "images"
         image_dir.mkdir(parents=True)
         rows = [
-            {"identity": "seen", "split": "train", "encounter": "0", "date": "01-01-2020", "path": "images/seen.jpg", "extra": "keep"},
-            {"identity": "seen", "split": "test", "encounter": "1", "date": "02-01-2020", "path": "images/seen_test.jpg", "extra": "keep"},
-            {"identity": "good", "split": "test", "encounter": "2", "date": "02-01-2020", "path": "images/good_gallery.jpg", "extra": "gallery"},
-            {"identity": "good", "split": "test", "encounter": "3", "date": "03-01-2020", "path": "images/good_query.jpg", "extra": "query"},
-            {"identity": "good", "split": "test", "encounter": "4", "date": "04-01-2020", "path": "images/good_query_2.jpg", "extra": "query"},
-            {"identity": "one_group", "split": "test", "encounter": "9", "date": "09-01-2020", "path": "images/one_group.jpg", "extra": "excluded"},
+            {
+                "identity": "seen",
+                "split": "train",
+                "encounter": "0",
+                "date": "01-01-2020",
+                "path": "images/seen.jpg",
+                "extra": "keep",
+            },
+            {
+                "identity": "seen",
+                "split": "test",
+                "encounter": "1",
+                "date": "02-01-2020",
+                "path": "images/seen_test.jpg",
+                "extra": "keep",
+            },
+            {
+                "identity": "good",
+                "split": "test",
+                "encounter": "2",
+                "date": "02-01-2020",
+                "path": "images/good_gallery.jpg",
+                "extra": "gallery",
+            },
+            {
+                "identity": "good",
+                "split": "test",
+                "encounter": "3",
+                "date": "03-01-2020",
+                "path": "images/good_query.jpg",
+                "extra": "query",
+            },
+            {
+                "identity": "good",
+                "split": "test",
+                "encounter": "4",
+                "date": "04-01-2020",
+                "path": "images/good_query_2.jpg",
+                "extra": "query",
+            },
+            {
+                "identity": "one_group",
+                "split": "test",
+                "encounter": "9",
+                "date": "09-01-2020",
+                "path": "images/one_group.jpg",
+                "extra": "excluded",
+            },
         ]
         for row in rows:
             content = f"{row['identity']}-{row['encounter']}".encode()
@@ -63,7 +105,10 @@ class UnseenEvalMetadataTests(unittest.TestCase):
             self.assertEqual(manifest["selected_counts"]["database_rows"], 1)
             self.assertEqual(manifest["selected_counts"]["query_rows"], 2)
             self.assertEqual(manifest["configuration"]["dataset"], root.name)
-            self.assertEqual(manifest["excluded_identities"], [{"identity": "one_group", "num_groups": 1, "reason": "fewer_than_two_groups"}])
+            self.assertEqual(
+                manifest["excluded_identities"],
+                [{"identity": "one_group", "num_groups": 1, "reason": "fewer_than_two_groups"}],
+            )
             self.assertTrue(manifest["validation"]["selected_identities_absent_from_source_database"])
 
     def test_output_order_is_deterministic(self):

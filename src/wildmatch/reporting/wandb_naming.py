@@ -38,7 +38,7 @@ def _finish(parts: list[Any], run_id: str) -> str:
     name = f"{full}-{token}" if full else f"run-{token}"
     if len(name) > _MAX_NAME_LENGTH:
         suffix = f"-{token}"
-        name = f"{name[:_MAX_NAME_LENGTH - len(suffix)]}{suffix}"
+        name = f"{name[: _MAX_NAME_LENGTH - len(suffix)]}{suffix}"
     return name
 
 
@@ -62,9 +62,7 @@ def probe_wandb_name(cfg: Any, run_id: str) -> str:
         parts.extend(
             [
                 _get(method_cfg, "matcher", "matcher"),
-                "finetuned"
-                if str(_get(method_cfg, "checkpoint_source", "default")) == "custom"
-                else "default",
+                "finetuned" if str(_get(method_cfg, "checkpoint_source", "default")) == "custom" else "default",
                 f"k{_get(benchmark, 'candidate_k', '')}",
             ]
         )

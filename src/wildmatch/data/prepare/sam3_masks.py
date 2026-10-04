@@ -52,7 +52,6 @@ import numpy as np
 import pandas as pd
 
 
-
 def _profile_value(key: str) -> Optional[str]:
     """A location from the active path profile (wildmatch.paths). This script runs in the
     separate `lynx-app` environment, where the package is usually not installed, so it falls
@@ -196,17 +195,26 @@ def build_masked_metadata(
         raise MetadataError(f"source already has columns {clash}")
 
     optional = [column for column in OPTIONAL_COLUMNS if column in masks.columns]
-    joined = source.merge(masks[["path", "masked_path", "mask", *SAM3_COLUMNS, *optional]], on="path",
-                          how="left", validate="one_to_one")
+    joined = source.merge(
+        masks[["path", "masked_path", "mask", *SAM3_COLUMNS, *optional]], on="path", how="left", validate="one_to_one"
+    )
     absent = [p for p in joined["masked_path"] if not (Path(root) / p).is_file()]
     if absent:
         raise MetadataError(f"{len(absent)} masked images do not exist, e.g. {absent[:3]}")
 
-    renames = {"path": "original_path", "masked_path": "path", **SAM3_COLUMNS,
-               **{column: OPTIONAL_COLUMNS[column] for column in optional}}
+    renames = {
+        "path": "original_path",
+        "masked_path": "path",
+        **SAM3_COLUMNS,
+        **{column: OPTIONAL_COLUMNS[column] for column in optional},
+    }
     out = joined.rename(columns=renames)
-    columns = list(source.columns) + ["original_path", "mask", *SAM3_COLUMNS.values(),
-                                      *[OPTIONAL_COLUMNS[column] for column in optional]]
+    columns = list(source.columns) + [
+        "original_path",
+        "mask",
+        *SAM3_COLUMNS.values(),
+        *[OPTIONAL_COLUMNS[column] for column in optional],
+    ]
     if split_map:
         if not split_col or not split_map_column:
             raise MetadataError("--split-map needs --split-col and --split-map-column")
@@ -227,8 +235,10 @@ def run_segmentation(args: argparse.Namespace) -> None:
     from PIL import Image
 
     if not args.sam3_dir or not args.checkpoint:
-        raise SystemExit("SAM 3 location unknown: pass --sam3-dir and --checkpoint, or set paths "
-                         "external.sam3_repo and external.sam3_checkpoint (e.g. paths profile gmum)")
+        raise SystemExit(
+            "SAM 3 location unknown: pass --sam3-dir and --checkpoint, or set paths "
+            "external.sam3_repo and external.sam3_checkpoint (e.g. paths profile gmum)"
+        )
     sys.path.append(args.sam3_dir)
     import torch
     from sam3.model.sam3_image_processor import Sam3Processor
@@ -241,13 +251,19 @@ def run_segmentation(args: argparse.Namespace) -> None:
         if (args.out_dir / args.masks_csv).exists():
             existing.insert(0, args.masks_csv)
         if existing:
-            raise SystemExit(f"{len(existing)} outputs already exist (e.g. {existing[0]} under {args.out_dir}); "
-                             "pass --overwrite to replace them or choose another --out-dir")
+            raise SystemExit(
+                f"{len(existing)} outputs already exist (e.g. {existing[0]} under {args.out_dir}); "
+                "pass --overwrite to replace them or choose another --out-dir"
+            )
     unknown = sorted(set(overrides) - set(meta["path"]))
     if unknown:
         raise SystemExit(f"--threshold-override paths not in {args.csv}: {unknown}")
     if args.limit:
-        meta = meta.sample(args.limit, random_state=args.sample_seed) if args.sample_seed is not None else meta.head(args.limit)
+        meta = (
+            meta.sample(args.limit, random_state=args.sample_seed)
+            if args.sample_seed is not None
+            else meta.head(args.limit)
+        )
 
     model = build_sam3_image_model(checkpoint_path=args.checkpoint, load_from_HF=False, device="cuda", eval_mode=True)
     processor = Sam3Processor(model, device="cuda", confidence_threshold=args.threshold)
@@ -290,24 +306,35 @@ def run_segmentation(args: argparse.Namespace) -> None:
         ensure_directory((args.out_dir / masked_rel).parent)
         Image.fromarray(pixels).save(args.out_dir / masked_rel, quality=95)
         ys, xs = np.nonzero(mask)
-        rows.append({
-            "path": rel, "masked_path": masked_rel.as_posix(), "n_detections": n_det,
-            "best_score": round(score, 4), "threshold_used": used_threshold, "prompt_used": used_prompt,
-            "merge": args.merge, "fg_fraction": round(float(mask.mean()), 4),
-            "bbox": json.dumps([int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if len(xs) else []),
-            "mask": encode_mask(mask), "full_frame": full_frame,
-        })
+        rows.append(
+            {
+                "path": rel,
+                "masked_path": masked_rel.as_posix(),
+                "n_detections": n_det,
+                "best_score": round(score, 4),
+                "threshold_used": used_threshold,
+                "prompt_used": used_prompt,
+                "merge": args.merge,
+                "fg_fraction": round(float(mask.mean()), 4),
+                "bbox": json.dumps([int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if len(xs) else []),
+                "mask": encode_mask(mask),
+                "full_frame": full_frame,
+            }
+        )
         if n % 50 == 0:
             print(f"[sam3] {n}/{len(meta)} images, {(time.time() - t0) / n:.2f} s/img", flush=True)
 
     out = pd.DataFrame(rows)
     (args.out_dir / args.masks_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_dir / args.masks_csv, index=False)
-    print(f"[sam3] done: {len(out)} images, prompt={args.prompt_column or args.prompt!r}, merge={args.merge}, "
-          f"empty={int((out.n_detections == 0).sum())}, "
-          f"fallback_threshold_used={int((out.threshold_used < args.threshold).sum())}, "
-          f"fallback_prompt_used={int((out.prompt_used != pd.Series(prompts)).sum())}, "
-          f"median fg={out.fg_fraction.median():.3f}", flush=True)
+    print(
+        f"[sam3] done: {len(out)} images, prompt={args.prompt_column or args.prompt!r}, merge={args.merge}, "
+        f"empty={int((out.n_detections == 0).sum())}, "
+        f"fallback_threshold_used={int((out.threshold_used < args.threshold).sum())}, "
+        f"fallback_prompt_used={int((out.prompt_used != pd.Series(prompts)).sum())}, "
+        f"median fg={out.fg_fraction.median():.3f}",
+        flush=True,
+    )
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -316,13 +343,21 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--csv", type=Path, required=True, help="Source metadata CSV (relative to --root or absolute)")
     p.add_argument("--out-dir", type=Path, default=None, help="Where masked_images/ and masks.csv go (default: --root)")
     p.add_argument("--segment", action="store_true", help="Run SAM3 (GPU)")
-    p.add_argument("--write-metadata", type=Path, default=None,
-                   help="Write pre-masked metadata to this CSV (relative to --root or absolute)")
+    p.add_argument(
+        "--write-metadata",
+        type=Path,
+        default=None,
+        help="Write pre-masked metadata to this CSV (relative to --root or absolute)",
+    )
     p.add_argument("--prompt", default="Salamander")
     p.add_argument("--prompt-column", default=None, help="take each row's prompt from this CSV column instead")
     p.add_argument("--fallback-prompts", nargs="*", default=["Animal"])
-    p.add_argument("--merge", choices=["union", "best", "largest"], default="union",
-                   help="union: all detections (one animal split by an occluder); best: highest score; largest: most pixels")
+    p.add_argument(
+        "--merge",
+        choices=["union", "best", "largest"],
+        default="union",
+        help="union: all detections (one animal split by an occluder); best: highest score; largest: most pixels",
+    )
     p.add_argument("--threshold", type=float, default=0.5)
     p.add_argument("--fallback-threshold", type=float, default=0.25)
     p.add_argument("--threshold-override", action="append", default=[], metavar="PATH=THRESHOLD")
@@ -335,8 +370,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--split-map-column", default=None, help="e.g. split_train_test")
     p.add_argument("--masks-csv", default=MASKS_FILE, help="mask table path inside --out-dir")
     p.add_argument("--masked-dir", default=MASKED_DIR, help="folder for masked images inside --out-dir")
-    p.add_argument("--empty-policy", choices=["empty", "full_frame"], default="empty",
-                   help="when nothing is detected: an empty mask (black image) or the whole image, flagged")
+    p.add_argument(
+        "--empty-policy",
+        choices=["empty", "full_frame"],
+        default="empty",
+        help="when nothing is detected: an empty mask (black image) or the whole image, flagged",
+    )
     p.add_argument("--overwrite", action="store_true", help="replace existing masked images, mask table or metadata")
     args = p.parse_args(argv)
     if not args.segment and args.write_metadata is None:
@@ -353,16 +392,23 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         source = pd.read_csv(args.root / args.csv)
         masks = pd.read_csv(args.out_dir / args.masks_csv)
         metadata = build_masked_metadata(
-            source, masks, args.out_dir, split_col=args.split_col,
-            split_map=parse_mapping(args.split_map) or None, split_map_column=args.split_map_column,
+            source,
+            masks,
+            args.out_dir,
+            split_col=args.split_col,
+            split_map=parse_mapping(args.split_map) or None,
+            split_map_column=args.split_map_column,
         )
         target = args.root / args.write_metadata
         if target.exists() and not args.overwrite:
             raise SystemExit(f"{target} already exists; pass --overwrite to replace it")
         target.parent.mkdir(parents=True, exist_ok=True)
         metadata.to_csv(target, index=False)
-        extra = f", {args.split_map_column}={metadata[args.split_map_column].value_counts().to_dict()}" \
-            if args.split_map_column in metadata.columns else ""
+        extra = (
+            f", {args.split_map_column}={metadata[args.split_map_column].value_counts().to_dict()}"
+            if args.split_map_column in metadata.columns
+            else ""
+        )
         print(f"[sam3] wrote {target} ({len(metadata)} rows{extra})")
 
 

@@ -44,12 +44,15 @@ from wildmatch.paths import path as _profile_path  # noqa: E402
 
 DEFAULT_ROOT = _profile_path("data_root") / "CzechLynx_v2"
 DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"
-DEFAULT_RUN_DIR = (REPO_ROOT / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
-                   "/vismatch/loma/20260920T122915Z_0015f14a")
+DEFAULT_RUN_DIR = (
+    REPO_ROOT / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
+    "/vismatch/loma/20260920T122915Z_0015f14a"
+)
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "synthetic"
 WEB_LONG_SIDE = 1000
-ATTRIBUTION = ("Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), "
-               "Zenodo record 17592004, CC BY 4.0.")
+ATTRIBUTION = (
+    "Synthetic lynx renders from the CzechLynx synthetic subset (Picek et al.), Zenodo record 17592004, CC BY 4.0."
+)
 
 # Ten individuals, two renders each: "query" (render A) and "gallery" (render B), paths
 # relative to the dataset root. The first six individuals and lynx 173's two renders are
@@ -62,26 +65,46 @@ ATTRIBUTION = ("Synthetic lynx renders from the CzechLynx synthetic subset (Pice
 # renders follow the same rules, prefer a different scene than the query render, and
 # were accepted from an A/B contact sheet. Scores were never used for selection.
 INDIVIDUALS: Dict[str, Dict[str, str]] = {
-    "lynx_173": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg",
-                 "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/06420_synthetic_lynx_173.jpg"},
-    "lynx_129": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/05121_synthetic_lynx_129.jpg",
-                 "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/36554_synthetic_lynx_129.jpg"},
-    "lynx_242": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/08305_synthetic_lynx_242.jpg",
-                 "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/12884_synthetic_lynx_242.jpg"},
-    "lynx_88": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/04055_synthetic_lynx_88.jpg",
-                "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/33261_synthetic_lynx_88.jpg"},
-    "lynx_79": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/00519_synthetic_lynx_79.jpg",
-                "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/34400_synthetic_lynx_79.jpg"},
-    "lynx_138": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/09291_synthetic_lynx_138.jpg",
-                 "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/14555_synthetic_lynx_138.jpg"},
-    "lynx_27": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/16742_synthetic_lynx_27.jpg",
-                "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/04673_synthetic_lynx_27.jpg"},
-    "lynx_174": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/19763_synthetic_lynx_174.jpg",
-                 "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/23288_synthetic_lynx_174.jpg"},
-    "lynx_289": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/01549_synthetic_lynx_289.jpg",
-                 "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/10624_synthetic_lynx_289.jpg"},
-    "lynx_45": {"query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/39237_synthetic_lynx_45.jpg",
-                "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/13915_synthetic_lynx_45.jpg"},
+    "lynx_173": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_173/06420_synthetic_lynx_173.jpg",
+    },
+    "lynx_129": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/05121_synthetic_lynx_129.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_129/36554_synthetic_lynx_129.jpg",
+    },
+    "lynx_242": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/08305_synthetic_lynx_242.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_242/12884_synthetic_lynx_242.jpg",
+    },
+    "lynx_88": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/04055_synthetic_lynx_88.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_88/33261_synthetic_lynx_88.jpg",
+    },
+    "lynx_79": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/00519_synthetic_lynx_79.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_79/34400_synthetic_lynx_79.jpg",
+    },
+    "lynx_138": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/09291_synthetic_lynx_138.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_138/14555_synthetic_lynx_138.jpg",
+    },
+    "lynx_27": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/16742_synthetic_lynx_27.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_27/04673_synthetic_lynx_27.jpg",
+    },
+    "lynx_174": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/19763_synthetic_lynx_174.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_174/23288_synthetic_lynx_174.jpg",
+    },
+    "lynx_289": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/01549_synthetic_lynx_289.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_289/10624_synthetic_lynx_289.jpg",
+    },
+    "lynx_45": {
+        "query": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/39237_synthetic_lynx_45.jpg",
+        "gallery": "CzechLynx_Synthetic/synthetic/synthetic_lynx_45/13915_synthetic_lynx_45.jpg",
+    },
 }
 
 
@@ -138,17 +161,23 @@ def web_copy(render: Image.Image, out_path: Path, long_side: int = WEB_LONG_SIDE
     return {"file": out_path.name, "width": size[0], "height": size[1]}
 
 
-def candidate_record(tag: str, src: str, query_identity: str, size: Sequence[int], result: Any,
-                     kq: np.ndarray, kg: np.ndarray) -> Dict[str, Any]:
+def candidate_record(
+    tag: str, src: str, query_identity: str, size: Sequence[int], result: Any, kq: np.ndarray, kg: np.ndarray
+) -> Dict[str, Any]:
     identity = identity_of(src)
     confidences = np.asarray(result.confidences if result.confidences is not None else [], dtype=np.float64).reshape(-1)
     order = np.argsort(-confidences, kind="stable")
     return {
-        "tag": tag, "identity": identity, "same_individual": identity == query_identity,
+        "tag": tag,
+        "identity": identity,
+        "same_individual": identity == query_identity,
         "image": {"file": f"{tag}.jpg", "width": int(size[0]), "height": int(size[1])},
-        "score": float(result.score), "match_count": int(result.match_count),
-        "points": {"query": [[round(float(x), 1), round(float(y), 1)] for x, y in kq],
-                   "gallery": [[round(float(x), 1), round(float(y), 1)] for x, y in kg]},
+        "score": float(result.score),
+        "match_count": int(result.match_count),
+        "points": {
+            "query": [[round(float(x), 1), round(float(y), 1)] for x, y in kq],
+            "gallery": [[round(float(x), 1), round(float(y), 1)] for x, y in kg],
+        },
         "confidence": [round(float(c), 4) for c in confidences],
         "order_by_confidence": [int(i) for i in order],
     }
@@ -162,7 +191,9 @@ def rank_candidates(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return ranked
 
 
-def build_payload(queries: List[Dict[str, Any]], gallery: List[Dict[str, Any]], model: Dict[str, Any]) -> Dict[str, Any]:
+def build_payload(
+    queries: List[Dict[str, Any]], gallery: List[Dict[str, Any]], model: Dict[str, Any]
+) -> Dict[str, Any]:
     """Assemble the demo JSON; every query's candidates are ranked by score."""
     for query in queries:
         query["candidates"] = rank_candidates(query["candidates"])
@@ -216,19 +247,39 @@ def _load_backend(run_dir: Path, checkpoint: Optional[Path], device: str):
     threshold = config.get("matcher_threshold")
     threshold = float(threshold) if threshold is not None else default_matcher_threshold("loma")
     backend = VismatchMatcherBackend(
-        "loma", _choose_vismatch_device(device), int(config.top_k), threshold,
-        checkpoint_source="custom", checkpoint_path=str(path), checkpoint_components="matcher_only",
-        loma_arch=str(config.loma_arch), resize_max=int(config.resize_max),
+        "loma",
+        _choose_vismatch_device(device),
+        int(config.top_k),
+        threshold,
+        checkpoint_source="custom",
+        checkpoint_path=str(path),
+        checkpoint_components="matcher_only",
+        loma_arch=str(config.loma_arch),
+        resize_max=int(config.resize_max),
     )
-    model = {"matcher": "loma", "loma_arch": str(config.loma_arch), "resize_max": int(config.resize_max),
-             "top_k": int(config.top_k), "threshold": threshold, "checkpoint_components": "matcher_only",
-             "checkpoint_sha256": sha256_file(path), "checkpoint_epoch": path.parent.name,
-             "configured_from_run": run_dir.name}
+    model = {
+        "matcher": "loma",
+        "loma_arch": str(config.loma_arch),
+        "resize_max": int(config.resize_max),
+        "top_k": int(config.top_k),
+        "threshold": threshold,
+        "checkpoint_components": "matcher_only",
+        "checkpoint_sha256": sha256_file(path),
+        "checkpoint_epoch": path.parent.name,
+        "configured_from_run": run_dir.name,
+    }
     return backend, model
 
 
-def export(root: Path, metadata: str, run_dir: Path, out_dir: Path, checkpoint: Optional[Path], device: str,
-           individuals: Dict[str, Dict[str, str]] = INDIVIDUALS) -> Dict[str, Any]:
+def export(
+    root: Path,
+    metadata: str,
+    run_dir: Path,
+    out_dir: Path,
+    checkpoint: Optional[Path],
+    device: str,
+    individuals: Dict[str, Dict[str, str]] = INDIVIDUALS,
+) -> Dict[str, Any]:
     from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
 
     paths = [p for sides in individuals.values() for p in sides.values()]
@@ -249,11 +300,16 @@ def export(root: Path, metadata: str, run_dir: Path, out_dir: Path, checkpoint: 
             mask = decode_rle(rows[rel]["mask"])
             features[tag] = backend.extract_frame(to_rgb_float_tensor(apply_mask(render, mask)))
             images[tag] = web_copy(render, out_dir / f"{tag}.jpg")
-            print(f"[synthetic-demo] {tag}: {render.width}x{render.height}, mask share {mask.mean():.2f}, "
-                  f"{len(features[tag].keypoints)} keypoints", flush=True)
+            print(
+                f"[synthetic-demo] {tag}: {render.width}x{render.height}, mask share {mask.mean():.2f}, "
+                f"{len(features[tag].keypoints)} keypoints",
+                flush=True,
+            )
 
-    gallery = [{"tag": f"G_{identity}", "identity": identity, "source": sides["gallery"], "image": images[f"G_{identity}"]}
-               for identity, sides in individuals.items()]
+    gallery = [
+        {"tag": f"G_{identity}", "identity": identity, "source": sides["gallery"], "image": images[f"G_{identity}"]}
+        for identity, sides in individuals.items()
+    ]
     queries: List[Dict[str, Any]] = []
     for identity, sides in individuals.items():
         qtag = f"Q_{identity}"
@@ -262,18 +318,34 @@ def export(root: Path, metadata: str, run_dir: Path, out_dir: Path, checkpoint: 
             gtag = f"G_{other}"
             result = backend.match_features(features[qtag], features[gtag])
             web_q, web_g = images[qtag], images[gtag]
-            kq = normalized_to_pixels(result.matched_kpts0 if result.matched_kpts0 is not None else np.empty((0, 2)),
-                                      (web_q["width"], web_q["height"]))
-            kg = normalized_to_pixels(result.matched_kpts1 if result.matched_kpts1 is not None else np.empty((0, 2)),
-                                      (web_g["width"], web_g["height"]))
-            record = candidate_record(gtag, osides["gallery"], identity, (web_g["width"], web_g["height"]), result, kq, kg)
+            kq = normalized_to_pixels(
+                result.matched_kpts0 if result.matched_kpts0 is not None else np.empty((0, 2)),
+                (web_q["width"], web_q["height"]),
+            )
+            kg = normalized_to_pixels(
+                result.matched_kpts1 if result.matched_kpts1 is not None else np.empty((0, 2)),
+                (web_g["width"], web_g["height"]),
+            )
+            record = candidate_record(
+                gtag, osides["gallery"], identity, (web_g["width"], web_g["height"]), result, kq, kg
+            )
             candidates.append(record)
-        queries.append({"tag": qtag, "identity": identity, "source": sides["query"], "image": images[qtag],
-                        "candidates": candidates})
+        queries.append(
+            {
+                "tag": qtag,
+                "identity": identity,
+                "source": sides["query"],
+                "image": images[qtag],
+                "candidates": candidates,
+            }
+        )
         best = max(candidates, key=lambda c: c["score"])
         same = next(c for c in candidates if c["same_individual"])
-        print(f"[synthetic-demo] query {identity}: top {best['identity']} ({best['score']:.3f}, {best['match_count']} m); "
-              f"same individual {same['score']:.3f} ({same['match_count']} m)", flush=True)
+        print(
+            f"[synthetic-demo] query {identity}: top {best['identity']} ({best['score']:.3f}, {best['match_count']} m); "
+            f"same individual {same['score']:.3f} ({same['match_count']} m)",
+            flush=True,
+        )
 
     payload = build_payload(queries, gallery, model)
     (out_dir / "synthetic_demo.json").write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
@@ -285,10 +357,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="CzechLynx dataset root")
     parser.add_argument("--metadata", default=DEFAULT_METADATA, help="synthetic metadata CSV, relative to the root")
-    parser.add_argument("--run-dir", type=Path, default=DEFAULT_RUN_DIR,
-                        help="fine-tuned LoMa probe run whose config.snapshot.yaml configures the matcher")
-    parser.add_argument("--checkpoint", type=Path, default=None,
-                        help="override the checkpoint path recorded in the run snapshot")
+    parser.add_argument(
+        "--run-dir",
+        type=Path,
+        default=DEFAULT_RUN_DIR,
+        help="fine-tuned LoMa probe run whose config.snapshot.yaml configures the matcher",
+    )
+    parser.add_argument(
+        "--checkpoint", type=Path, default=None, help="override the checkpoint path recorded in the run snapshot"
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--device", default="auto")
     args = parser.parse_args(list(argv) if argv is not None else None)

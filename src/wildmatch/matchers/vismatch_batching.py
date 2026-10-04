@@ -43,11 +43,9 @@ def grouped_pair_batches(
         raise ValueError("batch_size must be > 0")
     grouped: dict[tuple[int, int], list[tuple[int, int]]] = defaultdict(list)
     for query_index, database_index in pairs:
-        grouped[
-            feature_shape_key(
-                query_features[query_index], database_features[database_index]
-            )
-        ].append((int(query_index), int(database_index)))
+        grouped[feature_shape_key(query_features[query_index], database_features[database_index])].append(
+            (int(query_index), int(database_index))
+        )
     for group in grouped.values():
         yield from (list(chunk) for chunk in iter_chunks(group, batch_size))
 
@@ -73,9 +71,7 @@ def is_cuda_oom(error: BaseException) -> bool:
 
     error_name = type(error).__name__.lower().replace("_", "")
     message = str(error).lower()
-    return "outofmemory" in error_name or (
-        "out of memory" in message and "cuda" in message
-    )
+    return "outofmemory" in error_name or ("out of memory" in message and "cuda" in message)
 
 
 def run_with_batch_backoff(

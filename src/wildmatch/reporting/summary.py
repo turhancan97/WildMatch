@@ -133,8 +133,5 @@ def format_markdown(rows: Sequence[Mapping[str, Any]]) -> str:
         columns = SUMMARY_COLUMNS[:7]
     header = "| " + " | ".join(columns) + " |"
     separator = "| " + " | ".join("---" for _ in columns) + " |"
-    body = [
-        "| " + " | ".join(str(row.get(column, "")) for column in columns) + " |"
-        for row in rows
-    ]
+    body = ["| " + " | ".join(str(row.get(column, "")) for column in columns) + " |" for row in rows]
     return "\n".join([header, separator, *body]) + "\n"

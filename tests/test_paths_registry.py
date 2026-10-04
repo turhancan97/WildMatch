@@ -22,138 +22,166 @@ GMUM_CACHE = "/shared/results/common/kargin/lynx/results"
 
 # PAPER_PROFILES / BENCHMARK_ONLY_PROFILES exactly as the hard-coded module defined them
 # before the registry existed (captured 2026-10-04); under paths=gmum they must not change.
-PROFILES_BEFORE_REGISTRY = {'paper': [{'key': 'nyala',
-            'label': 'Nyala',
-            'source': 'NyalaData',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_NyalaData.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'NyalaData',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'beluga',
-            'label': 'Beluga',
-            'source': 'BelugaID',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_BelugaID.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'BelugaID',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'hyena',
-            'label': 'Hyena',
-            'source': 'HyenaID2022',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_mdsplit_no_background/metadata_HyenaID2022.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'HyenaID2022',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'leopard',
-            'label': 'Leopard',
-            'source': 'LeopardID2022',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_mdsplit_no_background/metadata_LeopardID2022.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'LeopardID2022',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'sea_star',
-            'label': 'Sea Star',
-            'source': 'SeaStarReID2023',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_mdsplit_no_background/metadata_SeaStarReID2023.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'SeaStarReID2023',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'whale_shark',
-            'label': 'Whale Shark',
-            'source': 'WhaleSharkID',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_WhaleSharkID.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'WhaleSharkID',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'turtle',
-            'label': 'Turtle',
-            'source': 'ZindiTurtleRecall',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_ZindiTurtleRecall.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'WildlifeReID-10k',
-            'animal': 'ZindiTurtleRecall',
-            'root': '/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k',
-            'mask_col': None},
-           {'key': 'salamander',
-            'label': 'Salamander',
-            'source': 'SalamanderID2025',
-            'metadata': '/shared/sets/datasets/vision/czechlynx/SalamanderID2025/split_time_closed_no_background.csv',
-            'identity_col': 'identity',
-            'split_col': 'split',
-            'database_value': 'database',
-            'query_value': 'query',
-            'dataset_name': 'SalamanderID2025',
-            'animal': 'SalamanderID2025',
-            'root': '/shared/sets/datasets/vision/czechlynx/SalamanderID2025',
-            'mask_col': None},
-           {'key': 'lynx_closed',
-            'label': 'Lynx (closed)',
-            'source': 'CzechLynx',  # renamed 2026-10-04 (user: v2 is only the internal name)
-            'metadata': '/shared/sets/datasets/vision/czechlynx/CzechLynx_v2/CzechLynxDataset-Metadata-Real.csv',
-            'identity_col': 'unique_name',
-            'split_col': 'split-time_closed',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'CzechLynx_v2',
-            'animal': 'CzechLynx',
-            'root': '/shared/sets/datasets/vision/czechlynx/CzechLynx_v2',
-            'mask_col': 'mask'},
-           {'key': 'lynx_open',
-            'label': 'Lynx (open)',
-            'source': 'CzechLynx',  # renamed 2026-10-04 (user: v2 is only the internal name)
-            'metadata': '/shared/sets/datasets/vision/czechlynx/CzechLynx_v2/CzechLynxDataset-Metadata-Real.csv',
-            'identity_col': 'unique_name',
-            'split_col': 'split-time_open',
-            'database_value': 'train',
-            'query_value': 'test',
-            'dataset_name': 'CzechLynx_v2',
-            'animal': 'CzechLynx',
-            'root': '/shared/sets/datasets/vision/czechlynx/CzechLynx_v2',
-            'mask_col': 'mask'}],
- 'benchmark_only': [{'key': 'jaguar',
-                     'label': 'Jaguar',
-                     'source': 'Kaggle Jaguar Re-ID',
-                     'metadata': '/shared/sets/datasets/vision/czechlynx/jaguar/jaguar_reid_v2_no_background.csv',
-                     'identity_col': 'identity',
-                     'split_col': 'split_v2',
-                     'database_value': 'database',
-                     'query_value': 'query',
-                     'dataset_name': 'JaguarReID',
-                     'animal': 'JaguarReID',
-                     'root': '/shared/sets/datasets/vision/czechlynx/jaguar',
-                     'mask_col': None}]}
+PROFILES_BEFORE_REGISTRY = {
+    "paper": [
+        {
+            "key": "nyala",
+            "label": "Nyala",
+            "source": "NyalaData",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_NyalaData.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "NyalaData",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "beluga",
+            "label": "Beluga",
+            "source": "BelugaID",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_BelugaID.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "BelugaID",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "hyena",
+            "label": "Hyena",
+            "source": "HyenaID2022",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_mdsplit_no_background/metadata_HyenaID2022.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "HyenaID2022",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "leopard",
+            "label": "Leopard",
+            "source": "LeopardID2022",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_mdsplit_no_background/metadata_LeopardID2022.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "LeopardID2022",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "sea_star",
+            "label": "Sea Star",
+            "source": "SeaStarReID2023",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_mdsplit_no_background/metadata_SeaStarReID2023.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "SeaStarReID2023",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "whale_shark",
+            "label": "Whale Shark",
+            "source": "WhaleSharkID",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_WhaleSharkID.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "WhaleSharkID",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "turtle",
+            "label": "Turtle",
+            "source": "ZindiTurtleRecall",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata_no_background/metadata_ZindiTurtleRecall.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "WildlifeReID-10k",
+            "animal": "ZindiTurtleRecall",
+            "root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+            "mask_col": None,
+        },
+        {
+            "key": "salamander",
+            "label": "Salamander",
+            "source": "SalamanderID2025",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/SalamanderID2025/split_time_closed_no_background.csv",
+            "identity_col": "identity",
+            "split_col": "split",
+            "database_value": "database",
+            "query_value": "query",
+            "dataset_name": "SalamanderID2025",
+            "animal": "SalamanderID2025",
+            "root": "/shared/sets/datasets/vision/czechlynx/SalamanderID2025",
+            "mask_col": None,
+        },
+        {
+            "key": "lynx_closed",
+            "label": "Lynx (closed)",
+            "source": "CzechLynx",  # renamed 2026-10-04 (user: v2 is only the internal name)
+            "metadata": "/shared/sets/datasets/vision/czechlynx/CzechLynx_v2/CzechLynxDataset-Metadata-Real.csv",
+            "identity_col": "unique_name",
+            "split_col": "split-time_closed",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "CzechLynx_v2",
+            "animal": "CzechLynx",
+            "root": "/shared/sets/datasets/vision/czechlynx/CzechLynx_v2",
+            "mask_col": "mask",
+        },
+        {
+            "key": "lynx_open",
+            "label": "Lynx (open)",
+            "source": "CzechLynx",  # renamed 2026-10-04 (user: v2 is only the internal name)
+            "metadata": "/shared/sets/datasets/vision/czechlynx/CzechLynx_v2/CzechLynxDataset-Metadata-Real.csv",
+            "identity_col": "unique_name",
+            "split_col": "split-time_open",
+            "database_value": "train",
+            "query_value": "test",
+            "dataset_name": "CzechLynx_v2",
+            "animal": "CzechLynx",
+            "root": "/shared/sets/datasets/vision/czechlynx/CzechLynx_v2",
+            "mask_col": "mask",
+        },
+    ],
+    "benchmark_only": [
+        {
+            "key": "jaguar",
+            "label": "Jaguar",
+            "source": "Kaggle Jaguar Re-ID",
+            "metadata": "/shared/sets/datasets/vision/czechlynx/jaguar/jaguar_reid_v2_no_background.csv",
+            "identity_col": "identity",
+            "split_col": "split_v2",
+            "database_value": "database",
+            "query_value": "query",
+            "dataset_name": "JaguarReID",
+            "animal": "JaguarReID",
+            "root": "/shared/sets/datasets/vision/czechlynx/jaguar",
+            "mask_col": None,
+        }
+    ],
+}
 
 
 # The dataset profiles of the bash launchers removed on 2026-10-04 (probe-parallel-wildlife.sh and
@@ -183,20 +211,20 @@ LAUNCHER_PROFILES = {
 RELOCATED_CHECKPOINTS = {"beluga", "hyenaid2022", "leopardid2022", "nyala", "whaleshark", "zindi"}
 # WildlifeReID-10k launcher checkpoint folders (LoMa, RDD) under <animal>/{loma,rdd}-finetuned/.
 LAUNCHER_CHECKPOINT_DIRS = {
-    "atrw": ('legacy', 'legacy'),
-    "beluga": ('legacy', 'legacy'),
-    "cowdataset": ('legacy', 'legacy'),
-    "giraffes": ('legacy', 'legacy'),
-    "giraffezebraid": ('legacy', 'legacy'),
-    "hyenaid2022": ('legacy', 'legacy'),
-    "jaguar": ('legacy-loma-mined', 'legacy-loma-mined'),
-    "leopardid2022": ('legacy', 'legacy'),
-    "nyala": ('legacy', 'legacy'),
-    "salamander": ('legacy-loma-mined', 'legacy-rdd-mined'),
-    "seastarreid2023": ('legacy', 'legacy'),
-    "stripespotter": ('legacy', 'legacy'),
-    "whaleshark": ('legacy', 'legacy'),
-    "zindi": ('legacy', 'legacy'),
+    "atrw": ("legacy", "legacy"),
+    "beluga": ("legacy", "legacy"),
+    "cowdataset": ("legacy", "legacy"),
+    "giraffes": ("legacy", "legacy"),
+    "giraffezebraid": ("legacy", "legacy"),
+    "hyenaid2022": ("legacy", "legacy"),
+    "jaguar": ("legacy-loma-mined", "legacy-loma-mined"),
+    "leopardid2022": ("legacy", "legacy"),
+    "nyala": ("legacy", "legacy"),
+    "salamander": ("legacy-loma-mined", "legacy-rdd-mined"),
+    "seastarreid2023": ("legacy", "legacy"),
+    "stripespotter": ("legacy", "legacy"),
+    "whaleshark": ("legacy", "legacy"),
+    "zindi": ("legacy", "legacy"),
 }
 
 
@@ -232,7 +260,11 @@ class PathProfileTests(unittest.TestCase):
             argv = ["probe.py", "dataset=salamander"]
             self.assertEqual(apply_paths_profile(argv), "gmum")
             self.assertEqual(argv[-1], "paths=gmum")
-            for given in (["probe.py", "paths=default"], ["probe.py", "--config-path", "/x"], ["probe.py", "-cp", "/x"]):
+            for given in (
+                ["probe.py", "paths=default"],
+                ["probe.py", "--config-path", "/x"],
+                ["probe.py", "-cp", "/x"],
+            ):
                 argv = list(given)
                 self.assertIsNone(apply_paths_profile(argv))
                 self.assertEqual(argv, given)
@@ -244,8 +276,20 @@ class PathProfileTests(unittest.TestCase):
 class RegistryTests(unittest.TestCase):
     def test_registry_covers_every_launcher_profile_with_identical_values(self):
         self.assertEqual(sorted(LAUNCHER_PROFILES), R.dataset_keys())
-        fields = ("name", "animal", "root", "metadata_file", "label_col", "mask_col", "no_background",
-                  "image_variant", "split_col", "database_split_value", "query_split_value", "calibration_size")
+        fields = (
+            "name",
+            "animal",
+            "root",
+            "metadata_file",
+            "label_col",
+            "mask_col",
+            "no_background",
+            "image_variant",
+            "split_col",
+            "database_split_value",
+            "query_split_value",
+            "calibration_size",
+        )
         for key, line in LAUNCHER_PROFILES.items():
             entry = R.load_dataset(key, "gmum")
             for field, expected in zip(fields, line.split("|")):
@@ -272,28 +316,38 @@ class RegistryTests(unittest.TestCase):
         open_ = f"{GMUM_DATA}/checkpoints/czechlynx-time-open"
         expected = {
             "czechlynx_closed": {
-                "custom": {"loma": f"{closed}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
-                           # the paper's CzechLynx closed RDD rows use the relaxed-score checkpoint
-                           "rdd-lightglue": f"{closed}/rdd-finetuned-rdd-mined-legacy-relaxed/epoch_299/model.safetensors"},
+                "custom": {
+                    "loma": f"{closed}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                    # the paper's CzechLynx closed RDD rows use the relaxed-score checkpoint
+                    "rdd-lightglue": f"{closed}/rdd-finetuned-rdd-mined-legacy-relaxed/epoch_299/model.safetensors",
+                },
                 "descriptor-fine-tuned": {
                     "loma": f"{closed}/loma-b-descriptor-finetuned-legacy/epoch_252/model.safetensors",
-                    "rdd-lightglue": f"{closed}/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors"},
+                    "rdd-lightglue": f"{closed}/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors",
+                },
                 "joint-fine-tuned": {
                     # the paper's joint rows use epoch 100 (the RDD joint run has no epoch 299)
                     "loma": f"{closed}/loma-b-joint-finetuned-loma-mined-legacy/epoch_100/model.safetensors",
-                    "rdd-lightglue": f"{closed}/rdd-joint-finetuned-loma-mined-legacy/epoch_100"},
+                    "rdd-lightglue": f"{closed}/rdd-joint-finetuned-loma-mined-legacy/epoch_100",
+                },
             },
         }
         for key in ("czechlynx_open", "czechlynx_unseen_eval"):
-            expected[key] = {"custom": {"loma": f"{open_}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
-                                        "rdd-lightglue": f"{open_}/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"}}
+            expected[key] = {
+                "custom": {
+                    "loma": f"{open_}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                    "rdd-lightglue": f"{open_}/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                }
+            }
         for key, checkpoints in expected.items():
             self.assertEqual(OmegaConf.to_container(R.load_dataset(key, "gmum").registry.checkpoints), checkpoints, key)
 
     def test_profiles_under_gmum_are_unchanged(self):
-        code = ("import json\nfrom wildmatch.reporting.paper_datasets import PAPER_PROFILES, BENCHMARK_ONLY_PROFILES\n"
-                "d = lambda ps: [{k: (str(v) if v is not None else None) for k, v in p._asdict().items()} for p in ps]\n"
-                "print(json.dumps({'paper': d(PAPER_PROFILES), 'benchmark_only': d(BENCHMARK_ONLY_PROFILES)}))")
+        code = (
+            "import json\nfrom wildmatch.reporting.paper_datasets import PAPER_PROFILES, BENCHMARK_ONLY_PROFILES\n"
+            "d = lambda ps: [{k: (str(v) if v is not None else None) for k, v in p._asdict().items()} for p in ps]\n"
+            "print(json.dumps({'paper': d(PAPER_PROFILES), 'benchmark_only': d(BENCHMARK_ONLY_PROFILES)}))"
+        )
         env = dict(os.environ, WILDMATCH_PATHS="gmum")
         out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env, check=True).stdout
         self.assertEqual(json.loads(out), PROFILES_BEFORE_REGISTRY)
@@ -303,9 +357,16 @@ class RegistryTests(unittest.TestCase):
             with initialize_config_module(version_base="1.3", config_module="wildmatch.conf"):
                 cfg = compose(config_name="probe", overrides=["paths=gmum", f"dataset={key}"])
             OmegaConf.resolve(cfg)
-            self.assertEqual(OmegaConf.to_container(cfg.dataset), OmegaConf.to_container(R.load_dataset(key, "gmum")), key)
-        self.assertEqual(cfg.benchmark.cache.dir, f"{GMUM_CACHE}/{cfg.dataset.name}/{cfg.dataset.animal}/cache/features")
-        self.assertEqual(cfg.benchmark.methods.vismatch.cache_dir, f"{GMUM_CACHE}/{cfg.dataset.name}/{cfg.dataset.animal}/cache/vismatch")
+            self.assertEqual(
+                OmegaConf.to_container(cfg.dataset), OmegaConf.to_container(R.load_dataset(key, "gmum")), key
+            )
+        self.assertEqual(
+            cfg.benchmark.cache.dir, f"{GMUM_CACHE}/{cfg.dataset.name}/{cfg.dataset.animal}/cache/features"
+        )
+        self.assertEqual(
+            cfg.benchmark.methods.vismatch.cache_dir,
+            f"{GMUM_CACHE}/{cfg.dataset.name}/{cfg.dataset.animal}/cache/vismatch",
+        )
         with initialize_config_module(version_base="1.3", config_module="wildmatch.conf"):
             default = compose(config_name="probe", overrides=["paths=default"])
         self.assertEqual(default.dataset.name, "CzechLynx_v2")
@@ -324,8 +385,9 @@ class SubmissionSnapshotTests(unittest.TestCase):
             snapshot.mkdir()
             M._snapshot_config_groups(custom / "probe.yaml", snapshot)  # groups come from the package
             (snapshot / "probe.yaml").write_text((custom / "probe.yaml").read_text())
-            self.assertEqual(sorted(p.name for p in (snapshot / "dataset").glob("*.yaml")),
-                             [f"{k}.yaml" for k in R.dataset_keys()])
+            self.assertEqual(
+                sorted(p.name for p in (snapshot / "dataset").glob("*.yaml")), [f"{k}.yaml" for k in R.dataset_keys()]
+            )
             digest = M.config_tree_sha256(snapshot)
             (snapshot / "dataset" / "salamander.yaml").write_text("name: changed\n")
             self.assertNotEqual(M.config_tree_sha256(snapshot), digest)

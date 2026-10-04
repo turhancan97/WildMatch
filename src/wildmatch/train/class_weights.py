@@ -26,10 +26,7 @@ def compute_identity_class_weights(
     """
 
     if weighting not in {"inverse_frequency", "none"}:
-        raise ValueError(
-            "class_weighting must be 'inverse_frequency' or 'none'; "
-            f"got {weighting!r}"
-        )
+        raise ValueError(f"class_weighting must be 'inverse_frequency' or 'none'; got {weighting!r}")
     if not isinstance(normalize, (bool, np.bool_)):
         raise ValueError(f"class_weight_normalize must be boolean; got {normalize!r}")
     if max_weight is not None:

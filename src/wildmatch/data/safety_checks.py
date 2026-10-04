@@ -19,8 +19,7 @@ def _detect_path_col(df: pd.DataFrame, preferred: Optional[str] = None) -> str:
         if col in df.columns:
             return col
     raise KeyError(
-        "Could not find an image path column in dataframe. "
-        "Expected one of: path, filepath, file, image_path, img_path."
+        "Could not find an image path column in dataframe. Expected one of: path, filepath, file, image_path, img_path."
     )
 
 
@@ -44,7 +43,9 @@ def _save_histogram(
 ) -> None:
     n_ids = max(int(counts_a.size), int(counts_b.size), 1)
     bins = max(10, min(100, int(round(math.sqrt(n_ids) * 2))))
-    max_count = max(float(counts_a.max()) if not counts_a.empty else 0.0, float(counts_b.max()) if not counts_b.empty else 0.0)
+    max_count = max(
+        float(counts_a.max()) if not counts_a.empty else 0.0, float(counts_b.max()) if not counts_b.empty else 0.0
+    )
     if max_count <= 1:
         bins = min(bins, 10)
 
@@ -180,19 +181,13 @@ def run_split_safety_checks(
         f"{split_a_name}: rows={len(df_a)} ids={len(labels_a)} | "
         f"{split_b_name}: rows={len(df_b)} ids={len(labels_b)}"
     )
-    print(
-        f"[safety] identity coverage ({split_b_name} in {split_a_name}): "
-        f"seen={len(seen_b)} unseen={len(unseen_b)}"
-    )
+    print(f"[safety] identity coverage ({split_b_name} in {split_a_name}): seen={len(seen_b)} unseen={len(unseen_b)}")
     if unseen_b:
         print(f"[safety] unseen sample ({split_b_name} not in {split_a_name}): {unseen_b[:10]}")
     print(f"[safety] overlapping files between {split_a_name}/{split_b_name}: {len(overlap)}")
     if overlap:
         print(f"[safety] overlap sample: {overlap[:5]}")
-    print(
-        f"[safety] duplicate content hashes between {split_a_name}/{split_b_name}: "
-        f"{len(duplicate_hashes)}"
-    )
+    print(f"[safety] duplicate content hashes between {split_a_name}/{split_b_name}: {len(duplicate_hashes)}")
     if missing_files:
         print(f"[safety][warning] missing/unreadable files: {len(set(missing_files))}")
     print(f"[safety] saved artifacts under: {checks_dir}")
@@ -210,13 +205,9 @@ def run_split_safety_checks(
         )
 
     if unseen_b:
-        detail = (
-            f"{len(unseen_b)} identities in {split_b_name} are not present in {split_a_name}."
-        )
+        detail = f"{len(unseen_b)} identities in {split_b_name} are not present in {split_a_name}."
         if require_b_labels_in_a:
-            raise ValueError(
-                f"Safety check failed: {detail} This violates closed-set classification assumptions."
-            )
+            raise ValueError(f"Safety check failed: {detail} This violates closed-set classification assumptions.")
         print(
             f"[safety][warning] {detail} Open-set evaluation will continue; "
             "retrieval/classifier metrics must account for the coverage gap."

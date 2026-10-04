@@ -14,9 +14,7 @@ def resolve_configured_model_checkpoint(
     if explicit_path is not None:
         explicit = Path(explicit_path)
         if _is_full_checkpoint_name(explicit.name):
-            raise ValueError(
-                f"Model-only inference cannot use a full checkpoint: {explicit}"
-            )
+            raise ValueError(f"Model-only inference cannot use a full checkpoint: {explicit}")
         return explicit
     search_dirs = [Path(results_dir), *(Path(path) for path in (fallback_dirs or []))]
     errors = []
@@ -43,9 +41,7 @@ def resolve_model_checkpoint(results_dir: Path, filename: str = "checkpoint-fina
         raise FileNotFoundError(f"Results directory not found: {results_dir}")
 
     if _is_full_checkpoint_name(str(filename)):
-        raise ValueError(
-            f"Model-only inference cannot search for a full checkpoint: {filename}"
-        )
+        raise ValueError(f"Model-only inference cannot search for a full checkpoint: {filename}")
 
     candidate_names = [str(filename)]
     if str(filename) != "checkpoint-final.pth":
@@ -86,9 +82,8 @@ def resolve_model_checkpoint(results_dir: Path, filename: str = "checkpoint-fina
         return candidates[0][4]
 
     searched = ", ".join(candidate_names + ["checkpoint-final_<dataset_tag>.pth"])
-    raise FileNotFoundError(
-        f"No model-only checkpoint found under {results_dir}. Searched: {searched}"
-    )
+    raise FileNotFoundError(f"No model-only checkpoint found under {results_dir}. Searched: {searched}")
+
 
 def save_full_checkpoint(
     path: Path,

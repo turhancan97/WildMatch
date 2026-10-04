@@ -53,8 +53,7 @@ class BenchmarkDatasetView(Dataset):
             mask_data = raw_mask
         else:
             raise ValueError(
-                f"Unsupported mask type at row index {idx}: {type(raw_mask)}. "
-                "Expected JSON string or COCO-RLE dict."
+                f"Unsupported mask type at row index {idx}: {type(raw_mask)}. Expected JSON string or COCO-RLE dict."
             )
 
         try:

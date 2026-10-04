@@ -39,14 +39,21 @@ def load_manifest() -> Dict[str, Any]:
     return manifest
 
 
-def select(entries: Iterable[Dict[str, Any]], datasets: Sequence[str] = (), matchers: Sequence[str] = ()) -> List[Dict[str, Any]]:
+def select(
+    entries: Iterable[Dict[str, Any]], datasets: Sequence[str] = (), matchers: Sequence[str] = ()
+) -> List[Dict[str, Any]]:
     entries = list(entries)
     known = {entry["dataset"] for entry in entries}
     unknown = set(datasets) - known
     if unknown:
-        raise WeightsError(f"no published checkpoints for {', '.join(sorted(unknown))}; available: {', '.join(sorted(known))}")
-    return [entry for entry in entries
-            if (not datasets or entry["dataset"] in datasets) and (not matchers or entry["matcher"] in matchers)]
+        raise WeightsError(
+            f"no published checkpoints for {', '.join(sorted(unknown))}; available: {', '.join(sorted(known))}"
+        )
+    return [
+        entry
+        for entry in entries
+        if (not datasets or entry["dataset"] in datasets) and (not matchers or entry["matcher"] in matchers)
+    ]
 
 
 def sha256_file(path: Path) -> str:
@@ -74,8 +81,15 @@ def _hub_download(repo_id: str, filename: str, revision: str, token: Optional[st
     return Path(hf_hub_download(repo_id=repo_id, filename=filename, revision=revision, token=token))
 
 
-def download(entries: Iterable[Dict[str, Any]], root: Path, repo_id: str, revision: str = "main",
-             token: Optional[str] = None, force: bool = False, log=print) -> List[Path]:
+def download(
+    entries: Iterable[Dict[str, Any]],
+    root: Path,
+    repo_id: str,
+    revision: str = "main",
+    token: Optional[str] = None,
+    force: bool = False,
+    log=print,
+) -> List[Path]:
     """Fetch each entry's files into ``root``; files already present and valid are kept."""
     written = []
     for entry in entries:
@@ -104,8 +118,12 @@ def download(entries: Iterable[Dict[str, Any]], root: Path, repo_id: str, revisi
 def stage(entries: Iterable[Dict[str, Any]], root: Path, output: Path, log=print) -> Path:
     """Copy the local files into ``output`` with the Hub layout, after checking every SHA-256."""
     entries = list(entries)
-    problems = [f"{item['local']}: {status}" for entry in entries for item in entry["files"]
-                if (status := file_status(root, item)) != "ok"]
+    problems = [
+        f"{item['local']}: {status}"
+        for entry in entries
+        for item in entry["files"]
+        if (status := file_status(root, item)) != "ok"
+    ]
     if problems:
         raise WeightsError("cannot stage, local files are missing or changed:\n  " + "\n  ".join(problems))
     if output.exists() and any(output.iterdir()):
@@ -125,10 +143,12 @@ def stage(entries: Iterable[Dict[str, Any]], root: Path, output: Path, log=print
 def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> int:
     parser = argparse.ArgumentParser(prog=prog, description="List, verify, download or stage the paper checkpoints.")
     sub = parser.add_subparsers(dest="action", required=True)
-    for name, text in (("list", "show every published checkpoint and its local status"),
-                       ("verify", "check local files against their SHA-256 (exit 1 on any problem)"),
-                       ("download", "fetch checkpoints from the Hugging Face Hub"),
-                       ("stage", "copy local files into a folder laid out like the Hub repository")):
+    for name, text in (
+        ("list", "show every published checkpoint and its local status"),
+        ("verify", "check local files against their SHA-256 (exit 1 on any problem)"),
+        ("download", "fetch checkpoints from the Hugging Face Hub"),
+        ("stage", "copy local files into a folder laid out like the Hub repository"),
+    ):
         command = sub.add_parser(name, help=text)
         command.add_argument("--dataset", action="append", default=[], help="registry key (repeatable; default all)")
         command.add_argument("--matcher", action="append", default=[], choices=MATCHERS)
@@ -136,7 +156,9 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
         if name == "download":
             command.add_argument("--repo", help="Hub repository (default: weights.yaml repo_id or WILDMATCH_HUB_REPO)")
             command.add_argument("--revision", help="Hub revision (default: weights.yaml revision)")
-            command.add_argument("--token", default=os.environ.get("HF_TOKEN"), help="Hub token for a private repository")
+            command.add_argument(
+                "--token", default=os.environ.get("HF_TOKEN"), help="Hub token for a private repository"
+            )
             command.add_argument("--force", action="store_true", help="download even when a valid local file exists")
         if name == "stage":
             command.add_argument("--output", type=Path, required=True)
@@ -158,7 +180,9 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
             repo_id = args.repo or manifest.get("repo_id")
             if not repo_id:
                 raise WeightsError("no Hub repository configured: pass --repo or set WILDMATCH_HUB_REPO")
-            download(entries, root, repo_id, args.revision or manifest.get("revision") or "main", args.token, args.force)
+            download(
+                entries, root, repo_id, args.revision or manifest.get("revision") or "main", args.token, args.force
+            )
             return 0
         stage(entries, root, args.output)
         print(f"Upload with: hf upload <repo> {args.output} . --repo-type model --private")

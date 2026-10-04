@@ -111,13 +111,15 @@ def main() -> None:
     args = parse_args()
     # Times to match the CVPR body text; STIX (bundled with matplotlib) is a
     # Times-compatible fallback when Times New Roman is not installed.
-    plt.rcParams.update({
-        "font.family": "serif",
-        "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
-        "mathtext.fontset": "stix",
-        "pdf.fonttype": 42,
-        "ps.fonttype": 42,
-    })
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
+            "mathtext.fontset": "stix",
+            "pdf.fonttype": 42,
+            "ps.fonttype": 42,
+        }
+    )
     profiles = {profile.key: profile for profile in PAPER_PROFILES}
     frames: dict = {}
     columns = len(EXAMPLES)
@@ -129,8 +131,10 @@ def main() -> None:
     figure, axes = plt.subplots(1, columns, figsize=(args.width, height), squeeze=False)
     axes = axes[0]
     figure.subplots_adjust(
-        left=left_margin, right=1 - right_margin,
-        top=1 - header / height, bottom=footer / height,
+        left=left_margin,
+        right=1 - right_margin,
+        top=1 - header / height,
+        bottom=footer / height,
         wspace=gap * columns / (1 - left_margin - right_margin - gap * (columns - 1)),
     )
     for axis, example in zip(axes, EXAMPLES):
@@ -156,8 +160,16 @@ def main() -> None:
         if index == columns or EXAMPLES[index].group != EXAMPLES[start].group:
             left = axes[start].get_position().x0
             right = axes[index - 1].get_position().x1
-            label = figure.text((left + right) / 2, rule_y + 0.035 / height, EXAMPLES[start].group,
-                                ha="center", va="bottom", fontsize=8, fontweight="bold", linespacing=1.1)
+            label = figure.text(
+                (left + right) / 2,
+                rule_y + 0.035 / height,
+                EXAMPLES[start].group,
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                fontweight="bold",
+                linespacing=1.1,
+            )
             span = (right - left) * figure.bbox.width
             if label.get_window_extent(renderer).width > span * 0.96:
                 words = EXAMPLES[start].group.split(" ")

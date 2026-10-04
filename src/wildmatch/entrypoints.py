@@ -25,9 +25,7 @@ def reject_removed_probe_budget_overrides(argv: Optional[Iterable[str]] = None) 
     for argument in sys.argv[1:] if argv is None else argv:
         key = argument.split("=", 1)[0]
         if key in _REMOVED_PROBE_BUDGET_KEYS:
-            raise ValueError(
-                f"'{key}' is no longer configurable; use benchmark.candidate_k instead."
-            )
+            raise ValueError(f"'{key}' is no longer configurable; use benchmark.candidate_k instead.")
 
 
 @hydra.main(version_base="1.3", config_path="conf", config_name="probe")

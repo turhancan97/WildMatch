@@ -149,13 +149,24 @@ class PaperTableTests(unittest.TestCase):
             output = Path(temp_dir) / "reports"
             write_run(root, animal="Lynx", run_id="20260100_cosine", method="cosine")
             write_run(root, animal="Lynx", run_id="20260101_wildfusion", method="wildfusion", candidate_k=50)
-            write_run(root, animal="Lynx", run_id="20260102_default", method="vismatch", variant="default", candidate_k=50)
-            write_run(root, animal="Lynx", run_id="20260103_descriptor", method="vismatch", variant="custom", candidate_k=50, top_1=0.8)
+            write_run(
+                root, animal="Lynx", run_id="20260102_default", method="vismatch", variant="default", candidate_k=50
+            )
+            write_run(
+                root,
+                animal="Lynx",
+                run_id="20260103_descriptor",
+                method="vismatch",
+                variant="custom",
+                candidate_k=50,
+                top_1=0.8,
+            )
             manifest_path = root / "probe" / "Dataset" / "Lynx" / "20260103_descriptor" / "run_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["variant"] = "loma"
             manifest["vismatch_checkpoint"] = {
-                "source": "custom", "resolved_component_mode": "descriptor_only",
+                "source": "custom",
+                "resolved_component_mode": "descriptor_only",
                 "checkpoint_variant": "descriptor-fine-tuned",
             }
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
@@ -172,31 +183,58 @@ class PaperTableTests(unittest.TestCase):
             self.assertIn("Lynx_descriptor_loma_main.tex", names)
             self.assertIn("Lynx_descriptor_loma_ablation.csv", names)
             self.assertNotIn("descriptor-fine-tuned", (output / "Lynx_main.tex").read_text(encoding="utf-8"))
+
     def test_joint_rows_and_outputs_are_separate_from_matcher_and_descriptor_tables(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
             output = Path(temp_dir) / "reports"
             write_run(root, animal="Lynx", run_id="20260100_cosine", method="cosine")
-            write_run(root, animal="Lynx", run_id="20260102_default", method="vismatch", variant="default", candidate_k=50)
-            write_run(root, animal="Lynx", run_id="20260103_matcher", method="vismatch", variant="custom", candidate_k=50, top_1=0.7)
-            write_run(root, animal="Lynx", run_id="20260104_joint", method="vismatch", variant="custom", candidate_k=50, top_1=0.9)
-            for run_id, mode, variant in (("20260103_matcher", "matcher_only", "matcher-fine-tuned"),
-                                          ("20260104_joint", "full", "full-fine-tuned")):
+            write_run(
+                root, animal="Lynx", run_id="20260102_default", method="vismatch", variant="default", candidate_k=50
+            )
+            write_run(
+                root,
+                animal="Lynx",
+                run_id="20260103_matcher",
+                method="vismatch",
+                variant="custom",
+                candidate_k=50,
+                top_1=0.7,
+            )
+            write_run(
+                root,
+                animal="Lynx",
+                run_id="20260104_joint",
+                method="vismatch",
+                variant="custom",
+                candidate_k=50,
+                top_1=0.9,
+            )
+            for run_id, mode, variant in (
+                ("20260103_matcher", "matcher_only", "matcher-fine-tuned"),
+                ("20260104_joint", "full", "full-fine-tuned"),
+            ):
                 manifest_path = root / "probe" / "Dataset" / "Lynx" / run_id / "run_manifest.json"
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 manifest["variant"] = "loma"
                 manifest["vismatch_checkpoint"] = {
-                    "source": "custom", "resolved_component_mode": mode, "checkpoint_variant": variant,
+                    "source": "custom",
+                    "resolved_component_mode": mode,
+                    "checkpoint_variant": variant,
                 }
                 manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             records = discover_records(root)
             main = {row["checkpoint"] for row in build_main_rows(records, "Lynx", 50)}
             self.assertIn("matcher-fine-tuned", main)
             self.assertNotIn("full-fine-tuned", main)
-            joint_main, _ = build_descriptor_rows(records, animal="Lynx", matcher="loma", budgets=(10, 50), family="joint")
+            joint_main, _ = build_descriptor_rows(
+                records, animal="Lynx", matcher="loma", budgets=(10, 50), family="joint"
+            )
             self.assertIn("full-fine-tuned", {row["checkpoint"] for row in joint_main})
             self.assertNotIn("matcher-fine-tuned", {row["checkpoint"] for row in joint_main})
-            names = {path.name for path in write_animal_tables(records, animal="Lynx", output_dir=output, budgets=(10, 50))}
+            names = {
+                path.name for path in write_animal_tables(records, animal="Lynx", output_dir=output, budgets=(10, 50))
+            }
             self.assertIn("Lynx_joint_loma_main.tex", names)
             self.assertIn("Lynx_joint_loma_ablation.csv", names)
             self.assertFalse(any("descriptor" in name for name in names))
@@ -206,8 +244,22 @@ class PaperTableTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
             output = Path(temp_dir) / "reports" / "paper_tables"
-            write_run(root, animal="Lynx", split_protocol="split-time_closed", run_id="20260101_closed", method="cosine", top_1=0.4)
-            write_run(root, animal="Lynx", split_protocol="split-time_open", run_id="20260102_open", method="cosine", top_1=0.8)
+            write_run(
+                root,
+                animal="Lynx",
+                split_protocol="split-time_closed",
+                run_id="20260101_closed",
+                method="cosine",
+                top_1=0.4,
+            )
+            write_run(
+                root,
+                animal="Lynx",
+                split_protocol="split-time_open",
+                run_id="20260102_open",
+                method="cosine",
+                top_1=0.8,
+            )
             records = discover_records(root)
 
             self.assertEqual(discover_splits(records, "Lynx"), ["split-time_closed", "split-time_open"])
@@ -270,6 +322,7 @@ class PaperTableTests(unittest.TestCase):
             records = discover_records(root)
             with self.assertRaisesRegex(ValueError, "invalid for unseen_eval_split"):
                 build_main_rows(records, "CzechLynx", 250, "unseen_eval_split")
+
     def test_discovery_filters_status_and_selects_newest_run(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
@@ -359,8 +412,26 @@ class PaperTableTests(unittest.TestCase):
     def test_checkpoint_variants_and_shortlist_map_are_separate(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
-            write_run(root, animal="Lynx", run_id="20260101_default", method="vismatch", variant="default", candidate_k=100, map_value=float("nan"), map_at_k=0.31)
-            write_run(root, animal="Lynx", run_id="20260102_custom", method="vismatch", variant="custom", candidate_k=100, map_value=float("nan"), map_at_k=0.72)
+            write_run(
+                root,
+                animal="Lynx",
+                run_id="20260101_default",
+                method="vismatch",
+                variant="default",
+                candidate_k=100,
+                map_value=float("nan"),
+                map_at_k=0.31,
+            )
+            write_run(
+                root,
+                animal="Lynx",
+                run_id="20260102_custom",
+                method="vismatch",
+                variant="custom",
+                candidate_k=100,
+                map_value=float("nan"),
+                map_at_k=0.72,
+            )
             records = discover_records(root)
             rows = build_main_rows(records, "Lynx", 100)
 

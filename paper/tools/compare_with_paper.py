@@ -24,9 +24,14 @@ from typing import Dict, Iterable, List, Optional
 import yaml
 
 METRICS = ("top_1", "top_5", "balanced_top_1")
-METHOD_LABELS = {"cosine": "Cosine", "wildfusion": "WildFusion", "vismatch": "Vismatch",
-                 "linear_probe": "Linear Probe", "efficient_probe": "Efficient Probe",
-                 "local_lightglue": "Local LightGlue"}
+METHOD_LABELS = {
+    "cosine": "Cosine",
+    "wildfusion": "WildFusion",
+    "vismatch": "Vismatch",
+    "linear_probe": "Linear Probe",
+    "efficient_probe": "Efficient Probe",
+    "local_lightglue": "Local LightGlue",
+}
 SHORTLIST_METHODS = {"wildfusion", "vismatch", "local_lightglue"}
 PROBE_METHODS = {"linear_probe", "efficient_probe"}
 TRAIN_MODE_LABELS = {"classifier": "frozen", "partial": "partial fine-tuned", "all": "full fine-tuned"}
@@ -73,8 +78,10 @@ def paper_rows(results_dir: Path, animal: str, split: str) -> List[Dict[str, str
 
 def find_paper_row(rows: Iterable[Dict[str, str]], identity: Dict[str, str]) -> Optional[Dict[str, str]]:
     for row in rows:
-        if all(str(row.get(key, "")) == identity[key]
-               for key in ("method", "matcher", "backbone", "checkpoint", "class_weighting", "candidate_k")):
+        if all(
+            str(row.get(key, "")) == identity[key]
+            for key in ("method", "matcher", "backbone", "checkpoint", "class_weighting", "candidate_k")
+        ):
             return row
     return None
 
@@ -106,15 +113,19 @@ def render(table: List[Dict[str, object]]) -> str:
         values = [row[f"{prefix}_{m}"] for m in METRICS]
         return " / ".join(f"{v:.1f}" if v != "" else "n/a" for v in values)
 
-    lines = ["| Dataset | Method | k | Paper T1 / T5 / bT1 | New T1 / T5 / bT1 | dT1 | dbT1 |",
-             "| --- | --- | --- | --- | --- | --- | --- |"]
+    lines = [
+        "| Dataset | Method | k | Paper T1 / T5 / bT1 | New T1 / T5 / bT1 | dT1 | dbT1 |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
     for row in table:
         method = row["method"] + ("" if row["matcher"] == "-" else f" {row['matcher']}")
         if row["checkpoint"] != "default":
             method += f" {row['checkpoint']}"
         delta = lambda key: f"{row[key]:+.1f}" if row[key] != "" else ""
-        lines.append(f"| {row['animal']} | {method} | {row['candidate_k'] or '-'} | {triple(row, 'paper')} | "
-                     f"{triple(row, 'new')} | {delta('delta_top_1')} | {delta('delta_balanced_top_1')} |")
+        lines.append(
+            f"| {row['animal']} | {method} | {row['candidate_k'] or '-'} | {triple(row, 'paper')} | "
+            f"{triple(row, 'new')} | {delta('delta_top_1')} | {delta('delta_balanced_top_1')} |"
+        )
     return "\n".join(lines)
 
 
@@ -133,8 +144,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     source.add_argument("--job", help="sweep array id; completed tasks are read from --index")
     source.add_argument("--run", type=Path, action="append", help="run directory (repeatable)")
     parser.add_argument("--index", type=Path, default=Path("logs/index.csv"))
-    parser.add_argument("--paper-results", type=Path, default=None,
-                        help="the paper repository's results/ (default: paths external.paper_repo)")
+    parser.add_argument(
+        "--paper-results",
+        type=Path,
+        default=None,
+        help="the paper repository's results/ (default: paths external.paper_repo)",
+    )
     parser.add_argument("--output", type=Path, help="also write the table as CSV")
     args = parser.parse_args(argv)
     results_dir = args.paper_results or default_results_dir()

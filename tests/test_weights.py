@@ -27,8 +27,20 @@ class ManifestTests(unittest.TestCase):
     def test_every_paper_dataset_has_both_matchers(self):
         manifest = W.load_manifest()
         published = {(e["dataset"], e["matcher"]) for e in manifest["entries"]}
-        keys = {key for key in ("hyenaid2022", "leopardid2022", "nyala", "seastarreid2023", "whaleshark", "zindi",
-                                "salamander", "czechlynx_closed", "czechlynx_open")}
+        keys = {
+            key
+            for key in (
+                "hyenaid2022",
+                "leopardid2022",
+                "nyala",
+                "seastarreid2023",
+                "whaleshark",
+                "zindi",
+                "salamander",
+                "czechlynx_closed",
+                "czechlynx_open",
+            )
+        }
         self.assertEqual(published, {(k, m) for k in keys for m in W.MATCHERS})
         # Every paper profile is published except BelugaID, which the paper dropped; czechlynx_open
         # serves the unseen-identity protocol.
@@ -64,9 +76,24 @@ class DownloadAndStageTests(unittest.TestCase):
         for name, content in self.data.items():
             (self.hub / name).parent.mkdir(parents=True, exist_ok=True)
             (self.hub / name).write_bytes(content)
-        self.entries = [{"dataset": "a", "matcher": "loma", "files": [
-            {"hub": "a/loma/model.safetensors", "local": "x/run/epoch_299/model.safetensors", "sha256": _sha(b"weights")},
-            {"hub": "a/loma/czechlynx_protocol.json", "local": "x/run/czechlynx_protocol.json", "sha256": _sha(b"{}")}]}]
+        self.entries = [
+            {
+                "dataset": "a",
+                "matcher": "loma",
+                "files": [
+                    {
+                        "hub": "a/loma/model.safetensors",
+                        "local": "x/run/epoch_299/model.safetensors",
+                        "sha256": _sha(b"weights"),
+                    },
+                    {
+                        "hub": "a/loma/czechlynx_protocol.json",
+                        "local": "x/run/czechlynx_protocol.json",
+                        "sha256": _sha(b"{}"),
+                    },
+                ],
+            }
+        ]
 
     def tearDown(self):
         self._tmp.cleanup()
@@ -99,9 +126,14 @@ class DownloadAndStageTests(unittest.TestCase):
         self.assertIn(_sha(b"weights"), (out / "SHA256SUMS.md").read_text())
 
     def test_cli_verify_and_missing_repository(self):
-        with mock.patch.object(W, "load_manifest", return_value={"repo_id": None, "revision": "main", "entries": self.entries}), \
-                mock.patch.object(W, "checkpoint_root", return_value=self.root), \
-                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+        with (
+            mock.patch.object(
+                W, "load_manifest", return_value={"repo_id": None, "revision": "main", "entries": self.entries}
+            ),
+            mock.patch.object(W, "checkpoint_root", return_value=self.root),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()) as err,
+        ):
             self.assertEqual(W.main(["verify"]), 1)
             with self.assertRaises(SystemExit):
                 W.main(["download"])
@@ -114,12 +146,22 @@ class PrepareCheckTests(unittest.TestCase):
             root = Path(tmp)
             (root / "img").mkdir()
             (root / "img" / "a.jpg").write_bytes(b"x")
-            pd.DataFrame({"identity": [1, 2], "split": ["database", "query"], "path": ["img/a.jpg", "img/b.jpg"]}).to_csv(
-                root / "meta.csv", index=False)
-            entry = OmegaConf.create({"root": str(root), "metadata_file": "meta.csv", "label_col": "identity",
-                                      "split_col": "split", "database_split_value": "database",
-                                      "query_split_value": "query", "no_background": True, "mask_col": "mask",
-                                      "registry": {"download": {"raw": "somewhere", "derived": None}}})
+            pd.DataFrame(
+                {"identity": [1, 2], "split": ["database", "query"], "path": ["img/a.jpg", "img/b.jpg"]}
+            ).to_csv(root / "meta.csv", index=False)
+            entry = OmegaConf.create(
+                {
+                    "root": str(root),
+                    "metadata_file": "meta.csv",
+                    "label_col": "identity",
+                    "split_col": "split",
+                    "database_split_value": "database",
+                    "query_split_value": "query",
+                    "no_background": True,
+                    "mask_col": "mask",
+                    "registry": {"download": {"raw": "somewhere", "derived": None}},
+                }
+            )
             with mock.patch.object(P, "load_dataset", return_value=entry):
                 report = P.check("x")
             self.assertFalse(report["ready"])
@@ -138,8 +180,10 @@ class PrepareCheckTests(unittest.TestCase):
             download = load_dataset(key, "default").registry.download
             self.assertTrue(download.raw, key)
             self.assertIn(download.reproducible, (True, False), key)
-        self.assertEqual(load_dataset("czechlynx_unseen_eval", "gmum").metadata_file,
-                         "metadata/czechlynx-unseen-eval/metadata_unseen_eval.csv")
+        self.assertEqual(
+            load_dataset("czechlynx_unseen_eval", "gmum").metadata_file,
+            "metadata/czechlynx-unseen-eval/metadata_unseen_eval.csv",
+        )
 
     def test_unseen_split_parameters_match_the_paper_manifest(self):
         self.assertEqual(P.UNSEEN_SOURCE, "czechlynx_open")

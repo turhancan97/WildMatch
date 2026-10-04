@@ -46,16 +46,25 @@ def _paper_metadata(entry) -> str:
 def _profile(entry) -> PaperProfile:
     root = Path(str(entry.root))
     return PaperProfile(
-        str(entry.registry.paper_key), str(entry.registry.label), str(entry.registry.source),
-        root / str(_paper_metadata(entry)), str(entry.label_col), str(entry.split_col),
-        str(entry.database_split_value), str(entry.query_split_value), str(entry.name), str(entry.animal),
-        root, str(entry.mask_col) if bool(entry.no_background) else None,
+        str(entry.registry.paper_key),
+        str(entry.registry.label),
+        str(entry.registry.source),
+        root / str(_paper_metadata(entry)),
+        str(entry.label_col),
+        str(entry.split_col),
+        str(entry.database_split_value),
+        str(entry.query_split_value),
+        str(entry.name),
+        str(entry.animal),
+        root,
+        str(entry.mask_col) if bool(entry.no_background) else None,
     )
 
 
 def _profiles(paper: bool) -> List[PaperProfile]:
     entries = [
-        entry for entry in load_registry().values()
+        entry
+        for entry in load_registry().values()
         if entry.registry.paper_key is not None and bool(entry.registry.paper) is paper
     ]
     return [_profile(entry) for entry in sorted(entries, key=lambda entry: int(entry.registry.order))]

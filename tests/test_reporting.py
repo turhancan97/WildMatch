@@ -157,8 +157,22 @@ class ReportingArtifactTests(unittest.TestCase):
 
     def test_summary_filter_sort_and_formats(self):
         rows = [
-            {"run_id": "a", "dataset": "lynx", "workflow": "probe", "method": "vismatch", "variant": "loma", "top_1": "0.7"},
-            {"run_id": "b", "dataset": "lynx", "workflow": "probe", "method": "cosine", "variant": "default", "top_1": "0.9"},
+            {
+                "run_id": "a",
+                "dataset": "lynx",
+                "workflow": "probe",
+                "method": "vismatch",
+                "variant": "loma",
+                "top_1": "0.7",
+            },
+            {
+                "run_id": "b",
+                "dataset": "lynx",
+                "workflow": "probe",
+                "method": "cosine",
+                "variant": "default",
+                "top_1": "0.9",
+            },
         ]
         filtered = filter_run_rows(rows, dataset="lynx", method="vismatch", matcher="loma")
         sorted_rows = sort_run_rows(filtered, "top_1")

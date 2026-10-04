@@ -59,11 +59,21 @@ def _identity(run_dir: Path) -> Optional[Run]:
     benchmark = config.get("benchmark", {})
     method = str(manifest.get("method"))
     method_cfg = (benchmark.get("methods") or {}).get(method, {}) or {}
-    probe_keys = (str(method_cfg.get("train_mode")), str(method_cfg.get("class_weighting"))) if method in PROBE_METHODS else ("-", "-")
+    probe_keys = (
+        (str(method_cfg.get("train_mode")), str(method_cfg.get("class_weighting")))
+        if method in PROBE_METHODS
+        else ("-", "-")
+    )
     identity = (
-        str(manifest.get("dataset")), str(manifest.get("animal")), str(manifest.get("split_protocol")),
-        str(manifest.get("model")), method, str(manifest.get("variant")),
-        str(manifest.get("checkpoint_variant")), str(benchmark.get("candidate_k")), *probe_keys,
+        str(manifest.get("dataset")),
+        str(manifest.get("animal")),
+        str(manifest.get("split_protocol")),
+        str(manifest.get("model")),
+        method,
+        str(manifest.get("variant")),
+        str(manifest.get("checkpoint_variant")),
+        str(benchmark.get("candidate_k")),
+        *probe_keys,
     )
     return Run(run_dir, identity, str(manifest.get("run_id", run_dir.name)), method, str(manifest.get("variant")))
 

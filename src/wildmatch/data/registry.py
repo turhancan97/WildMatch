@@ -30,10 +30,12 @@ def load_dataset(key: str, profile: Optional[str] = None) -> DictConfig:
     source = _dataset_dir() / f"{key}.yaml"
     if not source.is_file():
         raise KeyError(f"unknown dataset {key!r}; registry keys: {', '.join(dataset_keys())}")
-    merged = OmegaConf.create({
-        "paths": load_paths(profile),
-        "dataset": OmegaConf.create(source.read_text(encoding="utf-8")),
-    })
+    merged = OmegaConf.create(
+        {
+            "paths": load_paths(profile),
+            "dataset": OmegaConf.create(source.read_text(encoding="utf-8")),
+        }
+    )
     OmegaConf.resolve(merged)
     return merged.dataset
 

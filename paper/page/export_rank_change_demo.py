@@ -43,9 +43,11 @@ RUNS = {
     "default": PROBE_ROOT / "vismatch/loma/20260920T131759Z_daf95fda",
     "finetuned": PROBE_ROOT / "vismatch/loma/20260920T131759Z_612b4791",
 }
-METHODS = [{"key": "cosine", "label": "Cosine retrieval (MegaDescriptor-L)"},
-           {"key": "default", "label": "Default LoMa"},
-           {"key": "finetuned", "label": "LoMa + WildMatch"}]
+METHODS = [
+    {"key": "cosine", "label": "Cosine retrieval (MegaDescriptor-L)"},
+    {"key": "default", "label": "Default LoMa"},
+    {"key": "finetuned", "label": "LoMa + WildMatch"},
+]
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "rank_change"
 WEB_LONG_SIDE = 320
 SAMPLE = {"rescued": 8, "still_wrong": 8, "regressed": 4, "already_right": 4}
@@ -55,6 +57,7 @@ ATTRIBUTION = "Photographs from CzechLynx (Picek et al.), time-closed split."
 def stable_top(scores: np.ndarray, n: int) -> np.ndarray:
     """Indices of the n highest scores, ties broken by lower index (the shared rule)."""
     from wildmatch.evaluate.ranking import stable_rank_1d
+
     return stable_rank_1d(scores)[:n]
 
 
@@ -85,10 +88,11 @@ def shortlist_rankings(run_dir: Path, n_query: int, n_db: int) -> List[np.ndarra
     starts = np.searchsorted(rows, np.arange(n_query + 1))
     out: List[np.ndarray] = []
     for q in range(n_query):
-        c, v = cols[starts[q]:starts[q + 1]], values[starts[q]:starts[q + 1]]
+        c, v = cols[starts[q] : starts[q + 1]], values[starts[q] : starts[q + 1]]
         if len(c) == 0:
-            out.append(np.empty(0, dtype=np.int64)); continue
-        rank = np.lexsort((c, -v))        # descending score, then lower gallery index
+            out.append(np.empty(0, dtype=np.int64))
+            continue
+        rank = np.lexsort((c, -v))  # descending score, then lower gallery index
         out.append(c[rank])
     return out
 
@@ -108,13 +112,36 @@ def cosine_rankings(cfg_path: Path, device: str):
     view_q = pr.make_dataset_view(cfg, dataset_query, transform_model)
     dev = torch.device("cuda" if (device != "cpu" and torch.cuda.is_available()) else "cpu")
     model = model.to(dev).eval()
-    cache = pr.FeatureCache(enabled=bool(cfg.benchmark.cache.enabled), cache_dir=Path(cfg.benchmark.cache.dir),
-                            fmt=str(cfg.benchmark.cache.format))
+    cache = pr.FeatureCache(
+        enabled=bool(cfg.benchmark.cache.enabled),
+        cache_dir=Path(cfg.benchmark.cache.dir),
+        fmt=str(cfg.benchmark.cache.format),
+    )
     with file_digest_cache():
-        feats_db = pr.extract_deep_features_with_cache(view_db, "database", model, dev, int(cfg.model.batch_size),
-                                                       int(cfg.model.num_workers), cache, cfg, "cosine", checkpoint_path)
-        feats_q = pr.extract_deep_features_with_cache(view_q, "query", model, dev, int(cfg.model.batch_size),
-                                                      int(cfg.model.num_workers), cache, cfg, "cosine", checkpoint_path)
+        feats_db = pr.extract_deep_features_with_cache(
+            view_db,
+            "database",
+            model,
+            dev,
+            int(cfg.model.batch_size),
+            int(cfg.model.num_workers),
+            cache,
+            cfg,
+            "cosine",
+            checkpoint_path,
+        )
+        feats_q = pr.extract_deep_features_with_cache(
+            view_q,
+            "query",
+            model,
+            dev,
+            int(cfg.model.batch_size),
+            int(cfg.model.num_workers),
+            cache,
+            cfg,
+            "cosine",
+            checkpoint_path,
+        )
     print(f"[rank-change] cosine features: cache hits {cache.hits}, misses {cache.misses}", flush=True)
     sim = pr._cosine_similarity_matrix(np.asarray(feats_q), np.asarray(feats_db))
     return dataset_query, dataset_database, sim
@@ -124,13 +151,21 @@ def photo_tag(rel: str) -> str:
     return hashlib.sha1(rel.encode("utf-8")).hexdigest()[:12]
 
 
-def build_payload(queries: List[Dict[str, Any]], photos: Dict[str, Any], counts: Dict[str, int], k: int) -> Dict[str, Any]:
+def build_payload(
+    queries: List[Dict[str, Any]], photos: Dict[str, Any], counts: Dict[str, int], k: int
+) -> Dict[str, Any]:
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "generated_by": "paper/page/export_rank_change_demo.py",
-        "dataset": "CzechLynx closed", "k": k, "attribution": ATTRIBUTION,
-        "methods": METHODS, "runs": {key: path.name for key, path in RUNS.items()},
-        "counts": counts, "sample": SAMPLE, "queries": queries, "photos": photos,
+        "dataset": "CzechLynx closed",
+        "k": k,
+        "attribution": ATTRIBUTION,
+        "methods": METHODS,
+        "runs": {key: path.name for key, path in RUNS.items()},
+        "counts": counts,
+        "sample": SAMPLE,
+        "queries": queries,
+        "photos": photos,
     }
     text = json.dumps(payload)
     for needle in ("/shared/", "/home/"):
@@ -142,24 +177,39 @@ def build_payload(queries: List[Dict[str, Any]], photos: Dict[str, Any], counts:
 def export(out_dir: Path, device: str, seed: int, sample: Dict[str, int] = SAMPLE) -> Dict[str, Any]:
     dataset_query, dataset_database, sim = cosine_rankings(RUNS["cosine"] / "config.snapshot.yaml", device)
     q_meta, db_meta = dataset_query.metadata.reset_index(drop=True), dataset_database.metadata.reset_index(drop=True)
-    q_labels = q_meta["unique_name"].astype(str).to_numpy(); db_labels = db_meta["unique_name"].astype(str).to_numpy()
+    q_labels = q_meta["unique_name"].astype(str).to_numpy()
+    db_labels = db_meta["unique_name"].astype(str).to_numpy()
     n_q, n_db = len(q_labels), len(db_labels)
     k = 250
-    orders = {"default": shortlist_rankings(RUNS["default"], n_q, n_db),
-              "finetuned": shortlist_rankings(RUNS["finetuned"], n_q, n_db)}
+    orders = {
+        "default": shortlist_rankings(RUNS["default"], n_q, n_db),
+        "finetuned": shortlist_rankings(RUNS["finetuned"], n_q, n_db),
+    }
     with np.load(RUNS["default"] / "scores.npz") as d0, np.load(RUNS["finetuned"] / "scores.npz") as d1:
-        score_lookup = {"default": dict(zip(zip(d0["rows"].tolist(), d0["cols"].tolist()), d0["values"].tolist())),
-                        "finetuned": dict(zip(zip(d1["rows"].tolist(), d1["cols"].tolist()), d1["values"].tolist()))}
+        score_lookup = {
+            "default": dict(zip(zip(d0["rows"].tolist(), d0["cols"].tolist()), d0["values"].tolist())),
+            "finetuned": dict(zip(zip(d1["rows"].tolist(), d1["cols"].tolist()), d1["values"].tolist())),
+        }
 
     per_query: List[Dict[str, Any]] = []
-    counts = {"total": n_q, "cosine_top1": 0, "default_top1": 0, "finetuned_top1": 0,
-              "rescued": 0, "still_wrong": 0, "regressed": 0, "already_right": 0}
+    counts = {
+        "total": n_q,
+        "cosine_top1": 0,
+        "default_top1": 0,
+        "finetuned_top1": 0,
+        "rescued": 0,
+        "still_wrong": 0,
+        "regressed": 0,
+        "already_right": 0,
+    }
     for q in range(n_q):
         ident = q_labels[q]
         cos_order = np.argsort(-sim[q], kind="stable")
-        ranks = {"cosine": true_rank(cos_order, db_labels, ident),
-                 "default": true_rank(orders["default"][q], db_labels, ident),
-                 "finetuned": true_rank(orders["finetuned"][q], db_labels, ident)}
+        ranks = {
+            "cosine": true_rank(cos_order, db_labels, ident),
+            "default": true_rank(orders["default"][q], db_labels, ident),
+            "finetuned": true_rank(orders["finetuned"][q], db_labels, ident),
+        }
         ok = {m: ranks[m] == 1 for m in ranks}
         for m in ranks:
             counts[f"{m}_top1"] += int(ok[m])
@@ -185,8 +235,9 @@ def export(out_dir: Path, device: str, seed: int, sample: Dict[str, int] = SAMPL
             image = Image.open(root / rel).convert("RGB")
             scale = min(1.0, WEB_LONG_SIDE / max(image.size))
             size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
-            (image.resize(size, Image.LANCZOS) if scale < 1.0 else image).save(out_dir / f"{tag}.jpg", format="JPEG",
-                                                                              quality=82, optimize=True, progressive=True)
+            (image.resize(size, Image.LANCZOS) if scale < 1.0 else image).save(
+                out_dir / f"{tag}.jpg", format="JPEG", quality=82, optimize=True, progressive=True
+            )
             photos[tag] = {"file": f"{tag}.jpg", "width": size[0], "height": size[1]}
         return tag
 
@@ -200,13 +251,28 @@ def export(out_dir: Path, device: str, seed: int, sample: Dict[str, int] = SAMPL
             for g in top:
                 g = int(g)
                 score = float(sim[q, g]) if m == "cosine" else float(score_lookup[m].get((q, g), float("nan")))
-                entries.append({"tag": add_photo(str(db_meta["path"].iloc[g])), "identity": db_labels[g],
-                                "score": round(score, 4), "correct": bool(db_labels[g] == p["identity"])})
+                entries.append(
+                    {
+                        "tag": add_photo(str(db_meta["path"].iloc[g])),
+                        "identity": db_labels[g],
+                        "score": round(score, 4),
+                        "correct": bool(db_labels[g] == p["identity"]),
+                    }
+                )
             rankings[m] = {"true_rank": p["ranks"][m], "top5": entries}
-        queries.append({"tag": add_photo(str(q_meta["path"].iloc[q])), "identity": p["identity"], "category": p["category"],
-                        "rankings": rankings})
-        print(f"[rank-change] {p['category']:13s} {p['identity']}: cosine r{p['ranks']['cosine']} default r{p['ranks']['default']} "
-              f"fine-tuned r{p['ranks']['finetuned']}", flush=True)
+        queries.append(
+            {
+                "tag": add_photo(str(q_meta["path"].iloc[q])),
+                "identity": p["identity"],
+                "category": p["category"],
+                "rankings": rankings,
+            }
+        )
+        print(
+            f"[rank-change] {p['category']:13s} {p['identity']}: cosine r{p['ranks']['cosine']} default r{p['ranks']['default']} "
+            f"fine-tuned r{p['ranks']['finetuned']}",
+            flush=True,
+        )
     payload = build_payload(queries, photos, counts, k)
     (out_dir / "rank_change.json").write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     print(f"[rank-change] wrote {out_dir / 'rank_change.json'} ({len(queries)} queries, {len(photos)} photos)")

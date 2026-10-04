@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
+
 def to_rgb_float_tensor(image: Any) -> torch.Tensor:
     """Convert an RGB image to a CHW float32 tensor in ``[0, 1]``.
 
@@ -117,11 +118,4 @@ def to_uint8_vismatch_image(image: Any, resize_max: int, divisible_by: int = 32)
     """Return a visualization image using the same Vismatch preprocessing."""
 
     processed, _source_size, _processed_size = preprocess_vismatch_image(image, resize_max, divisible_by=divisible_by)
-    return (
-        processed.clamp(0.0, 1.0)
-        .permute(1, 2, 0)
-        .mul(255.0)
-        .byte()
-        .cpu()
-        .numpy()
-    )
+    return processed.clamp(0.0, 1.0).permute(1, 2, 0).mul(255.0).byte().cpu().numpy()

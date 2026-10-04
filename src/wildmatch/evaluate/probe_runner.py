@@ -80,9 +80,7 @@ def _instrument_local_pipeline(pipeline: Any, timings: Dict[str, float]) -> None
     def timed_matcher(*args: Any, **kwargs: Any) -> Any:
         started = time.perf_counter()
         result = original_matcher(*args, **kwargs)
-        timings["matcher_runtime_sec"] = timings.get("matcher_runtime_sec", 0.0) + (
-            time.perf_counter() - started
-        )
+        timings["matcher_runtime_sec"] = timings.get("matcher_runtime_sec", 0.0) + (time.perf_counter() - started)
         return result
 
     pipeline.matcher = timed_matcher
@@ -271,7 +269,9 @@ def load_backbone(
     return model, embedding_size, mean, std, img_size, arch, number_of_patches, checkpoint_path
 
 
-def build_transforms(mean: Tuple[float, ...], std: Tuple[float, ...], img_size: int) -> Tuple[T.Compose, T.Compose, T.Compose]:
+def build_transforms(
+    mean: Tuple[float, ...], std: Tuple[float, ...], img_size: int
+) -> Tuple[T.Compose, T.Compose, T.Compose]:
     transform_display = T.Compose([T.Resize([img_size, img_size])])
     transform_model = T.Compose([*transform_display.transforms, T.ToTensor(), T.Normalize(mean=mean, std=std)])
     transform_aliked = T.Compose([T.Resize([512, 512]), T.ToTensor()])
@@ -291,9 +291,7 @@ def load_dataset_splits(cfg: DictConfig) -> Tuple[WildlifeDataset, WildlifeDatas
     if cfg.dataset.label_col not in metadata.columns:
         raise KeyError(f"label_col '{cfg.dataset.label_col}' not found in metadata columns")
     if bool(cfg.dataset.no_background) and cfg.dataset.mask_col not in metadata.columns:
-        raise KeyError(
-            f"mask_col '{cfg.dataset.mask_col}' not found in metadata while dataset.no_background=true"
-        )
+        raise KeyError(f"mask_col '{cfg.dataset.mask_col}' not found in metadata while dataset.no_background=true")
 
     dataset = WildlifeDataset(
         str(root),
@@ -326,6 +324,7 @@ def get_calibration_dataset(
     if len(dataset_database.metadata) < size:
         size = len(dataset_database.metadata)
     return WildlifeDataset(root, df=dataset_database.metadata.iloc[:size], load_label=True, col_label=label_col)
+
 
 def dataset_digest(dataset: WildlifeDataset, label_col: str, root: Optional[Path] = None) -> str:
     df = dataset.df if hasattr(dataset, "df") else dataset.metadata
@@ -468,9 +467,7 @@ class FeatureCache:
                 try:
                     seq = list(value)
                 except Exception as exc:
-                    raise ValueError(
-                        f"Could not convert features to numpy. type={type(raw)}"
-                    ) from exc
+                    raise ValueError(f"Could not convert features to numpy. type={type(raw)}") from exc
                 maybe_rows = self._extract_from_sequence_rows(seq)
                 if maybe_rows is None:
                     raise ValueError(
@@ -488,9 +485,7 @@ class FeatureCache:
                 ) from exc
 
         if arr.ndim == 1:
-            raise ValueError(
-                f"Extracted features must be at least 2D (N, D). Got shape={arr.shape}, type={type(raw)}."
-            )
+            raise ValueError(f"Extracted features must be at least 2D (N, D). Got shape={arr.shape}, type={type(raw)}.")
         if arr.ndim > 2:
             arr = arr.reshape(arr.shape[0], -1)
 
@@ -593,9 +588,7 @@ def validate_classifier_open_set_labels(
     unseen = sorted(query_labels - database_labels)
     if not unseen:
         return
-    detail = (
-        f"{len(unseen)} query identities are absent from the training/database identity set"
-    )
+    detail = f"{len(unseen)} query identities are absent from the training/database identity set"
     if policy == "closed":
         raise ValueError(
             f"Closed-set classifier evaluation failed: {detail}. "
@@ -700,9 +693,7 @@ def _classifier_metrics(
     """Build open-world, seen-only, and policy-selected classifier metrics."""
     probs = np.asarray(probs)
     query_labels_idx = np.asarray(query_labels_idx, dtype=np.int64)
-    open_metrics = _classification_topk_accuracy(
-        probs, query_labels_idx, [1, 5, 10], prefix="classification_open"
-    )
+    open_metrics = _classification_topk_accuracy(probs, query_labels_idx, [1, 5, 10], prefix="classification_open")
     seen_mask = np.asarray(query_labels_idx) >= 0
     seen_metrics = _classification_topk_accuracy(
         probs[seen_mask], query_labels_idx[seen_mask], [1, 5, 10], prefix="classification_seen"
@@ -764,6 +755,7 @@ def _probe_retrieval_metrics(
     )
     return {**primary, **{f"image_{key}": value for key, value in diagnostic.items()}}
 
+
 def _balanced_accuracy_top1_idx(query_labels_idx: np.ndarray, predicted_top1_labels: np.ndarray) -> float:
     classes = np.unique(query_labels_idx)
     if classes.size == 0:
@@ -797,8 +789,7 @@ def _extract_hidden_state(outputs: Any) -> torch.Tensor:
     if torch.is_tensor(outputs):
         return outputs
     raise ValueError(
-        f"Unsupported ViT output type: {type(outputs)}. "
-        "Expected tensor or object/dict with `last_hidden_state`."
+        f"Unsupported ViT output type: {type(outputs)}. Expected tensor or object/dict with `last_hidden_state`."
     )
 
 
@@ -812,9 +803,7 @@ def _forward_patch_tokens(model: Any, x: torch.Tensor, number_of_patches: int) -
     if hidden.ndim != 3:
         raise ValueError(f"Expected hidden state shape (B, N, D). Got shape {tuple(hidden.shape)}")
     if hidden.shape[1] < number_of_patches:
-        raise ValueError(
-            f"number_of_patches ({number_of_patches}) exceeds token count ({hidden.shape[1]})"
-        )
+        raise ValueError(f"number_of_patches ({number_of_patches}) exceeds token count ({hidden.shape[1]})")
     return hidden[:, -number_of_patches:, :]
 
 
@@ -865,9 +854,7 @@ def _embedding_retrieval_diagnostic(
     number_of_patches: Optional[int] = None,
 ) -> Tuple[Dict[str, Any], float]:
     started = time.perf_counter()
-    query_features = _collect_probe_embeddings(
-        model, dataset_query, device, batch_size, num_workers, number_of_patches
-    )
+    query_features = _collect_probe_embeddings(model, dataset_query, device, batch_size, num_workers, number_of_patches)
     database_features = _collect_probe_embeddings(
         model, dataset_database, device, batch_size, num_workers, number_of_patches
     )
@@ -974,7 +961,9 @@ def resolve_configured_candidate_k(cfg: DictConfig) -> int:
     """Return the single public probe comparison budget."""
     raw_value = getattr(cfg.benchmark, "candidate_k", None)
     if raw_value is None:
-        raise ValueError("benchmark.candidate_k is required; it controls Vismatch candidates, WildFusion refinement, and mAP@k evaluation.")
+        raise ValueError(
+            "benchmark.candidate_k is required; it controls Vismatch candidates, WildFusion refinement, and mAP@k evaluation."
+        )
     try:
         candidate_k = int(raw_value)
     except (TypeError, ValueError) as exc:
@@ -1022,7 +1011,14 @@ def validate_evaluation_cutoffs(cfg: DictConfig, method: str) -> None:
         )
 
 
-def make_cache_key(cfg: DictConfig, method: str, split_name: str, dataset_sig: str, checkpoint_path: Optional[Path], model_weight_fingerprint: Optional[str] = None) -> str:
+def make_cache_key(
+    cfg: DictConfig,
+    method: str,
+    split_name: str,
+    dataset_sig: str,
+    checkpoint_path: Optional[Path],
+    model_weight_fingerprint: Optional[str] = None,
+) -> str:
     checkpoint_tag = "pretrained"
     if checkpoint_path is not None:
         checkpoint_tag = f"{checkpoint_path}|{sha256_file(checkpoint_path)}"
@@ -1037,9 +1033,7 @@ def make_cache_key(cfg: DictConfig, method: str, split_name: str, dataset_sig: s
         "checkpoint": checkpoint_tag,
         "model_weight_fingerprint": model_weight_fingerprint or "unknown",
         "wildfusion_local_top_k": (
-            int(getattr(cfg.benchmark.methods.wildfusion, "local_top_k", 512))
-            if method == "wildfusion"
-            else None
+            int(getattr(cfg.benchmark.methods.wildfusion, "local_top_k", 512)) if method == "wildfusion" else None
         ),
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
@@ -1105,10 +1099,19 @@ class CachedDeepExtractor:
 
     def __call__(self, dataset: WildlifeDataset) -> np.ndarray:
         dataset_sig = dataset_digest(dataset, self.cfg.dataset.label_col, Path(str(self.cfg.dataset.root)))
-        cache_key = make_cache_key(self.cfg, self.method_name, "dynamic_split", dataset_sig, self.checkpoint_path, self.model_weight_fingerprint)
+        cache_key = make_cache_key(
+            self.cfg,
+            self.method_name,
+            "dynamic_split",
+            dataset_sig,
+            self.checkpoint_path,
+            self.model_weight_fingerprint,
+        )
 
         def _compute():
-            extractor = DeepFeatures(self.model, device=self.device, batch_size=self.batch_size, num_workers=self.num_workers)
+            extractor = DeepFeatures(
+                self.model, device=self.device, batch_size=self.batch_size, num_workers=self.num_workers
+            )
             return extractor(dataset)
 
         features = self.cache.get_or_compute(cache_key, _compute)
@@ -1151,9 +1154,7 @@ def run_linear_probe(
         max_weight=float(getattr(lp_cfg, "class_weight_max", 5.0)),
     )
     class_weights = (
-        torch.as_tensor(class_weights_np, dtype=torch.float32, device=device)
-        if class_weights_np is not None
-        else None
+        torch.as_tensor(class_weights_np, dtype=torch.float32, device=device) if class_weights_np is not None else None
     )
     objective = SoftmaxLoss(
         num_classes=len(label_to_index),
@@ -1222,7 +1223,7 @@ def run_linear_probe(
         total_batches = len(train_loader)
         train_iter = tqdm(
             train_loader,
-            desc=f"[linear_probe][train] epoch {epoch+1}/{int(lp_cfg.epochs)}",
+            desc=f"[linear_probe][train] epoch {epoch + 1}/{int(lp_cfg.epochs)}",
             mininterval=1,
             ncols=120,
         )
@@ -1251,7 +1252,7 @@ def run_linear_probe(
         with torch.no_grad():
             val_iter = tqdm(
                 query_loader,
-                desc=f"[linear_probe][val] epoch {epoch+1}/{int(lp_cfg.epochs)}",
+                desc=f"[linear_probe][val] epoch {epoch + 1}/{int(lp_cfg.epochs)}",
                 mininterval=1,
                 ncols=120,
             )
@@ -1275,7 +1276,9 @@ def run_linear_probe(
         cls_metrics = _classifier_metrics(
             probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
         )
-        retrieval_metrics = _probe_retrieval_metrics(cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx)
+        retrieval_metrics = _probe_retrieval_metrics(
+            cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx
+        )
 
         if wandb_run is not None:
             lr = float(optimizer.param_groups[0].get("lr", 0.0))
@@ -1294,7 +1297,7 @@ def run_linear_probe(
 
         if (epoch + 1) % log_every == 0:
             print(
-                f"[linear_probe] epoch {epoch+1}/{int(lp_cfg.epochs)} "
+                f"[linear_probe] epoch {epoch + 1}/{int(lp_cfg.epochs)} "
                 f"train_loss={float(np.mean(losses)) if losses else float('nan'):.6f} "
                 f"train_top1={train_cls_metrics.get('classification_top_1', float('nan')):.4f} "
                 f"train_top5={train_cls_metrics.get('classification_top_5', float('nan')):.4f} "
@@ -1308,7 +1311,7 @@ def run_linear_probe(
 
         if bool(lp_cfg.save_checkpoint) and ((epoch + 1) % int(lp_cfg.save_every) == 0):
             run_dir.mkdir(parents=True, exist_ok=True)
-            ckpt_path = run_dir / f"linear_probe_epoch_{epoch+1}.pth"
+            ckpt_path = run_dir / f"linear_probe_epoch_{epoch + 1}.pth"
             torch.save(
                 {
                     "model": model.state_dict(),
@@ -1359,7 +1362,9 @@ def run_linear_probe(
         )
         method_metrics.update(embedding_metrics)
         timings["linear_probe_embedding_retrieval_sec"] = float(embedding_sec)
-    method_metrics.update(_probe_retrieval_metrics(cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx))
+    method_metrics.update(
+        _probe_retrieval_metrics(cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx)
+    )
 
     if bool(lp_cfg.save_checkpoint):
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -1415,9 +1420,7 @@ def run_efficient_probe(
         max_weight=float(getattr(ep_cfg, "class_weight_max", 5.0)),
     )
     class_weights = (
-        torch.as_tensor(class_weights_np, dtype=torch.float32, device=device)
-        if class_weights_np is not None
-        else None
+        torch.as_tensor(class_weights_np, dtype=torch.float32, device=device) if class_weights_np is not None else None
     )
     objective = SoftmaxLossEP(
         num_classes=len(label_to_index),
@@ -1489,7 +1492,7 @@ def run_efficient_probe(
         total_batches = len(train_loader)
         train_iter = tqdm(
             train_loader,
-            desc=f"[efficient_probe][train] epoch {epoch+1}/{int(ep_cfg.epochs)}",
+            desc=f"[efficient_probe][train] epoch {epoch + 1}/{int(ep_cfg.epochs)}",
             mininterval=1,
             ncols=120,
         )
@@ -1518,7 +1521,7 @@ def run_efficient_probe(
         with torch.no_grad():
             val_iter = tqdm(
                 query_loader,
-                desc=f"[efficient_probe][val] epoch {epoch+1}/{int(ep_cfg.epochs)}",
+                desc=f"[efficient_probe][val] epoch {epoch + 1}/{int(ep_cfg.epochs)}",
                 mininterval=1,
                 ncols=120,
             )
@@ -1542,7 +1545,9 @@ def run_efficient_probe(
         cls_metrics = _classifier_metrics(
             probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
         )
-        retrieval_metrics = _probe_retrieval_metrics(cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx)
+        retrieval_metrics = _probe_retrieval_metrics(
+            cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx
+        )
 
         if wandb_run is not None:
             lr = float(optimizer.param_groups[0].get("lr", 0.0))
@@ -1561,7 +1566,7 @@ def run_efficient_probe(
 
         if (epoch + 1) % log_every == 0:
             print(
-                f"[efficient_probe] epoch {epoch+1}/{int(ep_cfg.epochs)} "
+                f"[efficient_probe] epoch {epoch + 1}/{int(ep_cfg.epochs)} "
                 f"train_loss={float(np.mean(losses)) if losses else float('nan'):.6f} "
                 f"train_top1={train_cls_metrics.get('classification_top_1', float('nan')):.4f} "
                 f"train_top5={train_cls_metrics.get('classification_top_5', float('nan')):.4f} "
@@ -1575,7 +1580,7 @@ def run_efficient_probe(
 
         if bool(ep_cfg.save_checkpoint) and ((epoch + 1) % int(ep_cfg.save_every) == 0):
             run_dir.mkdir(parents=True, exist_ok=True)
-            ckpt_path = run_dir / f"efficient_probe_epoch_{epoch+1}.pth"
+            ckpt_path = run_dir / f"efficient_probe_epoch_{epoch + 1}.pth"
             torch.save(
                 {
                     "model": model.state_dict(),
@@ -1653,7 +1658,9 @@ def run_efficient_probe(
         )
         method_metrics.update(embedding_metrics)
         timings["efficient_probe_embedding_retrieval_sec"] = float(embedding_sec)
-    method_metrics.update(_probe_retrieval_metrics(cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx))
+    method_metrics.update(
+        _probe_retrieval_metrics(cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx)
+    )
 
     if bool(ep_cfg.save_checkpoint):
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -1754,8 +1761,12 @@ def run_method(
         timings["feature_extraction_sec"] = time.perf_counter() - t_extract
         t_sim = time.perf_counter()
         similarity = CosineSimilarity()(
-            FeatureContainer(features=features_query, labels_string=get_labels_string(dataset_query, cfg.dataset.label_col)),
-            FeatureContainer(features=features_database, labels_string=get_labels_string(dataset_database, cfg.dataset.label_col)),
+            FeatureContainer(
+                features=features_query, labels_string=get_labels_string(dataset_query, cfg.dataset.label_col)
+            ),
+            FeatureContainer(
+                features=features_database, labels_string=get_labels_string(dataset_database, cfg.dataset.label_col)
+            ),
         )
         timings["similarity_sec"] = time.perf_counter() - t_sim
 
@@ -1790,9 +1801,16 @@ def run_method(
         timings["model_setup_sec"] = time.perf_counter() - t_setup
         calibration_cfg = getattr(cfg.benchmark, "calibration", {})
         t_calibration = time.perf_counter()
-        calibration_info = fit_wildfusion_calibration(wildfusion, dataset_calibration, dataset_calibration, exclude_self_pairs=bool(getattr(calibration_cfg, "exclude_self_pairs", True)), official_same_set=bool(getattr(calibration_cfg, "official_same_set", False)))
+        calibration_info = fit_wildfusion_calibration(
+            wildfusion,
+            dataset_calibration,
+            dataset_calibration,
+            exclude_self_pairs=bool(getattr(calibration_cfg, "exclude_self_pairs", True)),
+            official_same_set=bool(getattr(calibration_cfg, "official_same_set", False)),
+        )
         timings["calibration_sec"] = time.perf_counter() - t_calibration
-        if method_artifacts is not None: method_artifacts["wildfusion_calibration"] = calibration_info
+        if method_artifacts is not None:
+            method_artifacts["wildfusion_calibration"] = calibration_info
         _instrument_local_pipeline(matcher_aliked, timings)
         t_sim = time.perf_counter()
         candidate_k = resolve_candidate_k(cfg, len(dataset_database))
@@ -1819,9 +1837,16 @@ def run_method(
         timings["model_setup_sec"] = time.perf_counter() - t_setup
         calibration_cfg = getattr(cfg.benchmark, "calibration", {})
         t_calibration = time.perf_counter()
-        calibration_info = fit_pipeline_calibration(matcher_local, dataset_calibration, dataset_calibration, exclude_self_pairs=bool(getattr(calibration_cfg, "exclude_self_pairs", True)) and not bool(getattr(calibration_cfg, "official_same_set", False)))
+        calibration_info = fit_pipeline_calibration(
+            matcher_local,
+            dataset_calibration,
+            dataset_calibration,
+            exclude_self_pairs=bool(getattr(calibration_cfg, "exclude_self_pairs", True))
+            and not bool(getattr(calibration_cfg, "official_same_set", False)),
+        )
         timings["calibration_sec"] = time.perf_counter() - t_calibration
-        if method_artifacts is not None: method_artifacts["local_calibration"] = calibration_info
+        if method_artifacts is not None:
+            method_artifacts["local_calibration"] = calibration_info
         _instrument_local_pipeline(matcher_local, timings)
         t_sim = time.perf_counter()
         candidate_k = resolve_candidate_k(cfg, len(dataset_database))
@@ -1933,7 +1958,9 @@ def run_method(
     timings["feature_cache_lookup_sec"] = float(timings.get("feature_cache_lookup_sec", 0.0)) + float(cache.lookup_sec)
     timings["feature_cache_hits"] = float(timings.get("feature_cache_hits", 0.0)) + float(cache.hits)
     timings["feature_cache_misses"] = float(timings.get("feature_cache_misses", 0.0)) + float(cache.misses)
-    timings["feature_extraction_compute_sec"] = float(timings.get("feature_extraction_compute_sec", 0.0)) + float(cache.compute_sec)
+    timings["feature_extraction_compute_sec"] = float(timings.get("feature_extraction_compute_sec", 0.0)) + float(
+        cache.compute_sec
+    )
     timings.setdefault(
         "feature_extraction_sec",
         timings["feature_extraction_compute_sec"] + timings["feature_cache_lookup_sec"],
@@ -2153,7 +2180,9 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
     print(f"Query images: {len(dataset_query)} | Database images: {len(dataset_database)}")
     # Print the number of unique identities in the query and database
     print(f"Length of unique identities in query: {len(dataset_query.df[cfg.dataset.label_col].unique().tolist())}")
-    print(f"Length of unique identities in database: {len(dataset_database.df[cfg.dataset.label_col].unique().tolist())}")
+    print(
+        f"Length of unique identities in database: {len(dataset_database.df[cfg.dataset.label_col].unique().tolist())}"
+    )
 
     wandb_run = None
     if bool(cfg.wandb.enabled):
@@ -2226,9 +2255,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
             run_dir=run_dir,
         )
         if method == "vismatch":
-            extra_visuals["vismatch_match"] = [
-                str(p) for p in method_artifacts.get("vismatch_match_paths", [])
-            ]
+            extra_visuals["vismatch_match"] = [str(p) for p in method_artifacts.get("vismatch_match_paths", [])]
         attention_map_path = method_artifacts.get("attention_map_path")
         if attention_map_path:
             extra_visuals["attention_map"] = [str(attention_map_path)]
@@ -2241,9 +2268,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
         dataset_database=dataset_database_raw,
         label_col=str(cfg.dataset.label_col),
         top_k=int(cfg.visualization.top_k),
-        path_col=str(getattr(cfg.benchmark.methods.vismatch, "path_col", "path"))
-        if method == "vismatch"
-        else "path",
+        path_col=str(getattr(cfg.benchmark.methods.vismatch, "path_col", "path")) if method == "vismatch" else "path",
         extra_paths=extra_visuals,
     )
     visuals = list(prediction_visuals)
@@ -2289,8 +2314,14 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
         "source": checkpoint_source,
         "variant": checkpoint_variant,
         "component": checkpoint_component,
-        "owner": str(getattr(cfg.benchmark.methods.vismatch, "checkpoint_owner", "") or "") if method == "vismatch" else "",
-        "evaluation_animal": str(getattr(cfg.benchmark.methods.vismatch, "evaluation_animal", cfg.dataset.animal) or cfg.dataset.animal) if method == "vismatch" else str(cfg.dataset.animal),
+        "owner": str(getattr(cfg.benchmark.methods.vismatch, "checkpoint_owner", "") or "")
+        if method == "vismatch"
+        else "",
+        "evaluation_animal": str(
+            getattr(cfg.benchmark.methods.vismatch, "evaluation_animal", cfg.dataset.animal) or cfg.dataset.animal
+        )
+        if method == "vismatch"
+        else str(cfg.dataset.animal),
         "component_files": checkpoint_component_files,
         "file_hashes": checkpoint_file_hashes,
         "protocol": vismatch_checkpoint.get("protocol_metadata", {}),
@@ -2351,9 +2382,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
             "model": str(cfg.model.type),
             "method": method,
             "image_variant": str(cfg.dataset.image_variant),
-            "variant": str(cfg.benchmark.methods.vismatch.matcher)
-            if method == "vismatch"
-            else "default",
+            "variant": str(cfg.benchmark.methods.vismatch.matcher) if method == "vismatch" else "default",
             "checkpoint": file_identity(checkpoint_path),
             "num_query": len(dataset_query),
             "num_database": len(dataset_database),
@@ -2394,9 +2423,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
                 "model": str(cfg.model.type),
                 "method": method,
                 "image_variant": str(cfg.dataset.image_variant),
-                "variant": str(cfg.benchmark.methods.vismatch.matcher)
-                if method == "vismatch"
-                else "default",
+                "variant": str(cfg.benchmark.methods.vismatch.matcher) if method == "vismatch" else "default",
                 "checkpoint_source": checkpoint_source,
                 "checkpoint_variant": checkpoint_variant,
                 "checkpoint_component": checkpoint_component,
@@ -2405,13 +2432,17 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
                 "checkpoint_component_files": json.dumps(checkpoint_component_files, sort_keys=True),
                 "checkpoint_file_hashes": json.dumps(checkpoint_file_hashes, sort_keys=True),
                 "checkpoint_protocol": json.dumps(checkpoint_provenance["protocol"], sort_keys=True),
-                "checkpoint_default_components": json.dumps(checkpoint_provenance["default_components"], sort_keys=True),
+                "checkpoint_default_components": json.dumps(
+                    checkpoint_provenance["default_components"], sort_keys=True
+                ),
                 "checkpoint_applied_prefixes": json.dumps(checkpoint_provenance["applied_prefixes"], sort_keys=True),
                 "checkpoint_ignored_prefixes": json.dumps(checkpoint_provenance["ignored_prefixes"], sort_keys=True),
                 "checkpoint_validation": checkpoint_provenance["validation"],
                 "num_query": len(dataset_query),
                 "num_database": len(dataset_database),
-                "feature_extraction_sec": timings.get("vismatch_feature_extraction_sec", timings.get("feature_extraction_sec", "")),
+                "feature_extraction_sec": timings.get(
+                    "vismatch_feature_extraction_sec", timings.get("feature_extraction_sec", "")
+                ),
                 "feature_extraction_compute_sec": timings.get("feature_extraction_compute_sec", ""),
                 "feature_cache_lookup_sec": timings.get("feature_cache_lookup_sec", ""),
                 "primary_compute_runtime_sec": timings.get("primary_compute_runtime_sec", ""),

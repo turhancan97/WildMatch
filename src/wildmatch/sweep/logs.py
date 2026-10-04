@@ -66,49 +66,82 @@ def error_summary(error_file: Optional[Path]) -> str:
     return (matching[-1] if matching else lines[-1])[:1000]
 
 
-def init_record(path: Path, *, status: str = "running", job_id: str, task_id: int, dataset: str, animal: str,
-                split_protocol: str = "", method: str, matcher: str, train_mode: str = "-",
-                class_weighting: str = "-", checkpoint: str, checkpoint_path: str, candidate_k: int,
-                command: str, start_time: str, stdout_path: str, stderr_path: str, combined_path: str,
-                submission_id: str = "", manifest_path: str = "", profile_id: str = "",
-                checkpoint_owner: str = "", checkpoint_sha256: str = "", validation_status: str = "") -> None:
+def init_record(
+    path: Path,
+    *,
+    status: str = "running",
+    job_id: str,
+    task_id: int,
+    dataset: str,
+    animal: str,
+    split_protocol: str = "",
+    method: str,
+    matcher: str,
+    train_mode: str = "-",
+    class_weighting: str = "-",
+    checkpoint: str,
+    checkpoint_path: str,
+    candidate_k: int,
+    command: str,
+    start_time: str,
+    stdout_path: str,
+    stderr_path: str,
+    combined_path: str,
+    submission_id: str = "",
+    manifest_path: str = "",
+    profile_id: str = "",
+    checkpoint_owner: str = "",
+    checkpoint_sha256: str = "",
+    validation_status: str = "",
+) -> None:
     if status not in STATUSES:
         raise ValueError(f"status must be one of {STATUSES}")
-    atomic_json(path, {
-        "schema_version": 1,
-        "status": status,
-        "job_id": job_id,
-        "task_id": int(task_id),
-        "dataset": dataset,
-        "animal": animal,
-        "split_protocol": split_protocol,
-        "method": method,
-        "matcher": matcher,
-        "train_mode": train_mode,
-        "class_weighting": class_weighting,
-        "checkpoint": checkpoint,
-        "checkpoint_path": None if checkpoint_path in {"", "-", None} else checkpoint_path,
-        "candidate_k": int(candidate_k),
-        "command": command,
-        "start_time": start_time,
-        "end_time": "",
-        "experiment_run_directory": "",
-        "stdout_path": stdout_path,
-        "stderr_path": stderr_path,
-        "combined_path": combined_path,
-        "error_summary": "",
-        "submission_id": submission_id,
-        "manifest_path": manifest_path,
-        "profile_id": profile_id,
-        "checkpoint_owner": checkpoint_owner,
-        "checkpoint_sha256": checkpoint_sha256,
-        "validation_status": validation_status,
-        "validation_error": "",
-    })
+    atomic_json(
+        path,
+        {
+            "schema_version": 1,
+            "status": status,
+            "job_id": job_id,
+            "task_id": int(task_id),
+            "dataset": dataset,
+            "animal": animal,
+            "split_protocol": split_protocol,
+            "method": method,
+            "matcher": matcher,
+            "train_mode": train_mode,
+            "class_weighting": class_weighting,
+            "checkpoint": checkpoint,
+            "checkpoint_path": None if checkpoint_path in {"", "-", None} else checkpoint_path,
+            "candidate_k": int(candidate_k),
+            "command": command,
+            "start_time": start_time,
+            "end_time": "",
+            "experiment_run_directory": "",
+            "stdout_path": stdout_path,
+            "stderr_path": stderr_path,
+            "combined_path": combined_path,
+            "error_summary": "",
+            "submission_id": submission_id,
+            "manifest_path": manifest_path,
+            "profile_id": profile_id,
+            "checkpoint_owner": checkpoint_owner,
+            "checkpoint_sha256": checkpoint_sha256,
+            "validation_status": validation_status,
+            "validation_error": "",
+        },
+    )
 
 
-def update_record(path: Path, *, status: str, end_time: str, experiment_run_directory: str = "",
-                  error_file: Optional[Path] = None, validation_status: str = "", validation_error: str = "") -> None:
+def update_record(
+    path: Path,
+    *,
+    status: str,
+    end_time: str,
+    experiment_run_directory: str = "",
+    error_file: Optional[Path] = None,
+    validation_status: str = "",
+    validation_error: str = "",
+) -> None:
     if status not in STATUSES:
         raise ValueError(f"status must be one of {STATUSES}")
     if not path.is_file():
@@ -195,8 +228,19 @@ def write_index(logs_root: Path, index_path: Path) -> None:
 
 
 def _markdown(records: Sequence[Mapping[str, Any]]) -> str:
-    columns = ["job_id", "task_id", "dataset", "animal", "split_protocol", "method", "matcher",
-               "checkpoint", "candidate_k", "status", "error_summary"]
+    columns = [
+        "job_id",
+        "task_id",
+        "dataset",
+        "animal",
+        "split_protocol",
+        "method",
+        "matcher",
+        "checkpoint",
+        "candidate_k",
+        "status",
+        "error_summary",
+    ]
     lines = ["| " + " | ".join(columns) + " |", "| " + " | ".join("---" for _ in columns) + " |"]
     for record in records:
         values = [str(record.get(column, "")).replace("|", "\\|").replace("\n", " ") for column in columns]
@@ -234,8 +278,11 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
     all_records = load_records(args.logs_root)
     if args.write_index:
         write_index(args.logs_root, args.index_path or args.logs_root.parent / "index.csv")
-    selected = [r for r in all_records
-                if all(not getattr(args, key) or str(r.get(key, "")) == getattr(args, key) for key in _FILTERS)]
+    selected = [
+        r
+        for r in all_records
+        if all(not getattr(args, key) or str(r.get(key, "")) == getattr(args, key) for key in _FILTERS)
+    ]
     records = sort_records(selected, args.sort_by)
     if not args.quiet:
         print(_csv(records) if args.format == "csv" else _markdown(records))

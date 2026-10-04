@@ -44,7 +44,7 @@ wandb = ["wandb"]
 mining = []
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff==0.15.5"]
 docs = ["mkdocs==1.6.1", "mkdocs-material==9.7.7"]
 
 [tool.uv]
@@ -121,3 +121,17 @@ markers = [
     "gpu: needs a CUDA device",
     "data: needs the datasets or experiment outputs on this machine",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["video", "notebooks", "docs", "site", "overrides"]
+
+[tool.ruff.lint]
+# pyflakes (undefined names, unused imports/variables), pycodestyle errors/warnings, import order.
+select = ["E", "F", "W", "I"]
+# Long lines and one-line statements are left to the formatter; E731/E741 are style choices here.
+ignore = ["E501", "E701", "E702", "E731", "E741"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["wildmatch", "paper"]

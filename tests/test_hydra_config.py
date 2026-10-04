@@ -11,6 +11,7 @@ from omegaconf import OmegaConf
 
 try:
     from wildmatch.evaluate.probe_runner import resolve_candidate_k, resolve_map_at_k
+
     HAS_PROBE_RUNNER = True
 except ModuleNotFoundError:
     HAS_PROBE_RUNNER = False
@@ -72,8 +73,8 @@ class HydraConfigurationTests(unittest.TestCase):
         # Sweep tasks pass the submission's frozen probe.yaml with --config-path. With
         # --config-dir Hydra keeps the packaged probe.yaml as primary and ignores the snapshot.
         with TemporaryDirectory() as tmp:
-            snapshot = (CONF_DIR / "probe.yaml").read_text(encoding="utf-8").replace(
-                "cache/features", "cache/FROM_SNAPSHOT"
+            snapshot = (
+                (CONF_DIR / "probe.yaml").read_text(encoding="utf-8").replace("cache/features", "cache/FROM_SNAPSHOT")
             )
             Path(tmp, "probe.yaml").write_text(snapshot, encoding="utf-8")
             for group in ("paths", "dataset"):  # a submission snapshot freezes the config groups too
@@ -81,8 +82,22 @@ class HydraConfigurationTests(unittest.TestCase):
             outputs = {}
             for flag in ("--config-path", "--config-dir"):
                 result = subprocess.run(
-                    [sys.executable, "-m", "wildmatch", "evaluate", flag, tmp, "--config-name", "probe", "--cfg", "job"],
-                    cwd=tmp, capture_output=True, text=True, check=True,
+                    [
+                        sys.executable,
+                        "-m",
+                        "wildmatch",
+                        "evaluate",
+                        flag,
+                        tmp,
+                        "--config-name",
+                        "probe",
+                        "--cfg",
+                        "job",
+                    ],
+                    cwd=tmp,
+                    capture_output=True,
+                    text=True,
+                    check=True,
                 )
                 outputs[flag] = result.stdout
         self.assertIn("cache/FROM_SNAPSHOT", outputs["--config-path"])

@@ -245,7 +245,9 @@ class VismatchCheckpointTests(unittest.TestCase):
             epoch = run / "epoch_299"
             epoch.mkdir()
             # accelerate's layout for two prepared models: RDD first, LightGlue second.
-            self._save(epoch / "model.pth", {"detector.weight": torch.zeros(2, 2), "descriptor.weight": torch.ones(2, 2)})
+            self._save(
+                epoch / "model.pth", {"detector.weight": torch.zeros(2, 2), "descriptor.weight": torch.ones(2, 2)}
+            )
             self._save(epoch / "model_1.pth", self._lightglue_state())
             (run / "czechlynx_protocol.json").write_text(
                 json.dumps({"rdd_train_component": "joint", "trained_model": "lg+rdd", "rdd_component": "descriptor"}),
@@ -285,7 +287,9 @@ class VismatchCheckpointTests(unittest.TestCase):
             source._descriptor.weight.data.fill_(5.0)
             source.transformers[0].weight.data.fill_(7.0)
             self._save(epoch / "model.pth", source.state_dict())
-            (run / "czechlynx_protocol.json").write_text(json.dumps({"loma_train_component": "joint"}), encoding="utf-8")
+            (run / "czechlynx_protocol.json").write_text(
+                json.dumps({"loma_train_component": "joint"}), encoding="utf-8"
+            )
             resolution = resolve_vismatch_checkpoint("loma", "custom", epoch / "model.pth", "full")
             self.assertEqual(resolution.resolved_component_mode, "full")
             target = Model()
@@ -294,7 +298,9 @@ class VismatchCheckpointTests(unittest.TestCase):
             self.assertTrue(torch.all(target.matcher.transformers[0].weight == 7.0))
             with self.assertRaisesRegex(ValueError, "joint"):
                 resolve_vismatch_checkpoint("loma", "custom", epoch / "model.pth", "matcher_only")
-            self._save(epoch / "model.pth", {k: v for k, v in source.state_dict().items() if not k.startswith("_detector.")})
+            self._save(
+                epoch / "model.pth", {k: v for k, v in source.state_dict().items() if not k.startswith("_detector.")}
+            )
             with self.assertRaisesRegex(ValueError, "complete"):
                 resolve_vismatch_checkpoint("loma", "custom", epoch / "model.pth", "full")
 

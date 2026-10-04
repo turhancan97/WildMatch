@@ -7,6 +7,7 @@ from wildmatch.evaluate.ranking import stable_rank_indices
 
 DEFAULT_MAP_AT_K = 100
 
+
 def _balanced_accuracy_top1(query_labels: np.ndarray, predicted_top1_labels: np.ndarray) -> float:
     classes = np.unique(query_labels)
     if classes.size == 0:
@@ -54,9 +55,7 @@ def _truncated_average_precision(
     nothing to order.
     """
     k = int(k)
-    hits = (
-        np.asarray(relevant[:k], dtype=bool) & np.asarray(scored[:k], dtype=bool)
-    ).astype(np.float32)
+    hits = (np.asarray(relevant[:k], dtype=bool) & np.asarray(scored[:k], dtype=bool)).astype(np.float32)
     num_hits = int(hits.sum())
     if num_hits == 0:
         return 0.0, float("nan"), 0
@@ -64,9 +63,7 @@ def _truncated_average_precision(
     ranks = np.arange(1, hits.shape[0] + 1, dtype=np.float32)
     precision_mass = float(((cumulative / ranks) * hits).sum())
     end_to_end_denominator = min(int(num_relevant_total), k)
-    end_to_end = (
-        precision_mass / float(end_to_end_denominator) if end_to_end_denominator else 0.0
-    )
+    end_to_end = precision_mass / float(end_to_end_denominator) if end_to_end_denominator else 0.0
     return end_to_end, precision_mass / float(num_hits), num_hits
 
 
@@ -80,8 +77,7 @@ def _label_retrieval_metrics(
 ) -> Dict[str, float]:
     if similarity.shape != (len(query_labels), len(database_labels)):
         raise ValueError(
-            f"Invalid similarity shape {similarity.shape}, "
-            f"expected {(len(query_labels), len(database_labels))}"
+            f"Invalid similarity shape {similarity.shape}, expected {(len(query_labels), len(database_labels))}"
         )
     if not top_k_values:
         raise ValueError("top_k_values must not be empty")
@@ -98,23 +94,15 @@ def _label_retrieval_metrics(
     }
     max_k = max(top_k_values)
     if max_k > len(database_labels):
-        raise ValueError(
-            f"Requested top-k includes {max_k}, "
-            f"but database has only {len(database_labels)} samples"
-        )
+        raise ValueError(f"Requested top-k includes {max_k}, but database has only {len(database_labels)} samples")
 
     for k in top_k_values:
-        hits = [
-            query_labels[q_idx] in database_labels[ranked_idx[q_idx, :k]]
-            for q_idx in range(len(query_labels))
-        ]
+        hits = [query_labels[q_idx] in database_labels[ranked_idx[q_idx, :k]] for q_idx in range(len(query_labels))]
         metrics[f"top_{k}"] = float(np.mean(hits)) if hits else float("nan")
 
     if len(query_labels):
         top1_pred_labels = database_labels[ranked_idx[:, 0]]
-        metrics["balanced_top_1"] = _balanced_accuracy_top1(
-            query_labels, top1_pred_labels
-        )
+        metrics["balanced_top_1"] = _balanced_accuracy_top1(query_labels, top1_pred_labels)
     else:
         metrics["balanced_top_1"] = float("nan")
 
@@ -144,12 +132,8 @@ def _label_retrieval_metrics(
 
     eligible_queries = int(np.count_nonzero(relevant_counts))
     metrics["num_queries_with_gallery_match"] = float(eligible_queries)
-    metrics["num_queries_without_gallery_match"] = float(
-        len(query_labels) - eligible_queries
-    )
-    metrics["mAP_query_coverage"] = (
-        float(eligible_queries / len(query_labels)) if len(query_labels) else float("nan")
-    )
+    metrics["num_queries_without_gallery_match"] = float(len(query_labels) - eligible_queries)
+    metrics["mAP_query_coverage"] = float(eligible_queries / len(query_labels)) if len(query_labels) else float("nan")
     if compute_map:
         # Full-matrix mAP ranks every database entry, so it is only meaningful when
         # every entry carries a real score. On a shortlist-constrained matrix the
@@ -157,23 +141,13 @@ def _label_retrieval_metrics(
         # database index, so the number would measure metadata row order rather than
         # the method. Report `nan` instead of a value that invites false comparison;
         # `mAP_at_k` is the comparable metric in that case.
-        metrics["mAP"] = (
-            float(np.mean(all_aps)) if all_aps and fully_scored else float("nan")
-        )
-        metrics["mAP_eligible"] = (
-            float(np.mean(eligible_aps)) if eligible_aps and fully_scored else float("nan")
-        )
+        metrics["mAP"] = float(np.mean(all_aps)) if all_aps and fully_scored else float("nan")
+        metrics["mAP_eligible"] = float(np.mean(eligible_aps)) if eligible_aps and fully_scored else float("nan")
         if cutoff:
             metrics["map_at_k"] = float(cutoff)
-            metrics["mAP_at_k"] = (
-                float(np.mean(truncated_aps)) if truncated_aps else float("nan")
-            )
-            metrics["rerank_mAP_at_k"] = (
-                float(np.mean(rerank_aps)) if rerank_aps else float("nan")
-            )
-            metrics["recall_at_k"] = (
-                float(queries_with_hits / len(query_labels)) if len(query_labels) else float("nan")
-            )
+            metrics["mAP_at_k"] = float(np.mean(truncated_aps)) if truncated_aps else float("nan")
+            metrics["rerank_mAP_at_k"] = float(np.mean(rerank_aps)) if rerank_aps else float("nan")
+            metrics["recall_at_k"] = float(queries_with_hits / len(query_labels)) if len(query_labels) else float("nan")
             metrics["num_queries_with_relevant_in_top_k"] = float(queries_with_hits)
     return metrics
 

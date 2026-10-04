@@ -49,15 +49,12 @@ class FrameFeatures:
             raise ValueError(f"Vismatch image_size must be positive (H, W), got {self.image_size}")
         if self.coordinate_convention not in {"pixel", "normalized[-1,1]"} or self.image_size_convention != "hw":
             raise ValueError(
-                "Vismatch features must use pixel or normalized[-1,1] coordinates "
-                "and image_size convention 'hw'"
+                "Vismatch features must use pixel or normalized[-1,1] coordinates and image_size convention 'hw'"
             )
         if self.original_image_size is not None and (
             self.original_image_size.shape != (2,) or np.any(self.original_image_size <= 0)
         ):
-            raise ValueError(
-                f"Vismatch original_image_size must be positive (H, W), got {self.original_image_size}"
-            )
+            raise ValueError(f"Vismatch original_image_size must be positive (H, W), got {self.original_image_size}")
 
 
 @dataclass(frozen=True)
@@ -87,7 +84,9 @@ def default_matcher_threshold(matcher: str) -> float:
     return 0.1 if matcher == "loma" else 0.01
 
 
-def build_matcher_profile(matcher: str, top_k: int, threshold: float, feature_matching_mode: str = "feature_level") -> MatcherProfile:
+def build_matcher_profile(
+    matcher: str, top_k: int, threshold: float, feature_matching_mode: str = "feature_level"
+) -> MatcherProfile:
     matcher = validate_matcher_name(matcher)
     if feature_matching_mode not in {"feature_level", "pairwise"}:
         raise ValueError("feature_matching_mode must be 'feature_level' or 'pairwise'")

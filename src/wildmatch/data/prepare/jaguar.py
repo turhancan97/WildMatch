@@ -71,16 +71,26 @@ BASE_MANIFEST_NAME = "jaguar_reid_base_manifest.json"
 METADATA_NAME = "jaguar_reid_v2_no_background.csv"
 MANIFEST_NAME = "jaguar_reid_v2_manifest.json"
 EMBEDDINGS_NAME = "jaguar_reid_dinov2_small_cls.npz"
-EMBEDDING_SPEC = ("dinov2 (facebook/dinov2-with-registers-small) post-layernorm CLS, L2-normalised; "
-                  "masked image thumbnailed to 448 px, resized to 224x224, ImageNet normalisation; CPU")
+EMBEDDING_SPEC = (
+    "dinov2 (facebook/dinov2-with-registers-small) post-layernorm CLS, L2-normalised; "
+    "masked image thumbnailed to 448 px, resized to 224x224, ImageNet normalisation; CPU"
+)
 SPLIT_COL = "split_v2"
 OVERSHOOT = 0.2  # allowed relative overshoot of the per-jaguar query target
 HASH_SIZE = 16  # 16 x 16 = 256-bit difference hash
 HASH_SPEC = "dhash-256 of alpha-masked luminance, image reduced by 8 then bilinear 17x16"
 BASE_COLUMNS = ["image_id", "identity", "path", "original_path", "mask", "dhash", "masked_sha256"]
 METADATA_COLUMNS = [
-    "image_id", "identity", "path", "original_path", "mask", "dup_group", "dhash",
-    SPLIT_COL, "split_train_test", "masked_sha256",
+    "image_id",
+    "identity",
+    "path",
+    "original_path",
+    "mask",
+    "dup_group",
+    "dhash",
+    SPLIT_COL,
+    "split_train_test",
+    "masked_sha256",
 ]
 
 
@@ -267,8 +277,11 @@ def _write_masked(task: Tuple[str, str]) -> Tuple[str, str, Dict[str, int]]:
     src, dst = Path(task[0]), Path(task[1])
     rgba = load_rgba(src)
     alpha = rgba[..., 3]
-    stats = {"nonbinary_alpha_pixels": int(((alpha > 0) & (alpha < 255)).sum()),
-             "foreground_pixels": int((alpha > 0).sum()), "pixels": int(alpha.size)}
+    stats = {
+        "nonbinary_alpha_pixels": int(((alpha > 0) & (alpha < 255)).sum()),
+        "foreground_pixels": int((alpha > 0).sum()),
+        "pixels": int(alpha.size),
+    }
     tmp = dst.with_name(dst.name + ".tmp")
     Image.fromarray(masked_rgb(rgba)).save(tmp, format="PNG")
     os.replace(tmp, dst)
@@ -300,15 +313,18 @@ def prepare(root: Path, *, workers: int) -> Dict[str, object]:
     else:
         with ProcessPoolExecutor(max_workers=workers) as pool:
             results = list(pool.map(_write_masked, tasks, chunksize=4))
-    base_rows = [{
-        "image_id": Path(row["filename"]).stem,
-        "identity": row["ground_truth"],
-        "path": f"{MASKED_DIR}/{row['filename']}",
-        "original_path": (IMAGE_DIR / row["filename"]).as_posix(),
-        "mask": mask,
-        "dhash": hashes[index],
-        "masked_sha256": masked_sha,
-    } for index, (row, (mask, masked_sha, _)) in enumerate(zip(rows, results))]
+    base_rows = [
+        {
+            "image_id": Path(row["filename"]).stem,
+            "identity": row["ground_truth"],
+            "path": f"{MASKED_DIR}/{row['filename']}",
+            "original_path": (IMAGE_DIR / row["filename"]).as_posix(),
+            "mask": mask,
+            "dhash": hashes[index],
+            "masked_sha256": masked_sha,
+        }
+        for index, (row, (mask, masked_sha, _)) in enumerate(zip(rows, results))
+    ]
     base_path = root / BASE_NAME
     _write_csv(base_path, BASE_COLUMNS, base_rows)
     test_csv = root / "test.csv"
@@ -316,8 +332,11 @@ def prepare(root: Path, *, workers: int) -> Dict[str, object]:
         "created_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "script": "wildmatch.data.prepare.jaguar prepare",
         "dataset_root": str(root),
-        "source": {"train_csv": TRAIN_CSV, "train_csv_sha256": sha256_file(root / TRAIN_CSV),
-                   "image_dir": IMAGE_DIR.as_posix()},
+        "source": {
+            "train_csv": TRAIN_CSV,
+            "train_csv_sha256": sha256_file(root / TRAIN_CSV),
+            "image_dir": IMAGE_DIR.as_posix(),
+        },
         "excluded": {
             "kaggle_test": "test.csv is an unlabelled pair list; its images are not used",
             "kaggle_test_rows": _count_rows(test_csv) if test_csv.is_file() else None,
@@ -326,7 +345,9 @@ def prepare(root: Path, *, workers: int) -> Dict[str, object]:
         "counts": {"images": len(base_rows), "identities": len({r["identity"] for r in base_rows})},
         "alpha": {
             "images_with_nonbinary_alpha": sum(1 for _, _, st in results if st["nonbinary_alpha_pixels"]),
-            "mean_foreground_fraction": float(np.mean([st["foreground_pixels"] / st["pixels"] for _, _, st in results])),
+            "mean_foreground_fraction": float(
+                np.mean([st["foreground_pixels"] / st["pixels"] for _, _, st in results])
+            ),
         },
         "outputs": {"base": BASE_NAME, "base_sha256": sha256_file(base_path), "masked_dir": MASKED_DIR},
     }
@@ -392,8 +413,7 @@ def write_embeddings(root: Path, workers: int) -> Path:
     embeddings = compute_embeddings(root, rows, workers)
     out = root / EMBEDDINGS_NAME
     tmp = out.with_name(out.name + ".tmp.npz")
-    np.savez(tmp, image_id=np.array([row["image_id"] for row in rows]), emb=embeddings,
-             spec=np.array(EMBEDDING_SPEC))
+    np.savez(tmp, image_id=np.array([row["image_id"] for row in rows]), emb=embeddings, spec=np.array(EMBEDDING_SPEC))
     os.replace(tmp, out)
     return out
 
@@ -435,8 +455,10 @@ def burst_groups(
             f"labels (row indices {sample}); check them for label errors"
         )
     gap = np.abs(np.subtract.outer(np.asarray(numbers), np.asarray(numbers)))
-    link = upper & same & (
-        (distances <= threshold) | ((gap <= adjacent_gap) & (similarity >= adjacent_cos)) | (similarity >= any_cos)
+    link = (
+        upper
+        & same
+        & ((distances <= threshold) | ((gap <= adjacent_gap) & (similarity >= adjacent_cos)) | (similarity >= any_cos))
     )
     parent = list(range(len(identities)))
 
@@ -453,8 +475,16 @@ def burst_groups(
     return [find(i) for i in range(len(identities))]
 
 
-def burst_leakage(similarity: np.ndarray, numbers: Sequence[int], identities: Sequence[str],
-                  split: Sequence[str], *, adjacent_gap: int, adjacent_cos: float, any_cos: float) -> Dict[str, object]:
+def burst_leakage(
+    similarity: np.ndarray,
+    numbers: Sequence[int],
+    identities: Sequence[str],
+    split: Sequence[str],
+    *,
+    adjacent_gap: int,
+    adjacent_cos: float,
+    any_cos: float,
+) -> Dict[str, object]:
     labels = np.asarray(identities)
     sides = np.asarray(split)
     gap = np.abs(np.subtract.outer(np.asarray(numbers), np.asarray(numbers)))
@@ -472,8 +502,9 @@ def burst_leakage(similarity: np.ndarray, numbers: Sequence[int], identities: Se
     }
 
 
-def split_leakage(distances: np.ndarray, identities: Sequence[str], split: Sequence[str],
-                  bands: Sequence[int] = (8, 16, 24, 32)) -> Dict[str, int]:
+def split_leakage(
+    distances: np.ndarray, identities: Sequence[str], split: Sequence[str], bands: Sequence[int] = (8, 16, 24, 32)
+) -> Dict[str, int]:
     """Same-jaguar pairs that end up on opposite sides, per maximum hash distance."""
     labels = np.asarray(identities)
     sides = np.asarray(split)
@@ -481,8 +512,18 @@ def split_leakage(distances: np.ndarray, identities: Sequence[str], split: Seque
     return {f"cross_side_same_identity_pairs_le_{b}": int((across & (distances <= b)).sum()) for b in bands}
 
 
-def split_dataset(root: Path, *, threshold: int, adjacent_gap: int, adjacent_cos: float, any_cos: float,
-            query_ratio: float, min_query: int, seed: int, cross_identity_limit: int = 12) -> Dict[str, object]:
+def split_dataset(
+    root: Path,
+    *,
+    threshold: int,
+    adjacent_gap: int,
+    adjacent_cos: float,
+    any_cos: float,
+    query_ratio: float,
+    min_query: int,
+    seed: int,
+    cross_identity_limit: int = 12,
+) -> Dict[str, object]:
     rows = read_base(root)
     image_ids = [row["image_id"] for row in rows]
     identities = [row["identity"] for row in rows]
@@ -490,9 +531,17 @@ def split_dataset(root: Path, *, threshold: int, adjacent_gap: int, adjacent_cos
     embeddings = load_embeddings(root / EMBEDDINGS_NAME, image_ids)
     similarity = embeddings @ embeddings.T
     distances = distance_matrix([row["dhash"] for row in rows])
-    groups = burst_groups(distances, similarity, numbers, identities, threshold=threshold,
-                          adjacent_gap=adjacent_gap, adjacent_cos=adjacent_cos, any_cos=any_cos,
-                          cross_identity_limit=cross_identity_limit)
+    groups = burst_groups(
+        distances,
+        similarity,
+        numbers,
+        identities,
+        threshold=threshold,
+        adjacent_gap=adjacent_gap,
+        adjacent_cos=adjacent_cos,
+        any_cos=any_cos,
+        cross_identity_limit=cross_identity_limit,
+    )
     split = assign_split(identities, groups, image_ids, query_ratio=query_ratio, min_query=min_query, seed=seed)
 
     group_names: Dict[int, str] = {}
@@ -524,27 +573,53 @@ def split_dataset(root: Path, *, threshold: int, adjacent_gap: int, adjacent_cos
         "created_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "script": "wildmatch.data.prepare.jaguar split",
         "dataset_root": str(root),
-        "source": {"base": BASE_NAME, "base_sha256": sha256_file(root / BASE_NAME),
-                   "embeddings": EMBEDDINGS_NAME, "embeddings_sha256": sha256_file(root / EMBEDDINGS_NAME),
-                   "embedding_spec": EMBEDDING_SPEC},
-        "parameters": {
-            "split_column": SPLIT_COL, "hash": HASH_SPEC, "hash_threshold": threshold, "adjacent_file_gap": adjacent_gap,
-            "adjacent_cos": adjacent_cos, "any_cos": any_cos, "cross_identity_limit": cross_identity_limit,
-            "grouping": "same-identity pairs only, joined transitively",
-            "query_ratio": query_ratio, "min_query_per_identity": min_query, "seed": seed,
+        "source": {
+            "base": BASE_NAME,
+            "base_sha256": sha256_file(root / BASE_NAME),
+            "embeddings": EMBEDDINGS_NAME,
+            "embeddings_sha256": sha256_file(root / EMBEDDINGS_NAME),
+            "embedding_spec": EMBEDDING_SPEC,
         },
-        "leakage": {**split_leakage(distances, identities, split),
-                    **burst_leakage(similarity, numbers, identities, split, adjacent_gap=adjacent_gap,
-                                    adjacent_cos=adjacent_cos, any_cos=any_cos)},
+        "parameters": {
+            "split_column": SPLIT_COL,
+            "hash": HASH_SPEC,
+            "hash_threshold": threshold,
+            "adjacent_file_gap": adjacent_gap,
+            "adjacent_cos": adjacent_cos,
+            "any_cos": any_cos,
+            "cross_identity_limit": cross_identity_limit,
+            "grouping": "same-identity pairs only, joined transitively",
+            "query_ratio": query_ratio,
+            "min_query_per_identity": min_query,
+            "seed": seed,
+        },
+        "leakage": {
+            **split_leakage(distances, identities, split),
+            **burst_leakage(
+                similarity,
+                numbers,
+                identities,
+                split,
+                adjacent_gap=adjacent_gap,
+                adjacent_cos=adjacent_cos,
+                any_cos=any_cos,
+            ),
+        },
         "counts": {
-            "images": len(out_rows), "identities": len(per_identity_query),
-            "burst_groups": len(group_sizes), "largest_group": max(group_sizes.values()),
+            "images": len(out_rows),
+            "identities": len(per_identity_query),
+            "burst_groups": len(group_sizes),
+            "largest_group": max(group_sizes.values()),
             "groups_on_both_sides": sum(1 for sides in sides_per_group.values() if len(sides) > 1),
             "query_share_per_identity": [round(min(shares), 3), round(max(shares), 3)],
             "fewest_queries_for_an_identity": min(q for q, _ in per_identity_query.values()),
-            **{side: {"images": sum(r["split"] == side for r in out_rows),
-                      "identities": len({r["identity"] for r in out_rows if r["split"] == side})}
-               for side in ("database", "query")},
+            **{
+                side: {
+                    "images": sum(r["split"] == side for r in out_rows),
+                    "identities": len({r["identity"] for r in out_rows if r["split"] == side}),
+                }
+                for side in ("database", "query")
+            },
         },
         "outputs": {"metadata": METADATA_NAME, "metadata_sha256": sha256_file(metadata_path)},
     }
@@ -558,7 +633,9 @@ def split_dataset(root: Path, *, threshold: int, adjacent_gap: int, adjacent_cos
 
 
 def parse_args(argv: Iterable[str] | None = None, prog: str | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Kaggle Jaguar dataset root")
     parser.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 1))
     sub = parser.add_subparsers(dest="command", required=True)
@@ -569,8 +646,12 @@ def parse_args(argv: Iterable[str] | None = None, prog: str | None = None) -> ar
     split.add_argument("--adjacent-gap", type=int, default=1, help="largest file-number gap that counts as adjacent")
     split.add_argument("--adjacent-cos", type=float, default=0.85, help="embedding cosine that joins adjacent photos")
     split.add_argument("--any-cos", type=float, default=0.95, help="embedding cosine that joins photos anywhere")
-    split.add_argument("--cross-identity-limit", type=int, default=12,
-                       help="fail when two jaguars have a pair at or below this hash distance")
+    split.add_argument(
+        "--cross-identity-limit",
+        type=int,
+        default=12,
+        help="fail when two jaguars have a pair at or below this hash distance",
+    )
     split.add_argument("--query-ratio", type=float, default=0.25)
     split.add_argument("--min-query", type=int, default=2)
     split.add_argument("--seed", type=int, default=0)
@@ -584,10 +665,17 @@ def main(argv: Iterable[str] | None = None, prog: str | None = None) -> None:
     elif args.command == "embed":
         print(f"[jaguar] wrote {write_embeddings(args.root, args.workers)}")
     else:
-        manifest = split_dataset(args.root, threshold=args.threshold, adjacent_gap=args.adjacent_gap,
-                                 adjacent_cos=args.adjacent_cos, any_cos=args.any_cos,
-                                 query_ratio=args.query_ratio, min_query=args.min_query, seed=args.seed,
-                                 cross_identity_limit=args.cross_identity_limit)
+        manifest = split_dataset(
+            args.root,
+            threshold=args.threshold,
+            adjacent_gap=args.adjacent_gap,
+            adjacent_cos=args.adjacent_cos,
+            any_cos=args.any_cos,
+            query_ratio=args.query_ratio,
+            min_query=args.min_query,
+            seed=args.seed,
+            cross_identity_limit=args.cross_identity_limit,
+        )
         print(json.dumps({"counts": manifest["counts"], "leakage": manifest["leakage"]}, indent=2))
 
 

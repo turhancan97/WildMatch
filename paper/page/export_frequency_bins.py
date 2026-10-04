@@ -21,6 +21,7 @@ Fail-closed checks are inherited from the score-separation exporter (completed m
 the paper's run id, matrix shape, scores in [0, 1], recomputed Top-1 equal to the recorded
 value). CPU only.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,7 +64,7 @@ def stable_topn(rows: np.ndarray, cols: np.ndarray, values: np.ndarray, n_query:
     starts = np.searchsorted(sorted_rows, np.arange(n_query), side="left")
     ends = np.searchsorted(sorted_rows, np.arange(n_query), side="right")
     for q in range(n_query):
-        take = sorted_cols[starts[q]:min(ends[q], starts[q] + n)]
+        take = sorted_cols[starts[q] : min(ends[q], starts[q] + n)]
         out[q, : len(take)] = take
     return out
 
@@ -75,7 +76,9 @@ def correctness(topn: np.ndarray, db_labels: np.ndarray, q_labels: np.ndarray) -
     return np.any(valid & (labels == q_labels[:, None]), axis=1)
 
 
-def bootstrap_gain(default: np.ndarray, finetuned: np.ndarray, n_resamples: int = BOOTSTRAP, seed: int = SEED) -> Tuple[float, float]:
+def bootstrap_gain(
+    default: np.ndarray, finetuned: np.ndarray, n_resamples: int = BOOTSTRAP, seed: int = SEED
+) -> Tuple[float, float]:
     """Paired bootstrap 95 % interval of mean(finetuned) - mean(default) over queries."""
     n = len(default)
     if n == 0:
@@ -89,13 +92,20 @@ def bootstrap_gain(default: np.ndarray, finetuned: np.ndarray, n_resamples: int 
 
 def summarise_bin(mask: np.ndarray, hit: Dict[str, Dict[str, np.ndarray]], in_shortlist: np.ndarray) -> Dict[str, Any]:
     n = int(mask.sum())
-    out: Dict[str, Any] = {"n": n, "small": n < SMALL_BIN,
-                           "shortlist_share": float(in_shortlist[mask].mean()) if n else None}
+    out: Dict[str, Any] = {
+        "n": n,
+        "small": n < SMALL_BIN,
+        "shortlist_share": float(in_shortlist[mask].mean()) if n else None,
+    }
     for metric in ("top_1", "top_5"):
         d, f = hit["default"][metric][mask], hit["finetuned"][metric][mask]
         lo, hi = bootstrap_gain(d, f)
-        out[metric] = {"default": float(d.mean()) if n else None, "finetuned": float(f.mean()) if n else None,
-                       "gain": float(f.mean() - d.mean()) if n else None, "gain_ci95": [lo, hi] if n else None}
+        out[metric] = {
+            "default": float(d.mean()) if n else None,
+            "finetuned": float(f.mean()) if n else None,
+            "gain": float(f.mean() - d.mean()) if n else None,
+            "gain_ci95": [lo, hi] if n else None,
+        }
     return out
 
 
@@ -133,12 +143,17 @@ def export_dataset(stem: str, key: str, label: str, paper_repo: Path) -> Dict[st
     gallery = np.array([count_of.get(ident, 0) for ident in q_labels], dtype=np.int64)
     bins = bin_index(gallery)
     result: Dict[str, Any] = {
-        "key": key, "label": label, "stem": stem, "k": sep.MAIN_K,
+        "key": key,
+        "label": label,
+        "stem": stem,
+        "k": sep.MAIN_K,
         "runs": {m: {"run_id": r["run_id"], "top_1": r["top_1"], "top_5": r["top_5"]} for m, r in runs.items()},
-        "n_queries": int(len(q_labels)), "n_database": int(len(db_labels)),
+        "n_queries": int(len(q_labels)),
+        "n_database": int(len(db_labels)),
         "n_identities_database": int(len(count_of)),
         "n_queries_without_gallery_image": int((bins < 0).sum()),
-        "bins": [], "overall": summarise_bin(bins >= 0, hit, in_shortlist),
+        "bins": [],
+        "overall": summarise_bin(bins >= 0, hit, in_shortlist),
     }
     for i, name in enumerate(BIN_LABELS):
         entry = summarise_bin(bins == i, hit, in_shortlist)
@@ -157,18 +172,20 @@ def build_payload(datasets: List[Dict[str, Any]], paper_commit: Optional[str]) -
         "paper_commit": paper_commit,
         "k": sep.MAIN_K,
         "matchers": [{"key": k, "label": label} for k, (_, label) in MATCHERS.items()],
-        "bin_labels": BIN_LABELS, "bin_edges": BIN_EDGES, "small_bin": SMALL_BIN,
+        "bin_labels": BIN_LABELS,
+        "bin_edges": BIN_EDGES,
+        "small_bin": SMALL_BIN,
         "bootstrap": {"resamples": BOOTSTRAP, "seed": SEED, "interval": "paired percentile 95 %"},
         "definitions": {
             "gallery_images": "number of database (gallery) images of the query's individual.",
             "top_1": "query's individual is the top-ranked candidate (shared stable rule).",
             "top_5": "query's individual appears among the top 5 candidates.",
             "shortlist_share": "share of the bin's queries whose individual is among the k MegaDescriptor-L "
-                               "candidates; identical for both matchers and a ceiling for Top-1 and Top-5.",
+            "candidates; identical for both matchers and a ceiling for Top-1 and Top-5.",
             "gain": "fine-tuned minus default accuracy in the bin; the interval is a paired bootstrap over the "
-                    "bin's queries.",
+            "bin's queries.",
             "without_gallery_image": "queries whose individual has no gallery image cannot be retrieved and are "
-                                     "excluded from the bins (counted per dataset).",
+            "excluded from the bins (counted per dataset).",
         },
         "datasets": datasets,
     }
@@ -184,10 +201,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     datasets = []
     for stem, key, label in selected:
         result = export_dataset(stem, key, label, args.paper_repo)
-        gains = " ".join(f"{b['label']}:{b['top_1']['gain'] * 100:+.1f}(n={b['n']})" if b["n"] else f"{b['label']}:–"
-                         for b in result["bins"])
-        print(f"[frequency] {label}: Top-1 gain by gallery count {gains}; "
-              f"{result['n_queries_without_gallery_image']} queries without gallery image", flush=True)
+        gains = " ".join(
+            f"{b['label']}:{b['top_1']['gain'] * 100:+.1f}(n={b['n']})" if b["n"] else f"{b['label']}:–"
+            for b in result["bins"]
+        )
+        print(
+            f"[frequency] {label}: Top-1 gain by gallery count {gains}; "
+            f"{result['n_queries_without_gallery_image']} queries without gallery image",
+            flush=True,
+        )
         datasets.append(result)
     payload = build_payload(datasets, sep.paper_commit(args.paper_repo))
     text = json.dumps(payload, indent=1)

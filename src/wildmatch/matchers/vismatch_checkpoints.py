@@ -173,8 +173,7 @@ def _classify_keys(keys: Sequence[str]) -> Optional[str]:
     has_token_confidence = any(key.startswith("token_confidence.") for key in names)
     has_loma_parts = any(key.startswith(("_detector.", "_descriptor.")) for key in names)
     has_rdd_parts = any(
-        key.startswith(("detector.", "descriptor.", "interpolator.", "softdetect.", "backbone."))
-        for key in names
+        key.startswith(("detector.", "descriptor.", "interpolator.", "softdetect.", "backbone.")) for key in names
     )
     if has_transformer and has_assignment and has_token_confidence:
         return "lightglue"
@@ -227,10 +226,7 @@ def _is_joint_checkpoint(item: CheckpointFile, protocol: Mapping[str, Any]) -> b
 
 def _require_full_for_joint(mode: str) -> str:
     if mode not in {"full", "auto"}:
-        raise ValueError(
-            "joint (descriptor + matcher) checkpoints must use checkpoint_components=full, "
-            f"got {mode}"
-        )
+        raise ValueError(f"joint (descriptor + matcher) checkpoints must use checkpoint_components=full, got {mode}")
     return "full"
 
 
@@ -320,8 +316,7 @@ def _select_components(
             declared = _protocol_component(protocol, "rdd_extractor")
             if declared is not None and declared != "descriptor":
                 raise ValueError(
-                    "RDD checkpoint protocol does not declare descriptor training: "
-                    f"rdd_train_component={declared}"
+                    f"RDD checkpoint protocol does not declare descriptor training: rdd_train_component={declared}"
                 )
             if "lightglue" in detected:
                 raise ValueError("descriptor_only RDD checkpoints cannot also select a custom LightGlue component")
@@ -333,13 +328,19 @@ def _select_components(
                 raise ValueError("RDD descriptor checkpoint contains no descriptor.* tensors")
             if unknown:
                 raise ValueError(f"RDD descriptor checkpoint contains unexpected tensor prefixes: {unknown[:8]}")
-            return (descriptor_item,), ("lightglue",), "descriptor_only", ("descriptor.",), ("detector.",) if ignored else ()
-        if mode == "descriptor_only":
-            raise ValueError("checkpoint_components=descriptor_only requires descriptor training metadata or descriptor tensors")
-        if is_descriptor:
-            raise ValueError(
-                "RDD descriptor checkpoint must use checkpoint_components=descriptor_only"
+            return (
+                (descriptor_item,),
+                ("lightglue",),
+                "descriptor_only",
+                ("descriptor.",),
+                ("detector.",) if ignored else (),
             )
+        if mode == "descriptor_only":
+            raise ValueError(
+                "checkpoint_components=descriptor_only requires descriptor training metadata or descriptor tensors"
+            )
+        if is_descriptor:
+            raise ValueError("RDD descriptor checkpoint must use checkpoint_components=descriptor_only")
         if mode == "auto":
             selected = tuple(detected[name] for name in ("rdd_extractor", "lightglue") if name in detected)
             if not selected:
@@ -363,10 +364,7 @@ def _select_components(
             raise ValueError("checkpoint_components=extractor_only is not supported for the current LoMa wrapper")
         incompatible = sorted(name for name in detected if name != "loma_model")
         if incompatible:
-            raise ValueError(
-                "LoMa cannot use generic RDD or LightGlue checkpoint components: "
-                f"{incompatible}"
-            )
+            raise ValueError(f"LoMa cannot use generic RDD or LightGlue checkpoint components: {incompatible}")
         if "loma_model" not in detected:
             incompatible = sorted(detected)
             raise ValueError(
@@ -377,16 +375,19 @@ def _select_components(
         if _is_joint_checkpoint(item, protocol):
             resolved = _require_full_for_joint(mode)
             names = {str(key).removeprefix("module.") for key in item.keys}
-            if not any(name.startswith("_detector.") for name in names) or not any(name.startswith("_descriptor.") for name in names):
-                raise ValueError(f"joint LoMa checkpoints must contain complete {loma_arch} weights (DaD, DeDoDe and matcher)")
+            if not any(name.startswith("_detector.") for name in names) or not any(
+                name.startswith("_descriptor.") for name in names
+            ):
+                raise ValueError(
+                    f"joint LoMa checkpoints must contain complete {loma_arch} weights (DaD, DeDoDe and matcher)"
+                )
             return (item,), (), resolved, (), ()
         is_descriptor = _is_descriptor_checkpoint(item, protocol)
         if mode == "descriptor_only" or (mode == "auto" and is_descriptor):
             declared = _protocol_component(protocol, "loma_model")
             if declared is not None and declared != "descriptor":
                 raise ValueError(
-                    "LoMa checkpoint protocol does not declare descriptor training: "
-                    f"loma_train_component={declared}"
+                    f"LoMa checkpoint protocol does not declare descriptor training: loma_train_component={declared}"
                 )
             names = set(str(key).removeprefix("module.") for key in item.keys)
             allowed = {name for name in names if name.startswith("_descriptor.")}
@@ -395,21 +396,34 @@ def _select_components(
                 raise ValueError("LoMa descriptor checkpoint contains no _descriptor.* tensors")
             if unknown:
                 raise ValueError(f"LoMa descriptor checkpoint contains unexpected tensors: {unknown[:8]}")
-            return (item,), ("loma_detector", "loma_matcher"), "descriptor_only", ("_descriptor.",), ("_detector.", "matching_layers")
-        if mode == "descriptor_only":
-            raise ValueError("checkpoint_components=descriptor_only requires LoMa descriptor metadata or _descriptor.* tensors")
-        if is_descriptor:
-            raise ValueError(
-                "LoMa descriptor checkpoint must use checkpoint_components=descriptor_only"
+            return (
+                (item,),
+                ("loma_detector", "loma_matcher"),
+                "descriptor_only",
+                ("_descriptor.",),
+                ("_detector.", "matching_layers"),
             )
+        if mode == "descriptor_only":
+            raise ValueError(
+                "checkpoint_components=descriptor_only requires LoMa descriptor metadata or _descriptor.* tensors"
+            )
+        if is_descriptor:
+            raise ValueError("LoMa descriptor checkpoint must use checkpoint_components=descriptor_only")
         if mode == "full":
             names = {str(key).removeprefix("module.") for key in item.keys}
-            if not any(name.startswith("_detector.") for name in names) or not any(name.startswith("_descriptor.") for name in names):
+            if not any(name.startswith("_detector.") for name in names) or not any(
+                name.startswith("_descriptor.") for name in names
+            ):
                 raise ValueError(f"checkpoint_components=full requires complete {loma_arch} LoMa weights")
         resolved = mode
         if mode == "auto":
             names = set(str(key).removeprefix("module.") for key in item.keys)
-            resolved = "full" if any(name.startswith("_detector.") for name in names) and any(name.startswith("_descriptor.") for name in names) else "matcher_only"
+            resolved = (
+                "full"
+                if any(name.startswith("_detector.") for name in names)
+                and any(name.startswith("_descriptor.") for name in names)
+                else "matcher_only"
+            )
         return (item,), (), resolved, (), ()
 
     raise ValueError(f"Unsupported Vismatch matcher for checkpoint loading: {matcher}")
@@ -522,7 +536,7 @@ def _normalize_state_keys(state: Mapping[str, Any], component: str) -> Dict[str,
         changed = False
         for prefix in prefixes:
             if all(key.startswith(prefix) for key in result):
-                result = {key[len(prefix):]: value for key, value in result.items()}
+                result = {key[len(prefix) :]: value for key, value in result.items()}
                 changed = True
                 break
     return result
@@ -543,14 +557,15 @@ def _load_into(module: Any, item: CheckpointFile, *, allow_loma_partial: bool) -
         allowed_missing = tuple(name for name in missing if name.startswith(("_detector.", "_descriptor.")))
         if unexpected or len(allowed_missing) != len(missing):
             raise RuntimeError(
-                f"LoMa partial checkpoint validation failed for {item.path}: "
-                f"missing={missing}, unexpected={unexpected}"
+                f"LoMa partial checkpoint validation failed for {item.path}: missing={missing}, unexpected={unexpected}"
             )
         return
     try:
         module.load_state_dict(state, strict=True)
     except RuntimeError as exc:
-        raise RuntimeError(f"{item.component} checkpoint is incompatible with the active Vismatch model: {item.path}") from exc
+        raise RuntimeError(
+            f"{item.component} checkpoint is incompatible with the active Vismatch model: {item.path}"
+        ) from exc
 
 
 def _load_prefixed_state(
@@ -563,14 +578,9 @@ def _load_prefixed_state(
 ) -> None:
     """Load one named subcomponent while validating every tensor in the file."""
     state = _normalize_state_keys(_load_state(item.path), item.component)
-    unknown = [
-        key for key in state
-        if not key.startswith((applied_prefix, *tuple(ignored_prefixes)))
-    ]
+    unknown = [key for key in state if not key.startswith((applied_prefix, *tuple(ignored_prefixes)))]
     if unknown:
-        raise RuntimeError(
-            f"{item.component} descriptor checkpoint contains unexpected tensors: {unknown[:8]}"
-        )
+        raise RuntimeError(f"{item.component} descriptor checkpoint contains unexpected tensors: {unknown[:8]}")
     if ignored_validation_module is not None:
         expected_ignored = ignored_validation_module.state_dict()
         ignored_shape_errors = []
@@ -587,20 +597,18 @@ def _load_prefixed_state(
                 f"{item.component} ignored tensor validation failed: "
                 f"unexpected={ignored_unexpected[:8]}, shape_mismatch={ignored_shape_errors[:8]}"
             )
-    selected = {key[len(applied_prefix):]: value for key, value in state.items() if key.startswith(applied_prefix)}
+    selected = {key[len(applied_prefix) :]: value for key, value in state.items() if key.startswith(applied_prefix)}
     if not selected:
         raise RuntimeError(f"{item.component} checkpoint contains no tensors under {applied_prefix}")
     expected = module.state_dict()
     missing = sorted(set(expected) - set(selected))
     optional_missing = [
-        key for key in missing
-        if key.endswith((".running_mean", ".running_var", ".num_batches_tracked"))
+        key for key in missing if key.endswith((".running_mean", ".running_var", ".num_batches_tracked"))
     ]
     required_missing = [key for key in missing if key not in optional_missing]
     unexpected = sorted(set(selected) - set(expected))
     shape_errors = [
-        key for key in selected
-        if key in expected and tuple(selected[key].shape) != tuple(expected[key].shape)
+        key for key in selected if key in expected and tuple(selected[key].shape) != tuple(expected[key].shape)
     ]
     if required_missing or unexpected or shape_errors:
         raise RuntimeError(
@@ -617,9 +625,7 @@ def _load_prefixed_state(
         unexpected_loaded = list(result.unexpected_keys)
         missing_loaded = [key for key in result.missing_keys if key not in optional_missing]
         if unexpected_loaded or missing_loaded:
-            raise RuntimeError(
-                f"missing={missing_loaded[:8]}, unexpected={unexpected_loaded[:8]}"
-            )
+            raise RuntimeError(f"missing={missing_loaded[:8]}, unexpected={unexpected_loaded[:8]}")
     except RuntimeError as exc:
         raise RuntimeError(f"{item.component} descriptor checkpoint could not be loaded: {item.path}") from exc
 
@@ -671,10 +677,14 @@ def apply_vismatch_checkpoint(model: Any, resolution: VismatchCheckpointResoluti
                 )
             else:
                 has_backbone = any(
-                    str(name).removeprefix("module.").startswith(("_detector.", "_descriptor."))
-                    for name in item.keys
+                    str(name).removeprefix("module.").startswith(("_detector.", "_descriptor.")) for name in item.keys
                 )
-                _load_into(target, item, allow_loma_partial=resolved_mode == "matcher_only" or (resolved_mode == "auto" and not has_backbone))
+                _load_into(
+                    target,
+                    item,
+                    allow_loma_partial=resolved_mode == "matcher_only"
+                    or (resolved_mode == "auto" and not has_backbone),
+                )
         else:
             raise RuntimeError(f"Unsupported resolved Vismatch component: {item.component}")
     model.eval()

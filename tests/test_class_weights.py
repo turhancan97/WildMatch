@@ -7,6 +7,7 @@ from wildmatch.train.class_weights import compute_identity_class_weights
 try:
     import torch
     from wildmatch.models.objective import SoftmaxLoss, SoftmaxLossEP
+
     HAS_TORCH_OBJECTIVE = True
 except (ImportError, ModuleNotFoundError):
     HAS_TORCH_OBJECTIVE = False
@@ -38,9 +39,7 @@ class IdentityClassWeightTests(unittest.TestCase):
         self.assertEqual(metadata["max"], 5.0)
 
     def test_none_returns_no_weights_and_is_still_provenanced(self):
-        weights, metadata = compute_identity_class_weights(
-            ["a", "a", "b"], ["a", "b"], weighting="none"
-        )
+        weights, metadata = compute_identity_class_weights(["a", "a", "b"], ["a", "b"], weighting="none")
         self.assertIsNone(weights)
         self.assertEqual(metadata["mode"], "none")
         self.assertEqual(metadata["formula"], "none")

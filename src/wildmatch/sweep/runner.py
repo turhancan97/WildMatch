@@ -90,15 +90,25 @@ def probe_arguments(payload: Mapping[str, Any], task: Mapping[str, str]) -> List
     """
     arguments = ["--config-path", str(Path(payload["config_snapshot"]).parent), "--config-name", "probe"]
     if payload.get("config_tree_sha256") is not None:  # snapshots with the paths/ and dataset/ groups
-        arguments += [f"paths={payload.get('paths_profile') or LAUNCHER_PATHS_PROFILE}", f"dataset={task['profile_id']}"]
+        arguments += [
+            f"paths={payload.get('paths_profile') or LAUNCHER_PATHS_PROFILE}",
+            f"dataset={task['profile_id']}",
+        ]
     arguments += [
-        f"dataset.name={task['dataset_name']}", f"dataset.animal={task['animal']}",
-        f"dataset.root={task['root']}", f"dataset.metadata_file={task['metadata_file']}",
-        f"dataset.label_col={task['label_col']}", f"dataset.mask_col={task['mask_col']}",
-        f"dataset.no_background={task['no_background']}", f"dataset.image_variant={task['image_variant']}",
-        f"dataset.split_col={task['split_col']}", f"dataset.database_split_value={task['database_split_value']}",
-        f"dataset.query_split_value={task['query_split_value']}", f"dataset.calibration_size={task['calibration_size']}",
-        f"benchmark.method={task['method']}", f"benchmark.candidate_k={task['candidate_k']}",
+        f"dataset.name={task['dataset_name']}",
+        f"dataset.animal={task['animal']}",
+        f"dataset.root={task['root']}",
+        f"dataset.metadata_file={task['metadata_file']}",
+        f"dataset.label_col={task['label_col']}",
+        f"dataset.mask_col={task['mask_col']}",
+        f"dataset.no_background={task['no_background']}",
+        f"dataset.image_variant={task['image_variant']}",
+        f"dataset.split_col={task['split_col']}",
+        f"dataset.database_split_value={task['database_split_value']}",
+        f"dataset.query_split_value={task['query_split_value']}",
+        f"dataset.calibration_size={task['calibration_size']}",
+        f"benchmark.method={task['method']}",
+        f"benchmark.candidate_k={task['candidate_k']}",
     ]
     method = task["method"]
     if method in PROBE_METHODS:
@@ -134,26 +144,48 @@ def task_log_paths(logs_root: Path, task: Mapping[str, str], index: int, job_id:
     if task["method"] in PROBE_METHODS:
         slug = f"{slug}-{task['train_mode']}-{task['class_weighting']}"
     folder = logs_root / _sanitize(task["dataset_name"]) / _sanitize(task["animal"]) / split / f"job-{job_id}"
-    stem = f"task-{index:03d}__{split}__{_sanitize(slug)}__{_sanitize(task['checkpoint_label'])}__k{task['candidate_k']}"
+    stem = (
+        f"task-{index:03d}__{split}__{_sanitize(slug)}__{_sanitize(task['checkpoint_label'])}__k{task['candidate_k']}"
+    )
     return {suffix: folder / f"{stem}.{suffix}" for suffix in ("out", "err", "combined.log", "json")}
 
 
-def _record_fields(task: Mapping[str, str], index: int, job_id: str, payload: Mapping[str, Any],
-                   manifest_path: Path, paths: Mapping[str, Path]) -> Dict[str, Any]:
+def _record_fields(
+    task: Mapping[str, str],
+    index: int,
+    job_id: str,
+    payload: Mapping[str, Any],
+    manifest_path: Path,
+    paths: Mapping[str, Path],
+) -> Dict[str, Any]:
     return dict(
-        job_id=job_id, task_id=index, dataset=_sanitize(task["dataset_name"]), animal=_sanitize(task["animal"]),
-        split_protocol=task["split_col"], method=task["method"], matcher=task["matcher"],
-        train_mode=task["train_mode"], class_weighting=task["class_weighting"],
-        checkpoint=task["checkpoint_label"], checkpoint_path=task["checkpoint_path"],
-        candidate_k=int(task["candidate_k"]), stdout_path=str(paths["out"]), stderr_path=str(paths["err"]),
-        combined_path=str(paths["combined.log"]), submission_id=payload["submission_id"],
-        manifest_path=str(manifest_path), profile_id=task["profile_id"],
-        checkpoint_owner=task["checkpoint_owner"], checkpoint_sha256=task["checkpoint_sha256"],
+        job_id=job_id,
+        task_id=index,
+        dataset=_sanitize(task["dataset_name"]),
+        animal=_sanitize(task["animal"]),
+        split_protocol=task["split_col"],
+        method=task["method"],
+        matcher=task["matcher"],
+        train_mode=task["train_mode"],
+        class_weighting=task["class_weighting"],
+        checkpoint=task["checkpoint_label"],
+        checkpoint_path=task["checkpoint_path"],
+        candidate_k=int(task["candidate_k"]),
+        stdout_path=str(paths["out"]),
+        stderr_path=str(paths["err"]),
+        combined_path=str(paths["combined.log"]),
+        submission_id=payload["submission_id"],
+        manifest_path=str(manifest_path),
+        profile_id=task["profile_id"],
+        checkpoint_owner=task["checkpoint_owner"],
+        checkpoint_sha256=task["checkpoint_sha256"],
     )
 
 
 def _cancel_own_array_element() -> None:
-    array_job, array_task, job = (os.environ.get(k) for k in ("SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID", "SLURM_JOB_ID"))
+    array_job, array_task, job = (
+        os.environ.get(k) for k in ("SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID", "SLURM_JOB_ID")
+    )
     target = f"{array_job}_{array_task}" if array_job and array_task else job
     if target and shutil.which("scancel"):
         subprocess.run(["scancel", target], check=False)
@@ -196,8 +228,10 @@ def _run_teed(command: Sequence[str], paths: Mapping[str, Path]) -> int:
     environment = dict(os.environ, PYTHONUNBUFFERED="1")  # live logs; no effect on results
     with paths["out"].open("ab") as out, paths["err"].open("ab") as err, paths["combined.log"].open("ab") as combined:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
-        threads = [threading.Thread(target=_pump, args=(process.stdout, (_console(sys.stdout), out, combined), lock)),
-                   threading.Thread(target=_pump, args=(process.stderr, (_console(sys.stderr), err, combined), lock))]
+        threads = [
+            threading.Thread(target=_pump, args=(process.stdout, (_console(sys.stdout), out, combined), lock)),
+            threading.Thread(target=_pump, args=(process.stderr, (_console(sys.stderr), err, combined), lock)),
+        ]
         for thread in threads:
             thread.start()
         code = process.wait()
@@ -209,13 +243,21 @@ def _run_teed(command: Sequence[str], paths: Mapping[str, Path]) -> int:
 def _run_directory(stdout_path: Path) -> str:
     if not stdout_path.is_file():
         return ""
-    saved = [line[len("Saved JSON: "):].strip() for line in stdout_path.read_text(encoding="utf-8", errors="replace").splitlines()
-             if line.startswith("Saved JSON: ")]
+    saved = [
+        line[len("Saved JSON: ") :].strip()
+        for line in stdout_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        if line.startswith("Saved JSON: ")
+    ]
     return str(Path(saved[-1]).parent) if saved and Path(saved[-1]).is_file() else ""
 
 
-def run_task(manifest_path: Path, index: int, logs_root: Path = DEFAULT_LOGS_ROOT, job_id: Optional[str] = None,
-             dry_run: bool = False) -> int:
+def run_task(
+    manifest_path: Path,
+    index: int,
+    logs_root: Path = DEFAULT_LOGS_ROOT,
+    job_id: Optional[str] = None,
+    dry_run: bool = False,
+) -> int:
     """Validate and run task ``index`` of a submission; returns its exit code."""
     manifest_path = Path(manifest_path).resolve()
     payload, record = load_task(manifest_path, index)
@@ -235,20 +277,34 @@ def run_task(manifest_path: Path, index: int, logs_root: Path = DEFAULT_LOGS_ROO
         for name in ("err", "combined.log"):
             with paths[name].open("a", encoding="utf-8") as handle:
                 handle.write(message)
-        logs.init_record(paths["json"], status="failed", command="validation-only: no probe execution",
-                         start_time=_now(), validation_status="failed", **fields)
-        logs.update_record(paths["json"], status="failed", end_time=_now(), validation_status="failed",
-                           validation_error=str(exc), error_file=paths["err"])
+        logs.init_record(
+            paths["json"],
+            status="failed",
+            command="validation-only: no probe execution",
+            start_time=_now(),
+            validation_status="failed",
+            **fields,
+        )
+        logs.update_record(
+            paths["json"],
+            status="failed",
+            end_time=_now(),
+            validation_status="failed",
+            validation_error=str(exc),
+            error_file=paths["err"],
+        )
         logs.write_index(logs_root, index_path)
         _cancel_own_array_element()
         return 1
 
     command = evaluate_command(probe_arguments(payload, task))
     command_text = shlex.join(command)
-    header = (f"Starting sweep task {index}\n{describe_task(index, task)}\n"
-              f"Submission ID: {payload['submission_id']}\nManifest: {manifest_path}\n"
-              f"Config snapshot: {payload['config_snapshot']}\nCheckpoint owner: {task['checkpoint_owner']}\n"
-              f"Checkpoint SHA256: {task['checkpoint_sha256']}\n{command_text}\n")
+    header = (
+        f"Starting sweep task {index}\n{describe_task(index, task)}\n"
+        f"Submission ID: {payload['submission_id']}\nManifest: {manifest_path}\n"
+        f"Config snapshot: {payload['config_snapshot']}\nCheckpoint owner: {task['checkpoint_owner']}\n"
+        f"Checkpoint SHA256: {task['checkpoint_sha256']}\n{command_text}\n"
+    )
     sys.stdout.write(header)
     sys.stdout.flush()
     if dry_run:
@@ -257,15 +313,26 @@ def run_task(manifest_path: Path, index: int, logs_root: Path = DEFAULT_LOGS_ROO
     for name in ("out", "combined.log"):
         with paths[name].open("a", encoding="utf-8") as handle:
             handle.write(header)
-    logs.init_record(paths["json"], status="running", command=command_text, start_time=_now(),
-                     validation_status="validated", **fields)
+    logs.init_record(
+        paths["json"],
+        status="running",
+        command=command_text,
+        start_time=_now(),
+        validation_status="validated",
+        **fields,
+    )
     code = 1
     try:
         code = _run_teed(command, paths)
     finally:
-        logs.update_record(paths["json"], status="completed" if code == 0 else "failed", end_time=_now(),
-                           experiment_run_directory=_run_directory(paths["out"]), error_file=paths["err"],
-                           validation_status="validated")
+        logs.update_record(
+            paths["json"],
+            status="completed" if code == 0 else "failed",
+            end_time=_now(),
+            experiment_run_directory=_run_directory(paths["out"]),
+            error_file=paths["err"],
+            validation_status="validated",
+        )
         logs.write_index(logs_root, index_path)
     return code
 
@@ -289,13 +356,22 @@ def sweep_main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None)
     mode.add_argument("--submit", action="store_true", help="freeze the submission and submit a Slurm array")
     mode.add_argument("--local", action="store_true", help="freeze the submission and run every task here, in order")
     parser.add_argument("--paths", help="path profile (default: WILDMATCH_PATHS, wildmatch.local.yaml, default)")
-    parser.add_argument("--config", type=Path, help="probe.yaml to freeze instead of the packaged one "
-                        "(its paths/ and dataset/ groups come from the package unless they sit next to it)")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        help="probe.yaml to freeze instead of the packaged one "
+        "(its paths/ and dataset/ groups come from the package unless they sit next to it)",
+    )
     parser.add_argument("--logs-root", type=Path, default=DEFAULT_LOGS_ROOT)
     parser.add_argument("--max-concurrent", type=int, help="Slurm array throttle; overrides the spec")
     parser.add_argument("--sbatch-script", type=Path, default=DEFAULT_SBATCH_SCRIPT)
-    parser.add_argument("--sbatch-arg", action="append", default=[], metavar="ARG",
-                        help="extra sbatch argument, e.g. --sbatch-arg=--partition=gpu (repeatable)")
+    parser.add_argument(
+        "--sbatch-arg",
+        action="append",
+        default=[],
+        metavar="ARG",
+        help="extra sbatch argument, e.g. --sbatch-arg=--partition=gpu (repeatable)",
+    )
     args = parser.parse_args(argv)
     try:
         spec_path = resolve_spec_path(args.spec)
@@ -316,14 +392,25 @@ def sweep_main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None)
         parser.exit(2, f"{parser.prog}: sbatch script not found: {args.sbatch_script} (run from the repository root)\n")
     submission_id = _submission_id(args.logs_root / "submissions")
     try:
-        manifest = create_submission(tasks, args.logs_root / "submissions" / submission_id, submission_id,
-                                     spec_path, profile, config_file=args.config)
+        manifest = create_submission(
+            tasks,
+            args.logs_root / "submissions" / submission_id,
+            submission_id,
+            spec_path,
+            profile,
+            config_file=args.config,
+        )
     except ValueError as exc:
         parser.exit(2, f"{parser.prog}: {exc}\n")
     print(f"Immutable submission manifest: {manifest}")
     array = f"0-{len(tasks) - 1}%{max_concurrent}"
-    sbatch = ["sbatch", f"--array={array}", f"--export=ALL,WILDMATCH_SWEEP_MANIFEST={manifest}",
-              *args.sbatch_arg, str(args.sbatch_script)]
+    sbatch = [
+        "sbatch",
+        f"--array={array}",
+        f"--export=ALL,WILDMATCH_SWEEP_MANIFEST={manifest}",
+        *args.sbatch_arg,
+        str(args.sbatch_script),
+    ]
     if args.dry_run:
         print("Dry run: no Slurm array submitted.")
         print(shlex.join(sbatch))
@@ -333,10 +420,15 @@ def sweep_main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None)
     if args.submit:
         print(f"Submitting {len(tasks)} sweep tasks with array throttle {max_concurrent}.")
         return subprocess.run(sbatch, check=False).returncode
-    failed = [index for index in range(len(tasks))
-              if run_task(manifest, index, args.logs_root, job_id=f"local-{submission_id}") != 0]
-    print(f"Local sweep finished: {len(tasks) - len(failed)} of {len(tasks)} tasks succeeded"
-          + (f"; failed: {', '.join(map(str, failed))}" if failed else "."))
+    failed = [
+        index
+        for index in range(len(tasks))
+        if run_task(manifest, index, args.logs_root, job_id=f"local-{submission_id}") != 0
+    ]
+    print(
+        f"Local sweep finished: {len(tasks) - len(failed)} of {len(tasks)} tasks succeeded"
+        + (f"; failed: {', '.join(map(str, failed))}" if failed else ".")
+    )
     return 1 if failed else 0
 
 

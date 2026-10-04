@@ -133,15 +133,19 @@ class CheckpointResolutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             recorded = root / "legacy" / "epoch_299" / "model.safetensors"
-            for path, content in ((recorded, b"overwritten"),
-                                  (root / "legacy-mined" / "latest" / "model.safetensors", b"used"),
-                                  (root / "legacy-mined" / "epoch_299" / "model.safetensors", b"used")):
+            for path, content in (
+                (recorded, b"overwritten"),
+                (root / "legacy-mined" / "latest" / "model.safetensors", b"used"),
+                (root / "legacy-mined" / "epoch_299" / "model.safetensors", b"used"),
+            ):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(content)
             hasher = lambda path: path.read_bytes().decode()
             self.assertEqual(resolve_recorded_checkpoint(recorded, "overwritten", root, hasher), recorded)
-            self.assertEqual(resolve_recorded_checkpoint(recorded, "used", root, hasher),
-                             root / "legacy-mined" / "epoch_299" / "model.safetensors")
+            self.assertEqual(
+                resolve_recorded_checkpoint(recorded, "used", root, hasher),
+                root / "legacy-mined" / "epoch_299" / "model.safetensors",
+            )
             with self.assertRaises(FileNotFoundError):
                 resolve_recorded_checkpoint(recorded, "absent", root, hasher)
 

@@ -21,13 +21,34 @@ def _wildlife_metadata():
     for animal, ids in (("NyalaData", ["2", "10", "3"]), ("HyenaID2022", ["b", "a"])):
         for identity in ids:
             for n in range(5):
-                rows.append({"identity": f"{animal}_{identity}", "path": f"images/{animal}/{identity}_{n}.jpg",
-                             "species": "nyala" if animal == "NyalaData" else "hyena", "dataset": animal, "split": "train"})
-    rows.append({"identity": "BelugaID_w", "path": "images/BelugaID/beluga-id-test/x.jpg", "species": "whale",
-                 "dataset": "BelugaID", "split": "test"})
+                rows.append(
+                    {
+                        "identity": f"{animal}_{identity}",
+                        "path": f"images/{animal}/{identity}_{n}.jpg",
+                        "species": "nyala" if animal == "NyalaData" else "hyena",
+                        "dataset": animal,
+                        "split": "train",
+                    }
+                )
+    rows.append(
+        {
+            "identity": "BelugaID_w",
+            "path": "images/BelugaID/beluga-id-test/x.jpg",
+            "species": "whale",
+            "dataset": "BelugaID",
+            "split": "test",
+        }
+    )
     for n in range(5):
-        rows.append({"identity": "BelugaID_w", "path": f"images/BelugaID/beluga/{n}.jpg", "species": "whale",
-                     "dataset": "BelugaID", "split": "train"})
+        rows.append(
+            {
+                "identity": "BelugaID_w",
+                "path": f"images/BelugaID/beluga/{n}.jpg",
+                "species": "whale",
+                "dataset": "BelugaID",
+                "split": "train",
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -53,15 +74,29 @@ class WildlifeTableTests(unittest.TestCase):
 class SalamanderTableTests(unittest.TestCase):
     def test_rule(self):
         def row(i, identity, date, view="top", split="database"):
-            return {"image_id": i, "identity": identity, "path": f"images/SalamanderID2025/database/images/f{i}.jpg",
-                    "date": date, "orientation": view, "species": None, "split": split, "dataset": "SalamanderID2025"}
-        metadata = pd.DataFrame([
-            row(1, "S_1", "2020-01-01"), row(2, "S_1", "2021-01-01", "right"), row(3, "S_1", "2021-01-01"),
-            row(4, "S_2", "2020-01-01"), row(5, "S_2", "2020-01-01"),  # one date: database only
-            row(6, "S_3", None),  # undated: dropped
-            row(7, "S_4", "2019-01-01", split="query"),  # unlabelled competition query: ignored
-            {**row(8, "L_1", "2020-01-01"), "dataset": "LynxID2025"},
-        ])
+            return {
+                "image_id": i,
+                "identity": identity,
+                "path": f"images/SalamanderID2025/database/images/f{i}.jpg",
+                "date": date,
+                "orientation": view,
+                "species": None,
+                "split": split,
+                "dataset": "SalamanderID2025",
+            }
+
+        metadata = pd.DataFrame(
+            [
+                row(1, "S_1", "2020-01-01"),
+                row(2, "S_1", "2021-01-01", "right"),
+                row(3, "S_1", "2021-01-01"),
+                row(4, "S_2", "2020-01-01"),
+                row(5, "S_2", "2020-01-01"),  # one date: database only
+                row(6, "S_3", None),  # undated: dropped
+                row(7, "S_4", "2019-01-01", split="query"),  # unlabelled competition query: ignored
+                {**row(8, "L_1", "2020-01-01"), "dataset": "LynxID2025"},
+            ]
+        )
         table = S.salamander_table(metadata)
         self.assertEqual(table["image_id"].tolist(), [1, 4, 5, 2, 3])
         self.assertEqual(table["split"].tolist(), ["database"] * 3 + ["query"] * 2)
@@ -90,12 +125,24 @@ class PrepareStepTests(unittest.TestCase):
         self.root = Path(self._tmp.name)
         metadata = _wildlife_metadata()
         metadata.to_csv(self.root / "metadata.csv", index=False)
-        self.entry = OmegaConf.create({
-            "name": "WildlifeReID-10k", "animal": "HyenaID2022", "root": str(self.root),
-            "metadata_file": "metadata_mdsplit_no_background/metadata_HyenaID2022.csv", "label_col": "identity",
-            "split_col": "split", "database_split_value": "train", "query_split_value": "test",
-            "no_background": False, "mask_col": "mask",
-            "registry": {"prepare": {"builder": "wildlifereid10k", "include": None}, "download": {"raw": "x", "derived": "y"}}})
+        self.entry = OmegaConf.create(
+            {
+                "name": "WildlifeReID-10k",
+                "animal": "HyenaID2022",
+                "root": str(self.root),
+                "metadata_file": "metadata_mdsplit_no_background/metadata_HyenaID2022.csv",
+                "label_col": "identity",
+                "split_col": "split",
+                "database_split_value": "train",
+                "query_split_value": "test",
+                "no_background": False,
+                "mask_col": "mask",
+                "registry": {
+                    "prepare": {"builder": "wildlifereid10k", "include": None},
+                    "download": {"raw": "x", "derived": "y"},
+                },
+            }
+        )
         for path in metadata[metadata.dataset == "HyenaID2022"].path:
             target = self.root / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -123,9 +170,18 @@ class PrepareStepTests(unittest.TestCase):
             target = self.root / "masked_images" / path
             target.parent.mkdir(parents=True, exist_ok=True)
             Image.fromarray(np.full((4, 6, 3), 200, np.uint8)).save(target)
-        pd.DataFrame({"path": table.path, "masked_path": "masked_images/" + table.path, "mask": sam3_masks.encode_mask(full),
-                      "best_score": 0.9, "fg_fraction": 1.0, "n_detections": 1, "threshold_used": 0.5,
-                      "prompt_used": "hyena"}).to_csv(self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv", index=False)
+        pd.DataFrame(
+            {
+                "path": table.path,
+                "masked_path": "masked_images/" + table.path,
+                "mask": sam3_masks.encode_mask(full),
+                "best_score": 0.9,
+                "fg_fraction": 1.0,
+                "n_detections": 1,
+                "threshold_used": 0.5,
+                "prompt_used": "hyena",
+            }
+        ).to_csv(self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv", index=False)
         target = self.run_with_entry(P.finish, "hyena", None, None, False)
         metadata = pd.read_csv(target)
         self.assertEqual(target, self.root / self.entry.metadata_file)
@@ -136,7 +192,9 @@ class PrepareStepTests(unittest.TestCase):
         # With paper_inputs, the comparison reads the paper's table, not the new metadata_file.
         self.entry.registry.paper_inputs = {"metadata_file": self.entry.metadata_file}
         self.entry.metadata_file = "metadata_sam3/missing.csv"
-        scores = self.run_with_entry(P.compare_masks, "hyena", None, self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv")
+        scores = self.run_with_entry(
+            P.compare_masks, "hyena", None, self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv"
+        )
         self.assertEqual(len(scores), len(table))
         self.assertTrue((scores.iou == 1.0).all())
 
@@ -148,10 +206,22 @@ class PrepareStepTests(unittest.TestCase):
             target = self.root / "masked_images" / path
             target.parent.mkdir(parents=True, exist_ok=True)
             Image.fromarray(np.full((4, 6, 3), 200, np.uint8)).save(target)
+
         def masks(rows, mask, detections, **extra):
-            return pd.DataFrame({"path": rows, "masked_path": "masked_images/" + rows, "mask": sam3_masks.encode_mask(mask),
-                                 "best_score": 0.9, "fg_fraction": float(mask.mean()), "n_detections": detections,
-                                 "threshold_used": 0.5, "prompt_used": "hyena", **extra})
+            return pd.DataFrame(
+                {
+                    "path": rows,
+                    "masked_path": "masked_images/" + rows,
+                    "mask": sam3_masks.encode_mask(mask),
+                    "best_score": 0.9,
+                    "fg_fraction": float(mask.mean()),
+                    "n_detections": detections,
+                    "threshold_used": 0.5,
+                    "prompt_used": "hyena",
+                    **extra,
+                }
+            )
+
         first = pd.concat([masks(table.path[:1], none, 0), masks(table.path[1:], full, 1)])
         first.to_csv(self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv", index=False)
         self.entry.registry.prepare.retry_prompts = ["dog"]
@@ -160,10 +230,14 @@ class PrepareStepTests(unittest.TestCase):
         self.assertEqual(pd.read_csv(retry_csv).path.tolist(), [table.path[0]])
         self.assertEqual(command[command.index("--csv") + 1], str(retry_csv))
         self.assertEqual(command[command.index("--masks-csv") + 1], "wildmatch_prepare/masks_HyenaID2022_retry.csv")
-        self.assertEqual(command[command.index("--fallback-prompts") + 1: command.index("--fallback-prompts") + 3], ["dog", "Animal"])
+        self.assertEqual(
+            command[command.index("--fallback-prompts") + 1 : command.index("--fallback-prompts") + 3],
+            ["dog", "Animal"],
+        )
         self.assertIn("full_frame", command)
         masks(table.path[:1], full, 0, full_frame=True).to_csv(
-            self.root / "wildmatch_prepare" / "masks_HyenaID2022_retry.csv", index=False)
+            self.root / "wildmatch_prepare" / "masks_HyenaID2022_retry.csv", index=False
+        )
         target = self.run_with_entry(P.finish, "hyena", None, None, False)
         metadata = pd.read_csv(target)
         self.assertEqual(metadata.path.str.replace("masked_images/", "").tolist(), table.path.tolist())  # order kept
@@ -194,8 +268,20 @@ class RegistryPrepareBlockTests(unittest.TestCase):
 
 class Sam3GuardTests(unittest.TestCase):
     def test_new_options_parse(self):
-        args = sam3_masks.parse_args(["--root", "r", "--csv", "c.csv", "--segment", "--masks-csv", "m.csv",
-                                      "--prompt-column", "sam3_prompt", "--overwrite"])
+        args = sam3_masks.parse_args(
+            [
+                "--root",
+                "r",
+                "--csv",
+                "c.csv",
+                "--segment",
+                "--masks-csv",
+                "m.csv",
+                "--prompt-column",
+                "sam3_prompt",
+                "--overwrite",
+            ]
+        )
         self.assertEqual((args.masks_csv, args.prompt_column, args.overwrite), ("m.csv", "sam3_prompt", True))
         self.assertFalse(sam3_masks.parse_args(["--root", "r", "--csv", "c", "--segment"]).overwrite)
 

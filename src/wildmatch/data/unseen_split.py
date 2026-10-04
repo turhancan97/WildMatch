@@ -80,9 +80,7 @@ def _parse_order_value(value: Any, *, column: str, row_number: int) -> tuple[int
     try:
         return 1, Decimal(text)
     except InvalidOperation as exc:
-        raise UnseenSplitError(
-            f"row {row_number}: {column} value {text!r} is not a supported date or number"
-        ) from exc
+        raise UnseenSplitError(f"row {row_number}: {column} value {text!r} is not a supported date or number") from exc
 
 
 def _resolve_path(value: Any, *, root: Path, row_number: int, path_col: str) -> Path:
@@ -238,9 +236,7 @@ def generate_unseen_split(
 
     try:
         if output_csv.exists() and not force:
-            raise UnseenSplitError(
-                f"output already exists: {output_csv}; choose another directory or pass --force"
-            )
+            raise UnseenSplitError(f"output already exists: {output_csv}; choose another directory or pass --force")
         fieldnames, rows = _read_metadata(metadata_path)
         _require_columns(fieldnames, (label_col, source_split_col, *group_cols, *order_cols))
         path_column = _detect_path_column(fieldnames, path_col)
@@ -250,8 +246,12 @@ def generate_unseen_split(
         indexed_rows: list[dict[str, Any]] = []
         for index, row in enumerate(rows, start=2):
             indexed_rows.append({"row": row, "row_number": index})
-        database_rows = [item for item in indexed_rows if str(item["row"].get(source_split_col, "")).strip() == database_value]
-        query_rows = [item for item in indexed_rows if str(item["row"].get(source_split_col, "")).strip() == query_value]
+        database_rows = [
+            item for item in indexed_rows if str(item["row"].get(source_split_col, "")).strip() == database_value
+        ]
+        query_rows = [
+            item for item in indexed_rows if str(item["row"].get(source_split_col, "")).strip() == query_value
+        ]
         if not database_rows or not query_rows:
             raise UnseenSplitError(
                 f"source split values must select non-empty database/query sets; "
@@ -282,17 +282,15 @@ def generate_unseen_split(
         selected: list[dict[str, Any]] = []
         excluded: list[dict[str, Any]] = []
         for label in unseen_labels:
-            identity_rows = [
-                item for item in query_rows
-                if str(item["row"].get(label_col, "")).strip() == label
-            ]
+            identity_rows = [item for item in query_rows if str(item["row"].get(label_col, "")).strip() == label]
             groups: dict[tuple[str, ...], dict[str, Any]] = {}
             for item in identity_rows:
                 row = item["row"]
-                key = tuple(_normalise_text(row.get(col), field=col, row_number=item["row_number"]) for col in group_cols)
+                key = tuple(
+                    _normalise_text(row.get(col), field=col, row_number=item["row_number"]) for col in group_cols
+                )
                 order_key = tuple(
-                    _parse_order_value(row.get(col), column=col, row_number=item["row_number"])
-                    for col in order_cols
+                    _parse_order_value(row.get(col), column=col, row_number=item["row_number"]) for col in order_cols
                 )
                 group = groups.setdefault(key, {"key": key, "rows": [], "first_order": order_key})
                 group["rows"].append(item)
@@ -308,7 +306,9 @@ def generate_unseen_split(
             gallery_rows = gallery_group["rows"]
             query_group_rows = [item for group in ordered_groups[1:] for item in group["rows"]]
             if not gallery_rows or not query_group_rows:
-                excluded.append({"identity": label, "reason": "empty_gallery_or_query_group", "num_groups": len(groups)})
+                excluded.append(
+                    {"identity": label, "reason": "empty_gallery_or_query_group", "num_groups": len(groups)}
+                )
                 continue
 
             for item in gallery_rows:
@@ -335,7 +335,9 @@ def generate_unseen_split(
         resolved_paths: dict[str, str] = {}
         for selected_item in selected:
             item = selected_item["item"]
-            resolved = _resolve_path(item["row"].get(path_column), root=root_path, row_number=item["row_number"], path_col=path_column)
+            resolved = _resolve_path(
+                item["row"].get(path_column), root=root_path, row_number=item["row_number"], path_col=path_column
+            )
             try:
                 sha256_file(resolved)
             except (OSError, IOError):
@@ -348,9 +350,7 @@ def generate_unseen_split(
                 "missing_or_unreadable_files": missing_or_unreadable,
                 "content_hash_algorithm": HASH_ALGORITHM,
             }
-            raise UnseenSplitError(
-                f"{len(missing_or_unreadable)} selected image files are missing or unreadable"
-            )
+            raise UnseenSplitError(f"{len(missing_or_unreadable)} selected image files are missing or unreadable")
 
         gallery_paths = {
             resolved_paths[str(item["item"]["row_number"])]
@@ -358,9 +358,7 @@ def generate_unseen_split(
             if item["generated_split"] == "database"
         }
         query_paths = {
-            resolved_paths[str(item["item"]["row_number"])]
-            for item in selected
-            if item["generated_split"] == "query"
+            resolved_paths[str(item["item"]["row_number"])] for item in selected if item["generated_split"] == "query"
         }
         path_overlap = sorted(gallery_paths.intersection(query_paths))
         gallery_hashes: dict[str, list[str]] = {}
@@ -418,10 +416,14 @@ def generate_unseen_split(
             "identities": len(selected_labels),
         }
         manifest["selected_identities"] = selected_labels
-        manifest["validation"].update({
-            "query_identities_all_have_gallery": set(selected_query_labels).issubset(set(selected_database_labels)),
-            "selected_identities_absent_from_source_database": not bool(set(selected_labels).intersection(database_labels)),
-        })
+        manifest["validation"].update(
+            {
+                "query_identities_all_have_gallery": set(selected_query_labels).issubset(set(selected_database_labels)),
+                "selected_identities_absent_from_source_database": not bool(
+                    set(selected_labels).intersection(database_labels)
+                ),
+            }
+        )
         manifest["output"]["metadata_sha256"] = sha256_file(output_csv)
         manifest["status"] = "completed"
         _write_json(manifest_path, manifest)
@@ -443,10 +445,24 @@ def build_parser(prog: str | None = None) -> argparse.ArgumentParser:
     parser.add_argument("--dataset", default=None, help="Dataset name recorded in the audit manifest")
     parser.add_argument("--database-value", default="train")
     parser.add_argument("--query-value", default="test")
-    parser.add_argument("--group-col", action="append", dest="group_cols", default=None, help="Encounter/group column; repeat for a composite group")
-    parser.add_argument("--order-col", action="append", dest="order_cols", default=None, help="Date/order column; repeat for tie-breaking")
+    parser.add_argument(
+        "--group-col",
+        action="append",
+        dest="group_cols",
+        default=None,
+        help="Encounter/group column; repeat for a composite group",
+    )
+    parser.add_argument(
+        "--order-col",
+        action="append",
+        dest="order_cols",
+        default=None,
+        help="Date/order column; repeat for tie-breaking",
+    )
     parser.add_argument("--split-col", default=DEFAULT_SPLIT_COLUMN, help="Generated split column")
-    parser.add_argument("--root", type=Path, default=None, help="Root for relative image paths; defaults to metadata directory")
+    parser.add_argument(
+        "--root", type=Path, default=None, help="Root for relative image paths; defaults to metadata directory"
+    )
     parser.add_argument("--path-col", default=None, help="Image path column; auto-detected when omitted")
     parser.add_argument("--force", action="store_true", help="Overwrite generated CSV if it already exists")
     return parser
@@ -473,7 +489,16 @@ def main(argv: Sequence[str] | None = None, prog: str | None = None) -> int:
     except UnseenSplitError as exc:
         print(f"[unseen-eval][error] {exc}", file=sys.stderr)
         return 2
-    print(json.dumps({"metadata": manifest["output"]["metadata_path"], "manifest": manifest["output"]["manifest_path"], "status": manifest["status"]}, indent=2))
+    print(
+        json.dumps(
+            {
+                "metadata": manifest["output"]["metadata_path"],
+                "manifest": manifest["output"]["manifest_path"],
+                "status": manifest["status"],
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

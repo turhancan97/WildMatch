@@ -137,12 +137,28 @@ DESCRIPTOR_PLOT_SERIES = {
     "rdd": (
         PLOT_SERIES[0],
         PLOT_SERIES[3],
-        {"name": "RDD-LightGlue descriptor fine-tuned", "method_key": "vismatch", "matcher": "rdd-lightglue", "checkpoint": "descriptor-fine-tuned", "color": "#805ad5", "marker": "X", "linestyle": "--"},
+        {
+            "name": "RDD-LightGlue descriptor fine-tuned",
+            "method_key": "vismatch",
+            "matcher": "rdd-lightglue",
+            "checkpoint": "descriptor-fine-tuned",
+            "color": "#805ad5",
+            "marker": "X",
+            "linestyle": "--",
+        },
     ),
     "loma": (
         PLOT_SERIES[0],
         PLOT_SERIES[1],
-        {"name": "LoMa descriptor fine-tuned", "method_key": "vismatch", "matcher": "loma", "checkpoint": "descriptor-fine-tuned", "color": "#dd6b20", "marker": "^", "linestyle": "--"},
+        {
+            "name": "LoMa descriptor fine-tuned",
+            "method_key": "vismatch",
+            "matcher": "loma",
+            "checkpoint": "descriptor-fine-tuned",
+            "color": "#dd6b20",
+            "marker": "^",
+            "linestyle": "--",
+        },
     ),
 }
 
@@ -153,12 +169,28 @@ JOINT_PLOT_SERIES = {
     "joint_rdd": (
         PLOT_SERIES[0],
         PLOT_SERIES[3],
-        {"name": "RDD-LightGlue joint fine-tuned", "method_key": "vismatch", "matcher": "rdd-lightglue", "checkpoint": "full-fine-tuned", "color": "#2b6cb0", "marker": "P", "linestyle": "--"},
+        {
+            "name": "RDD-LightGlue joint fine-tuned",
+            "method_key": "vismatch",
+            "matcher": "rdd-lightglue",
+            "checkpoint": "full-fine-tuned",
+            "color": "#2b6cb0",
+            "marker": "P",
+            "linestyle": "--",
+        },
     ),
     "joint_loma": (
         PLOT_SERIES[0],
         PLOT_SERIES[1],
-        {"name": "LoMa joint fine-tuned", "method_key": "vismatch", "matcher": "loma", "checkpoint": "full-fine-tuned", "color": "#c53030", "marker": "v", "linestyle": "--"},
+        {
+            "name": "LoMa joint fine-tuned",
+            "method_key": "vismatch",
+            "matcher": "loma",
+            "checkpoint": "full-fine-tuned",
+            "color": "#c53030",
+            "marker": "v",
+            "linestyle": "--",
+        },
     ),
 }
 FAMILY_PLOT_SERIES = {**DESCRIPTOR_PLOT_SERIES, **JOINT_PLOT_SERIES}
@@ -406,11 +438,7 @@ def render_metric_figure(
                 handles.append(line)
                 labels.append(series["name"])
             if label_endpoints:
-                valid_points = [
-                    (x, value * 100.0)
-                    for x, value in zip(x_values, series["values"])
-                    if value is not None
-                ]
+                valid_points = [(x, value * 100.0) for x, value in zip(x_values, series["values"]) if value is not None]
                 if valid_points:
                     last_x, last_y = valid_points[-1]
                     axis.annotate(
@@ -428,8 +456,7 @@ def render_metric_figure(
         if style_config["x_scale"] == "log":
             axis.set_xscale("log", base=10)
             axis.set_xlim(min(budget_values) * 0.8, max(budget_values) * 1.25)
-        axis.set_xticks(x_values, [str(budget) for budget in budget_values],
-                        fontsize=style_config["tick_size"])
+        axis.set_xticks(x_values, [str(budget) for budget in budget_values], fontsize=style_config["tick_size"])
         axis.tick_params(axis="y", labelsize=style_config["tick_size"])
         axis.grid(axis="y", color="#d9d9d9", linewidth=0.75)
         if style_config["x_scale"] == "log":
@@ -445,13 +472,16 @@ def render_metric_figure(
         if not series_data:
             axis.text(0.5, 0.5, "No completed data", ha="center", va="center", transform=axis.transAxes)
 
-    for axis in axes_flat[len(animals):]:
+    for axis in axes_flat[len(animals) :]:
         axis.set_visible(False)
     title = f"{PLOT_METRICS[metric]} versus k"
     if descriptor_family:
         kind, matcher_label, _ = _family_parts(descriptor_family)
-        title += (f" ({matcher_label} joint descriptor + matcher fine-tuning)" if kind == "joint"
-                  else f" ({matcher_label} descriptor fine-tuning)")
+        title += (
+            f" ({matcher_label} joint descriptor + matcher fine-tuning)"
+            if kind == "joint"
+            else f" ({matcher_label} descriptor fine-tuning)"
+        )
     if split_protocol:
         title += f" ({split_protocol})"
     figure.suptitle(title, fontsize=style_config["title_size"] + 2, fontweight="bold")
@@ -509,9 +539,7 @@ def plot_metrics(
     if split_protocols is not None:
         unknown_splits = sorted(set(split_protocols) - set(available_splits))
         if unknown_splits:
-            raise ValueError(
-                f"no completed probe records found for split(s): {', '.join(unknown_splits)}"
-            )
+            raise ValueError(f"no completed probe records found for split(s): {', '.join(unknown_splits)}")
         plot_groups: list[tuple[str | None, list[str]]] = [
             (
                 split,
@@ -519,9 +547,7 @@ def plot_metrics(
                     animal
                     for animal in selected_animals
                     if any(
-                        record.get("animal") == animal
-                        and record.get("split_protocol") == split
-                        for record in records
+                        record.get("animal") == animal and record.get("split_protocol") == split for record in records
                     )
                 ],
             )
@@ -538,9 +564,7 @@ def plot_metrics(
                     animal
                     for animal in selected_animals
                     if any(
-                        record.get("animal") == animal
-                        and record.get("split_protocol") == split
-                        for record in records
+                        record.get("animal") == animal and record.get("split_protocol") == split for record in records
                     )
                 ],
             )
@@ -551,10 +575,7 @@ def plot_metrics(
         legacy_animals = [
             animal
             for animal in selected_animals
-            if any(
-                record.get("animal") == animal and not record.get("split_protocol")
-                for record in records
-            )
+            if any(record.get("animal") == animal and not record.get("split_protocol") for record in records)
         ]
         if legacy_animals:
             plot_groups.append((None, legacy_animals))
@@ -566,8 +587,10 @@ def plot_metrics(
         raise ValueError("no completed probe records found for the requested split(s)")
     outputs: list[Path] = []
     for split_protocol, group_animals in plot_groups:
-        suffix = "" if split_protocol is None and not available_splits else (
-            f"_{split_protocol}" if split_protocol else "_unspecified"
+        suffix = (
+            ""
+            if split_protocol is None and not available_splits
+            else (f"_{split_protocol}" if split_protocol else "_unspecified")
         )
         for metric in selected_metrics:
             figure = render_metric_figure(
@@ -599,14 +622,16 @@ def plot_metrics(
                 plt.close(figure)
         requested = list(descriptor_families or DESCRIPTOR_PLOT_SERIES) + list(JOINT_PLOT_SERIES)
         available_descriptor_families = [
-            family for family in requested
+            family
+            for family in requested
             if family in FAMILY_PLOT_SERIES
             and _family_parts(family)[1] not in excluded_methods
             and any(
                 record.get("animal") in group_animals
                 and record.get("split_protocol") == (split_protocol or "")
                 and _normalise_checkpoint(record.get("checkpoint")) == _family_parts(family)[2]
-                and str(record.get("matcher", "")).lower() == ("rdd-lightglue" if _family_parts(family)[1] == "rdd" else "loma")
+                and str(record.get("matcher", "")).lower()
+                == ("rdd-lightglue" if _family_parts(family)[1] == "rdd" else "loma")
                 for record in records
             )
         ]

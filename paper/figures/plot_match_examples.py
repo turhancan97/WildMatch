@@ -84,30 +84,61 @@ class Example(NamedTuple):
 
 # Confirmed by eye from the candidate contact sheets. Keep paper order.
 EXAMPLES: List[Example] = [
-    Example("lynx_closed", "CzechLynx/foe_bohemia/lynx_041/22605_lynx_041.jpg",
-            "CzechLynx/foe_bohemia/lynx_041/22326_lynx_041.jpg",
-            "daylight sheet row 12 (17-09-2022 vs 12-01-2020); cosine 0.38, 396 matches, probe score 0.734", dim=0.35),
-    Example("hyena", "masked_images/HyenaID2022/hyena.coco/images/train2022/000000002398_2422.jpg",
-            "masked_images/HyenaID2022/hyena.coco/images/train2022/000000001579_1599.jpg",
-            "sheet row 3; cosine 0.28, 350 matches, probe score 0.587", dim=0.0),
-    Example("leopard", "masked_images/LeopardID2022/leopard.coco/images/train2022/000000003152_3164.jpg",
-            "masked_images/LeopardID2022/leopard.coco/images/train2022/000000002995_3006.jpg",
-            "sheet row 3; cosine 0.32, 389 matches, probe score 0.670", dim=0.4),
-    Example("nyala", "masked_images/NyalaData/wildlife_reidentification-main/Nyala_Data_Zero/train/100/903_rightphoto_5f81d5ae0075167b.jpg",
-            "masked_images/NyalaData/wildlife_reidentification-main/Nyala_Data_Zero/train/100/530_rightphoto_64ee1486b979a67d.jpg",
-            "sheet row 5; cosine 0.32, 383 matches, probe score 0.661", dim=0.4),
-    Example("salamander", "masked_images/query/images/616e46c4c91594a7_795.jpg",
-            "masked_images/database/images/25372f49baf1e44c_305.jpg",
-            "sheet row 2; cosine 0.52, 375 matches, probe score 0.646", dim=0.4),
-    Example("sea_star", "masked_images/SeaStarReID2023/sea-star-re-id/Asru76/IMG_8688_3a7f724d27a8c2f7.jpg",
-            "masked_images/SeaStarReID2023/sea-star-re-id/Asru76/IMG_8548_eb1339ecfd3810df.jpg",
-            "sheet row 5; cosine 0.52, 420 matches, probe score 0.771", dim=0.35),
-    Example("turtle", "masked_images/ZindiTurtleRecall/images/ID_BACZNN7V_ID_BACZNN7V.JPG",
-            "masked_images/ZindiTurtleRecall/images/ID_HL5N7GRB_ID_HL5N7GRB.JPG",
-            "sheet row 3; cosine 0.23, 373 matches, probe score 0.646", dim=0.35),
-    Example("whale_shark", "masked_images/WhaleSharkID/whaleshark.coco/images/train2020/000000007575_7574.jpg",
-            "masked_images/WhaleSharkID/whaleshark.coco/images/train2020/000000005151_5150.jpg",
-            "sheet row 5; cosine 0.35, 368 matches, probe score 0.655"),
+    Example(
+        "lynx_closed",
+        "CzechLynx/foe_bohemia/lynx_041/22605_lynx_041.jpg",
+        "CzechLynx/foe_bohemia/lynx_041/22326_lynx_041.jpg",
+        "daylight sheet row 12 (17-09-2022 vs 12-01-2020); cosine 0.38, 396 matches, probe score 0.734",
+        dim=0.35,
+    ),
+    Example(
+        "hyena",
+        "masked_images/HyenaID2022/hyena.coco/images/train2022/000000002398_2422.jpg",
+        "masked_images/HyenaID2022/hyena.coco/images/train2022/000000001579_1599.jpg",
+        "sheet row 3; cosine 0.28, 350 matches, probe score 0.587",
+        dim=0.0,
+    ),
+    Example(
+        "leopard",
+        "masked_images/LeopardID2022/leopard.coco/images/train2022/000000003152_3164.jpg",
+        "masked_images/LeopardID2022/leopard.coco/images/train2022/000000002995_3006.jpg",
+        "sheet row 3; cosine 0.32, 389 matches, probe score 0.670",
+        dim=0.4,
+    ),
+    Example(
+        "nyala",
+        "masked_images/NyalaData/wildlife_reidentification-main/Nyala_Data_Zero/train/100/903_rightphoto_5f81d5ae0075167b.jpg",
+        "masked_images/NyalaData/wildlife_reidentification-main/Nyala_Data_Zero/train/100/530_rightphoto_64ee1486b979a67d.jpg",
+        "sheet row 5; cosine 0.32, 383 matches, probe score 0.661",
+        dim=0.4,
+    ),
+    Example(
+        "salamander",
+        "masked_images/query/images/616e46c4c91594a7_795.jpg",
+        "masked_images/database/images/25372f49baf1e44c_305.jpg",
+        "sheet row 2; cosine 0.52, 375 matches, probe score 0.646",
+        dim=0.4,
+    ),
+    Example(
+        "sea_star",
+        "masked_images/SeaStarReID2023/sea-star-re-id/Asru76/IMG_8688_3a7f724d27a8c2f7.jpg",
+        "masked_images/SeaStarReID2023/sea-star-re-id/Asru76/IMG_8548_eb1339ecfd3810df.jpg",
+        "sheet row 5; cosine 0.52, 420 matches, probe score 0.771",
+        dim=0.35,
+    ),
+    Example(
+        "turtle",
+        "masked_images/ZindiTurtleRecall/images/ID_BACZNN7V_ID_BACZNN7V.JPG",
+        "masked_images/ZindiTurtleRecall/images/ID_HL5N7GRB_ID_HL5N7GRB.JPG",
+        "sheet row 3; cosine 0.23, 373 matches, probe score 0.646",
+        dim=0.35,
+    ),
+    Example(
+        "whale_shark",
+        "masked_images/WhaleSharkID/whaleshark.coco/images/train2020/000000007575_7574.jpg",
+        "masked_images/WhaleSharkID/whaleshark.coco/images/train2020/000000005151_5150.jpg",
+        "sheet row 5; cosine 0.35, 368 matches, probe score 0.655",
+    ),
 ]
 
 
@@ -133,7 +164,7 @@ def raw_image_path(profile: PaperProfile, row: Mapping[str, Any]) -> str:
         return row["original_path"]  # SalamanderID2025 records its SAM3 source explicitly
     path = str(row["path"])
     if profile.mask_col is None and path.startswith("masked_images/"):
-        return "images/" + path[len("masked_images/"):]  # pre-masked WildlifeReID-10k tree
+        return "images/" + path[len("masked_images/") :]  # pre-masked WildlifeReID-10k tree
     return path  # CzechLynx: the path is the raw photo; the mask is applied at load time
 
 
@@ -152,8 +183,9 @@ def _present(value: Any) -> bool:
     return value is not None and not (isinstance(value, float) and np.isnan(value)) and str(value).strip() != ""
 
 
-def pair_rejection(query: Mapping[str, Any], gallery: Mapping[str, Any],
-                   hash_distance: Optional[int], min_hash_distance: int) -> Optional[str]:
+def pair_rejection(
+    query: Mapping[str, Any], gallery: Mapping[str, Any], hash_distance: Optional[int], min_hash_distance: int
+) -> Optional[str]:
     """Why a (query, gallery) pair may not be shown, or None if it may.
 
     Same encounter or same day (when both sides record it) would show two frames
@@ -168,8 +200,9 @@ def pair_rejection(query: Mapping[str, Any], gallery: Mapping[str, Any],
     return None
 
 
-def correct_top1_pairs(rows: np.ndarray, cols: np.ndarray, values: np.ndarray,
-                       query_labels: Sequence[Any], database_labels: Sequence[Any]) -> List[Tuple[int, int, float]]:
+def correct_top1_pairs(
+    rows: np.ndarray, cols: np.ndarray, values: np.ndarray, query_labels: Sequence[Any], database_labels: Sequence[Any]
+) -> List[Tuple[int, int, float]]:
     """(query, gallery, score) for queries whose top-1 is the correct identity.
 
     Uses the shared ranking rule on a sparse score matrix: descending score,
@@ -189,8 +222,7 @@ def correct_top1_pairs(rows: np.ndarray, cols: np.ndarray, values: np.ndarray,
     return out
 
 
-def resolve_recorded_checkpoint(recorded: Path, sha256: str, search_root: Path,
-                                hasher: Callable[[Path], str]) -> Path:
+def resolve_recorded_checkpoint(recorded: Path, sha256: str, search_root: Path, hasher: Callable[[Path], str]) -> Path:
     """The file whose SHA-256 equals the one the probe manifest recorded.
 
     Checkpoint directories were renamed and one file was overwritten after some
@@ -200,8 +232,7 @@ def resolve_recorded_checkpoint(recorded: Path, sha256: str, search_root: Path,
     """
     if recorded.is_file() and hasher(recorded) == sha256:
         return recorded
-    candidates = sorted(search_root.rglob("*.safetensors"),
-                        key=lambda path: ("/latest/" in str(path), str(path)))
+    candidates = sorted(search_root.rglob("*.safetensors"), key=lambda path: ("/latest/" in str(path), str(path)))
     for candidate in candidates:
         if candidate.is_file() and hasher(candidate) == sha256:
             return candidate
@@ -220,11 +251,15 @@ def photo_quality(photo: Image.Image, foreground: np.ndarray) -> Dict[str, float
     """
     mask = np.asarray(foreground, dtype=bool)
     if mask.shape != (photo.height, photo.width) or not mask.any():
-        return {"foreground": float(mask.mean()) if mask.size else 0.0, "saturation": 0.0, "warm": 0.0,
-                "sharpness": 0.0}
+        return {
+            "foreground": float(mask.mean()) if mask.size else 0.0,
+            "saturation": 0.0,
+            "warm": 0.0,
+            "sharpness": 0.0,
+        }
     hsv = np.asarray(photo.convert("HSV"), dtype=np.float32)
     grey = np.asarray(photo.convert("L"), dtype=np.float32)
-    lap = (-4 * grey[1:-1, 1:-1] + grey[:-2, 1:-1] + grey[2:, 1:-1] + grey[1:-1, :-2] + grey[1:-1, 2:])
+    lap = -4 * grey[1:-1, 1:-1] + grey[:-2, 1:-1] + grey[2:, 1:-1] + grey[1:-1, :-2] + grey[1:-1, 2:]
     inner = mask[1:-1, 1:-1]
     return {
         "foreground": float(mask.mean()),
@@ -264,16 +299,24 @@ class DatasetContext:
         if self.profile.mask_col:
             from audit_image_quality import _FrameAdapter
             from wildmatch.data.dataset_view import BenchmarkDatasetView
-            self.view = BenchmarkDatasetView(_FrameAdapter(self.frame, self.profile.identity_col),
-                                             label_col=self.profile.identity_col, no_background=True,
-                                             mask_col=self.profile.mask_col)
+
+            self.view = BenchmarkDatasetView(
+                _FrameAdapter(self.frame, self.profile.identity_col),
+                label_col=self.profile.identity_col,
+                no_background=True,
+                mask_col=self.profile.mask_col,
+            )
 
     def _check_run(self) -> None:
         checkpoint = self.manifest.get("vismatch_checkpoint") or {}
         mode = checkpoint.get("resolved_component_mode") or checkpoint.get("component_mode")
         k = (self.manifest.get("timings") or {}).get("vismatch_candidate_k")
-        if self.manifest.get("status") != "completed" or checkpoint.get("source") != "custom" \
-                or mode != "matcher_only" or int(k or -1) != 50:
+        if (
+            self.manifest.get("status") != "completed"
+            or checkpoint.get("source") != "custom"
+            or mode != "matcher_only"
+            or int(k or -1) != 50
+        ):
             raise ValueError(f"{self.run_dir} is not a completed fine-tuned LoMa k=50 run")
 
     def _attach_dates(self) -> None:
@@ -290,13 +333,15 @@ class DatasetContext:
         """The exact checkpoint file the probe loaded, located by its recorded SHA-256."""
         if getattr(self, "_checkpoint", None) is None:
             from wildmatch.utils.fingerprints import sha256_file
+
             components = self.manifest["vismatch_checkpoint"]["components"]
             if len(components) != 1:
                 raise ValueError(f"{self.key}: expected one LoMa checkpoint component, got {len(components)}")
             recorded = Path(components[0]["path"])
             self.checkpoint_sha256 = str(components[0]["sha256"])
-            self._checkpoint = resolve_recorded_checkpoint(recorded, self.checkpoint_sha256,
-                                                           recorded.parents[2], sha256_file)
+            self._checkpoint = resolve_recorded_checkpoint(
+                recorded, self.checkpoint_sha256, recorded.parents[2], sha256_file
+            )
         return str(self._checkpoint)
 
     def probe_score(self, row_q: int, row_g: int) -> float:
@@ -321,12 +366,14 @@ class DatasetContext:
 
     def model_input(self, row: int) -> Image.Image:
         from audit_image_quality import load_model_input
+
         image, _ = load_model_input(self.profile, self.frame, self.view, row)
         return Image.fromarray(image)
 
     def foreground(self, row: int) -> np.ndarray:
         """The probe's foreground mask (RLE when shipped, else the pre-masked threshold)."""
         from audit_image_quality import load_model_input
+
         return load_model_input(self.profile, self.frame, self.view, row)[1]
 
     def raw_photo(self, row: int) -> Image.Image:
@@ -346,10 +393,14 @@ class Matcher:
         config = OmegaConf.load(context.run_dir / "config.snapshot.yaml").benchmark.methods.vismatch
         threshold = config.get("matcher_threshold")
         self.backend = VismatchMatcherBackend(
-            "loma", _choose_vismatch_device(device), int(config.top_k),
+            "loma",
+            _choose_vismatch_device(device),
+            int(config.top_k),
             float(threshold) if threshold is not None else default_matcher_threshold("loma"),
-            checkpoint_source="custom", checkpoint_path=context.checkpoint_path,
-            checkpoint_components="matcher_only", loma_arch=str(config.loma_arch),
+            checkpoint_source="custom",
+            checkpoint_path=context.checkpoint_path,
+            checkpoint_components="matcher_only",
+            loma_arch=str(config.loma_arch),
             resize_max=int(config.resize_max),
         )
 
@@ -378,8 +429,14 @@ class Matcher:
         image_path = str(self.context.frame.iloc[row]["path"])
         if self.cache_dir is not None and self.cfg_tag:
             resolved = Path(image_path) if Path(image_path).is_absolute() else self.dataset_root / image_path
-            key = _cache_key(image_path=image_path, image_content_hash=sha256_file(resolved), split_name=split_name,
-                             resize_max=self.resize_max, top_k=self.top_k, cfg_tag=self.cfg_tag)
+            key = _cache_key(
+                image_path=image_path,
+                image_content_hash=sha256_file(resolved),
+                split_name=split_name,
+                resize_max=self.resize_max,
+                top_k=self.top_k,
+                cfg_tag=self.cfg_tag,
+            )
             path = _cache_path(self.cache_dir, key)
             if path.is_file():
                 cached = _load_cached_feat(path)
@@ -404,8 +461,9 @@ class Embedder:
         from wildmatch.evaluate.probe_runner import build_transforms
 
         self.torch = torch
-        self.device = torch.device("cuda" if device == "auto" and torch.cuda.is_available() else
-                                   ("cpu" if device == "auto" else device))
+        self.device = torch.device(
+            "cuda" if device == "auto" and torch.cuda.is_available() else ("cpu" if device == "auto" else device)
+        )
         backbone, _, mean, std, img_size, *_ = get_model("megadescriptor-l")
         self.model = backbone.to(self.device).eval()
         self.transform = build_transforms(mean, std, img_size)[1]
@@ -422,7 +480,9 @@ PAPER_LINE_COLOR = "#00d9ff"  # cyan: contrasts with yellow spots, grass, water 
 PADDING_THRESHOLD = 12  # max(RGB) at or below this counts as black source padding
 
 
-def padding_box(array: np.ndarray, threshold: int = PADDING_THRESHOLD, fraction: float = 0.98) -> Tuple[int, int, int, int]:
+def padding_box(
+    array: np.ndarray, threshold: int = PADDING_THRESHOLD, fraction: float = 0.98
+) -> Tuple[int, int, int, int]:
     """(left, top, right, bottom) without the near-black bands stored in the source file.
 
     Only whole rows/columns reached from an edge are trimmed, and only when at least
@@ -444,8 +504,9 @@ def padding_box(array: np.ndarray, threshold: int = PADDING_THRESHOLD, fraction:
     return left, top, right, bottom
 
 
-def spread_selection(p0: np.ndarray, p1: np.ndarray, confidences: np.ndarray, count: int,
-                     min_distance: float) -> np.ndarray:
+def spread_selection(
+    p0: np.ndarray, p1: np.ndarray, confidences: np.ndarray, count: int, min_distance: float
+) -> np.ndarray:
     """Up to ``count`` strong matches whose endpoints are at least ``min_distance`` apart.
 
     Greedy in the shared descending-confidence order (``stable_rank_1d``); a match is
@@ -473,8 +534,9 @@ def spread_selection(p0: np.ndarray, p1: np.ndarray, confidences: np.ndarray, co
         distance = distance / 2 if distance > 0.5 else 0.0
 
 
-def dim_background(image: Image.Image, foreground: np.ndarray, brightness: float = 0.55,
-                   saturation: float = 0.45, feather: float = 1.0) -> Image.Image:
+def dim_background(
+    image: Image.Image, foreground: np.ndarray, brightness: float = 0.55, saturation: float = 0.45, feather: float = 1.0
+) -> Image.Image:
     """Darken and desaturate the background, leaving the animal untouched.
 
     The mask is closed, hole-filled and feathered first, so thresholded masks of dark
@@ -510,9 +572,18 @@ def crop_box_around(size: Sequence[int], points: np.ndarray, aspect: float) -> T
     return left, top, left + crop_w, top + crop_h
 
 
-def draw_pair(axis, query: Image.Image, gallery: Image.Image, kq: np.ndarray, kg: np.ndarray,
-              confidences: np.ndarray, top_matches: int, height: int = 520, gutter: int = 14,
-              aspect: Optional[float] = None) -> int:
+def draw_pair(
+    axis,
+    query: Image.Image,
+    gallery: Image.Image,
+    kq: np.ndarray,
+    kg: np.ndarray,
+    confidences: np.ndarray,
+    top_matches: int,
+    height: int = 520,
+    gutter: int = 14,
+    aspect: Optional[float] = None,
+) -> int:
     """Query | gallery at a common height with the strongest correspondences.
 
     With ``aspect`` each photo is cropped to that width/height ratio around its
@@ -546,8 +617,13 @@ def draw_pair(axis, query: Image.Image, gallery: Image.Image, kq: np.ndarray, kg
     p1 = kg[keep] * scale_g + np.array([q_img.width + gutter, 0.0])
     colors = plt.get_cmap("viridis")(np.linspace(0.95, 0.25, len(keep))) if len(keep) else []
     axis.add_collection(LineCollection(np.stack([p0, p1], axis=1), colors=colors, linewidths=0.45, alpha=0.9))
-    axis.scatter(np.r_[p0[:, 0], p1[:, 0]], np.r_[p0[:, 1], p1[:, 1]], s=1.2,
-                 c=np.r_[colors, colors] if len(keep) else None, linewidths=0)
+    axis.scatter(
+        np.r_[p0[:, 0], p1[:, 0]],
+        np.r_[p0[:, 1], p1[:, 1]],
+        s=1.2,
+        c=np.r_[colors, colors] if len(keep) else None,
+        linewidths=0,
+    )
     axis.set_xlim(0, canvas.width)
     axis.set_ylim(height, 0)
     axis.set_xticks([])
@@ -557,8 +633,9 @@ def draw_pair(axis, query: Image.Image, gallery: Image.Image, kq: np.ndarray, kg
     return len(keep)
 
 
-def _prepare_photo(image: Image.Image, foreground: Optional[np.ndarray], points: np.ndarray,
-                   aspect: float, height: int, dim: float):
+def _prepare_photo(
+    image: Image.Image, foreground: Optional[np.ndarray], points: np.ndarray, aspect: float, height: int, dim: float
+):
     """Trim source padding, dim the background, crop to ``aspect`` around the points, resize.
 
     Returns the photo, the points in its pixel frame and a mask of the points kept.
@@ -579,29 +656,56 @@ def _prepare_photo(image: Image.Image, foreground: Optional[np.ndarray], points:
 
 
 def _corner_tag(axis, x: float, y: float, text: str, ha: str, va: str, size: float):
-    return axis.text(x, y, text, ha=ha, va=va, fontsize=size, color="white", zorder=4,
-              bbox=dict(boxstyle="round,pad=0.18,rounding_size=0.15", facecolor="black", alpha=0.55,
-                        linewidth=0))
+    return axis.text(
+        x,
+        y,
+        text,
+        ha=ha,
+        va=va,
+        fontsize=size,
+        color="white",
+        zorder=4,
+        bbox=dict(boxstyle="round,pad=0.18,rounding_size=0.15", facecolor="black", alpha=0.55, linewidth=0),
+    )
 
 
-def points_outside_boxes(points: np.ndarray, boxes: Sequence[Tuple[float, float, float, float]],
-                         margin: float = 0.0) -> np.ndarray:
+def points_outside_boxes(
+    points: np.ndarray, boxes: Sequence[Tuple[float, float, float, float]], margin: float = 0.0
+) -> np.ndarray:
     """True for points outside every (x0, y0, x1, y1) box grown by ``margin``."""
     points = np.asarray(points, dtype=np.float64).reshape(-1, 2)
     outside = np.ones(len(points), dtype=bool)
     for x0, y0, x1, y1 in boxes:
         x0, x1 = sorted((x0, x1))
         y0, y1 = sorted((y0, y1))
-        outside &= ~((points[:, 0] >= x0 - margin) & (points[:, 0] <= x1 + margin)
-                     & (points[:, 1] >= y0 - margin) & (points[:, 1] <= y1 + margin))
+        outside &= ~(
+            (points[:, 0] >= x0 - margin)
+            & (points[:, 0] <= x1 + margin)
+            & (points[:, 1] >= y0 - margin)
+            & (points[:, 1] <= y1 + margin)
+        )
     return outside
 
 
-def draw_paper_pair(axis, query: Image.Image, gallery: Image.Image, foregrounds, kq: np.ndarray,
-                    kg: np.ndarray, confidences: np.ndarray, count: int, aspect: float,
-                    match_count: int, dim: float, height: int = 420, gutter: int = 6,
-                    spacing: float = 0.12, font_size: float = 6.0, side_tags: bool = True,
-                    show_tags: bool = True) -> int:
+def draw_paper_pair(
+    axis,
+    query: Image.Image,
+    gallery: Image.Image,
+    foregrounds,
+    kq: np.ndarray,
+    kg: np.ndarray,
+    confidences: np.ndarray,
+    count: int,
+    aspect: float,
+    match_count: int,
+    dim: float,
+    height: int = 420,
+    gutter: int = 6,
+    spacing: float = 0.12,
+    font_size: float = 6.0,
+    side_tags: bool = True,
+    show_tags: bool = True,
+) -> int:
     """Paper panel: padded-trimmed, background-dimmed, fixed-aspect photos with spread lines.
 
     Corner tags are drawn first; matches with an endpoint under a tag are dropped
@@ -628,7 +732,9 @@ def draw_paper_pair(axis, query: Image.Image, gallery: Image.Image, foregrounds,
     pad = 0.035 * height
     tags = []
     if show_tags:
-        tags.append(_corner_tag(axis, canvas.width - pad, height - pad, f"{match_count} matches", "right", "bottom", font_size))
+        tags.append(
+            _corner_tag(axis, canvas.width - pad, height - pad, f"{match_count} matches", "right", "bottom", font_size)
+        )
     if show_tags and side_tags:
         tags.append(_corner_tag(axis, pad, pad, "Query", "left", "top", font_size))
         tags.append(_corner_tag(axis, q_img.width + gutter + pad, pad, "Top-1 match", "left", "top", font_size))
@@ -641,40 +747,58 @@ def draw_paper_pair(axis, query: Image.Image, gallery: Image.Image, foregrounds,
         boxes.append((x0, y0, x1, y1))
     clear = points_outside_boxes(q_pts, boxes, 0.02 * height) & points_outside_boxes(g_pts, boxes, 0.02 * height)
     candidates = np.flatnonzero(clear)
-    keep = candidates[spread_selection(q_pts[candidates], g_pts[candidates], confidences[candidates],
-                                       count, spacing * height)]
+    keep = candidates[
+        spread_selection(q_pts[candidates], g_pts[candidates], confidences[candidates], count, spacing * height)
+    ]
 
     segments = np.stack([q_pts[keep], g_pts[keep]], axis=1)
     lines = LineCollection(segments, colors=PAPER_LINE_COLOR, linewidths=0.45, alpha=0.95, zorder=2)
-    lines.set_path_effects([patheffects.Stroke(linewidth=1.35, foreground="black", alpha=0.7),
-                            patheffects.Normal()])
+    lines.set_path_effects([patheffects.Stroke(linewidth=1.35, foreground="black", alpha=0.7), patheffects.Normal()])
     axis.add_collection(lines)
     ends = np.r_[q_pts[keep], g_pts[keep]]
-    axis.scatter(ends[:, 0], ends[:, 1], s=2.2, facecolors=PAPER_LINE_COLOR, edgecolors="white",
-                 linewidths=0.3, zorder=3)
+    axis.scatter(
+        ends[:, 0], ends[:, 1], s=2.2, facecolors=PAPER_LINE_COLOR, edgecolors="white", linewidths=0.3, zorder=3
+    )
     return len(keep)
 
 
 def _style(paper: bool = False) -> None:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
     if paper:
         # Times to match the CVPR body text; STIX (bundled with matplotlib) is the
         # Times-compatible fallback, embedded as TrueType.
-        plt.rcParams.update({"font.family": "serif", "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
-                             "mathtext.fontset": "stix", "pdf.fonttype": 42, "ps.fonttype": 42})
+        plt.rcParams.update(
+            {
+                "font.family": "serif",
+                "font.serif": ["Times New Roman", "Times", "STIXGeneral"],
+                "mathtext.fontset": "stix",
+                "pdf.fonttype": 42,
+                "ps.fonttype": 42,
+            }
+        )
     else:
-        plt.rcParams.update({"font.family": "sans-serif", "font.sans-serif": ["DejaVu Sans", "Arial"],
-                             "pdf.fonttype": 42, "ps.fonttype": 42})
+        plt.rcParams.update(
+            {
+                "font.family": "sans-serif",
+                "font.sans-serif": ["DejaVu Sans", "Arial"],
+                "pdf.fonttype": 42,
+                "ps.fonttype": 42,
+            }
+        )
 
 
 def _matched_pixels(context: DatasetContext, row_q: int, row_g: int, left, right, result):
     raw_q, raw_g = context.raw_photo(row_q), context.raw_photo(row_g)
     for raw, feature in ((raw_q, left), (raw_g, right)):
         if tuple(feature.original_image_size) != (raw.height, raw.width):
-            raise ValueError(f"{context.key}: raw photo size {raw.size} differs from the model input "
-                             f"{tuple(feature.original_image_size)}; keypoints cannot be mapped")
+            raise ValueError(
+                f"{context.key}: raw photo size {raw.size} differs from the model input "
+                f"{tuple(feature.original_image_size)}; keypoints cannot be mapped"
+            )
     kq = normalized_to_raw_pixels(result.matched_kpts0, (raw_q.height, raw_q.width))
     kg = normalized_to_raw_pixels(result.matched_kpts1, (raw_g.height, raw_g.width))
     return raw_q, raw_g, kq, kg
@@ -693,8 +817,9 @@ def command_candidates(args: argparse.Namespace) -> None:
         if args.dataset and key not in args.dataset:
             continue
         context = DatasetContext(key)
-        pairs = correct_top1_pairs(*context.scores(), context.labels[context.query_rows],
-                                   context.labels[context.database_rows])
+        pairs = correct_top1_pairs(
+            *context.scores(), context.labels[context.query_rows], context.labels[context.database_rows]
+        )
         rows = [(int(context.query_rows[q]), int(context.database_rows[g]), s) for q, g, s in pairs]
         records = context.frame.to_dict("records")
         eligible = [(q, g, s) for q, g, s in rows if pair_rejection(records[q], records[g], None, 0) is None]
@@ -708,9 +833,11 @@ def command_candidates(args: argparse.Namespace) -> None:
                 continue
             if args.min_foreground > 0 or args.min_saturation > 0 or args.min_warm > 0:
                 pair_quality = [photo_quality(raw, context.foreground(row)) for raw, row in ((q_raw, q), (g_raw, g))]
-                if min(item["foreground"] for item in pair_quality) < args.min_foreground \
-                        or min(item["saturation"] for item in pair_quality) < args.min_saturation \
-                        or min(item["warm"] for item in pair_quality) < args.min_warm:
+                if (
+                    min(item["foreground"] for item in pair_quality) < args.min_foreground
+                    or min(item["saturation"] for item in pair_quality) < args.min_saturation
+                    or min(item["warm"] for item in pair_quality) < args.min_warm
+                ):
                     continue
                 quality[(q, g)] = pair_quality
             q_img, g_img = context.model_input(q), context.model_input(g)
@@ -719,27 +846,41 @@ def command_candidates(args: argparse.Namespace) -> None:
         scored.sort()
         matcher = Matcher(context, args.device)
         kept = []
-        for cosine, q, g, s, distance in scored[:args.rematch]:
+        for cosine, q, g, s, distance in scored[: args.rematch]:
             left, right, result, source = matcher.match(q, g)
             if result.match_count < args.min_matches:
                 continue
-            kept.append({
-                "dataset": key, "query_row": q, "gallery_row": g,
-                "query_path": records[q]["path"], "gallery_path": records[g]["path"],
-                "probe_score": s, "recomputed_score": result.score,
-                "features": source, "match_count": result.match_count,
-                "cosine": cosine, "dhash_distance": distance,
-                "query_date": records[q].get("date"), "gallery_date": records[g].get("date"),
-                **{f"{side}_{name}": value for side, item in zip(("query", "gallery"), quality.get((q, g), ()))
-                   for name, value in item.items()},
-                "_features": (left, right, result),
-            })
+            kept.append(
+                {
+                    "dataset": key,
+                    "query_row": q,
+                    "gallery_row": g,
+                    "query_path": records[q]["path"],
+                    "gallery_path": records[g]["path"],
+                    "probe_score": s,
+                    "recomputed_score": result.score,
+                    "features": source,
+                    "match_count": result.match_count,
+                    "cosine": cosine,
+                    "dhash_distance": distance,
+                    "query_date": records[q].get("date"),
+                    "gallery_date": records[g].get("date"),
+                    **{
+                        f"{side}_{name}": value
+                        for side, item in zip(("query", "gallery"), quality.get((q, g), ()))
+                        for name, value in item.items()
+                    },
+                    "_features": (left, right, result),
+                }
+            )
         table = pd.DataFrame([{k: v for k, v in item.items() if k != "_features"} for item in kept])
         stem = f"{key}_{args.tag}" if args.tag else key
         table.to_csv(out_dir / f"{stem}.csv", index=False)
-        print(f"[match-candidates] {label}: {len(pairs)} correct top-1, {len(eligible)} sampled/eligible, "
-              f"{len(scored)} passed filters, {len(kept)} with >= {args.min_matches} matches -> {out_dir / f'{stem}.csv'}")
-        sheet = kept[:args.sheet]
+        print(
+            f"[match-candidates] {label}: {len(pairs)} correct top-1, {len(eligible)} sampled/eligible, "
+            f"{len(scored)} passed filters, {len(kept)} with >= {args.min_matches} matches -> {out_dir / f'{stem}.csv'}"
+        )
+        sheet = kept[: args.sheet]
         if not sheet:
             continue
         figure, axes = plt.subplots(len(sheet), 1, figsize=(6.0, 2.2 * len(sheet)), squeeze=False)
@@ -747,24 +888,47 @@ def command_candidates(args: argparse.Namespace) -> None:
             left, right, result = item["_features"]
             raw_q, raw_g, kq, kg = _matched_pixels(context, item["query_row"], item["gallery_row"], left, right, result)
             draw_pair(axis, raw_q, raw_g, kq, kg, result.confidences, args.top_matches)
-            axis.set_title(f"{label}: cos={item['cosine']:.2f} matches={item['match_count']} "
-                           f"q={item['query_path']} | g={item['gallery_path']}", fontsize=5)
+            axis.set_title(
+                f"{label}: cos={item['cosine']:.2f} matches={item['match_count']} "
+                f"q={item['query_path']} | g={item['gallery_path']}",
+                fontsize=5,
+            )
         figure.tight_layout()
         figure.savefig(out_dir / f"{stem}_sheet.png", dpi=200)
         plt.close(figure)
 
 
-def web_export_pair(out_dir: Path, key: str, label: str, raw_q: Image.Image, raw_g: Image.Image,
-                    kq: np.ndarray, kg: np.ndarray, confidences: np.ndarray, match_count: int, score: float,
-                    query_path: str, gallery_path: str, long_side: int) -> Dict[str, Any]:
+def web_export_pair(
+    out_dir: Path,
+    key: str,
+    label: str,
+    raw_q: Image.Image,
+    raw_g: Image.Image,
+    kq: np.ndarray,
+    kg: np.ndarray,
+    confidences: np.ndarray,
+    match_count: int,
+    score: float,
+    query_path: str,
+    gallery_path: str,
+    long_side: int,
+) -> Dict[str, Any]:
     """Write web-sized raw photos and every correspondence for the project-page match viewer.
 
     Keypoints are scaled from raw-photo pixels to the exported photo's pixels, so the
     viewer draws them without knowing the raw size. Paths written are dataset-relative.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    entry: Dict[str, Any] = {"dataset": key, "label": label, "match_count": int(match_count), "score": float(score),
-                             "query_path": query_path, "gallery_path": gallery_path, "images": {}, "points": {}}
+    entry: Dict[str, Any] = {
+        "dataset": key,
+        "label": label,
+        "match_count": int(match_count),
+        "score": float(score),
+        "query_path": query_path,
+        "gallery_path": gallery_path,
+        "images": {},
+        "points": {},
+    }
     for side, raw, points in (("query", raw_q, kq), ("gallery", raw_g, kg)):
         scale = min(1.0, long_side / max(raw.width, raw.height))
         size = (max(1, round(raw.width * scale)), max(1, round(raw.height * scale)))
@@ -815,40 +979,86 @@ def command_render(args: argparse.Namespace) -> None:
         left, right, result, source = Matcher(context, args.device).match(row_q, row_g)
         probe_score = context.probe_score(row_q, row_g)
         if abs(result.score - probe_score) > 1e-4:
-            print(f"[match-examples] WARNING {key}: recomputed score {result.score:.6f} "
-                  f"differs from the probe's {probe_score:.6f} ({source} features)")
+            print(
+                f"[match-examples] WARNING {key}: recomputed score {result.score:.6f} "
+                f"differs from the probe's {probe_score:.6f} ({source} features)"
+            )
         raw_q, raw_g, kq, kg = _matched_pixels(context, row_q, row_g, left, right, result)
         foregrounds = (context.foreground(row_q), context.foreground(row_g))
-        drawn = draw_paper_pair(axis, raw_q, raw_g, foregrounds, kq, kg, result.confidences,
-                                args.paper_matches, args.aspect, int(result.match_count),
-                                dim=args.dim if example.dim is None else example.dim,
-                                height=args.photo_height, font_size=args.tag_size, side_tags=index == 0,
-                                show_tags=not args.no_tags)
+        drawn = draw_paper_pair(
+            axis,
+            raw_q,
+            raw_g,
+            foregrounds,
+            kq,
+            kg,
+            result.confidences,
+            args.paper_matches,
+            args.aspect,
+            int(result.match_count),
+            dim=args.dim if example.dim is None else example.dim,
+            height=args.photo_height,
+            font_size=args.tag_size,
+            side_tags=index == 0,
+            show_tags=not args.no_tags,
+        )
         axis.set_title(f"({chr(ord('a') + index)}) {label}", fontsize=args.title_size, pad=1.5)
-        sidecar.append({
-            "dataset": key, "label": label, "run": RUNS[key], "checkpoint": context.checkpoint_path,
-            "checkpoint_sha256": sha256_file(Path(context.checkpoint_path)),
-            "features": source, "probe_score": probe_score,
-            "query_path": example.query_path, "gallery_path": example.gallery_path,
-            "match_count": int(result.match_count), "drawn_matches": int(drawn),
-            "score": float(result.score), "note": example.note,
-            "background_dim": float(args.dim if example.dim is None else example.dim), "aspect": args.aspect,
-        })
+        sidecar.append(
+            {
+                "dataset": key,
+                "label": label,
+                "run": RUNS[key],
+                "checkpoint": context.checkpoint_path,
+                "checkpoint_sha256": sha256_file(Path(context.checkpoint_path)),
+                "features": source,
+                "probe_score": probe_score,
+                "query_path": example.query_path,
+                "gallery_path": example.gallery_path,
+                "match_count": int(result.match_count),
+                "drawn_matches": int(drawn),
+                "score": float(result.score),
+                "note": example.note,
+                "background_dim": float(args.dim if example.dim is None else example.dim),
+                "aspect": args.aspect,
+            }
+        )
         if args.web_export is not None:
-            web_entries.append(web_export_pair(args.web_export, key, label, raw_q, raw_g, kq, kg,
-                                               result.confidences, int(result.match_count), float(result.score),
-                                               example.query_path, example.gallery_path, args.web_long_side))
+            web_entries.append(
+                web_export_pair(
+                    args.web_export,
+                    key,
+                    label,
+                    raw_q,
+                    raw_g,
+                    kq,
+                    kg,
+                    result.confidences,
+                    int(result.match_count),
+                    float(result.score),
+                    example.query_path,
+                    example.gallery_path,
+                    args.web_long_side,
+                )
+            )
     if args.web_export is not None:
         args.web_export.mkdir(parents=True, exist_ok=True)
-        payload = {"generated_by": "paper/figures/plot_match_examples.py render --web-export", "method": "LoMa + WildMatch",
-                   "candidate_k": 50, "coordinates": "pixels on the exported photos (origin top-left)",
-                   "examples": web_entries}
+        payload = {
+            "generated_by": "paper/figures/plot_match_examples.py render --web-export",
+            "method": "LoMa + WildMatch",
+            "candidate_k": 50,
+            "coordinates": "pixels on the exported photos (origin top-left)",
+            "examples": web_entries,
+        }
         (args.web_export / "match_examples.json").write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
         print(f"[match-examples] wrote web assets to {args.web_export}")
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for fmt, dpi in (("pdf", 300), ("png", 300)):
-        figure.savefig(args.output_dir / f"{args.output_stem}.{fmt}", dpi=dpi, facecolor="white",
-                       metadata={"Creator": "paper/figures/plot_match_examples.py"})
+        figure.savefig(
+            args.output_dir / f"{args.output_stem}.{fmt}",
+            dpi=dpi,
+            facecolor="white",
+            metadata={"Creator": "paper/figures/plot_match_examples.py"},
+        )
     plt.close(figure)
     (args.output_dir / f"{args.output_stem}.json").write_text(json.dumps(sidecar, indent=2) + "\n", encoding="utf-8")
     print(f"[match-examples] wrote {args.output_dir / (args.output_stem + '.pdf')}")
@@ -868,33 +1078,62 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     cand.add_argument("--min-hash-distance", type=int, default=6, help="dHash bits; below = near-duplicate")
     cand.add_argument("--sheet", type=int, default=6, help="Pairs drawn per contact sheet")
     cand.add_argument("--seed", type=int, default=0)
-    cand.add_argument("--min-foreground", type=float, default=0.0,
-                      help="Minimum mask share of each raw photo (a large, visible animal)")
-    cand.add_argument("--min-saturation", type=float, default=0.0,
-                      help="Minimum mean HSV saturation on the animal (rejects greyscale/infrared frames)")
-    cand.add_argument("--min-warm", type=float, default=0.0,
-                      help="Minimum share of warm (orange-brown) animal pixels; rejects pink infrared frames")
+    cand.add_argument(
+        "--min-foreground",
+        type=float,
+        default=0.0,
+        help="Minimum mask share of each raw photo (a large, visible animal)",
+    )
+    cand.add_argument(
+        "--min-saturation",
+        type=float,
+        default=0.0,
+        help="Minimum mean HSV saturation on the animal (rejects greyscale/infrared frames)",
+    )
+    cand.add_argument(
+        "--min-warm",
+        type=float,
+        default=0.0,
+        help="Minimum share of warm (orange-brown) animal pixels; rejects pink infrared frames",
+    )
     cand.add_argument("--tag", default="", help="Suffix for the CSV and sheet names, so earlier sheets are kept")
     render = sub.add_parser("render", help="Draw the pinned EXAMPLES figure")
-    render.add_argument("--paper-matches", type=int, default=10,
-                        help="Spatially spread high-confidence correspondences drawn per pair")
-    render.add_argument("--dim", type=float, default=0.2,
-                        help="Background dimming strength in [0, 1) using the probe mask, widely feathered; "
-                             "0 disables it. Strong values (about 0.45) expose provider/SAM3 mask outlines")
-    render.add_argument("--photo-height", type=int, default=260,
-                        help="Embedded pixel height per photo (260 is about 300 dpi at three panels per row)")
+    render.add_argument(
+        "--paper-matches", type=int, default=10, help="Spatially spread high-confidence correspondences drawn per pair"
+    )
+    render.add_argument(
+        "--dim",
+        type=float,
+        default=0.2,
+        help="Background dimming strength in [0, 1) using the probe mask, widely feathered; "
+        "0 disables it. Strong values (about 0.45) expose provider/SAM3 mask outlines",
+    )
+    render.add_argument(
+        "--photo-height",
+        type=int,
+        default=260,
+        help="Embedded pixel height per photo (260 is about 300 dpi at three panels per row)",
+    )
     render.add_argument("--columns", type=int, default=3, help="Panels per row; a short last row is centred")
-    render.add_argument("--no-tags", action="store_true",
-                        help="No text on the photos (no Query/Top-1 match/match-count tags); titles stay")
+    render.add_argument(
+        "--no-tags",
+        action="store_true",
+        help="No text on the photos (no Query/Top-1 match/match-count tags); titles stay",
+    )
     render.add_argument("--output-stem", default="match_examples", help="Output file stem")
     render.add_argument("--tag-size", type=float, default=6.5, help="Corner tag font size in points")
     render.add_argument("--title-size", type=float, default=9.0, help="Panel title font size in points")
-    render.add_argument("--aspect", type=float, default=4 / 3,
-                        help="Width/height of each photo crop, shared by all panels")
+    render.add_argument(
+        "--aspect", type=float, default=4 / 3, help="Width/height of each photo crop, shared by all panels"
+    )
     render.add_argument("--width", type=float, default=6.875, help="Figure width in inches (CVPR full text width)")
-    render.add_argument("--web-export", type=Path, default=None,
-                        help="Also write web-sized raw photos and all correspondences for the project-page "
-                             "match viewer into this directory (docs/assets/match for the page)")
+    render.add_argument(
+        "--web-export",
+        type=Path,
+        default=None,
+        help="Also write web-sized raw photos and all correspondences for the project-page "
+        "match viewer into this directory (docs/assets/match for the page)",
+    )
     render.add_argument("--web-long-side", type=int, default=1000, help="Long side of the exported web photos")
     return parser.parse_args(argv)
 

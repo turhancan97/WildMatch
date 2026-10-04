@@ -24,6 +24,7 @@ two when both ran on the same partition, else the run on the dataset's most comm
 partition). The page states the hardware next to every time. Fails closed on a missing run,
 a recall mismatch between the two matchers, or a private path in the output.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,8 +57,7 @@ DATASETS: List[Tuple[str, str, str]] = [
     ("WhaleSharkID_split", "whale_shark", "Whale shark"),
     ("ZindiTurtleRecall_split", "turtle", "Turtle"),
 ]
-GPU_LABELS = {"rtx4090_batch": "RTX 4090", "rtx4090": "RTX 4090", "dgxh100": "H100", "dgxa100": "A100",
-              "dgx": "V100"}
+GPU_LABELS = {"rtx4090_batch": "RTX 4090", "rtx4090": "RTX 4090", "dgxh100": "H100", "dgxa100": "A100", "dgx": "V100"}
 NOT_RECORDED = "not recorded"
 
 
@@ -76,13 +76,18 @@ def minutes_per_1000(matching_sec: float, n_queries: int) -> float:
     return matching_sec / 60.0 * 1000.0 / n_queries
 
 
-def choose_display(times: Dict[str, float], partitions: Dict[str, Optional[str]], dominant: Optional[str]) -> Dict[str, Any]:
+def choose_display(
+    times: Dict[str, float], partitions: Dict[str, Optional[str]], dominant: Optional[str]
+) -> Dict[str, Any]:
     """Which matching time to show for a budget shared by both matchers."""
     keys = list(times)
     parts = {k: partitions.get(k) for k in keys}
     if len({parts[k] for k in keys}) == 1:
-        return {"matching_sec": sum(times.values()) / len(times), "partition": parts[keys[0]],
-                "source": "mean of both runs"}
+        return {
+            "matching_sec": sum(times.values()) / len(times),
+            "partition": parts[keys[0]],
+            "source": "mean of both runs",
+        }
     preferred = [k for k in keys if parts[k] == dominant] or keys
     chosen = preferred[0]
     return {"matching_sec": times[chosen], "partition": parts[chosen], "source": f"{chosen} run"}
@@ -105,8 +110,12 @@ def sacct_partitions(job_ids: Sequence[str]) -> Dict[str, str]:
     """``sacct`` partition per job id; empty when sacct is unavailable."""
     if not job_ids or shutil.which("sacct") is None:
         return {}
-    result = subprocess.run(["sacct", "-j", ",".join(sorted(set(job_ids))), "-X", "--format=JobID,Partition", "-P", "-n"],
-                            capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        ["sacct", "-j", ",".join(sorted(set(job_ids))), "-X", "--format=JobID,Partition", "-P", "-n"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if result.returncode != 0:
         return {}
     partitions: Dict[str, str] = {}
@@ -124,8 +133,9 @@ def paper_rows(paper_repo: Path, stem: str) -> pd.DataFrame:
     return rows
 
 
-def collect_dataset(stem: str, key: str, label: str, paper_repo: Path, jobs: Dict[str, str],
-                    partitions: Dict[str, str]) -> Dict[str, Any]:
+def collect_dataset(
+    stem: str, key: str, label: str, paper_repo: Path, jobs: Dict[str, str], partitions: Dict[str, str]
+) -> Dict[str, Any]:
     rows = paper_rows(paper_repo, stem)
     budgets: List[Dict[str, Any]] = []
     run_partitions: List[Optional[str]] = []
@@ -161,7 +171,9 @@ def collect_dataset(stem: str, key: str, label: str, paper_repo: Path, jobs: Dic
             entry["partition"][mkey] = partition
             run_partitions.append(partition)
         if abs(recalls["default"] - recalls["finetuned"]) > 1e-12:
-            raise ValueError(f"{stem} k={k}: shortlist recall differs between matchers; the runs do not share a shortlist")
+            raise ValueError(
+                f"{stem} k={k}: shortlist recall differs between matchers; the runs do not share a shortlist"
+            )
         entry["shortlist_share"] = recalls["default"]
         budgets.append(entry)
     assert n_queries is not None
@@ -179,8 +191,13 @@ def collect_dataset(stem: str, key: str, label: str, paper_repo: Path, jobs: Dic
         }
         entry["gpu"] = {m: gpu_label(p) for m, p in entry["partition"].items()}
     return {
-        "key": key, "label": label, "stem": stem, "n_queries": n_queries,
-        "dominant_gpu": gpu_label(dominant), "runs_with_recorded_hardware": len(recorded), "runs_total": len(run_partitions),
+        "key": key,
+        "label": label,
+        "stem": stem,
+        "n_queries": n_queries,
+        "dominant_gpu": gpu_label(dominant),
+        "runs_with_recorded_hardware": len(recorded),
+        "runs_total": len(run_partitions),
         "budgets": budgets,
     }
 
@@ -190,18 +207,19 @@ def build_payload(datasets: List[Dict[str, Any]], paper_commit: Optional[str], s
         "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "generated_by": "paper/page/export_budget_tradeoff.py",
         "paper_commit": paper_commit,
-        "budgets": BUDGETS, "main_k": MAIN_K,
+        "budgets": BUDGETS,
+        "main_k": MAIN_K,
         "matchers": [{"key": k, "label": label} for k, (_, label) in MATCHERS.items()],
         "definitions": {
             "shortlist_share": "share of queries with at least one image of their individual among the k "
-                               "MegaDescriptor-L candidates (candidate_recall_at_k); identical for both matchers.",
+            "MegaDescriptor-L candidates (candidate_recall_at_k); identical for both matchers.",
             "top_5": "Top-5 accuracy of the matcher's ranking of the k candidates (paper tables).",
             "matching_sec": "Vismatch feature-matching time over all query x candidate pairs (vismatch_rerank_sec); "
-                            "feature extraction, candidate selection, model setup and cache I/O excluded.",
+            "feature extraction, candidate selection, model setup and cache I/O excluded.",
             "minutes_per_1000_queries": "matching_sec / 60 x 1000 / queries.",
             "ms_per_pair": "1000 x matching_sec / (queries x k).",
             "hardware": "Slurm partition of the run (sacct) mapped to a GPU name; 'not recorded' for runs that predate "
-                        "the launcher's task records." + ("" if sacct_used else " sacct was unavailable at export time."),
+            "the launcher's task records." + ("" if sacct_used else " sacct was unavailable at export time."),
         },
         "datasets": datasets,
     }
@@ -230,11 +248,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     datasets = [collect_dataset(stem, key, label, args.paper_repo, jobs, partitions) for stem, key, label in DATASETS]
     for d in datasets:
         main_entry = next(b for b in d["budgets"] if b["k"] == MAIN_K)
-        print(f"[budget] {d['label']}: k={MAIN_K} shortlist {main_entry['shortlist_share']:.3f}, Top-5 "
-              f"{main_entry['top_5']['default']:.3f} -> {main_entry['top_5']['finetuned']:.3f}, "
-              f"{main_entry['display']['minutes_per_1000_queries']:.1f} min/1000 queries, "
-              f"{main_entry['display']['ms_per_pair']:.2f} ms/pair on {main_entry['display']['gpu']} "
-              f"({d['runs_with_recorded_hardware']}/{d['runs_total']} runs with recorded hardware)", flush=True)
+        print(
+            f"[budget] {d['label']}: k={MAIN_K} shortlist {main_entry['shortlist_share']:.3f}, Top-5 "
+            f"{main_entry['top_5']['default']:.3f} -> {main_entry['top_5']['finetuned']:.3f}, "
+            f"{main_entry['display']['minutes_per_1000_queries']:.1f} min/1000 queries, "
+            f"{main_entry['display']['ms_per_pair']:.2f} ms/pair on {main_entry['display']['gpu']} "
+            f"({d['runs_with_recorded_hardware']}/{d['runs_total']} runs with recorded hardware)",
+            flush=True,
+        )
     payload = build_payload(datasets, paper_commit(args.paper_repo), bool(partitions))
     text = json.dumps(payload, indent=1)
     for fragment in ("/shared/", "/home/"):

@@ -49,13 +49,15 @@ def sha256_file(path: Path) -> str:
 
 
 def raw_path(masked_rel: str) -> str:
-    return "images/" + masked_rel[len("masked_images/"):] if masked_rel.startswith("masked_images/") else masked_rel
+    return "images/" + masked_rel[len("masked_images/") :] if masked_rel.startswith("masked_images/") else masked_rel
 
 
 class Layout:
     """Dataset layout: how to find the raw photo and the animal mask for a metadata row."""
 
-    def __init__(self, root: Path, rows: Sequence[Dict[str, str]], identity_col: str, split_col: str, mask_col: Optional[str]):
+    def __init__(
+        self, root: Path, rows: Sequence[Dict[str, str]], identity_col: str, split_col: str, mask_col: Optional[str]
+    ):
         self.root, self.identity_col, self.split_col, self.mask_col = root, identity_col, split_col, mask_col
         self.by_path = {r["path"]: r for r in rows}
 
@@ -65,6 +67,7 @@ class Layout:
     def mask(self, path: str) -> np.ndarray:
         if self.mask_col:  # dataset-provided COCO-RLE (CzechLynx): exact animal region
             from pycocotools import mask as mask_utils
+
             data = json.loads(self.by_path[path][self.mask_col])
             m = mask_utils.decode(data)
             if m.ndim == 3:
@@ -99,9 +102,18 @@ def on_animal(points: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return mask[ys, xs]
 
 
-def load_pairs(root: Path, metadata: Path, split: str, n_same: int, n_diff: int, seed: int,
-               pinned: Sequence[Tuple[str, str]] = (), identity_col: str = "identity", split_col: str = "split",
-               mask_col: Optional[str] = None) -> Tuple[List[Dict[str, Any]], "Layout"]:
+def load_pairs(
+    root: Path,
+    metadata: Path,
+    split: str,
+    n_same: int,
+    n_diff: int,
+    seed: int,
+    pinned: Sequence[Tuple[str, str]] = (),
+    identity_col: str = "identity",
+    split_col: str = "split",
+    mask_col: Optional[str] = None,
+) -> Tuple[List[Dict[str, Any]], "Layout"]:
     """Random same-identity and different-identity pairs from one split, plus pinned pairs."""
     csv.field_size_limit(1 << 30)
     all_rows = list(csv.DictReader(metadata.open(newline="", encoding="utf-8")))
@@ -120,15 +132,24 @@ def load_pairs(root: Path, metadata: Path, split: str, n_same: int, n_diff: int,
     for ident in multi[:n_same]:
         a, b = rng.sample(by_id[ident], 2)
         pairs.append({"kind": "same", "a": a["path"], "b": b["path"], "pinned": False})
-    idents = sorted(by_id); rng.shuffle(idents)
+    idents = sorted(by_id)
+    rng.shuffle(idents)
     for i in range(n_diff):
         ia, ib = idents[2 * i], idents[2 * i + 1]
-        pairs.append({"kind": "different", "a": rng.choice(by_id[ia])["path"], "b": rng.choice(by_id[ib])["path"], "pinned": False})
+        pairs.append(
+            {
+                "kind": "different",
+                "a": rng.choice(by_id[ia])["path"],
+                "b": rng.choice(by_id[ib])["path"],
+                "pinned": False,
+            }
+        )
     return pairs, layout
 
 
-def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: int, top_k: int,
-                   joint_checkpoint: Optional[Path] = None):
+def build_backends(
+    device: str, checkpoint: Path, loma_arch: str, resize_max: int, top_k: int, joint_checkpoint: Optional[Path] = None
+):
     """Default LoMa, the matcher-only fine-tuned LoMa and, optionally, the joint
     (descriptor + matcher) checkpoint, which the loader requires to be used as ``full``."""
     from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
@@ -137,22 +158,42 @@ def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: in
     threshold = default_matcher_threshold("loma")
     dev = _choose_vismatch_device(device)
     backends = {
-        "default": VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="default", loma_arch=loma_arch,
-                                          resize_max=resize_max),
-        "fine-tuned": VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="custom",
-                                             checkpoint_path=str(checkpoint), checkpoint_components="matcher_only",
-                                             loma_arch=loma_arch, resize_max=resize_max),
+        "default": VismatchMatcherBackend(
+            "loma", dev, top_k, threshold, checkpoint_source="default", loma_arch=loma_arch, resize_max=resize_max
+        ),
+        "fine-tuned": VismatchMatcherBackend(
+            "loma",
+            dev,
+            top_k,
+            threshold,
+            checkpoint_source="custom",
+            checkpoint_path=str(checkpoint),
+            checkpoint_components="matcher_only",
+            loma_arch=loma_arch,
+            resize_max=resize_max,
+        ),
     }
     if joint_checkpoint is not None:
-        backends["joint"] = VismatchMatcherBackend("loma", dev, top_k, threshold, checkpoint_source="custom",
-                                                   checkpoint_path=str(joint_checkpoint), checkpoint_components="full",
-                                                   loma_arch=loma_arch, resize_max=resize_max)
+        backends["joint"] = VismatchMatcherBackend(
+            "loma",
+            dev,
+            top_k,
+            threshold,
+            checkpoint_source="custom",
+            checkpoint_path=str(joint_checkpoint),
+            checkpoint_components="full",
+            loma_arch=loma_arch,
+            resize_max=resize_max,
+        )
     return backends, threshold
 
 
-def analyze(layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int) -> List[Dict[str, Any]]:
+def analyze(
+    layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int
+) -> List[Dict[str, Any]]:
     from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
@@ -173,94 +214,162 @@ def analyze(layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir
         raw_a = Image.open(layout.raw(pair["a"])).convert("RGB")
         raw_b = Image.open(layout.raw(pair["b"])).convert("RGB")
         for col, (name, backend) in enumerate(backends.items()):
-            (fa, size_a), (fb, size_b) = features(name, backend, pair["a"], False), features(name, backend, pair["b"], False)
+            (fa, size_a), (fb, size_b) = (
+                features(name, backend, pair["a"], False),
+                features(name, backend, pair["b"], False),
+            )
             result = backend.match_features(fa, fb)
-            ka = normalized_to_pixels(result.matched_kpts0 if result.matched_kpts0 is not None else np.empty((0, 2)), size_a)
-            kb = normalized_to_pixels(result.matched_kpts1 if result.matched_kpts1 is not None else np.empty((0, 2)), size_b)
+            ka = normalized_to_pixels(
+                result.matched_kpts0 if result.matched_kpts0 is not None else np.empty((0, 2)), size_a
+            )
+            kb = normalized_to_pixels(
+                result.matched_kpts1 if result.matched_kpts1 is not None else np.empty((0, 2)), size_b
+            )
             conf = np.asarray(result.confidences if result.confidences is not None else [], dtype=np.float64)
-            a_on, b_on = on_animal(ka, mask_a) if len(ka) else np.zeros(0, bool), on_animal(kb, mask_b) if len(kb) else np.zeros(0, bool)
+            a_on, b_on = (
+                on_animal(ka, mask_a) if len(ka) else np.zeros(0, bool),
+                on_animal(kb, mask_b) if len(kb) else np.zeros(0, bool),
+            )
             both = a_on & b_on
             # Keypoint-level view: where did the detector put keypoints at all (shared by both matchers).
-            kp_a = normalized_to_pixels(np.asarray(fa.keypoints), size_a); kp_b = normalized_to_pixels(np.asarray(fb.keypoints), size_b)
+            kp_a = normalized_to_pixels(np.asarray(fa.keypoints), size_a)
+            kp_b = normalized_to_pixels(np.asarray(fb.keypoints), size_b)
             kp_a_on, kp_b_on = on_animal(kp_a, mask_a).mean(), on_animal(kp_b, mask_b).mean()
             # Reference: the paper's masked inputs.
             (ma, _), (mb, _) = features(name, backend, pair["a"], True), features(name, backend, pair["b"], True)
             masked_result = backend.match_features(ma, mb)
-            rec = {"pair": row, "kind": pair["kind"], "pinned": pair["pinned"], "matcher": name,
-                   "a": pair["a"], "b": pair["b"],
-                   "raw_score": float(result.score), "raw_matches": int(result.match_count),
-                   "matches_both_on_animal": int(both.sum()), "matches_any_background": int((~both).sum()),
-                   "frac_matches_on_animal": float(both.mean()) if len(both) else None,
-                   "conf_sum_on_animal": float(conf[both].sum()) if len(conf) else 0.0,
-                   "conf_sum_background": float(conf[~both].sum()) if len(conf) else 0.0,
-                   "keypoints_on_animal_a": float(kp_a_on), "keypoints_on_animal_b": float(kp_b_on),
-                   "animal_area_a": float(mask_a.mean()), "animal_area_b": float(mask_b.mean()),
-                   "masked_score": float(masked_result.score), "masked_matches": int(masked_result.match_count)}
+            rec = {
+                "pair": row,
+                "kind": pair["kind"],
+                "pinned": pair["pinned"],
+                "matcher": name,
+                "a": pair["a"],
+                "b": pair["b"],
+                "raw_score": float(result.score),
+                "raw_matches": int(result.match_count),
+                "matches_both_on_animal": int(both.sum()),
+                "matches_any_background": int((~both).sum()),
+                "frac_matches_on_animal": float(both.mean()) if len(both) else None,
+                "conf_sum_on_animal": float(conf[both].sum()) if len(conf) else 0.0,
+                "conf_sum_background": float(conf[~both].sum()) if len(conf) else 0.0,
+                "keypoints_on_animal_a": float(kp_a_on),
+                "keypoints_on_animal_b": float(kp_b_on),
+                "animal_area_a": float(mask_a.mean()),
+                "animal_area_b": float(mask_b.mean()),
+                "masked_score": float(masked_result.score),
+                "masked_matches": int(masked_result.match_count),
+            }
             records.append(rec)
-            print(f"[background] pair {row} ({pair['kind']}) {name:10s}: raw score {rec['raw_score']:.3f}, "
-                  f"{rec['raw_matches']} matches, {rec['matches_both_on_animal']} on animal, {rec['matches_any_background']} touching background "
-                  f"({(rec['frac_matches_on_animal'] or 0) * 100:.0f}% on animal); masked score {rec['masked_score']:.3f} ({rec['masked_matches']} m); "
-                  f"keypoints on animal {kp_a_on * 100:.0f}% / {kp_b_on * 100:.0f}%", flush=True)
+            print(
+                f"[background] pair {row} ({pair['kind']}) {name:10s}: raw score {rec['raw_score']:.3f}, "
+                f"{rec['raw_matches']} matches, {rec['matches_both_on_animal']} on animal, {rec['matches_any_background']} touching background "
+                f"({(rec['frac_matches_on_animal'] or 0) * 100:.0f}% on animal); masked score {rec['masked_score']:.3f} ({rec['masked_matches']} m); "
+                f"keypoints on animal {kp_a_on * 100:.0f}% / {kp_b_on * 100:.0f}%",
+                flush=True,
+            )
             # Draw: strongest `draw_top` matches, cyan on animal, orange touching background.
             ax = axes[row][col]
             gap = 12
             canvas = Image.new("RGB", (raw_a.width + gap + raw_b.width, max(raw_a.height, raw_b.height)), "white")
-            canvas.paste(raw_a, (0, 0)); canvas.paste(raw_b, (raw_a.width + gap, 0))
-            ax.imshow(canvas); ax.axis("off")
+            canvas.paste(raw_a, (0, 0))
+            canvas.paste(raw_b, (raw_a.width + gap, 0))
+            ax.imshow(canvas)
+            ax.axis("off")
             order = np.argsort(-conf, kind="stable")[:draw_top]
             for i in order:
                 color = MASK_COLORS["animal"] if both[i] else MASK_COLORS["background"]
-                ax.plot([ka[i, 0], kb[i, 0] + raw_a.width + gap], [ka[i, 1], kb[i, 1]], "-", color=color, lw=0.9, alpha=0.9)
+                ax.plot(
+                    [ka[i, 0], kb[i, 0] + raw_a.width + gap], [ka[i, 1], kb[i, 1]], "-", color=color, lw=0.9, alpha=0.9
+                )
                 ax.plot([ka[i, 0], kb[i, 0] + raw_a.width + gap], [ka[i, 1], kb[i, 1]], "o", ms=2.2, color=color)
-            ax.set_title(f"{name} · {pair['kind']} pair · score {rec['raw_score']:.3f}, {rec['raw_matches']} matches, "
-                         f"{(rec['frac_matches_on_animal'] or 0) * 100:.0f}% on animal (bg matches orange) · masked-input score {rec['masked_score']:.3f}",
-                         fontsize=9)
+            ax.set_title(
+                f"{name} · {pair['kind']} pair · score {rec['raw_score']:.3f}, {rec['raw_matches']} matches, "
+                f"{(rec['frac_matches_on_animal'] or 0) * 100:.0f}% on animal (bg matches orange) · masked-input score {rec['masked_score']:.3f}",
+                fontsize=9,
+            )
     fig.tight_layout()
     fig.savefig(out_dir / "background_matches.png", dpi=80)
     with (out_dir / "background_matches.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(records[0].keys()))
-        writer.writeheader(); writer.writerows(records)
+        writer.writeheader()
+        writer.writerows(records)
     return records
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=WILDLIFE_ROOT)
-    parser.add_argument("--metadata", type=Path, default=WILDLIFE_ROOT / "metadata_mdsplit_no_background/metadata_NyalaData.csv")
+    parser.add_argument(
+        "--metadata", type=Path, default=WILDLIFE_ROOT / "metadata_mdsplit_no_background/metadata_NyalaData.csv"
+    )
     parser.add_argument("--split", default="train", help="metadata split value to draw pairs from (train = database)")
-    parser.add_argument("--split-col", default="split"); parser.add_argument("--identity-col", default="identity")
-    parser.add_argument("--mask-col", default=None, help="COCO-RLE mask column (CzechLynx: mask); omit for pre-masked datasets")
-    parser.add_argument("--checkpoint", type=Path, required=True, help="fine-tuned LoMa matcher checkpoint (matcher only)")
-    parser.add_argument("--joint-checkpoint", type=Path, default=None,
-                        help="joint descriptor + matcher LoMa checkpoint (loaded with checkpoint_components=full)")
+    parser.add_argument("--split-col", default="split")
+    parser.add_argument("--identity-col", default="identity")
+    parser.add_argument(
+        "--mask-col", default=None, help="COCO-RLE mask column (CzechLynx: mask); omit for pre-masked datasets"
+    )
+    parser.add_argument(
+        "--checkpoint", type=Path, required=True, help="fine-tuned LoMa matcher checkpoint (matcher only)"
+    )
+    parser.add_argument(
+        "--joint-checkpoint",
+        type=Path,
+        default=None,
+        help="joint descriptor + matcher LoMa checkpoint (loaded with checkpoint_components=full)",
+    )
     parser.add_argument("--n-same", type=int, default=4)
     parser.add_argument("--n-diff", type=int, default=2)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--pin", action="append", default=[], metavar="A_PATH,B_PATH", help="pinned pair of metadata paths")
+    parser.add_argument(
+        "--pin", action="append", default=[], metavar="A_PATH,B_PATH", help="pinned pair of metadata paths"
+    )
     parser.add_argument("--draw-top", type=int, default=60)
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--loma-arch", default="LoMa-B"); parser.add_argument("--resize-max", type=int, default=512)
+    parser.add_argument("--loma-arch", default="LoMa-B")
+    parser.add_argument("--resize-max", type=int, default=512)
     parser.add_argument("--top-k", type=int, default=512)
-    parser.add_argument("--out", type=Path, default=REPO_ROOT / "reports" / "project_page" / "analysis" / "nyala_background")
+    parser.add_argument(
+        "--out", type=Path, default=REPO_ROOT / "reports" / "project_page" / "analysis" / "nyala_background"
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
     pinned = [tuple(p.split(",", 1)) for p in args.pin]
-    pairs, layout = load_pairs(args.root, args.metadata, args.split, args.n_same, args.n_diff, args.seed, pinned,
-                               args.identity_col, args.split_col, args.mask_col)
-    backends, threshold = build_backends(args.device, args.checkpoint, args.loma_arch, args.resize_max, args.top_k,
-                                         args.joint_checkpoint)
+    pairs, layout = load_pairs(
+        args.root,
+        args.metadata,
+        args.split,
+        args.n_same,
+        args.n_diff,
+        args.seed,
+        pinned,
+        args.identity_col,
+        args.split_col,
+        args.mask_col,
+    )
+    backends, threshold = build_backends(
+        args.device, args.checkpoint, args.loma_arch, args.resize_max, args.top_k, args.joint_checkpoint
+    )
     records = analyze(layout, pairs, backends, args.out, args.draw_top)
-    summary: Dict[str, Any] = {"checkpoint": str(args.checkpoint), "checkpoint_sha256": sha256_file(args.checkpoint),
-                               "threshold": threshold, "pairs": len(pairs), "mask_source": "dataset RLE" if args.mask_col else "pre-masked image threshold",
-                               "joint_checkpoint": str(args.joint_checkpoint) if args.joint_checkpoint else None,
-                               "joint_checkpoint_sha256": sha256_file(args.joint_checkpoint) if args.joint_checkpoint else None}
+    summary: Dict[str, Any] = {
+        "checkpoint": str(args.checkpoint),
+        "checkpoint_sha256": sha256_file(args.checkpoint),
+        "threshold": threshold,
+        "pairs": len(pairs),
+        "mask_source": "dataset RLE" if args.mask_col else "pre-masked image threshold",
+        "joint_checkpoint": str(args.joint_checkpoint) if args.joint_checkpoint else None,
+        "joint_checkpoint_sha256": sha256_file(args.joint_checkpoint) if args.joint_checkpoint else None,
+    }
     for name in backends:
         rows = [r for r in records if r["matcher"] == name]
         fr = [r["frac_matches_on_animal"] for r in rows if r["frac_matches_on_animal"] is not None]
-        summary[name] = {"mean_frac_matches_on_animal": float(np.mean(fr)) if fr else None,
-                         "mean_raw_matches": float(np.mean([r["raw_matches"] for r in rows])),
-                         "mean_background_matches": float(np.mean([r["matches_any_background"] for r in rows])),
-                         "same_pair_mean_raw_score": float(np.mean([r["raw_score"] for r in rows if r["kind"] == "same"])),
-                         "diff_pair_mean_raw_score": float(np.mean([r["raw_score"] for r in rows if r["kind"] == "different"])) if any(r["kind"] == "different" for r in rows) else None}
+        summary[name] = {
+            "mean_frac_matches_on_animal": float(np.mean(fr)) if fr else None,
+            "mean_raw_matches": float(np.mean([r["raw_matches"] for r in rows])),
+            "mean_background_matches": float(np.mean([r["matches_any_background"] for r in rows])),
+            "same_pair_mean_raw_score": float(np.mean([r["raw_score"] for r in rows if r["kind"] == "same"])),
+            "diff_pair_mean_raw_score": float(np.mean([r["raw_score"] for r in rows if r["kind"] == "different"]))
+            if any(r["kind"] == "different" for r in rows)
+            else None,
+        }
     (args.out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(summary, indent=1))
     return 0

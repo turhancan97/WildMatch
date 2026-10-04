@@ -63,7 +63,9 @@ def identity_table(profile: Profile, frame: pd.DataFrame) -> pd.DataFrame:
     table["in_query"] = table["query_images"] > 0
     table["database_singleton"] = table["database_images"] == 1
     # Deterministic order: most images first, identity string as tie-breaker.
-    table = table.sort_values(["total_images", "database_images", "identity"], ascending=[False, False, True], kind="mergesort")
+    table = table.sort_values(
+        ["total_images", "database_images", "identity"], ascending=[False, False, True], kind="mergesort"
+    )
     table.insert(0, "rank", np.arange(1, len(table) + 1))
     return table[IDENTITY_COLUMNS]
 
@@ -112,7 +114,9 @@ def write_csv(path: Path, rows: List[Dict[str, object]]) -> None:
 
 
 def parse_args(argv=None, prog=None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("experiments/class-balance"))
     return parser.parse_args(argv)
 
@@ -131,16 +135,18 @@ def main(argv=None, prog=None) -> None:
         output = args.output_dir / f"{profile.key}.csv"
         table.to_csv(output, index=False, float_format="%.6f")
         summaries.append(summary_row(profile, frame, table))
-        sources.append({
-            "dataset": profile.key,
-            "output": output.name,
-            "metadata": str(profile.metadata),
-            "metadata_sha256": sha256_file(profile.metadata),
-            "identity_col": profile.identity_col,
-            "split_col": profile.split_col,
-            "database_value": profile.database_value,
-            "query_value": profile.query_value,
-        })
+        sources.append(
+            {
+                "dataset": profile.key,
+                "output": output.name,
+                "metadata": str(profile.metadata),
+                "metadata_sha256": sha256_file(profile.metadata),
+                "identity_col": profile.identity_col,
+                "split_col": profile.split_col,
+                "database_value": profile.database_value,
+                "query_value": profile.query_value,
+            }
+        )
         print(f"[class-balance] {output} ({len(table)} identities)")
     write_csv(args.output_dir / "summary.csv", summaries)
     manifest = {

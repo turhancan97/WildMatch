@@ -74,7 +74,9 @@ class _FrameAdapter:
         return len(self.df)
 
 
-def load_model_input(profile: PaperProfile, frame: pd.DataFrame, view: Optional[BenchmarkDatasetView], idx: int) -> Tuple[np.ndarray, np.ndarray]:
+def load_model_input(
+    profile: PaperProfile, frame: pd.DataFrame, view: Optional[BenchmarkDatasetView], idx: int
+) -> Tuple[np.ndarray, np.ndarray]:
     """Return the RGB image the probe sees and its foreground mask."""
     path = Path(str(frame.iloc[idx]["path"]))
     if not path.is_absolute():
@@ -150,8 +152,10 @@ def _init_worker(frame: pd.DataFrame, profile: PaperProfile) -> None:
     _WORKER_VIEW = None
     if profile.mask_col:
         _WORKER_VIEW = BenchmarkDatasetView(
-            _FrameAdapter(frame, profile.identity_col), label_col=profile.identity_col,
-            no_background=True, mask_col=profile.mask_col,
+            _FrameAdapter(frame, profile.identity_col),
+            label_col=profile.identity_col,
+            no_background=True,
+            mask_col=profile.mask_col,
         )
 
 
@@ -201,7 +205,9 @@ def add_flags(table: pd.DataFrame) -> pd.DataFrame:
     return table
 
 
-def query_top1_rates(profile: PaperProfile, frame: pd.DataFrame, experiment_root: Path) -> Tuple[pd.DataFrame, List[str]]:
+def query_top1_rates(
+    profile: PaperProfile, frame: pd.DataFrame, experiment_root: Path
+) -> Tuple[pd.DataFrame, List[str]]:
     """Per-query top-1 correctness across completed runs of this split."""
     split = frame[profile.split_col].astype(str)
     identity = frame[profile.identity_col].astype(str)
@@ -234,11 +240,13 @@ def query_top1_rates(profile: PaperProfile, frame: pd.DataFrame, experiment_root
         hit[rows[first]] = database_ids[cols[first]] == query_ids[rows[first]]
         correct += hit
         runs.append(str(scores_path.parent))
-    rates = pd.DataFrame({
-        "row_index": query_rows,
-        "query_runs": len(runs),
-        "query_top1_rate": correct / len(runs) if runs else np.nan,
-    })
+    rates = pd.DataFrame(
+        {
+            "row_index": query_rows,
+            "query_runs": len(runs),
+            "query_top1_rate": correct / len(runs) if runs else np.nan,
+        }
+    )
     return rates, runs
 
 
@@ -252,19 +260,28 @@ def verify_query_order(profile: PaperProfile, frame: pd.DataFrame, runs: Sequenc
             continue
         sample = pd.read_csv(index, usecols=["query_index", "query_path"]).dropna().drop_duplicates().head(200)
         sample["query_index"] = sample["query_index"].astype(int)
-        mismatched = sample[query_paths[sample["query_index"].to_numpy()] != sample["query_path"].astype(str).to_numpy()]
+        mismatched = sample[
+            query_paths[sample["query_index"].to_numpy()] != sample["query_path"].astype(str).to_numpy()
+        ]
         if len(mismatched):
             raise SystemExit(f"{run}: query order differs from metadata order; refusing to join correctness")
 
 
-def contact_sheet(profile: PaperProfile, frame: pd.DataFrame, table: pd.DataFrame, flag: str, output: Path, count: int) -> int:
+def contact_sheet(
+    profile: PaperProfile, frame: pd.DataFrame, table: pd.DataFrame, flag: str, output: Path, count: int
+) -> int:
     metric, ascending = SHEET_ORDER[flag]
     picked = table[table[f"flag_{flag}"]].sort_values([metric, "row_index"], ascending=[ascending, True]).head(count)
     if picked.empty:
         return 0
     view = None
     if profile.mask_col:
-        view = BenchmarkDatasetView(_FrameAdapter(frame, profile.identity_col), label_col=profile.identity_col, no_background=True, mask_col=profile.mask_col)
+        view = BenchmarkDatasetView(
+            _FrameAdapter(frame, profile.identity_col),
+            label_col=profile.identity_col,
+            no_background=True,
+            mask_col=profile.mask_col,
+        )
     thumb, caption, columns = 200, 30, 8
     rows = (len(picked) + columns - 1) // columns
     sheet = Image.new("RGB", (columns * thumb, rows * (thumb + caption)), (255, 255, 255))
@@ -312,8 +329,15 @@ def summary_row(profile: PaperProfile, table: pd.DataFrame) -> Dict[str, object]
 
 
 def parse_args(argv=None, prog=None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dataset", action="append", choices=[p.key for p in ALL_PROFILES], help="Dataset key; repeat for several (default: all)")
+    parser = argparse.ArgumentParser(
+        prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--dataset",
+        action="append",
+        choices=[p.key for p in ALL_PROFILES],
+        help="Dataset key; repeat for several (default: all)",
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("experiments/image-quality"))
     parser.add_argument("--experiment-root", type=Path, default=Path("experiments"))
     parser.add_argument("--workers", type=int, default=4)
@@ -345,7 +369,9 @@ def main(argv=None, prog=None) -> None:
             cached = fresh if cached is None else pd.concat([cached, fresh], ignore_index=True)
             measured[profile.metadata] = cached
         table = cached[cached["row_index"].isin(used)].sort_values("row_index").reset_index(drop=True)
-        table.insert(1, "side", np.where(split.to_numpy()[table["row_index"]] == profile.query_value, "query", "database"))
+        table.insert(
+            1, "side", np.where(split.to_numpy()[table["row_index"]] == profile.query_value, "query", "database")
+        )
         table.insert(2, "identity", frame[profile.identity_col].astype(str).to_numpy()[table["row_index"]])
         table.insert(3, "path", frame["path"].astype(str).to_numpy()[table["row_index"]])
         table = add_flags(table)
@@ -358,7 +384,12 @@ def main(argv=None, prog=None) -> None:
 
         for flag in SHEET_ORDER:
             contact_sheet(profile, frame, table, flag, sheets_dir / f"{profile.key}__{flag}.jpg", args.sheet_count)
-        fresh_sources[profile.key] = {"dataset": profile.key, "metadata": str(profile.metadata), "metadata_sha256": sha256_file(profile.metadata), "runs": runs}
+        fresh_sources[profile.key] = {
+            "dataset": profile.key,
+            "metadata": str(profile.metadata),
+            "metadata_sha256": sha256_file(profile.metadata),
+            "runs": runs,
+        }
         print(f"[image-quality] {profile.key}: {int(table['any_flag'].sum())} flagged of {len(table)}", flush=True)
 
     # Rebuild the summary from every per-dataset CSV present, and merge manifest
@@ -381,7 +412,8 @@ def main(argv=None, prog=None) -> None:
             # The CSV predates this manifest; its run list cannot be recovered, and
             # listing today's runs would misstate what its query_top1_rate used.
             sources_by_key[profile.key] = {
-                "dataset": profile.key, "metadata": str(profile.metadata),
+                "dataset": profile.key,
+                "metadata": str(profile.metadata),
                 "metadata_sha256": sha256_file(profile.metadata),
                 "runs": None,
                 "runs_note": f"unknown: rebuilt from an existing CSV that scored {summaries[-1]['scored_runs']} runs",
@@ -398,7 +430,9 @@ def main(argv=None, prog=None) -> None:
         "limit": args.limit,
         "analysis_long_side": ANALYSIS_LONG_SIDE,
         "premasked_foreground_threshold": PREMASKED_FOREGROUND_THRESHOLD,
-        "foreground_source": {entry["dataset"]: foreground_source(profiles_by_key[entry["dataset"]]) for entry in sources},
+        "foreground_source": {
+            entry["dataset"]: foreground_source(profiles_by_key[entry["dataset"]]) for entry in sources
+        },
         "flag_rules": FLAG_RULES,
         "sources": sources,
     }

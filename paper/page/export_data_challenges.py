@@ -22,6 +22,7 @@ occlusion). Mask-only problems are described in text and have no category here. 
 not a paper dataset and is skipped; ``lynx_open`` audits the same images as ``lynx_closed``.
 CPU only (pandas, Pillow).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -46,8 +47,18 @@ SUMMARY_OUT = REPO_ROOT / "docs" / "data" / "image_quality_summary.json"
 WEB_LONG_SIDE = 900
 PAGE_DATASETS = ["lynx_closed", "hyena", "leopard", "nyala", "salamander", "sea_star", "whale_shark", "turtle"]
 PROFILES: Dict[str, PaperProfile] = {p.key: p for p in PAPER_PROFILES}
-METRIC_COLUMNS = ["foreground_fraction", "mask_components", "largest_component_fraction", "mean_luma", "std_luma",
-                  "saturated_fraction", "sharpness", "grayscale", "width", "height"]
+METRIC_COLUMNS = [
+    "foreground_fraction",
+    "mask_components",
+    "largest_component_fraction",
+    "mean_luma",
+    "std_luma",
+    "saturated_fraction",
+    "sharpness",
+    "grayscale",
+    "width",
+    "height",
+]
 
 
 class Category(NamedTuple):
@@ -59,49 +70,84 @@ class Category(NamedTuple):
 
 
 CATEGORIES: List[Category] = [
-    Category("overexposure", "noise", "Overexposure", (
-        ("lynx_closed", "flag_overexposed", "saturated_fraction", False, 12),
-        ("leopard", "flag_overexposed", "saturated_fraction", False, 8),
-        ("hyena", "flag_overexposed", "saturated_fraction", False, 4),
-        ("turtle", "flag_overexposed", "saturated_fraction", False, 3),
-    )),
-    Category("empty_frame", "noise", "Empty frame", (
-        ("lynx_closed", "flag_tiny_foreground", "foreground_fraction", True, 16),
-        ("leopard", "flag_empty_foreground", "foreground_fraction", True, 4),
-        ("turtle", "flag_empty_foreground", "foreground_fraction", True, 1),
-        ("hyena", "flag_empty_foreground", "foreground_fraction", True, 1),
-    )),
-    Category("insufficient_detail", "noise", "Insufficient detail", (
-        ("turtle", "flag_tiny_foreground", "foreground_fraction", True, 8),
-        ("whale_shark", "flag_tiny_foreground", "foreground_fraction", True, 8),
-        ("leopard", "flag_tiny_foreground", "foreground_fraction", True, 6),
-        ("nyala", "flag_tiny_foreground", "foreground_fraction", True, 4),
-    )),
-    Category("corruption", "noise", "Corruption", (
-        ("lynx_closed", "flag_low_contrast & ~grayscale", "std_luma", True, 12),
-        ("leopard", "flag_low_contrast", "std_luma", True, 6),
-        ("whale_shark", "flag_low_contrast", "std_luma", True, 6),
-    )),
-    Category("blur", "noise", "Blur", (
-        ("hyena", "flag_blurry", "sharpness", True, 6),
-        ("salamander", "flag_blurry", "sharpness", True, 6),
-        ("leopard", "flag_blurry", "sharpness", True, 4),
-        ("turtle", "flag_blurry", "sharpness", True, 4),
-        ("nyala", "flag_blurry", "sharpness", True, 3),
-        ("whale_shark", "flag_blurry", "sharpness", True, 3),
-    )),
-    Category("night_infrared", "difficulty", "Night and infrared frames", (
-        ("hyena", "flag_underexposed", "mean_luma", True, 8),
-        ("lynx_closed", "grayscale & ~flag_overexposed & ~flag_underexposed", "mean_luma", True, 8),
-        ("lynx_closed", "flag_underexposed", "mean_luma", True, 4),
-        ("leopard", "flag_underexposed", "mean_luma", True, 4),
-        ("turtle", "flag_underexposed", "mean_luma", True, 4),
-    )),
-    Category("occlusion", "difficulty", "Occlusion", (
-        ("leopard", "flag_fragmented_mask", "largest_component_fraction", True, 12),
-        ("lynx_closed", "flag_fragmented_mask", "largest_component_fraction", True, 6),
-        ("salamander", "sam3_n_instances > 1", "sam3_n_instances", False, 10),
-    )),
+    Category(
+        "overexposure",
+        "noise",
+        "Overexposure",
+        (
+            ("lynx_closed", "flag_overexposed", "saturated_fraction", False, 12),
+            ("leopard", "flag_overexposed", "saturated_fraction", False, 8),
+            ("hyena", "flag_overexposed", "saturated_fraction", False, 4),
+            ("turtle", "flag_overexposed", "saturated_fraction", False, 3),
+        ),
+    ),
+    Category(
+        "empty_frame",
+        "noise",
+        "Empty frame",
+        (
+            ("lynx_closed", "flag_tiny_foreground", "foreground_fraction", True, 16),
+            ("leopard", "flag_empty_foreground", "foreground_fraction", True, 4),
+            ("turtle", "flag_empty_foreground", "foreground_fraction", True, 1),
+            ("hyena", "flag_empty_foreground", "foreground_fraction", True, 1),
+        ),
+    ),
+    Category(
+        "insufficient_detail",
+        "noise",
+        "Insufficient detail",
+        (
+            ("turtle", "flag_tiny_foreground", "foreground_fraction", True, 8),
+            ("whale_shark", "flag_tiny_foreground", "foreground_fraction", True, 8),
+            ("leopard", "flag_tiny_foreground", "foreground_fraction", True, 6),
+            ("nyala", "flag_tiny_foreground", "foreground_fraction", True, 4),
+        ),
+    ),
+    Category(
+        "corruption",
+        "noise",
+        "Corruption",
+        (
+            ("lynx_closed", "flag_low_contrast & ~grayscale", "std_luma", True, 12),
+            ("leopard", "flag_low_contrast", "std_luma", True, 6),
+            ("whale_shark", "flag_low_contrast", "std_luma", True, 6),
+        ),
+    ),
+    Category(
+        "blur",
+        "noise",
+        "Blur",
+        (
+            ("hyena", "flag_blurry", "sharpness", True, 6),
+            ("salamander", "flag_blurry", "sharpness", True, 6),
+            ("leopard", "flag_blurry", "sharpness", True, 4),
+            ("turtle", "flag_blurry", "sharpness", True, 4),
+            ("nyala", "flag_blurry", "sharpness", True, 3),
+            ("whale_shark", "flag_blurry", "sharpness", True, 3),
+        ),
+    ),
+    Category(
+        "night_infrared",
+        "difficulty",
+        "Night and infrared frames",
+        (
+            ("hyena", "flag_underexposed", "mean_luma", True, 8),
+            ("lynx_closed", "grayscale & ~flag_overexposed & ~flag_underexposed", "mean_luma", True, 8),
+            ("lynx_closed", "flag_underexposed", "mean_luma", True, 4),
+            ("leopard", "flag_underexposed", "mean_luma", True, 4),
+            ("turtle", "flag_underexposed", "mean_luma", True, 4),
+        ),
+    ),
+    Category(
+        "occlusion",
+        "difficulty",
+        "Occlusion",
+        (
+            ("leopard", "flag_fragmented_mask", "largest_component_fraction", True, 12),
+            ("lynx_closed", "flag_fragmented_mask", "largest_component_fraction", True, 6),
+            ("salamander", "sam3_n_instances > 1", "sam3_n_instances", False, 10),
+        ),
+    ),
 ]
 
 
@@ -130,7 +176,9 @@ EXAMPLES: List[Example] = [
     Example("empty_frame", "lynx_closed", 36092, "snowy branches, no animal"),
     Example("empty_frame", "lynx_closed", 14688, "rock and snow, no animal"),
     # Insufficient detail: the animal is too small or featureless to carry its markings.
-    Example("insufficient_detail", "turtle", 11453, "person holding the turtle far away; stored rotated (paper figure)"),
+    Example(
+        "insufficient_detail", "turtle", 11453, "person holding the turtle far away; stored rotated (paper figure)"
+    ),
     Example("insufficient_detail", "turtle", 5638, "handler and ID tag, turtle a few pixels"),
     Example("insufficient_detail", "turtle", 5256, "people with the tag, turtle small"),
     Example("insufficient_detail", "turtle", 11220, "turtle small in a wide scene"),
@@ -217,8 +265,16 @@ def rank_candidates(category: Category) -> List[Dict[str, Any]]:
         selected = merged[merged.eval(expression)].sort_values(metric, ascending=ascending).head(count)
         for _, record in selected.iterrows():
             meta_record = metadata.iloc[int(record["row_index"])]
-            rows.append({"dataset": dataset, "row": int(record["row_index"]), "metric": metric,
-                         "value": record[metric], "side": record["side"], "photo": raw_photo_path(profile, meta_record)})
+            rows.append(
+                {
+                    "dataset": dataset,
+                    "row": int(record["row_index"]),
+                    "metric": metric,
+                    "value": record[metric],
+                    "side": record["side"],
+                    "photo": raw_photo_path(profile, meta_record),
+                }
+            )
     return rows
 
 
@@ -242,7 +298,11 @@ def contact_sheet(items: Sequence[Dict[str, Any]], output: Path, columns: int = 
         except OSError:
             draw.rectangle((x + 4, y + 4, x + cell - 4, y + cell - 4), outline="red")
         value = item["value"]
-        text = f"#{index}  {item['dataset']}:{item['row']} ({item['side']})\n{item['metric']}={value:.3g}" if isinstance(value, (int, float)) else f"#{index}  {item['dataset']}:{item['row']}"
+        text = (
+            f"#{index}  {item['dataset']}:{item['row']} ({item['side']})\n{item['metric']}={value:.3g}"
+            if isinstance(value, (int, float))
+            else f"#{index}  {item['dataset']}:{item['row']}"
+        )
         draw.multiline_text((x + 6, y + cell + 2), text, fill="black", font=font)
     output.parent.mkdir(parents=True, exist_ok=True)
     sheet.save(output, "JPEG", quality=85)
@@ -255,9 +315,20 @@ def command_candidates(args: argparse.Namespace) -> None:
             continue
         items = rank_candidates(category)
         contact_sheet(items, args.sheet_dir / f"{category.key}.jpg")
-        index[category.key] = [{k: (str(v) if isinstance(v, Path) else (float(v) if hasattr(v, "__float__") and not isinstance(v, str) else v))
-                                for k, v in item.items()} for item in items]
-        print(f"[data-challenges] {category.key}: {len(items)} candidates -> {args.sheet_dir / (category.key + '.jpg')}")
+        index[category.key] = [
+            {
+                k: (
+                    str(v)
+                    if isinstance(v, Path)
+                    else (float(v) if hasattr(v, "__float__") and not isinstance(v, str) else v)
+                )
+                for k, v in item.items()
+            }
+            for item in items
+        ]
+        print(
+            f"[data-challenges] {category.key}: {len(items)} candidates -> {args.sheet_dir / (category.key + '.jpg')}"
+        )
     (args.sheet_dir / "candidates.json").write_text(json.dumps(index, indent=1, default=str) + "\n", encoding="utf-8")
 
 
@@ -285,16 +356,39 @@ def summary_payload(summary_csv: Path) -> Dict[str, Any]:
     for _, r in table.iterrows():
         if r["dataset"] not in PAGE_DATASETS:
             continue
-        rows.append({k: (None if pd.isna(v) else (int(v) if isinstance(v, (int,)) or (hasattr(v, "is_integer") and float(v).is_integer() and "fraction" not in k and "rate" not in k and "cut" not in k and "top1" not in k) else (float(v) if isinstance(v, float) else v)))
-                     for k, v in r.items()})
-    return {"generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
-            "generated_by": "paper/page/export_data_challenges.py", "source": "experiments/image-quality/summary.csv",
-            "source_sha256": sha256_file(summary_csv),
-            "flag_rules": json.loads((AUDIT_DIR / "manifest.json").read_text(encoding="utf-8"))["flag_rules"],
-            "note": "Flags are heuristic rankings on the model input; pre-masked WildlifeReID-10k files use a brightness "
-                    "threshold for the foreground, so very dark animals can be flagged as tiny or empty. query_top1 columns "
-                    "average each flagged or clean query's Top-1 over all completed runs of all methods.",
-            "rows": rows}
+        rows.append(
+            {
+                k: (
+                    None
+                    if pd.isna(v)
+                    else (
+                        int(v)
+                        if isinstance(v, (int,))
+                        or (
+                            hasattr(v, "is_integer")
+                            and float(v).is_integer()
+                            and "fraction" not in k
+                            and "rate" not in k
+                            and "cut" not in k
+                            and "top1" not in k
+                        )
+                        else (float(v) if isinstance(v, float) else v)
+                    )
+                )
+                for k, v in r.items()
+            }
+        )
+    return {
+        "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
+        "generated_by": "paper/page/export_data_challenges.py",
+        "source": "experiments/image-quality/summary.csv",
+        "source_sha256": sha256_file(summary_csv),
+        "flag_rules": json.loads((AUDIT_DIR / "manifest.json").read_text(encoding="utf-8"))["flag_rules"],
+        "note": "Flags are heuristic rankings on the model input; pre-masked WildlifeReID-10k files use a brightness "
+        "threshold for the foreground, so very dark animals can be flagged as tiny or empty. query_top1 columns "
+        "average each flagged or clean query's Top-1 over all completed runs of all methods.",
+        "rows": rows,
+    }
 
 
 def command_render(args: argparse.Namespace) -> None:
@@ -315,25 +409,39 @@ def command_render(args: argparse.Namespace) -> None:
             raise FileNotFoundError(source)
         file_name = f"{example.dataset}_{example.row}.jpg"
         width, height = export_photo(source, args.web_dir / file_name)
-        measurements = {k: (None if pd.isna(record[k]) else (bool(record[k]) if k == "grayscale" else float(record[k]))) for k in METRIC_COLUMNS if k in record.index}
-        items.append({
-            "category": category.key, "group": category.group, "title": category.title,
-            "dataset": example.dataset, "dataset_label": PROFILES[example.dataset].label, "row": example.row,
-            "side": record["side"], "identity": str(record["identity"]), "note": example.note,
-            "flags": [f for f in str(record["flags"]).split(";") if f and f != "nan"],
-            "measurements": measurements,
-            "query_runs": None if pd.isna(record.get("query_runs")) else int(record["query_runs"]),
-            "query_top1_rate": None if pd.isna(record.get("query_top1_rate")) else float(record["query_top1_rate"]),
-            "sam3_n_instances": (int(meta_record["sam3_n_instances"]) if "sam3_n_instances" in meta_record.index else None),
-            "image": {"file": file_name, "width": width, "height": height},
-            "source_sha256": sha256_file(source),
-        })
+        measurements = {
+            k: (None if pd.isna(record[k]) else (bool(record[k]) if k == "grayscale" else float(record[k])))
+            for k in METRIC_COLUMNS
+            if k in record.index
+        }
+        items.append(
+            {
+                "category": category.key,
+                "group": category.group,
+                "title": category.title,
+                "dataset": example.dataset,
+                "dataset_label": PROFILES[example.dataset].label,
+                "row": example.row,
+                "side": record["side"],
+                "identity": str(record["identity"]),
+                "note": example.note,
+                "flags": [f for f in str(record["flags"]).split(";") if f and f != "nan"],
+                "measurements": measurements,
+                "query_runs": None if pd.isna(record.get("query_runs")) else int(record["query_runs"]),
+                "query_top1_rate": None if pd.isna(record.get("query_top1_rate")) else float(record["query_top1_rate"]),
+                "sam3_n_instances": (
+                    int(meta_record["sam3_n_instances"]) if "sam3_n_instances" in meta_record.index else None
+                ),
+                "image": {"file": file_name, "width": width, "height": height},
+                "source_sha256": sha256_file(source),
+            }
+        )
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
         "generated_by": "paper/page/export_data_challenges.py",
         "categories": [{"key": c.key, "group": c.group, "title": c.title} for c in CATEGORIES],
         "attribution": "Raw photographs from CzechLynx (Picek et al.), WildlifeReID-10k and SalamanderID2025 "
-                       "(AnimalCLEF 2025), the latter shown with the dataset team's permission.",
+        "(AnimalCLEF 2025), the latter shown with the dataset team's permission.",
         "items": items,
     }
     text = json.dumps(payload, indent=1)

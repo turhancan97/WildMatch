@@ -20,15 +20,23 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(bt.gpu_label("mystery"), "mystery")
 
     def test_choose_display_same_partition_averages(self):
-        display = bt.choose_display({"default": 10.0, "finetuned": 12.0}, {"default": "rtx4090_batch", "finetuned": "rtx4090_batch"}, "rtx4090_batch")
+        display = bt.choose_display(
+            {"default": 10.0, "finetuned": 12.0},
+            {"default": "rtx4090_batch", "finetuned": "rtx4090_batch"},
+            "rtx4090_batch",
+        )
         self.assertAlmostEqual(display["matching_sec"], 11.0)
         self.assertEqual(display["partition"], "rtx4090_batch")
 
     def test_choose_display_prefers_dominant_partition(self):
-        display = bt.choose_display({"default": 10.0, "finetuned": 30.0}, {"default": "rtx4090_batch", "finetuned": "dgxa100"}, "rtx4090_batch")
+        display = bt.choose_display(
+            {"default": 10.0, "finetuned": 30.0}, {"default": "rtx4090_batch", "finetuned": "dgxa100"}, "rtx4090_batch"
+        )
         self.assertEqual(display["matching_sec"], 10.0)
         self.assertEqual(display["source"], "default run")
-        display = bt.choose_display({"default": 10.0, "finetuned": 30.0}, {"default": None, "finetuned": "rtx4090_batch"}, "rtx4090_batch")
+        display = bt.choose_display(
+            {"default": 10.0, "finetuned": 30.0}, {"default": None, "finetuned": "rtx4090_batch"}, "rtx4090_batch"
+        )
         self.assertEqual(display["matching_sec"], 30.0)
 
     def test_job_lookup_missing_index(self):
@@ -57,8 +65,12 @@ class CommittedExportTests(unittest.TestCase):
                     self.assertLessEqual(b["top_5"][m], b["shortlist_share"] + 1e-9, f"{d['key']} k={b['k']} {m}")
                     self.assertGreater(b["matching_sec"][m], 0)
                 disp = b["display"]
-                self.assertAlmostEqual(disp["minutes_per_1000_queries"], bt.minutes_per_1000(disp["matching_sec"], d["n_queries"]))
-                self.assertAlmostEqual(disp["ms_per_pair"], bt.per_pair_ms(disp["matching_sec"], d["n_queries"], b["k"]))
+                self.assertAlmostEqual(
+                    disp["minutes_per_1000_queries"], bt.minutes_per_1000(disp["matching_sec"], d["n_queries"])
+                )
+                self.assertAlmostEqual(
+                    disp["ms_per_pair"], bt.per_pair_ms(disp["matching_sec"], d["n_queries"], b["k"])
+                )
                 self.assertEqual(disp["pairs"], d["n_queries"] * b["k"])
                 self.assertTrue(disp["gpu"])
             minutes = [b["display"]["minutes_per_1000_queries"] for b in d["budgets"]]

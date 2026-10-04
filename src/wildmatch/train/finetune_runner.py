@@ -122,8 +122,12 @@ def evaluate(
     features_database = normalize_features(extractor(dataset_database))
     features_query = normalize_features(extractor(dataset_query))
     similarity = CosineSimilarity()(
-        FeatureContainer(features=features_query, labels_string=get_labels_string(dataset_query, dataset_query.col_label)),
-        FeatureContainer(features=features_database, labels_string=get_labels_string(dataset_database, dataset_database.col_label)),
+        FeatureContainer(
+            features=features_query, labels_string=get_labels_string(dataset_query, dataset_query.col_label)
+        ),
+        FeatureContainer(
+            features=features_database, labels_string=get_labels_string(dataset_database, dataset_database.col_label)
+        ),
     )
     if original_device != device:
         model.to(original_device)
@@ -197,9 +201,7 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
     if cfg.dataset.label_col not in metadata.columns:
         raise KeyError(f"label_col '{cfg.dataset.label_col}' not found in metadata columns")
     if bool(cfg.dataset.no_background) and cfg.dataset.mask_col not in metadata.columns:
-        raise KeyError(
-            f"mask_col '{cfg.dataset.mask_col}' not found in metadata while dataset.no_background=true"
-        )
+        raise KeyError(f"mask_col '{cfg.dataset.mask_col}' not found in metadata while dataset.no_background=true")
 
     train_metadata = metadata[metadata[cfg.dataset.split_col] == cfg.dataset.train_split_value]
     val_metadata = metadata[metadata[cfg.dataset.split_col] == cfg.dataset.val_split_value]
@@ -276,7 +278,9 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
         lr=float(cfg.train.lr),
         weight_decay=float(cfg.train.weight_decay),
     )
-    scheduler = CosineAnnealingLR(optimizer, T_max=int(cfg.train.epochs), eta_min=float(cfg.train.lr) * float(cfg.scheduler.eta_min_scale))
+    scheduler = CosineAnnealingLR(
+        optimizer, T_max=int(cfg.train.epochs), eta_min=float(cfg.train.lr) * float(cfg.scheduler.eta_min_scale)
+    )
 
     wandb_run = None
     if bool(cfg.wandb.enabled):
@@ -372,8 +376,8 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
             )
 
         if (epoch + 1) % int(cfg.output.save_every) == 0:
-            torch.save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch+1}.pth")
-            torch.save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch+1}_{dataset_tag}.pth")
+            torch.save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch + 1}.pth")
+            torch.save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch + 1}_{dataset_tag}.pth")
         save_full_checkpoint(
             output_folder / "checkpoint-latest-full.pth",
             model,
@@ -431,11 +435,7 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
 
         if (epoch + 1) % int(cfg.train.log_every) == 0:
             metrics_str = " ".join([f"{k}={metrics[k]:.6f}" for k in metrics])
-            print(
-                f"Epoch {epoch+1}: "
-                f"train_loss={row.get('train_loss_epoch_avg', float('nan')):.6f} "
-                f"{metrics_str}"
-            )
+            print(f"Epoch {epoch + 1}: train_loss={row.get('train_loss_epoch_avg', float('nan')):.6f} {metrics_str}")
 
     torch.save(model.state_dict(), output_folder / "checkpoint-final.pth")
     torch.save(model.state_dict(), output_folder / f"checkpoint-final_{dataset_tag}.pth")
@@ -479,7 +479,13 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
 
     elapsed_sec = time.perf_counter() - run_t0
     if context is not None:
-        final_metrics = build_final_training_metrics(selected_metrics, final_epoch_metrics, best_epoch=best_epoch, best_metric=best_metric_name, selected_checkpoint=str(selected_checkpoint))
+        final_metrics = build_final_training_metrics(
+            selected_metrics,
+            final_epoch_metrics,
+            best_epoch=best_epoch,
+            best_metric=best_metric_name,
+            selected_checkpoint=str(selected_checkpoint),
+        )
         final_metrics["total_run_sec"] = float(elapsed_sec)
         final_metrics["total_run_min"] = float(elapsed_sec / 60.0)
         context.write_metrics(final_metrics)

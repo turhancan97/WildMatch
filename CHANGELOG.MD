@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): AGENTS.md pass for the finished package: refactor marked done, Known
+  issues point at functions instead of line numbers (both issues re-checked), future-work items
+  for CI and machine-local paths closed, licence item narrowed to what is still open, docs
+  dependencies described for uv.
 - 2026-10-04 (branch): sweep specs take `inputs: current | paper` (spec-wide or per dataset), so
   grids can run on the paper's WildlifeReID-10k tables (`registry.paper_inputs`) as well as the
   SAM 3 ones.

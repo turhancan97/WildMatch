@@ -14,7 +14,8 @@ single-label animal-species classifier: identity labels represent individual ani
 ## Repository map
 
 The code is the installable `wildmatch` package (`pyproject.toml`, `src/` layout, environment
-locked in `uv.lock`); see "Package refactor" for the migration in progress.
+locked in `uv.lock`), run through the `wildmatch` command; "Package refactor" records how it
+was built from the paper code (`paper-v1`) and how parity was verified.
 
 - src/wildmatch/cli.py: the `wildmatch` command (`[project.scripts]`; `python -m wildmatch` is the
   same). Subcommands: `evaluate`, `finetune-backbone`, `sweep`, `sweep-task`, `summarize-runs`,
@@ -630,9 +631,9 @@ environment must have an importable, non-broken Vismatch installation from the p
 that `ex-reid` carries is not needed.
 Default paths are specific to the original shared compute environment.
 
-## Package refactor (in progress since 2026-10-04)
+## Package refactor (2026-10-04, phases 1 to 5 done)
 
-The repository is being turned into the installable `wildmatch` package (uv + `pyproject.toml`,
+The repository was turned into the installable `wildmatch` package (uv + `pyproject.toml`,
 `src/` layout, one `wildmatch` CLI, a dataset registry, portable paths with a `paths=gmum`
 cluster profile, CPU and CUDA extras, a conda route kept) on branch
 `refactor/wildmatch-package`, phase by phase, each phase reviewed by the user. The approved
@@ -641,8 +642,9 @@ sibling repositories will be merged in later and get empty `mining/` and `matche
 slots now. `main` keeps the paper code: tag `paper-v1` (commit `4bad498`) marks the state
 behind the paper's numbers. Every phase that touches execution must reproduce the reference
 runs listed in `notes/parity_reference.md` (cosine, WildFusion and RDD-LightGlue scores within
-1e-4 with identical Top-1, LoMa within 1e-2, the probe within seed noise). On this branch the
-guide describes the branch; `main` keeps its own copy for the paper code.
+1e-4 with identical Top-1, LoMa within 1e-2, the probe within seed noise); phases 1 to 3 were
+verified bit-identical on the same GPU type. On this branch the guide describes the branch;
+`main` keeps its own copy for the paper code until the branch is merged (user's decision).
 The refactor runs in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`),
 so Slurm jobs submitted from the main checkout keep running the paper code.
 
@@ -819,11 +821,14 @@ reproduction, and the measured impact so it can be picked up without re-investig
 
 - **`_predict_class_probabilities` runs under grad during probe training.**
   The training-loop calls in `run_linear_probe` and `run_efficient_probe`
-  (`src/wildmatch/evaluate/probe_runner.py:1235` and `:1502` on 2026-10-03) build a graph for the
-  softmax and then detach it. Wasteful, not incorrect.
+  (`src/wildmatch/evaluate/probe_runner.py`, the `train_probs = _predict_class_probabilities(...)`
+  lines; re-checked 2026-10-04) build a graph for the softmax and then detach it. Wasteful, not
+  incorrect.
 
 - **`_to_hwc_uint8` would destroy float images.**
-  `src/wildmatch/data/dataset_view.py:86` clips non-uint8 input to `{0, 1}` before masking. Not
+  `BenchmarkDatasetView._to_hwc_uint8` (`src/wildmatch/data/dataset_view.py`; re-checked 2026-10-04)
+  casts non-uint8 input with `np.clip(arr, 0, 255).astype(np.uint8)`, so float images in `[0, 1]`
+  become `{0, 1}` before masking. Not
   triggered today because the base dataset yields PIL images, but it would silently blacken
   inputs if a transform were ever applied before the view.
 
@@ -894,8 +899,8 @@ Open items only; completed items are recorded in CHANGELOG.MD. Defects with a kn
 reproduction live under "Known issues" instead.
 
 - [ ] Add optional integration tests with a fake/local backbone and synthetic images.
-- [ ] Add CI for unit tests, syntax checks, and YAML/config validation.
-- [ ] Replace environment-specific absolute paths with machine-local overrides.
+- [ ] Extend CI with YAML/config validation beyond the tests (lint, format, CPU tests and the
+  page build run in `.github/workflows/ci.yml` since 2026-10-04).
 - [ ] Implement truly disjoint calibration inputs for WildFusion and local matcher
   calibration; the current split setting selects one dataset and passes it to both
   sides of calibration.
@@ -909,7 +914,8 @@ reproduction live under "Known issues" instead.
   matcher defaults. The 2026-08-12 full-split comparison agreed on 65 of 66 top-1
   predictions, not 100 %, so this gate is still open (details under "Vismatch matcher policy").
 - [ ] Complete matcher ablations for RDD-LightGlue, ALIKED-LightGlue, SuperPoint-LightGlue, and LoMa-B.
-- [ ] Track wrapped-model licenses and downloaded-weight provenance for paper release.
+- [ ] Settle the licences still open in `THIRD_PARTY_LICENSES.md`: default LoMa/RDD weights, the
+  release licence of the WildMatch checkpoints, and the dataset licences (`registry.licence`).
 - [ ] Consider atomic checkpoint writes and explicit checkpoint retention.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
 - [ ] Make central run-index updates safe for concurrent jobs and use unique temporary
@@ -923,7 +929,8 @@ reproduction live under "Known issues" instead.
 The public project page for the manuscript is a MkDocs Material site (decided
 2026-10-02): `mkdocs.yml` at the repository root, Markdown sources and assets under
 `docs/`, theme overrides under `overrides/`, dependencies pinned in
-`requirements-docs.txt` (installed into the shared ex-reid environment; both `mkdocs==1.6.1`
+`requirements-docs.txt` and the `docs` dependency group of `pyproject.toml` (`uv run --only-group
+docs mkdocs build --strict`; on `main` they are installed into the shared ex-reid environment; both `mkdocs==1.6.1`
 and `mkdocs-material==9.7.7` are pinned because MkDocs 2.0 drops plugins and theme
 overrides, which Material's build banner warns about; the first strict build passed on
 2026-10-02), ignored build output in `site/`, deployment to the `gh-pages` branch with `mkdocs gh-deploy` run by the

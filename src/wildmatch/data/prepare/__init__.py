@@ -100,9 +100,10 @@ def _sam3_arguments(entry, out: Path) -> List[str]:
     block, root = _prepare_block(entry), Path(str(entry.root))
     if block["builder"] == "wildlifereid10k":
         return ["--root", str(root / "images"), "--csv", str(_split_table_path(entry, out)), "--out-dir", str(out),
-                "--masks-csv", f"masks_{entry.animal}.csv", "--prompt-column", "prompt"]
+                "--masks-csv", f"masks_{entry.animal}.csv", "--prompt-column", "prompt",
+                "--merge", str(block.get("merge") or "union")]
     arguments = ["--root", str(out), "--csv", _split_table_path(entry, out).name, "--out-dir", str(out),
-                 "--prompt", str(block["prompt"])]
+                 "--prompt", str(block["prompt"]), "--merge", str(block.get("merge") or "union")]
     for item in block.get("threshold_override") or []:
         arguments += ["--threshold-override", str(item)]
     return arguments

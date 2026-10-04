@@ -803,8 +803,15 @@ reproduction, and the measured impact so it can be picked up without re-investig
   not recorded (the teammate's home folder is not readable). `wildmatch prepare build` rebuilds
   the split tables exactly, but its masks come from SAM 3 with the `species` prompt, so masked
   inputs, and with them scores, can differ. `wildmatch prepare compare-masks` measures the gap
-  (IoU against the old files' foreground); the pilot on six paper datasets is pending, and
-  whether to publish the old masked files instead is open.
+  (IoU against the old files' foreground). Pilot 1 (2026-10-04, 100 images per paper dataset,
+  `union` merge): median IoU 0.994 Hyena, 0.993 Leopard, 0.965 Nyala, 0.999 SeaStar, 0.991
+  WhaleShark, 0.995 Zindi. Low values by eye: in multi-animal photos (Nyala) the old masks keep
+  one animal while `union` merges all, including zebras; old masks that keep only a speck (fog,
+  close-ups; the known provider failures) where SAM 3 is right; dark night photos where the
+  `max(RGB) > 12` foreground rule undercounts the old mask. WildlifeReID-10k entries therefore
+  default to `merge: best` (Salamander keeps `union`); a `largest` option exists for comparison.
+  Pilot 2 (`best` against `largest`) is pending; whether to publish the old masked files instead
+  is open.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

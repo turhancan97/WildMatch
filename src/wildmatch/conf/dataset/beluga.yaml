@@ -30,6 +30,10 @@ registry:
   # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
   prepare:
     builder: wildlifereid10k
+    # One animal per photo: keep the best SAM 3 detection. Photos often show several animals
+    # (NyalaData, GiraffeZebraID); merging them all ("union", right for the Salamander finger
+    # splits) disagreed with the paper inputs in the 2026-10-04 pilot.
+    merge: best
     include: "BelugaID/beluga/"
   # Where the data comes from. raw: the published source; derived: the files this registry entry
   # reads that are made from it; reproducible: whether this repository can rebuild them.

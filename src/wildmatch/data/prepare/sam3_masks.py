@@ -97,6 +97,8 @@ def merge_instances(masks: np.ndarray, scores: np.ndarray, merge: str) -> Tuple[
         mask = masks.any(axis=0)
     elif merge == "best":
         mask = masks[best]
+    elif merge == "largest":
+        mask = masks[int(np.argmax(masks.reshape(masks.shape[0], -1).sum(axis=1)))]
     else:
         raise ValueError(f"unknown merge policy: {merge!r}")
     return mask, int(len(scores)), float(scores[best])
@@ -287,7 +289,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--prompt", default="Salamander")
     p.add_argument("--prompt-column", default=None, help="take each row's prompt from this CSV column instead")
     p.add_argument("--fallback-prompts", nargs="*", default=["Animal"])
-    p.add_argument("--merge", choices=["union", "best"], default="union")
+    p.add_argument("--merge", choices=["union", "best", "largest"], default="union",
+                   help="union: all detections (one animal split by an occluder); best: highest score; largest: most pixels")
     p.add_argument("--threshold", type=float, default=0.5)
     p.add_argument("--fallback-threshold", type=float, default=0.25)
     p.add_argument("--threshold-override", action="append", default=[], metavar="PATH=THRESHOLD")

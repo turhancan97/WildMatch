@@ -38,6 +38,12 @@ class MergeInstancesTests(unittest.TestCase):
         mask, _, _ = merge_instances(self.masks, self.scores, "best")
         self.assertTrue(np.array_equal(mask, self.masks[1, 0]))
 
+    def test_largest_keeps_the_piece_with_most_pixels(self):
+        sizes = self.masks.reshape(self.masks.shape[0], -1).sum(axis=1)
+        mask, _, best = merge_instances(self.masks, self.scores, "largest")
+        self.assertTrue(np.array_equal(mask, self.masks[int(np.argmax(sizes)), 0]))
+        self.assertAlmostEqual(best, 0.9)  # the reported score stays the best detection's
+
     def test_no_detection_is_reported_not_dropped(self):
         mask, count, best = merge_instances(np.zeros((0, 3, 5), dtype=bool), np.zeros(0), "union")
         self.assertIsNone(mask)

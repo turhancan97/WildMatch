@@ -30,6 +30,7 @@ registry:
   # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
   prepare:
     builder: salamander
+    merge: union  # an occluding finger splits one salamander into several detections
     prompt: Salamander
     threshold_override: ["query/images/9d1fc96e28c0058e_1277.jpg=0.1"]
     split_map: "database=train,query=test"

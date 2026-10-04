@@ -181,6 +181,18 @@ class ResearchValidityTests(unittest.TestCase):
         # Image-level diagnostics stay available under the image_ prefix.
         self.assertEqual(metrics["image_top_1"], 0.5)
         self.assertEqual(metrics["image_num_queries"], 2.0)
+        # Per-epoch logging skips the image-level matrix; identity-level values are unchanged.
+        identity_only = _probe_retrieval_metrics(
+            cfg,
+            _LabelledFrame(["id1", "id2"]),
+            _LabelledFrame(["id0", "id0", "id1", "id1", "id2"]),
+            probs_query,
+            db_labels_idx,
+            query_labels_idx,
+            include_image_level=False,
+        )
+        self.assertFalse([key for key in identity_only if key.startswith("image_")])
+        self.assertEqual(identity_only, {k: v for k, v in metrics.items() if not k.startswith("image_")})
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_identity_probe_metrics_score_each_identity_once(self):

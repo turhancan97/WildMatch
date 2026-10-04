@@ -732,8 +732,13 @@ def _probe_retrieval_metrics(
     probs_query: np.ndarray,
     db_labels_idx: np.ndarray,
     query_labels_idx: np.ndarray,
+    include_image_level: bool = True,
 ) -> Dict[str, float]:
-    """Return identity-level metrics plus image-level diagnostic metrics."""
+    """Return identity-level metrics plus image-level diagnostic metrics.
+
+    The image-level diagnostics rebuild and rank the full query x database matrix (about a minute
+    on CzechLynx), so per-epoch logging passes ``include_image_level=False``.
+    """
     # `probs_query` has one column per identity, so an identity's score is already a
     # single value: every database image of that identity maps to the same column.
     # Selecting the identity columns directly is what the previous per-image maximum
@@ -756,6 +761,8 @@ def _probe_retrieval_metrics(
         compute_map=bool(cfg.benchmark.compute_map),
         map_at_k=resolve_map_at_k(cfg, len(db_labels_idx)),
     )
+    if not include_image_level:
+        return dict(primary)
     diagnostic = compute_metrics(
         dataset_query=dataset_query,
         dataset_database=dataset_database,
@@ -1290,8 +1297,20 @@ def run_linear_probe(
         cls_metrics = _classifier_metrics(
             probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
         )
-        retrieval_metrics = _probe_retrieval_metrics(
-            cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx
+        # Per-epoch retrieval metrics are only logged to W&B; skip them otherwise, and never build
+        # the image-level matrix here (it is computed once after training for the reported metrics).
+        retrieval_metrics = (
+            _probe_retrieval_metrics(
+                cfg,
+                dataset_query,
+                dataset_database,
+                probs_query,
+                db_labels_idx,
+                query_labels_idx,
+                include_image_level=False,
+            )
+            if wandb_run is not None
+            else {}
         )
 
         if wandb_run is not None:
@@ -1560,8 +1579,20 @@ def run_efficient_probe(
         cls_metrics = _classifier_metrics(
             probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
         )
-        retrieval_metrics = _probe_retrieval_metrics(
-            cfg, dataset_query, dataset_database, probs_query, db_labels_idx, query_labels_idx
+        # Per-epoch retrieval metrics are only logged to W&B; skip them otherwise, and never build
+        # the image-level matrix here (it is computed once after training for the reported metrics).
+        retrieval_metrics = (
+            _probe_retrieval_metrics(
+                cfg,
+                dataset_query,
+                dataset_database,
+                probs_query,
+                db_labels_idx,
+                query_labels_idx,
+                include_image_level=False,
+            )
+            if wandb_run is not None
+            else {}
         )
 
         if wandb_run is not None:

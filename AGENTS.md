@@ -650,9 +650,14 @@ Pull request #2 merged the branch into `main` on 2026-10-04 (`a58ba68`, merge co
 `$UV_ENV_ROOT/wildmatch` and carries a gitignored `wildmatch.local.yaml` (`paths: gmum`). The old
 `ex-reid` workflow (`python train/probe.py`, the bash launchers) lives on in tag `paper-v1`.
 The refactor ran in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`)
-so Slurm jobs from the main checkout kept running the paper code; its untracked run folders (the
-SAM 3 sweep and the parity runs) are still there until moved, and the worktree is to be removed
-afterwards.
+so Slurm jobs from the main checkout kept running the paper code. It was removed on 2026-10-04
+after its run directories (the SAM 3 sweep `wildlife_sam3`, parity runs 1-4 under
+`experiments/probe/SalamanderID2025/` and `experiments/parity-phase{2,3}/`) were copied into this
+checkout's `experiments/` and verified by checksum. Its logs, run index (`reports/runs.csv`) and
+legacy CSVs are archived under `logs/archive/wildmatch-refactor-worktree/`, outside the live
+`logs/parallel_run/` tree, because their task records point at the removed worktree; hence
+`compare_with_paper.py --job 524372` no longer resolves, and the comparison is rerun with
+`--run <dir>` for the 42 run directories (the result is kept in `reports/sam3_vs_paper.csv`).
 
 **Phase 1 (environment and packaging), 2026-10-04.** `reid/` and `models/` moved with
 `git mv` into `src/wildmatch/` (`engine/probe_runner` -> `evaluate/`, `engine/finetune_runner` and

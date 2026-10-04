@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: refactor worktree removed. Its 2,378 run files (SAM 3 sweep and parity runs) were
+  copied into this checkout's `experiments/` and verified by checksum; its logs, run index and
+  legacy CSVs archived under `logs/archive/wildmatch-refactor-worktree/`; local branch
+  `refactor/wildmatch-package` deleted (merged; the remote branch remains).
 - 2026-10-04: pull request #2 merged (`a58ba68`); the main checkout was fast-forwarded, its leftover
   bytecode-only `reid/`, `scripts/`, `train/` and `models/` folders removed, the uv environment
   re-installed from it (editable) and `wildmatch.local.yaml` (`paths: gmum`) added; 395 tests pass.

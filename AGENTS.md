@@ -27,7 +27,10 @@ locked in `uv.lock`); see "Package refactor" for the migration in progress.
 - src/wildmatch/evaluate/metrics.py: top-k, balanced top-1, and mAP calculations.
 - src/wildmatch/train/: checkpoint serialization and accumulation helpers.
 - src/wildmatch/reporting/: run identities, manifests, metrics, visualization indexes, and summaries.
-- src/wildmatch/conf/: Hydra configuration for probe and finetuning (package data).
+- src/wildmatch/conf/: Hydra configuration for probe and finetuning (package data), with the
+  `paths/` profiles (`default`, `gmum`) and the dataset registry `dataset/<key>.yaml`.
+- src/wildmatch/paths.py, src/wildmatch/data/registry.py: path profiles and registry entries
+  for code outside Hydra (see "Paths and the dataset registry").
 - src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
   later from `rdd-parallel-benchmark` and `lynx-finetuning`.
 - train/: thin wrappers (`python train/probe.py` = `wildmatch.entrypoints.probe`) kept for the
@@ -71,6 +74,9 @@ mkdocs build --strict   # project page; needs requirements-docs.txt installed
 ~~~
 
 Do not run full GPU training or Vismatch benchmarks as a default validation step.
+Single runs on the cluster need no extra flag in a checkout whose `wildmatch.local.yaml` says
+`paths: gmum` (the worktree has one); elsewhere pass `paths=gmum` or set `WILDMATCH_PATHS=gmum`.
+`pytest -m "not gpu and not data"` is the suite that runs on any machine.
 
 ## Hydra configuration
 
@@ -189,6 +195,36 @@ rebuilt atomically from these metadata records and can be filtered with
 resolves its repository working directory from `SLURM_SUBMIT_DIR` because Slurm
 runs copied scripts from a non-writable spool directory.
 
+## Paths and the dataset registry
+
+Every machine-specific location comes from a path profile, `src/wildmatch/conf/paths/<name>.yaml`
+(Phase 2 of the refactor, 2026-10-04). `default` uses relative `data/`, `cache/` and
+`checkpoints/` (overridable with `WILDMATCH_DATA_ROOT`, `WILDMATCH_CACHE_ROOT`,
+`WILDMATCH_CHECKPOINT_ROOT`) and leaves the locations outside the repository (`external`: paper
+clone, mining outputs, lynx-finetuning checkout, SAM 3 code and checkpoint) unset; `gmum` holds the
+cluster locations used before the refactor, so every resolved path, and therefore every feature
+cache key and the paper profiles, is identical to before (pinned by `tests/test_paths_registry.py`).
+Hydra runs choose a profile with `paths=<name>`; `probe.yaml` and `finetune.yaml` default to
+`default`. Code outside Hydra calls `wildmatch.paths.load_paths()`, which takes the profile from its
+argument, then `WILDMATCH_PATHS`, then `paths:` in a gitignored `./wildmatch.local.yaml`, then
+`default`; `train/probe.py` and `train/finetune.py` apply the same choice when the command names no
+profile and loads no custom `--config-path`.
+The dataset registry is the Hydra group `src/wildmatch/conf/dataset/<key>.yaml`, one file per
+former launcher profile (17: the 12 WildlifeReID-10k profiles, SalamanderID2025, JaguarReID,
+CzechLynx closed, open and unseen-eval), selected with `dataset=<key>` (default
+`czechlynx_closed`). Each holds the probe's dataset fields, roots interpolated from
+`${paths.data_root}`, plus a `registry` block (paper key, label, source, paper flag and order,
+default fine-tuned matcher checkpoints from `${paths.checkpoint_root}`, licence and download to
+fill in Phase 4). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
+Hydra; `wildmatch.reporting.paper_datasets` builds `PAPER_PROFILES` and `BENCHMARK_ONLY_PROFILES`
+from it (same keys and order as before). The launchers still carry their bash profile tables until
+sweeps move to Python (Phase 3); they now pass `paths=gmum dataset=<profile>` before their explicit
+dataset fields, and a test keeps the tables and the registry identical. Submission snapshots
+freeze `probe.yaml` together with the `paths/` and `dataset/` groups (from the package when a custom
+config has none) and record a `config_tree_sha256` that each task verifies. Scripts take dataset
+roots from the profile or registry and other repositories from `paths.external`; a missing
+external location fails with a clear message only when the script needs it.
+
 ## Experiment artifacts
 
 Modern probe and finetune runs use `experiments/` and are self-contained. Paths are
@@ -302,9 +338,8 @@ benchmark-only `jaguar`) with exact
 database/query image counts per identity, a `summary.csv` (counts, Gini, singleton
 fraction, top-decile query share), and a `manifest.json` with source metadata
 SHA-256 hashes. Its profiles come from `src/wildmatch/reporting/paper_datasets.py`
-(`ALL_PROFILES` = `PAPER_PROFILES` + `BENCHMARK_ONLY_PROFILES`), which mirrors the
-launcher metadata files, identity columns, split values, roots, and mask handling; keep it
-in sync when a split changes. `PAPER_PROFILES` is exactly the paper's datasets and is what
+(`ALL_PROFILES` = `PAPER_PROFILES` + `BENCHMARK_ONLY_PROFILES`), built from the dataset
+registry (see "Paths and the dataset registry"); change a split in its registry entry. `PAPER_PROFILES` is exactly the paper's datasets and is what
 the paper figures and the page exporters look up; datasets outside the paper (JaguarReID)
 go into `BENCHMARK_ONLY_PROFILES`, and only the dataset-level tools (this export and
 `audit_image_quality.py`) iterate `ALL_PROFILES`. Rows whose
@@ -611,6 +646,8 @@ the repo-root `sys.path` inserts removed (the remaining ones serve script-to-scr
 the paper tooling until Phase 3, the video tooling and the optional lynx parity test). No cache
 or stored artifact depends on module paths (caches hold plain arrays and state dicts), so the
 rename does not invalidate them.
+**Phase 2 (paths and dataset registry), 2026-10-04:** see "Paths and the dataset registry".
+Parity is checked against parity run 2 on `rtx4090_batch` (pending).
 Parity run 1 (array 524163 from the worktree, 2026-10-04): all seven Salamander pairs, including
 the frozen weighted linear probe, pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
 bug, these tasks read the packaged `probe.yaml` instead of the `parity_v2` snapshot and reused the

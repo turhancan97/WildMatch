@@ -1,0 +1,27 @@
+# Dataset registry entry `whaleshark` (generated 2026-10-04 from the launcher profile of the same name).
+# Selected with `dataset=whaleshark`; the `registry` block is metadata for tools, not read by the probe.
+name: "WildlifeReID-10k"
+animal: "WhaleSharkID"
+root: "${paths.data_root}/WildlifeReID-10k"
+metadata_file: "metadata_no_background/metadata_WhaleSharkID.csv"
+label_col: "identity"
+mask_col: "mask"
+no_background: false
+image_variant: "no_background"
+split_col: "split"
+database_split_value: "train"
+query_split_value: "test"
+calibration_size: 100
+registry:
+  key: "whaleshark"
+  paper_key: "whale_shark"
+  label: "Whale Shark"
+  source: "WhaleSharkID"
+  paper: true
+  order: 6
+  # Fine-tuned matcher-only checkpoints the launcher uses by default (epoch 299 unless stated).
+  checkpoints:
+    loma: "${paths.checkpoint_root}/wildlife-reid-10k/WhaleSharkID/loma-finetuned/legacy/epoch_299/model.safetensors"
+    rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy/epoch_299/model.safetensors"
+  licence: null   # to verify before release (Phase 4)
+  download: null  # Phase 4: download route or "user-supplied"

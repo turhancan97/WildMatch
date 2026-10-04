@@ -33,7 +33,9 @@ from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-WILDLIFE_ROOT = Path("/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k")
+from wildmatch.paths import path as _profile_path  # noqa: E402
+
+WILDLIFE_ROOT = _profile_path("data_root") / "WildlifeReID-10k"
 FOREGROUND_THRESHOLD = 12
 MASK_COLORS = {"animal": "#19c2d6", "background": "#f28c28"}
 

@@ -40,7 +40,9 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
+from wildmatch.paths import path as _profile_path  # noqa: E402
+
+DEFAULT_ROOT = _profile_path("data_root") / "CzechLynx_v2"
 DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"
 DEFAULT_RUN_DIR = (REPO_ROOT / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
                    "/vismatch/loma/20260920T122915Z_0015f14a")

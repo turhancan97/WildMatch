@@ -239,7 +239,10 @@ CHECKPOINT_SOURCE="${CHECKPOINT_SOURCE:-default}"
 
 # --config-path, not --config-dir: with --config-dir Hydra keeps the packaged probe.yaml as the
 # primary config and the frozen snapshot is silently ignored (found 2026-10-04).
-PROBE_ARGS=(--config-path "$(dirname -- "${CONFIG_SNAPSHOT_PATH}")" --config-name probe
+# paths=gmum keeps every resolved path (data, caches, checkpoints) identical to the pre-refactor
+# strings; dataset=<profile> selects the registry entry, whose fields the explicit overrides below
+# repeat (tests keep the registry and these tables in sync until sweeps move to Python).
+PROBE_ARGS=(--config-path "$(dirname -- "${CONFIG_SNAPSHOT_PATH}")" --config-name probe "paths=gmum" "dataset=${PROFILE_ID}"
     "dataset.name=${DATASET_NAME}" "dataset.animal=${ANIMAL}" "dataset.root=${DATASET_ROOT}" "dataset.metadata_file=${METADATA_FILE}"
     "dataset.label_col=${LABEL_COL}" "dataset.mask_col=${MASK_COL}" "dataset.no_background=${NO_BACKGROUND}" "dataset.image_variant=${IMAGE_VARIANT}"
     "dataset.split_col=${SPLIT_COL}" "dataset.database_split_value=${DATABASE_SPLIT_VALUE}" "dataset.query_split_value=${QUERY_SPLIT_VALUE}" "dataset.calibration_size=${CALIBRATION_SIZE}"

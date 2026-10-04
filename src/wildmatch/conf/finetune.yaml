@@ -1,7 +1,12 @@
+# Defaults: portable paths; `paths=gmum` selects the cluster layout.
+defaults:
+  - paths: default
+  - _self_
+
 dataset:
   name: "CzechLynx_v2" # WildlifeReID-10k | CzechLynx_v2
   animal: "CzechLynx" # CzechLynx | NyalaData | WhaleSharkID | BelugaID | ZindiTurtleRecall | ATRW | Giraffes | LeopardID2022 | HyenaID2022 | ReunionTurtles
-  root: "/shared/sets/datasets/vision/czechlynx/${dataset.name}"
+  root: "${paths.data_root}/${dataset.name}"
   metadata_file: "CzechLynxDataset-Metadata-Real.csv" # metadata_no_background/metadata_${dataset.animal}.csv | metadata_mdsplit_no_background/metadata_${dataset.animal}.csv | metadata_with_background/metadata_${dataset.animal}.csv | CzechLynxDataset-Metadata-Real.csv
   label_col: "unique_name"
   mask_col: "mask"

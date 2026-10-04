@@ -43,7 +43,9 @@ if str(REPO_ROOT / "scripts") not in sys.path:
 from export_synthetic_demo import ATTRIBUTION, INDIVIDUALS, decode_rle, identity_of, load_rows  # noqa: E402
 from wildmatch.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
 
-DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
+from wildmatch.paths import path as _profile_path  # noqa: E402
+
+DEFAULT_ROOT = _profile_path("data_root") / "CzechLynx_v2"
 DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"
 DEFAULT_SAM3_DIR = REPO_ROOT / "reports" / "project_page" / "sam3_synthetic"
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "masking"

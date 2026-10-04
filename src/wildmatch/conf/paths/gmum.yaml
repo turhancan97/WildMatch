@@ -1,0 +1,12 @@
+# The GMUM cluster layout (the locations every run before 2026-10-04 used). With this profile
+# all configured paths resolve to exactly the strings used before the refactor, so existing
+# feature caches and run identities stay valid.
+data_root: /shared/sets/datasets/vision/czechlynx
+cache_root: /shared/results/common/kargin/lynx/results
+checkpoint_root: /shared/sets/datasets/vision/czechlynx/checkpoints
+external:
+  paper_repo: /home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper
+  mining_outputs: /home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs
+  finetuning_repo: /home/kargin/Projects/repositories/lynx-finetuning
+  sam3_repo: /home/kargin/Projects/repositories/lynx_application/external/sam3
+  sam3_checkpoint: /shared/sets/datasets/confidential/lynx/checkpoints/sam3-hf/sam3.pt

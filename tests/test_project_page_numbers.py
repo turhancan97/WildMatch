@@ -6,6 +6,7 @@ them with ``docs/data/*.json`` (and, when the paper clone is present, with the p
 ``tab_datasets.tex``), so a stale transcription fails the suite instead of reaching readers.
 """
 
+import pytest
 import json
 import re
 import unittest
@@ -143,6 +144,7 @@ class TranscribedNumbersTests(unittest.TestCase):
         self.assertEqual((bal_wins, top5_wins), (8, 7))
         self.assertLess(D["sea_star"]["series"]["loma_finetuned"]["points"]["250"]["top_5"], D["sea_star"]["flats"]["classifier_full"]["top_5"])
 
+    @pytest.mark.data
     @unittest.skipUnless(PAPER_TABLE.is_file(), "paper clone not present")
     def test_dataset_table_matches_paper_source(self):
         table = self._table_with_header(self.datasets_md, "Dataset")

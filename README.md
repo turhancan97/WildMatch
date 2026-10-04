@@ -75,6 +75,16 @@ for example to keep large environments off a small home directory:
 export UV_PROJECT_ENVIRONMENT=/path/with/space/wildmatch
 ```
 
+### Data locations
+
+Paths come from a profile in `src/wildmatch/conf/paths/`: `default` expects datasets under
+`./data`, writes caches to `./cache` and looks for checkpoints in `./checkpoints` (override with
+`WILDMATCH_DATA_ROOT`, `WILDMATCH_CACHE_ROOT`, `WILDMATCH_CHECKPOINT_ROOT`); `gmum` is the GMUM
+cluster layout. Choose one per run with `paths=<name>`, per shell with `WILDMATCH_PATHS`, or per
+checkout with a gitignored `wildmatch.local.yaml` containing `paths: <name>`. Datasets are
+selected from the registry in `src/wildmatch/conf/dataset/` with `dataset=<key>`, for example
+`python train/probe.py dataset=salamander benchmark.method=cosine`.
+
 ### Conda
 
 ```bash
@@ -809,7 +819,7 @@ Run the tests (pytest; the tests are unittest-style classes):
 
 ```bash
 uv run pytest                       # or: python -m pytest, inside the conda env
-uv run pytest -m "not gpu and not data"
+uv run pytest -m "not gpu and not data"    # what runs on any machine (no datasets, no GPU)
 ```
 
 ## Troubleshooting

@@ -42,9 +42,12 @@ for extra in (REPO_ROOT / "scripts",):
         sys.path.insert(0, str(extra))
 from export_synthetic_demo import normalized_to_pixels  # noqa: E402
 
-BENCH = Path("/home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs/czechlynx-time-closed/legacy/loma")
-VIEW_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed")
-RAW_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
+from wildmatch.paths import path as _profile_path  # noqa: E402
+
+_MINING_OUTPUTS = _profile_path("external.mining_outputs")  # rdd-parallel-benchmark outputs; None when unset
+BENCH = _MINING_OUTPUTS / "czechlynx-time-closed" / "legacy" / "loma" if _MINING_OUTPUTS else None
+VIEW_ROOT = _profile_path("data_root") / "CzechLynx_processed_time_closed"
+RAW_ROOT = _profile_path("data_root") / "CzechLynx_v2"
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "mined_pairs"
 WEB_LONG_SIDE = 560
 ATTRIBUTION = "Photographs from CzechLynx (Picek et al.), time-closed training split."
@@ -228,6 +231,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--device", default="auto")
     parser.add_argument("--no-matches", action="store_true", help="skip re-matching (CPU only, no correspondences)")
     args = parser.parse_args(list(argv) if argv is not None else None)
+    if args.bench is None:
+        print("error: no mining output directory; pass --bench or set paths external.mining_outputs", file=sys.stderr)
+        return 2
     if not (args.bench / "strong-matches_train_combined.json").is_file():
         print(f"error: combined index not found under {args.bench}", file=sys.stderr)
         return 2

@@ -1,3 +1,4 @@
+import pytest
 import os
 import sys
 import unittest
@@ -17,6 +18,7 @@ LYNX_ROOT = Path(
 RUN_PARITY = os.environ.get("RUN_VISMATCH_LYNX_PARITY") == "1"
 
 
+@pytest.mark.data
 @unittest.skipUnless(
     RUN_PARITY and (LYNX_ROOT / "contrastive_finetuning" / "train_common.py").is_file(),
     "set RUN_VISMATCH_LYNX_PARITY=1 with an available lynx-finetuning checkout",

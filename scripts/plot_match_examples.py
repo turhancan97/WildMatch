@@ -71,7 +71,9 @@ RUNS: Dict[str, str] = {
     "lynx_closed": "CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l/vismatch/loma/20260920T122915Z_0015f14a",
 }
 # Dates for WildlifeReID-10k datasets live in the full metadata file only.
-WILDLIFE_FULL_METADATA = Path("/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k/metadata.csv")
+from wildmatch.paths import path as _profile_path  # noqa: E402
+
+WILDLIFE_FULL_METADATA = _profile_path("data_root") / "WildlifeReID-10k" / "metadata.csv"
 
 
 class Example(NamedTuple):

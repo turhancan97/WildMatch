@@ -1,0 +1,13 @@
+# Portable locations (relative to the working directory unless overridden by environment
+# variables). Select another profile with `paths=<name>` on the command line, the
+# WILDMATCH_PATHS environment variable, or `paths: <name>` in ./wildmatch.local.yaml.
+data_root: ${oc.env:WILDMATCH_DATA_ROOT,data}
+cache_root: ${oc.env:WILDMATCH_CACHE_ROOT,cache}
+checkpoint_root: ${oc.env:WILDMATCH_CHECKPOINT_ROOT,checkpoints}
+# Locations outside this repository used only by the paper tooling (null when unknown).
+external:
+  paper_repo: ${oc.env:WILDMATCH_PAPER_REPO,null}
+  mining_outputs: ${oc.env:WILDMATCH_MINING_OUTPUTS,null}
+  finetuning_repo: ${oc.env:WILDMATCH_FINETUNING_REPO,null}
+  sam3_repo: ${oc.env:WILDMATCH_SAM3_REPO,null}
+  sam3_checkpoint: ${oc.env:WILDMATCH_SAM3_CHECKPOINT,null}

@@ -236,6 +236,11 @@ __marimo__/
 # Datasets (symlinks to the shared cluster storage)
 /dataset/
 
+# Portable default locations of the `default` paths profile, and the machine-local profile choice
+/data/
+/checkpoints/
+/wildmatch.local.yaml
+
 # PDFs (paper figures are regenerated under reports/figures/)
 *.pdf
 

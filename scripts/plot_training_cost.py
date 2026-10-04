@@ -43,7 +43,10 @@ import numpy as np
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
 PROBE_JOB_DIR = ROOT_DIR / "logs/parallel_run/CzechLynx_v2/CzechLynx/split-time_closed/job-508523"
-LOMA_TRAIN_LOG = Path("/home/kargin/Projects/repositories/lynx-finetuning/logs/czechlynx-loma-ft/czechlynx-loma-ft-508111.out")
+from wildmatch.paths import path as _profile_path  # noqa: E402
+
+_FINETUNING_REPO = _profile_path("external.finetuning_repo")  # lynx-finetuning checkout; None when unset
+LOMA_TRAIN_LOG = (_FINETUNING_REPO / "logs" / "czechlynx-loma-ft" / "czechlynx-loma-ft-508111.out") if _FINETUNING_REPO else None
 LOMA_TRAIN_GPUS = 4  # sacct 508111: gres/gpu=4 on rtx4090_batch node c20
 # Whole-job wall time (sacct ElapsedRaw) for --cost job: training, evaluation passes,
 # setup and checkpointing. Probe keys are Slurm array task ids of job 508523.
@@ -56,7 +59,7 @@ COST_MODES = {
              "whole Slurm job: training, per-epoch evaluation/validation, setup and checkpointing; "
              "one-off overhead charged at epoch 0; mining and caching excluded"),
 }
-LOMA_CHECKPOINT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/loma-b-finetuned-loma-mined-legacy")
+LOMA_CHECKPOINT_ROOT = _profile_path("checkpoint_root") / "czechlynx-time-closed" / "loma-b-finetuned-loma-mined-legacy"
 PROBE_ROOT = ROOT_DIR / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
 EPOCH_CURVE_ROOT = ROOT_DIR / "experiments/compute-efficiency/probe"
 # Per shortlist budget k: (fine-tuned LoMa epoch-299 run, default LoMa run). k changes only
@@ -293,6 +296,8 @@ def _loma_run_record(run_dir: Path, candidate_k: int) -> Optional[dict]:
 
 
 def loma_series(candidate_k: int, cost: str = "train") -> dict:
+    if LOMA_TRAIN_LOG is None:
+        raise ValueError("no lynx-finetuning checkout configured (paths external.finetuning_repo)")
     log = LOMA_TRAIN_LOG.read_text(errors="ignore")
     if cost == "job":
         hours = job_cumulative_gpu_hours(parse_loma_train_seconds(log), parse_loma_eval_seconds(log),

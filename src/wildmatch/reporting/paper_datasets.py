@@ -1,7 +1,9 @@
 """Dataset/split profiles reported in the paper, plus benchmark-only datasets.
 
-Mirrors the DATASET_PROFILES rows in probe-parallel-wildlife.sh and
-probe-parallel-czechlynx.sh. Keep both in sync when a split changes.
+Built from the dataset registry (``conf/dataset/<key>.yaml``, see
+:mod:`wildmatch.data.registry`), resolved against the active path profile
+(:mod:`wildmatch.paths`). Each registry entry with a ``registry.paper_key`` becomes a
+profile under that key; the order follows ``registry.order``.
 
 ``PAPER_PROFILES`` is exactly the paper's datasets; the paper figures and the project
 page look profiles up there. ``BENCHMARK_ONLY_PROFILES`` holds datasets that run through
@@ -12,17 +14,9 @@ quality audit) iterate ``ALL_PROFILES``.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
-WILDLIFE_ROOT = Path("/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k")
-CZECHLYNX_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
-CZECHLYNX_METADATA = CZECHLYNX_ROOT / "CzechLynxDataset-Metadata-Real.csv"
-# Not part of WildlifeReID-10k: its own time-closed database/query split, with
-# backgrounds removed by scripts/segment_with_sam3.py (pre-masked images).
-SALAMANDER_ROOT = Path("/shared/sets/datasets/vision/czechlynx/SalamanderID2025")
-# Kaggle Jaguar Re-ID training images, prepared by scripts/prepare_jaguar_metadata.py
-# (black-background images from the alpha channel, burst-aware split in column split_v2).
-JAGUAR_ROOT = Path("/shared/sets/datasets/vision/czechlynx/jaguar")
+from wildmatch.data.registry import load_registry
 
 
 class PaperProfile(NamedTuple):
@@ -42,43 +36,24 @@ class PaperProfile(NamedTuple):
     mask_col: Optional[str]
 
 
-def _wildlife(key: str, label: str, animal: str, metadata_dir: str) -> PaperProfile:
+def _profile(entry) -> PaperProfile:
+    root = Path(str(entry.root))
     return PaperProfile(
-        key, label, animal, WILDLIFE_ROOT / metadata_dir / f"metadata_{animal}.csv",
-        "identity", "split", "train", "test", "WildlifeReID-10k", animal, WILDLIFE_ROOT, None,
+        str(entry.registry.paper_key), str(entry.registry.label), str(entry.registry.source),
+        root / str(entry.metadata_file), str(entry.label_col), str(entry.split_col),
+        str(entry.database_split_value), str(entry.query_split_value), str(entry.name), str(entry.animal),
+        root, str(entry.mask_col) if bool(entry.no_background) else None,
     )
 
 
-def _czechlynx(key: str, label: str, split_col: str) -> PaperProfile:
-    return PaperProfile(
-        key, label, "CzechLynx v2", CZECHLYNX_METADATA, "unique_name", split_col, "train", "test",
-        "CzechLynx_v2", "CzechLynx", CZECHLYNX_ROOT, "mask",
-    )
+def _profiles(paper: bool) -> List[PaperProfile]:
+    entries = [
+        entry for entry in load_registry().values()
+        if entry.registry.paper_key is not None and bool(entry.registry.paper) is paper
+    ]
+    return [_profile(entry) for entry in sorted(entries, key=lambda entry: int(entry.registry.order))]
 
 
-PAPER_PROFILES = [
-    _wildlife("nyala", "Nyala", "NyalaData", "metadata_no_background"),
-    _wildlife("beluga", "Beluga", "BelugaID", "metadata_no_background"),
-    _wildlife("hyena", "Hyena", "HyenaID2022", "metadata_mdsplit_no_background"),
-    _wildlife("leopard", "Leopard", "LeopardID2022", "metadata_mdsplit_no_background"),
-    _wildlife("sea_star", "Sea Star", "SeaStarReID2023", "metadata_mdsplit_no_background"),
-    _wildlife("whale_shark", "Whale Shark", "WhaleSharkID", "metadata_no_background"),
-    _wildlife("turtle", "Turtle", "ZindiTurtleRecall", "metadata_no_background"),
-    PaperProfile(
-        "salamander", "Salamander", "SalamanderID2025",
-        SALAMANDER_ROOT / "split_time_closed_no_background.csv", "identity", "split", "database", "query",
-        "SalamanderID2025", "SalamanderID2025", SALAMANDER_ROOT, None,
-    ),
-    _czechlynx("lynx_closed", "Lynx (closed)", "split-time_closed"),
-    _czechlynx("lynx_open", "Lynx (open)", "split-time_open"),
-]
-
-BENCHMARK_ONLY_PROFILES = [
-    PaperProfile(
-        "jaguar", "Jaguar", "Kaggle Jaguar Re-ID",
-        JAGUAR_ROOT / "jaguar_reid_v2_no_background.csv", "identity", "split_v2", "database", "query",
-        "JaguarReID", "JaguarReID", JAGUAR_ROOT, None,
-    ),
-]
-
+PAPER_PROFILES = _profiles(paper=True)
+BENCHMARK_ONLY_PROFILES = _profiles(paper=False)
 ALL_PROFILES = PAPER_PROFILES + BENCHMARK_ONLY_PROFILES

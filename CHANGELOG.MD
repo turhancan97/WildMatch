@@ -7,6 +7,19 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): refactor Phase 2, paths and dataset registry. Path profiles
+  `conf/paths/{default,gmum}.yaml` (relative defaults with environment overrides; `gmum` = the
+  pre-refactor cluster locations, so resolved paths and cache keys are unchanged) and
+  `wildmatch.paths` for code outside Hydra (argument, `WILDMATCH_PATHS`, gitignored
+  `wildmatch.local.yaml`, `default`). Dataset registry as the Hydra group `conf/dataset/` (17
+  entries generated from the launcher profiles) with `wildmatch.data.registry`;
+  `PAPER_PROFILES`/`BENCHMARK_ONLY_PROFILES` built from it (identical under `gmum`). `probe.yaml`
+  and `finetune.yaml` use `${paths.*}` and a defaults list; launchers and wrappers pass
+  `paths=gmum` (launchers also `dataset=<profile>`); submission snapshots freeze the config groups
+  with a tree digest; eight scripts take locations from the profile or registry; data- and
+  GPU-dependent tests marked. New `tests/test_paths_registry.py` (profiles, registry vs launcher
+  tables, unchanged paper profiles, Hydra composition, snapshot groups, a pre-refactor run read
+  from `tests/fixtures/legacy_experiments`).
 - 2026-10-04 (branch): Phase 1 parity verified. Parity run 2 (array 524170, fresh cache) and
   two controls (array 524178: `paper-v1` in `ex-reid` with a fresh cache; array 524179: a branch
   twin) show the branch is bit-identical to `paper-v1` for all seven Salamander methods when both

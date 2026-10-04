@@ -50,10 +50,33 @@ def finetune_main(cfg: DictConfig) -> None:
     run_finetune(cfg)
 
 
+def apply_paths_profile(argv: list) -> Optional[str]:
+    """Add ``paths=<profile>`` from WILDMATCH_PATHS or wildmatch.local.yaml when not given.
+
+    Skipped when the command already selects a profile or loads its own config with
+    ``--config-path``/``-cp`` (submission snapshots and copied run configs, which may predate
+    the ``paths`` group). Returns the profile that was added, if any.
+    """
+    from wildmatch.paths import DEFAULT_PROFILE, active_profile
+
+    arguments = argv[1:]
+    if any(a.split("=", 1)[0] in ("paths", "+paths", "++paths") for a in arguments):
+        return None
+    if any(a in ("--config-path", "-cp") or a.startswith("--config-path=") for a in arguments):
+        return None
+    profile = active_profile()
+    if profile == DEFAULT_PROFILE:
+        return None
+    argv.append(f"paths={profile}")
+    return profile
+
+
 def probe() -> None:
     reject_removed_probe_budget_overrides()
+    apply_paths_profile(sys.argv)
     probe_main()
 
 
 def finetune() -> None:
+    apply_paths_profile(sys.argv)
     finetune_main()

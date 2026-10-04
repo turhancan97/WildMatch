@@ -1,5 +1,6 @@
 """Tests for the CPU-only scripts/export_masking_demo.py."""
 
+import pytest
 import csv
 import importlib.util
 import io
@@ -94,6 +95,7 @@ class MaskingDemoHelpersTests(unittest.TestCase):
             text = (out / "masking_demo.json").read_text(encoding="utf-8")
             self.assertNotIn("/home/", text)
 
+    @pytest.mark.data
     def test_real_items_resolve_raw_paths_and_references(self):
         if not M.MATCH_EXAMPLES_JSON.is_file() or not all(Path(p.metadata).is_file() for p in M.PAPER_PROFILES):
             self.skipTest("match examples or dataset metadata not available")

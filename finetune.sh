@@ -16,4 +16,4 @@ nvidia-smi -L
 WILDMATCH_ENV="${WILDMATCH_ENV:-${UV_ENV_ROOT:-/shared/results/common/kargin/projects/uv-environment}/wildmatch}"
 source "${WILDMATCH_ENV}/bin/activate"
 
-python train/finetune.py
+python train/finetune.py paths=gmum

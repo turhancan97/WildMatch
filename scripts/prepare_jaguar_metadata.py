@@ -60,7 +60,9 @@ from typing import Dict, Iterable, List, Mapping, Sequence, Tuple
 import numpy as np
 from PIL import Image
 
-DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/jaguar")
+from wildmatch.data.registry import load_dataset as _load_dataset  # noqa: E402
+
+DEFAULT_ROOT = Path(str(_load_dataset("jaguar").root))  # registry entry `jaguar`, active path profile
 TRAIN_CSV = "train.csv"
 IMAGE_DIR = Path("train") / "train"
 MASKED_DIR = "masked_images"

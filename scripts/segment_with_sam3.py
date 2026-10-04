@@ -44,8 +44,23 @@ from typing import Dict, Iterable, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-DEFAULT_CHECKPOINT = "/shared/sets/datasets/confidential/lynx/checkpoints/sam3-hf/sam3.pt"
-DEFAULT_SAM3_DIR = "/home/kargin/Projects/repositories/lynx_application/external/sam3"
+
+
+def _profile_value(key: str) -> Optional[str]:
+    """A location from the active path profile (wildmatch.paths). This script runs in the
+    separate `lynx-app` environment, where the package is usually not installed, so it falls
+    back to importing wildmatch.paths from the repository's src/ (it only needs OmegaConf)."""
+    try:
+        from wildmatch.paths import path as profile_path
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+        from wildmatch.paths import path as profile_path
+    value = profile_path(key)
+    return None if value is None else str(value)
+
+
+DEFAULT_CHECKPOINT = _profile_value("external.sam3_checkpoint")
+DEFAULT_SAM3_DIR = _profile_value("external.sam3_repo")
 MASKS_FILE = "masks.csv"
 MASKED_DIR = "masked_images"
 SAM3_COLUMNS = {
@@ -175,6 +190,9 @@ def build_masked_metadata(
 def run_segmentation(args: argparse.Namespace) -> None:
     from PIL import Image
 
+    if not args.sam3_dir or not args.checkpoint:
+        raise SystemExit("SAM 3 location unknown: pass --sam3-dir and --checkpoint, or set paths "
+                         "external.sam3_repo and external.sam3_checkpoint (e.g. paths profile gmum)")
     sys.path.append(args.sam3_dir)
     import torch
     from sam3.model.sam3_image_processor import Sam3Processor

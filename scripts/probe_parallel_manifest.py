@@ -17,6 +17,10 @@ from typing import Any
 
 
 SCHEMA_VERSION = 1
+# Hydra config groups that probe.yaml's defaults list loads; the submission snapshot freezes
+# them next to probe.yaml so tasks compose the config with --config-path from the snapshot alone.
+CONFIG_GROUPS = ("paths", "dataset")
+PACKAGED_CONFIG = Path("src") / "wildmatch" / "conf"
 TASK_FIELDS = (
     "profile_id",
     "dataset_name",
@@ -178,6 +182,38 @@ def _validate_checkpoint(task: dict[str, str]) -> dict[str, Any]:
     }
 
 
+def _config_tree_files(config_dir: Path) -> list[Path]:
+    files = [config_dir / "probe.yaml"]
+    for group in CONFIG_GROUPS:
+        files.extend(sorted((config_dir / group).glob("*.yaml")))
+    return files
+
+
+def config_tree_sha256(config_dir: Path) -> str:
+    """One digest over probe.yaml and every group file (relative path and content)."""
+    digest = hashlib.sha256()
+    for path in _config_tree_files(config_dir):
+        digest.update(path.relative_to(config_dir).as_posix().encode("utf-8") + b"\0")
+        digest.update(_sha256_file(path).encode("ascii") + b"\n")
+    return digest.hexdigest()
+
+
+def _snapshot_config_groups(config_file: Path, repository_dir: Path, submission_dir: Path) -> None:
+    """Copy the config groups next to the snapshot: from the config's own directory when it
+    has them (the packaged conf/), else from the repository's packaged configuration (for a
+    custom probe.yaml such as a parity copy)."""
+    for group in CONFIG_GROUPS:
+        source = config_file.parent / group
+        if not source.is_dir():
+            source = repository_dir / PACKAGED_CONFIG / group
+        if not source.is_dir():
+            raise ValueError(f"config group '{group}' not found next to {config_file} or in {repository_dir / PACKAGED_CONFIG}")
+        target = submission_dir / group
+        target.mkdir()
+        for path in sorted(source.glob("*.yaml")):
+            shutil.copy2(path, target / path.name)
+
+
 def create_manifest(args: argparse.Namespace) -> None:
     submission_dir = args.submission_dir.resolve()
     if submission_dir.exists():
@@ -190,6 +226,7 @@ def create_manifest(args: argparse.Namespace) -> None:
         raise ValueError(f"probe config does not exist: {config_file}")
     config_snapshot = submission_dir / "probe.yaml"
     shutil.copy2(config_file, config_snapshot)
+    _snapshot_config_groups(config_file, args.repository_dir.resolve(), submission_dir)
 
     tasks = []
     for index, raw in enumerate(_read_task_file(args.task_file)):
@@ -237,6 +274,7 @@ def create_manifest(args: argparse.Namespace) -> None:
         "launcher_sha256": _sha256_file(launcher_path),
         "config_snapshot": str(config_snapshot),
         "config_sha256": _sha256_file(config_snapshot),
+        "config_tree_sha256": config_tree_sha256(submission_dir),
         "task_count": len(tasks),
         "tasks": tasks,
     }
@@ -260,6 +298,9 @@ def validate_task(args: argparse.Namespace) -> None:
     config_snapshot = Path(payload["config_snapshot"])
     if not config_snapshot.is_file() or _sha256_file(config_snapshot) != payload["config_sha256"]:
         raise ValueError("immutable probe config snapshot is missing or changed")
+    expected_tree = payload.get("config_tree_sha256")  # absent in manifests written before 2026-10-04
+    if expected_tree is not None and config_tree_sha256(config_snapshot.parent) != expected_tree:
+        raise ValueError("immutable config groups (paths/, dataset/) in the snapshot are missing or changed")
     checkpoint = task["checkpoint"]
     if checkpoint["source"] == "custom":
         path = Path(checkpoint["path"])

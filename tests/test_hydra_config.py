@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import sys
 import unittest
@@ -75,6 +76,8 @@ class HydraConfigurationTests(unittest.TestCase):
                 "cache/features", "cache/FROM_SNAPSHOT"
             )
             Path(tmp, "probe.yaml").write_text(snapshot, encoding="utf-8")
+            for group in ("paths", "dataset"):  # a submission snapshot freezes the config groups too
+                shutil.copytree(CONF_DIR / group, Path(tmp, group))
             outputs = {}
             for flag in ("--config-path", "--config-dir"):
                 result = subprocess.run(

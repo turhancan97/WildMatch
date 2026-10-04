@@ -16,7 +16,7 @@ nvidia-smi -L
 WILDMATCH_ENV="${WILDMATCH_ENV:-${UV_ENV_ROOT:-/shared/results/common/kargin/projects/uv-environment}/wildmatch}"
 source "${WILDMATCH_ENV}/bin/activate"
 
-python train/probe.py \
+python train/probe.py paths=gmum \
         benchmark.method=vismatch \
         benchmark.methods.vismatch.matcher=loma \
         benchmark.methods.vismatch.checkpoint_source=custom \

@@ -1,5 +1,6 @@
 """Tests for scripts/prepare_jaguar_metadata.py on synthetic RGBA images (CPU only)."""
 
+import pytest
 import csv
 import json
 import sys
@@ -249,6 +250,7 @@ class SplitDatasetTests(unittest.TestCase):
                 P.load_embeddings(root / P.EMBEDDINGS_NAME, [r["image_id"] for r in rows])
 
 
+@pytest.mark.data
 class PreparedDatasetTests(unittest.TestCase):
     """Checks the real JaguarReID metadata when it exists on this machine."""
 

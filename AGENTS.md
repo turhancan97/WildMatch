@@ -250,7 +250,24 @@ notes do not make a run dirty). A dirty run also keeps the diff, untracked files
 a finetune) now includes the file's SHA-256; Vismatch checkpoints already recorded theirs in
 `vismatch_checkpoint`/`checkpoint_provenance`. Older manifests have neither field.
 
-`reports/runs.csv` is the central one-row-per-run index. Legacy
+`reports/runs.csv` is the central one-row-per-run index. Parallel sweep tasks update it (and the legacy CSVs) under an
+exclusive lock on `<file>.lock` held across the whole read-modify-write, writing through a unique
+temporary file (`file_lock`, `write_csv_atomically` in `src/wildmatch/utils/io.py`; branch
+`fix/concurrent-writes`, 2026-10-04). Before, every writer used one fixed `<file>.tmp` without a
+lock, so parallel tasks could drop each other's rows: a test with six processes lost 14 of 90
+appended rows on the old code. Vismatch feature-cache files are written through unique temporary
+names too (two tasks may extract the same image; either identical file wins the replace). Sweep tasks
+survive a failing log write: on 2026-10-04 the home quota filled up during sweep 524499 (14 tasks
+failed at once, and 9 hung at 0 % GPU because the thread copying the child's output into the task
+logs died on the write error, so the child blocked on a full pipe). `_pump` in
+`src/wildmatch/sweep/runner.py` now drops a target that fails and keeps draining, and the task
+ends as failed with "log mirroring failed" (its stdout log, from which the run directory is read,
+is incomplete). The home directory has a 61,440 MB quota; keep about 1 GB free during sweeps
+(1.2 GB was freed by deleting `~/.npm/_cacache` and `~/.nv/ComputeCache`, with the user's approval). Later the same
+day, at the user's request, the PNG files under `visualizations/` of the 633 probe runs dated
+before 2026-10-03 were deleted (17,958 files, 7,055 MiB); their `index.csv` files were kept, which
+is all the image-quality audit reads. Those runs' contact sheets and match drawings are gone;
+paper match figures are redrawn from `scores.npz` and are unaffected. Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.
@@ -970,8 +987,6 @@ reproduction live under "Known issues" instead.
   release licence of the WildMatch checkpoints, and the dataset licences (`registry.licence`).
 - [ ] Consider atomic checkpoint writes and explicit checkpoint retention.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
-- [ ] Make central run-index updates safe for concurrent jobs and use unique temporary
-  files or locking instead of a shared `reports/runs.csv.tmp` path.
 
 
 ## Project page

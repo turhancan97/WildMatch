@@ -49,6 +49,21 @@ kept under Unreleased until a project version is assigned.
   output except SalamanderID2025, whose newest runs are the refactor parity runs (same Top-1/Top-5/
   balanced Top-1, mAP@k within 0.03 points, other runtimes; recorded under Known issues), and the
   72 figure PNGs are pixel-identical. Tests in `tests/test_export_inputs.py`.
+- 2026-10-04: deleted the PNGs under `visualizations/` of the 633 probe runs dated before
+  2026-10-03 (17,958 files, 7,055 MiB; user approval after a size and dependency check), keeping
+  every `index.csv`; home quota use fell from 60,262 to 53,172 of 61,440 MB.
+- 2026-10-04: home quota full during sweep 524499 (61,440 of 61,440 MB): 14 tasks failed and 9
+  hung; the 9 were cancelled and all 23 resubmitted from the frozen submission as array 524682 (by
+  the user) after freeing 1.2 GB (`~/.npm/_cacache`, `~/.nv/ComputeCache`, user approval).
+  Branch `fix/concurrent-writes`: the sweep runner's output pump drops a log target whose write
+  fails and keeps draining the child's pipe, so the task fails ("log mirroring failed") instead of
+  hanging; `tests/test_sweep_pump.py` (the old pump deadlocks on it).
+- 2026-10-04 (branch `fix/concurrent-writes`): shared CSVs (`reports/runs.csv`, the legacy
+  benchmark and training CSVs) are updated under an exclusive file lock across the read-modify-write
+  and written through unique temporary files that keep the target's permissions; Vismatch
+  feature-cache files use unique temporary names. Previously parallel sweep tasks shared one
+  `<file>.tmp` without a lock (a six-process test lost 14 of 90 rows on the old code). Tests in
+  `tests/test_concurrent_writes.py`. Closes the future-work item on run-index concurrency.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

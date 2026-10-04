@@ -273,7 +273,12 @@ paper match figures are redrawn from `scores.npz` and are unaffected. On 2026-10
 (copied with rsync, verified by file list, size and checksum, then the home copies deleted;
 home use fell to 47,527 of 61,440 MB). Paths stay `experiments/...` and `logs/...`, so run
 directories, task records and `reports/runs.csv` are unchanged; `.gitignore` lists both without
-a trailing slash so the symlinks stay ignored. `reports/` remains on home. Legacy
+a trailing slash so the symlinks stay ignored. `reports/` remains on home. The same night the
+seven branch worktrees under `/shared/results/common/kargin/projects/wildmatch-*` (six `fix/*`
+branches and the trial merge) were removed after their branches were merged and pushed;
+`wildmatch-dev`'s probe-fix parity run moved to
+`experiments/parity-probefix/` and its logs to `logs/archive/wildmatch-dev-worktree/`
+(checksum-verified); its task records still point at the removed worktree. Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.

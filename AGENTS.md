@@ -799,9 +799,9 @@ prints the SAM 3 command (`sbatch slurm/sam3_masks.sbatch <args>`, H100 by defau
 `compare-masks` compares new masks with the masked files on disk. Every step refuses to overwrite
 existing files without `--overwrite`, and the SAM 3 script (moved from `paper/tools/` into the
 package, with `--masks-csv`, `--prompt-column` and `--overwrite`) checks all its outputs before
-it starts, so the cluster's paper inputs cannot be replaced by accident. Pilot split tables for
-the six paper WildlifeReID-10k datasets are in
-`/shared/results/common/kargin/projects/wildmatch-prepare-pilot/wildlifereid10k/`.
+it starts, so the cluster's paper inputs cannot be replaced by accident. The pilot outputs
+(`/shared/results/common/kargin/projects/wildmatch-prepare-pilot/`) were deleted on 2026-10-04
+after the full masking run; their numbers are recorded below.
 
 ## Known issues (open)
 

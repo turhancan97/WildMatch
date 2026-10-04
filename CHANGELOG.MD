@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: deleted the merged remote branch `refactor/wildmatch-package` and the SAM 3 pilot
+  folder `wildmatch-prepare-pilot/` (667 MB; superseded by the full masking run, numbers kept in
+  AGENTS.md), at the user's request.
 - 2026-10-04: refactor worktree removed. Its 2,378 run files (SAM 3 sweep and parity runs) were
   copied into this checkout's `experiments/` and verified by checksum; its logs, run index and
   legacy CSVs archived under `logs/archive/wildmatch-refactor-worktree/`; local branch

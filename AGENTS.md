@@ -915,9 +915,11 @@ reproduction, and the measured impact so it can be picked up without re-investig
   balanced Top-1 are identical and mAP@k moves by at most 0.03 points. Extraction is deterministic
   on one GPU type (bit-identical twins). The cache key omits the device, so a cache can mix GPU
   types, and run manifests do not record the GPU model, so the paper's numbers depend on which
-  GPU first filled each cache. Fix later: add the device name/compute capability to the Vismatch
-  cache key and the run manifest (this invalidates existing caches), and report the GPU with
-  matcher results.
+  GPU first filled each cache. Fix on branch `fix/cache-key-device` (2026-10-04, not merged): the cache tag includes
+  `device_identity(device)` (`cpu` or `cuda:<GPU model>:sm<cc>`) and runs record it as
+  `vismatch_device` in `result.json` and `run_manifest.json`; report the GPU with matcher results.
+  Merging invalidates every existing Vismatch feature cache once (user: just before the release,
+  after all runs).
 
 ## Future-work checklist
 

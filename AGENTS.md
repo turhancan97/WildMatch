@@ -649,8 +649,10 @@ Pull request #2 merged the branch into `main` on 2026-10-04 (`a58ba68`, merge co
 `main` is the package: the main checkout is installed in editable mode in the uv environment
 `$UV_ENV_ROOT/wildmatch` and carries a gitignored `wildmatch.local.yaml` (`paths: gmum`). The old
 `ex-reid` workflow (`python train/probe.py`, the bash launchers) lives on in tag `paper-v1`.
-The refactor runs in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`),
-so Slurm jobs submitted from the main checkout keep running the paper code.
+The refactor ran in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`)
+so Slurm jobs from the main checkout kept running the paper code; its untracked run folders (the
+SAM 3 sweep and the parity runs) are still there until moved, and the worktree is to be removed
+afterwards.
 
 **Phase 1 (environment and packaging), 2026-10-04.** `reid/` and `models/` moved with
 `git mv` into `src/wildmatch/` (`engine/probe_runner` -> `evaluate/`, `engine/finetune_runner` and

@@ -649,7 +649,9 @@ rename does not invalidate them.
 **Phase 2 (paths and dataset registry), 2026-10-04:** see "Paths and the dataset registry".
 Backward compatibility verified the same day: the new code reads the 641 run records under the main
 checkout's `experiments/` byte-identically to the `paper-v1` code (`discover_records`). Parity is
-checked against parity run 2 on `rtx4090_batch` (pending).
+checked against parity run 2 on `rtx4090_batch`: parity run 3 (array 524188) is bit-identical for
+all seven pairs, with every feature lookup a cache hit, so the cache keys did not change. **Phase 2
+parity holds.**
 Parity run 1 (array 524163 from the worktree, 2026-10-04): all seven Salamander pairs, including
 the frozen weighted linear probe, pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
 bug, these tasks read the packaged `probe.yaml` instead of the `parity_v2` snapshot and reused the

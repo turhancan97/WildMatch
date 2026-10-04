@@ -80,4 +80,4 @@ reproduces `paper-v1` bit for bit for all seven methods (run 1; run 2 against co
 linear probe is bit-identical in run 2 as well. Parity runs must therefore fix the GPU type
 (`rtx4090_batch`) and compare against a reference extracted on that GPU type: from Phase 2 on,
 compare against run 2 (`20261004T0848*`, branch, fresh `parity_v2` cache on RTX 4090).
-| 3 (Phase 2) | pending | paths and registry: `paths=gmum dataset=salamander`, config groups frozen in the snapshot, caches `parity_v2` (hits expected: unchanged cache keys), outputs in `experiments/parity-phase2`; compared with run 2 | pending |
+| 3 (Phase 2) | 524188 | paths and registry: `paths=gmum dataset=salamander`, config groups frozen in the snapshot, caches `parity_v2` (hits expected: unchanged cache keys), outputs in `experiments/parity-phase2`; compared with run 2 | 7/7 pairs bit-identical, no Top-1 change; every feature lookup hit the `parity_v2` cache (cache keys unchanged); every run recorded registry key `salamander` and the `gmum` data root |

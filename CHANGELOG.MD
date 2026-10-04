@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): Phase 2 parity verified. Parity run 3 (array 524188, `paths=gmum
+  dataset=salamander`, frozen config groups) is bit-identical to run 2 for all seven Salamander
+  pairs, and every feature lookup hit the existing cache, so the cache keys are unchanged.
 - 2026-10-04 (branch): refactor Phase 2, paths and dataset registry. Path profiles
   `conf/paths/{default,gmum}.yaml` (relative defaults with environment overrides; `gmum` = the
   pre-refactor cluster locations, so resolved paths and cache keys are unchanged) and

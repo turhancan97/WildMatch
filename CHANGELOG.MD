@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: sweep `wildlife_sam3_grid` complete: 150 of 150 tasks (127 from array 524499,
+  23 rerun as 524682 plus task 134 as 524697; the duplicate 524704_134 has identical metrics and
+  is not used). All runs pass a file, shape and index check. `experiments/` and `logs/` moved
+  to `/shared/results/common/kargin/projects/wildmatch-data/` behind symlinks. Branches
+  `fix/small-known-bugs`, `fix/manifest-code-identity`, `fix/cache-key-device`,
+  `fix/probe-epoch-metrics`, `fix/exporter-inputs` and `fix/concurrent-writes` merged into main.
 - 2026-10-04 (branch `fix/small-known-bugs`): three known issues fixed, none affecting reported
   numbers: Vismatch match drawings skip queries with no scored candidate (`scored_rank1`, count in
   `vismatch_match_skipped_unscored`) instead of drawing database index 0; the probes compute

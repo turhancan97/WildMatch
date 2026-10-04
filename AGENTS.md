@@ -267,7 +267,13 @@ is incomplete). The home directory has a 61,440 MB quota; keep about 1 GB free d
 day, at the user's request, the PNG files under `visualizations/` of the 633 probe runs dated
 before 2026-10-03 were deleted (17,958 files, 7,055 MiB); their `index.csv` files were kept, which
 is all the image-quality audit reads. Those runs' contact sheets and match drawings are gone;
-paper match figures are redrawn from `scores.npz` and are unaffected. Legacy
+paper match figures are redrawn from `scores.npz` and are unaffected. On 2026-10-05 (after sweep
+524682 ended) `experiments/` and `logs/` moved to
+`/shared/results/common/kargin/projects/wildmatch-data/` and are symlinks in this checkout
+(copied with rsync, verified by file list, size and checksum, then the home copies deleted;
+home use fell to 47,527 of 61,440 MB). Paths stay `experiments/...` and `logs/...`, so run
+directories, task records and `reports/runs.csv` are unchanged; `.gitignore` lists both without
+a trailing slash so the symlinks stay ignored. `reports/` remains on home. Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.

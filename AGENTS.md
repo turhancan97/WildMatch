@@ -813,10 +813,15 @@ reproduction, and the measured impact so it can be picked up without re-investig
   WhaleShark, 0.995 Zindi. Low values by eye: in multi-animal photos (Nyala) the old masks keep
   one animal while `union` merges all, including zebras; old masks that keep only a speck (fog,
   close-ups; the known provider failures) where SAM 3 is right; dark night photos where the
-  `max(RGB) > 12` foreground rule undercounts the old mask. WildlifeReID-10k entries therefore
-  default to `merge: best` (Salamander keeps `union`); a `largest` option exists for comparison.
-  Pilot 2 (`best` against `largest`) is pending; whether to publish the old masked files instead
-  is open.
+  `max(RGB) > 12` foreground rule undercounts the old mask. Pilot 2 (same images) compared
+  single-detection merges: median IoU / share >= 0.9 for `largest` is Hyena 0.994/0.92, Leopard
+  0.993/0.94, Nyala 0.990/0.99 (`best` 0.95, `union` 0.64), SeaStar 0.999/0.98, WhaleShark
+  0.991/0.95, Zindi 0.995/0.96, never below `best`. By eye, of the 14 images under IoU 0.8 only
+  two are real disagreements (one Nyala photo picks another animal, one two-shark photo); the
+  rest are dark-photo artefacts or old speck/fragment masks where SAM 3 is better. WildlifeReID-10k
+  entries therefore use `merge: largest` (Salamander keeps `union`). Open: run the masks for all
+  entries, decide whether to publish new or old masked files, and rerun the affected results if
+  the new masks are adopted.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

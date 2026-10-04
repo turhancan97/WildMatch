@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): SAM 3 pilot 2: `largest` matches the paper's WildlifeReID-10k masks best
+  (Nyala IoU >= 0.9 for 99 % of images against 95 % for `best` and 64 % for `union`; never below
+  `best` elsewhere); registry entries switched to `merge: largest`.
 - 2026-10-04 (branch): recorded why the WildlifeReID-10k tables differ from the release's `split`
   column (user): the paper uses the closed-set splits of WildFusion (arXiv:2408.12934), taken
   from the WildlifeDatasets toolkit; `ClosedSetSplit(0.8, seed=666)` reproduces them.

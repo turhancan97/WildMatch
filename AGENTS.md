@@ -30,6 +30,8 @@ locked in `uv.lock`); see "Package refactor" for the migration in progress.
   efficient probe, and Vismatch matcher benchmark dispatch.
 - src/wildmatch/weights.py, src/wildmatch/conf/weights.yaml: the paper checkpoints on the Hugging
   Face Hub (`wildmatch weights`); see "Paper checkpoints and data preparation".
+- src/wildmatch/data/prepare/: `wildmatch prepare` (`sources.py` rebuild rules, `sam3_masks.py` SAM 3
+  masking in the `lynx-app` environment via `slurm/sam3_masks.sbatch`, `jaguar.py`).
 - src/wildmatch/data/: dataset views, COCO-RLE masking, split safety checks, the unseen-split
   builder (`unseen_split.py`), the image-quality audit (`image_quality.py`) and dataset
   preparation (`prepare/`: `wildmatch prepare status|download|jaguar|unseen-split`).
@@ -48,8 +50,7 @@ locked in `uv.lock`); see "Package refactor" for the migration in progress.
   `finetune_backbone.sbatch`, and `eval_loma_epoch_curve.sh` (training-cost ablation).
 - paper/: paper and project-page tooling run from a checkout (not part of the package):
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
-  figures and analyses, `paper/tools/` (`parity_check.py`, `segment_with_sam3.py`, which runs in
-  the `lynx-app` environment). Run them as `python paper/<group>/<script>.py`.
+  figures and analyses, `paper/tools/` (`parity_check.py`). Run them as `python paper/<group>/<script>.py`.
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
   pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
 - tests/: dependency-light regression tests (pytest).
@@ -720,7 +721,37 @@ unseen-split` rebuilds the CzechLynx unseen-identity split from `czechlynx_open`
 parameters (encounter groups, date order) and reproduced the paper's
 `metadata/czechlynx-unseen-eval/metadata_unseen_eval.csv` byte for byte (SHA-256 `eef513b5...`).
 The registry's unseen entry now defaults to that file (the old default pointed at a file that
-does not exist). Licences in the registry are still `null`.
+does not exist). Licences in the registry are still `null` (user: check later).
+
+**Rebuilding prepared inputs (user decisions 2026-10-04).** WildlifeReID-10k: write the masking
+script (SAM 3 + metadata arrangement); SalamanderID2025: reverse-engineer the split made by
+another Claude session; CzechLynx: the Kaggle release `picekl/czechlynx` is the data the runs
+call CzechLynx v2 ("v2" is an internal name), so the registry `source` now says `CzechLynx`
+(the folder and `dataset.name` stay `CzechLynx_v2`, which experiment paths and caches use).
+Rules recovered and implemented in `wildmatch.data.prepare.sources`:
+- WildlifeReID-10k: per sub-dataset in the release's row order, identities without the
+  `<dataset>_` prefix (as integers when all are numeric: ATRW, CowDataset, NyalaData split
+  differently with string identities), wildlife-datasets `ClosedSetSplit(0.8, seed=666)`;
+  BelugaID only its `beluga/` folder. Reproduces identity, path and split of all twelve tables
+  the runs read; the old Zindi table's 490 `unknown` rows without split or file are left out
+  (no split changes). Nothing in the pipeline reads `image_id`.
+- SalamanderID2025: the AnimalCLEF2025 competition `metadata.csv` (Kaggle `animal-clef-2025`),
+  dated labelled `database` photos (4 undated ones dropped); per individual with two or more
+  dates, all photos of the latest date are `query`; `cross_view` = query orientation absent from
+  its database photos; rows sorted by split, identity, date, image id. Reproduces
+  `split_time_closed.csv` byte for byte; the images are the competition files unchanged (two
+  checked by SHA-256); joining the existing `masks.csv` reproduces
+  `split_time_closed_no_background.csv` byte for byte.
+Steps: `wildmatch prepare build <key> [--source] [--output-dir]` writes the split table
+(WildlifeReID-10k: `wildmatch_prepare/<animal>_split.csv`; Salamander also copies the images) and
+prints the SAM 3 command (`sbatch slurm/sam3_masks.sbatch <args>`, H100 by default);
+`wildmatch prepare finish <key>` joins the masks into the registry's metadata file;
+`compare-masks` compares new masks with the masked files on disk. Every step refuses to overwrite
+existing files without `--overwrite`, and the SAM 3 script (moved from `paper/tools/` into the
+package, with `--masks-csv`, `--prompt-column` and `--overwrite`) checks all its outputs before
+it starts, so the cluster's paper inputs cannot be replaced by accident. Pilot split tables for
+the six paper WildlifeReID-10k datasets are in
+`/shared/results/common/kargin/projects/wildmatch-prepare-pilot/wildlifereid10k/`.
 
 ## Known issues (open)
 
@@ -766,15 +797,14 @@ reproduction, and the measured impact so it can be picked up without re-investig
   Planned with the GPU-type fix before the release: key the fingerprint on file hashes and
   protocol contents only (this invalidates existing caches once).
 
-- **The WildlifeReID-10k inputs cannot be rebuilt from this repository (found 2026-10-04).**
-  The runs read `masked_images/` (pre-masked crops; Hyena paths end in `_0`, one crop per
-  annotation) and the `metadata_no_background/`, `metadata_mdsplit_no_background/` tables, all
-  made by a teammate (owner `kubaty`, 2026-02 to 2026-08), not shipped with the Kaggle release
-  (`wildlifedatasets/wildlifereid-10k`); they hold no mask column, and the script is not here.
-  Likewise the SalamanderID2025 time split `split_time_closed.csv` has no recorded origin, and
-  whether Kaggle `picekl/czechlynx` holds CzechLynx v2 (with `split-time_*` and RLE masks) is
-  unverified. Registry `download` blocks record this (`reproducible: false`); open question for
-  the user and the team before the release.
+- **New SAM 3 masks for WildlifeReID-10k may differ from the paper's inputs (2026-10-04).**
+  The runs read `masked_images/` files made by a teammate (owner `kubaty`, 2026-02 to 2026-08;
+  same paths and sizes as the raw release images, background black), whose masking method is
+  not recorded (the teammate's home folder is not readable). `wildmatch prepare build` rebuilds
+  the split tables exactly, but its masks come from SAM 3 with the `species` prompt, so masked
+  inputs, and with them scores, can differ. `wildmatch prepare compare-masks` measures the gap
+  (IoU against the old files' foreground); the pilot on six paper datasets is pending, and
+  whether to publish the old masked files instead is open.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache
@@ -926,7 +956,7 @@ results: `notes/history.md`, "Project page: build history".
 | Before/after demo | `export_before_after_demo.py` (GPU) | `docs/assets/demo/before_after/` | `test_export_before_after_demo` |
 | Rank changes | `export_rank_change_demo.py` | `docs/assets/demo/rank_change/` | `test_export_rank_change_demo` |
 | Mined pairs | `export_mined_pairs_demo.py` (GPU) | `docs/assets/demo/mined_pairs/` | `test_export_mined_pairs_demo` |
-| Background masking | `export_masking_demo.py` (after `segment_with_sam3.py`, `lynx-app`, A100/H100) | `docs/assets/demo/masking/` | `test_export_masking_demo` |
+| Background masking | `export_masking_demo.py` (after `sam3_masks.py`, `lynx-app`, A100/H100) | `docs/assets/demo/masking/` | `test_export_masking_demo` |
 | Synthetic matching | `export_synthetic_demo.py` (GPU) | `docs/assets/demo/synthetic/` | `test_export_synthetic_demo` |
 | Data challenges | `export_data_challenges.py` | `docs/assets/datasets/challenges/`, `docs/data/image_quality_summary.json` | `test_export_data_challenges` |
 | Demo hub cards | `build_demo_cards.py` | `docs/assets/demo/cards/` | `test_build_demo_cards` |
@@ -1176,7 +1206,7 @@ SalamanderID2025 (added 2026-09-29) is not part of WildlifeReID-10k: 1,384 image
 (repository symlink `dataset/czechlynx/SalamanderID2025`), with a time-closed
 `split` column of `database` (1,138) / `query` (246) values; every query identity is
 in the database and 372 database identities are singletons. Backgrounds were removed
-with `paper/tools/segment_with_sam3.py` (SAM3, prompt "Salamander", all detected instances
+with `src/wildmatch/data/prepare/sam3_masks.py` (SAM3, prompt "Salamander", all detected instances
 merged because an occluding finger splits one animal into several instances; one image,
 `query/images/9d1fc96e28c0058e_1277.jpg`, needed a reviewed 0.10 threshold). The script
 writes `masked_images/`, `masks.csv` (COCO-RLE and SAM3 quality fields) and

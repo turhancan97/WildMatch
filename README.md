@@ -218,15 +218,17 @@ Historical log files are not moved or rewritten.
 wildmatch prepare status                      # what each registry dataset has on disk, and its source
 wildmatch prepare download zindi              # raw WildlifeReID-10k from Kaggle (needs Kaggle credentials)
 wildmatch prepare unseen-split                # rebuild the CzechLynx unseen-identity split
+wildmatch prepare build salamander --source <animal-clef-2025 folder>   # split table + images, prints the SAM 3 command
+sbatch slurm/sam3_masks.sbatch <printed arguments>                       # SAM 3 masks (A100/H100)
+wildmatch prepare finish salamander           # pre-masked metadata the registry reads
 wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
 wildmatch weights download --dataset salamander   # from the Hub (--repo or WILDMATCH_HUB_REPO; HF_TOKEN)
 wildmatch weights verify
 ```
 
 Downloaded checkpoints land where the dataset registry expects them (under the profile's
-`checkpoint_root`), so fine-tuned sweep rows find them without extra settings. Some prepared
-inputs (the WildlifeReID-10k masked crops, the Salamander time split) cannot be rebuilt from this
-repository yet; `prepare status` says which (AGENTS.md, "Known issues").
+`checkpoint_root`), so fine-tuned sweep rows find them without extra settings. The split tables are rebuilt exactly, but the prepared inputs are not all identical: new SAM 3 masks for WildlifeReID-10k can differ from the masks the paper used
+(AGENTS.md, "Known issues").
 
 ### Jaguar (JaguarReID)
 
@@ -823,7 +825,7 @@ Paper tables and figures (all read completed runs under `experiments/`):
 Data preparation:
 
 - `wildmatch build-unseen-split`: unseen-identity gallery/query split.
-- `paper/tools/segment_with_sam3.py`: SAM 3 background removal and pre-masked metadata (`lynx-app` env, A100/H100).
+- `src/wildmatch/data/prepare/sam3_masks.py` (via `slurm/sam3_masks.sbatch`): SAM 3 background removal and pre-masked metadata (`lynx-app` env, A100/H100).
 - `python -m wildmatch.data.prepare.jaguar`: brings the Kaggle Jaguar training data into the shared format (`JaguarReID`: `prepare` writes masked images and RLE masks, `embed` DINOv2 embeddings, `split` the burst-aware `split_v2` database/query split).
 
 Run and log inspection:

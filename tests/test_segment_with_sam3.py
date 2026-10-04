@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from paper.tools.segment_with_sam3 import (
+from wildmatch.data.prepare.sam3_masks import (
     MetadataError,
     build_masked_metadata,
     decode_mask,

@@ -16,7 +16,7 @@ registry:
   key: "czechlynx_open"
   paper_key: "lynx_open"
   label: "Lynx (open)"
-  source: "CzechLynx v2"
+  source: "CzechLynx"
   paper: true
   order: 10
   # Default fine-tuned checkpoints per sweep checkpoint label (epoch 299 unless stated):
@@ -27,9 +27,11 @@ registry:
       loma: "${paths.checkpoint_root}/czechlynx-time-open/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-open/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
+  prepare:
+    builder: official  # the published metadata is used as is
   # Where the data comes from. raw: the published source; derived: the files this registry entry
   # reads that are made from it; reproducible: whether this repository can rebuild them.
   download:
-    raw: "kaggle:picekl/czechlynx (wildlife-datasets CzechLynx; that this holds v2 with the split-time_* columns and RLE masks is unverified)"
+    raw: "kaggle:picekl/czechlynx (wildlife-datasets CzechLynx; confirmed by the user 2026-10-04: CzechLynx v2 is the internal name of this release)"
     derived: null
-    reproducible: false
+    reproducible: true

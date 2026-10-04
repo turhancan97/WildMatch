@@ -129,7 +129,7 @@ def hex_to_bits(text: str) -> np.ndarray:
 
 
 def encode_mask(mask: np.ndarray) -> str:
-    """Boolean mask -> COCO-RLE JSON string (same layout as paper/tools/segment_with_sam3.py)."""
+    """Boolean mask -> COCO-RLE JSON string (same layout as src/wildmatch/data/prepare/sam3_masks.py)."""
     from pycocotools import mask as mask_utils
 
     rle = mask_utils.encode(np.asfortranarray(mask.astype(np.uint8)))

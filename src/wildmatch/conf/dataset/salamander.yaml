@@ -27,9 +27,16 @@ registry:
       loma: "${paths.checkpoint_root}/wildlife-reid-10k/SalamanderID2025/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
+  # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
+  prepare:
+    builder: salamander
+    prompt: Salamander
+    threshold_override: ["query/images/9d1fc96e28c0058e_1277.jpg=0.1"]
+    split_map: "database=train,query=test"
+    split_map_column: split_train_test
   # Where the data comes from. raw: the published source; derived: the files this registry entry
   # reads that are made from it; reproducible: whether this repository can rebuild them.
   download:
-    raw: "AnimalCLEF2025 SalamanderID2025 (Kaggle competition data; wildlife-datasets AnimalCLEF2025_SalamanderID2025)"
-    derived: "split_time_closed.csv (time-closed database/query split; how it was made is not recorded) and SAM 3 masks via paper/tools/segment_with_sam3.py"
-    reproducible: false
+    raw: "kaggle competition animal-clef-2025 (metadata.csv and images/SalamanderID2025/; accept the competition rules first)"
+    derived: "split_time_closed.csv and images: wildmatch prepare build (byte-identical); SAM 3 masks; metadata: wildmatch prepare finish"
+    reproducible: true

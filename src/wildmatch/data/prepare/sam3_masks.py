@@ -26,7 +26,12 @@ Two independent steps, selected by flags:
     values, leaving the original split column untouched. Fails closed on missing
     rows, duplicate paths, or masked files that do not exist.
 
-The source CSV and images are only read. SAM3 runs in the ``lynx-app`` conda
+The source CSV and images are only read, and existing masked images, mask tables or metadata
+are never replaced without ``--overwrite`` (on the GMUM cluster the masked files that the paper
+runs read live in the same places). ``--masks-csv`` names the mask table, so several datasets can
+share one ``--out-dir`` (WildlifeReID-10k: ``masks_<animal>.csv``). Run it through
+``wildmatch prepare`` steps, which print the full command, or directly as
+``python src/wildmatch/data/prepare/sam3_masks.py`` in the SAM 3 environment. SAM3 runs in the ``lynx-app`` conda
 environment, whose CUDA 13 PyTorch build has no kernels for V100 GPUs: use an A100
 or H100 node. Used for SalamanderID2025 on 2026-09-29 with ``--prompt Salamander``
 and ``--threshold-override query/images/9d1fc96e28c0058e_1277.jpg=0.1``.
@@ -53,7 +58,7 @@ def _profile_value(key: str) -> Optional[str]:
     try:
         from wildmatch.paths import path as profile_path
     except ImportError:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the repository's src/
         from wildmatch.paths import path as profile_path
     value = profile_path(key)
     return None if value is None else str(value)
@@ -200,6 +205,13 @@ def run_segmentation(args: argparse.Namespace) -> None:
 
     overrides = parse_threshold_overrides(args.threshold_override)
     meta = pd.read_csv(args.root / args.csv)
+    if not args.overwrite:
+        existing = [rel for rel in meta["path"].astype(str) if (args.out_dir / MASKED_DIR / rel).exists()]
+        if (args.out_dir / args.masks_csv).exists():
+            existing.insert(0, args.masks_csv)
+        if existing:
+            raise SystemExit(f"{len(existing)} outputs already exist (e.g. {existing[0]} under {args.out_dir}); "
+                             "pass --overwrite to replace them or choose another --out-dir")
     unknown = sorted(set(overrides) - set(meta["path"]))
     if unknown:
         raise SystemExit(f"--threshold-override paths not in {args.csv}: {unknown}")
@@ -215,16 +227,17 @@ def run_segmentation(args: argparse.Namespace) -> None:
             return None, 0, 0.0
         return merge_instances(masks.detach().cpu().numpy(), scores.detach().float().cpu().numpy(), args.merge)
 
+    prompts = meta[args.prompt_column].astype(str).tolist() if args.prompt_column else [args.prompt] * len(meta)
     rows, t0 = [], time.time()
-    for n, rel in enumerate(meta["path"].astype(str), 1):
+    for n, (rel, row_prompt) in enumerate(zip(meta["path"].astype(str), prompts), 1):
         image = Image.open(args.root / rel).convert("RGB")
         first = overrides.get(rel, args.threshold)
         with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
             processor.set_confidence_threshold(first)
             base = processor.set_image(image, state={})
-            state = processor.set_text_prompt(prompt=args.prompt, state=base)
+            state = processor.set_text_prompt(prompt=row_prompt, state=base)
             mask, n_det, score = detect(state)
-            used_threshold, used_prompt = first, args.prompt
+            used_threshold, used_prompt = first, row_prompt
             if mask is None and args.fallback_threshold < used_threshold:
                 state = processor.set_confidence_threshold(args.fallback_threshold, state)
                 mask, n_det, score = detect(state)
@@ -255,11 +268,11 @@ def run_segmentation(args: argparse.Namespace) -> None:
             print(f"[sam3] {n}/{len(meta)} images, {(time.time() - t0) / n:.2f} s/img", flush=True)
 
     out = pd.DataFrame(rows)
-    out.to_csv(args.out_dir / MASKS_FILE, index=False)
-    print(f"[sam3] done: {len(out)} images, prompt={args.prompt!r}, merge={args.merge}, "
+    out.to_csv(args.out_dir / args.masks_csv, index=False)
+    print(f"[sam3] done: {len(out)} images, prompt={args.prompt_column or args.prompt!r}, merge={args.merge}, "
           f"empty={int((out.n_detections == 0).sum())}, "
           f"fallback_threshold_used={int((out.threshold_used < args.threshold).sum())}, "
-          f"fallback_prompt_used={int((out.prompt_used != args.prompt).sum())}, "
+          f"fallback_prompt_used={int((out.prompt_used != pd.Series(prompts)).sum())}, "
           f"median fg={out.fg_fraction.median():.3f}", flush=True)
 
 
@@ -272,6 +285,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--write-metadata", type=Path, default=None,
                    help="Write pre-masked metadata to this CSV (relative to --root or absolute)")
     p.add_argument("--prompt", default="Salamander")
+    p.add_argument("--prompt-column", default=None, help="take each row's prompt from this CSV column instead")
     p.add_argument("--fallback-prompts", nargs="*", default=["Animal"])
     p.add_argument("--merge", choices=["union", "best"], default="union")
     p.add_argument("--threshold", type=float, default=0.5)
@@ -284,6 +298,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--split-col", default="split")
     p.add_argument("--split-map", default="", help="e.g. database=train,query=test")
     p.add_argument("--split-map-column", default=None, help="e.g. split_train_test")
+    p.add_argument("--masks-csv", default=MASKS_FILE, help="mask table name inside --out-dir")
+    p.add_argument("--overwrite", action="store_true", help="replace existing masked images, mask table or metadata")
     args = p.parse_args(argv)
     if not args.segment and args.write_metadata is None:
         p.error("choose --segment and/or --write-metadata")
@@ -297,12 +313,15 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         run_segmentation(args)
     if args.write_metadata is not None:
         source = pd.read_csv(args.root / args.csv)
-        masks = pd.read_csv(args.out_dir / MASKS_FILE)
+        masks = pd.read_csv(args.out_dir / args.masks_csv)
         metadata = build_masked_metadata(
             source, masks, args.out_dir, split_col=args.split_col,
             split_map=parse_mapping(args.split_map) or None, split_map_column=args.split_map_column,
         )
         target = args.root / args.write_metadata
+        if target.exists() and not args.overwrite:
+            raise SystemExit(f"{target} already exists; pass --overwrite to replace it")
+        target.parent.mkdir(parents=True, exist_ok=True)
         metadata.to_csv(target, index=False)
         extra = f", {args.split_map_column}={metadata[args.split_map_column].value_counts().to_dict()}" \
             if args.split_map_column in metadata.columns else ""

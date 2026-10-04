@@ -9,7 +9,7 @@ between the SAM 3 mask and the dataset mask (intersection over union).
 
 Inputs
 ------
-* ``--sam3-dir``: the output directory of ``paper/tools/segment_with_sam3.py --segment``
+* ``--sam3-dir``: the output directory of ``src/wildmatch/data/prepare/sam3_masks.py --segment``
   run on the demo renders (``masks.csv`` with full-size COCO-RLE masks, score,
   instance count, threshold and prompt per render).
 * ``--root`` / ``--metadata``: the CzechLynx dataset root and synthetic metadata CSV,
@@ -163,7 +163,7 @@ def mask_png(mask: np.ndarray, size: Sequence[int], out_path: Path) -> None:
 def load_sam3_rows(sam3_dir: Path, paths: Sequence[str]) -> Dict[str, Dict[str, str]]:
     masks_csv = sam3_dir / "masks.csv"
     if not masks_csv.is_file():
-        raise FileNotFoundError(f"SAM 3 output not found: {masks_csv} (run paper/tools/segment_with_sam3.py --segment first)")
+        raise FileNotFoundError(f"SAM 3 output not found: {masks_csv} (run src/wildmatch/data/prepare/sam3_masks.py --segment first)")
     csv.field_size_limit(1 << 30)
     found: Dict[str, Dict[str, str]] = {}
     with masks_csv.open(newline="", encoding="utf-8") as handle:
@@ -286,7 +286,7 @@ def export(root: Path, metadata: str, sam3_dir: Path, out_dir: Path, renders: Se
                        "items": real_group_items})
 
     run = {"segmenter": "SAM 3 (text prompt)", "prompts": sorted(p for p in prompts if p),
-           "script": "paper/tools/segment_with_sam3.py --segment", "masks_csv": "masks.csv"}
+           "script": "src/wildmatch/data/prepare/sam3_masks.py --segment", "masks_csv": "masks.csv"}
     payload = build_payload(groups, run)
     (out_dir / "masking_demo.json").write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     print(f"[masking-demo] wrote {out_dir / 'masking_demo.json'}: " +
@@ -299,7 +299,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--metadata", default=DEFAULT_METADATA)
     parser.add_argument("--sam3-dir", type=Path, default=DEFAULT_SAM3_DIR,
-                        help="output directory of segment_with_sam3.py --segment for the demo renders")
+                        help="output directory of sam3_masks.py --segment for the demo renders")
     parser.add_argument("--renders", type=Path, default=None,
                         help="CSV with path,identity,role,tag (default: the synthetic match demo's renders)")
     parser.add_argument("--write-renders-csv", type=Path, default=None,

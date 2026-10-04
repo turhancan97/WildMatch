@@ -27,6 +27,8 @@ registry:
       loma: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
+  prepare:
+    builder: jaguar  # wildmatch prepare jaguar prepare|embed|split
   # Where the data comes from. raw: the published source; derived: the files this registry entry
   # reads that are made from it; reproducible: whether this repository can rebuild them.
   download:

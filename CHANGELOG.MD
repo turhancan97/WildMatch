@@ -7,6 +7,16 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): rebuilding the prepared inputs (user decisions on the Phase 4 questions).
+  Rules recovered from the tables the runs read and implemented in
+  `wildmatch.data.prepare.sources`: WildlifeReID-10k split tables (release order, prefix-free
+  identities, integers when numeric, `ClosedSetSplit(0.8, seed=666)`; all twelve reproduced) and
+  the SalamanderID2025 time split from the AnimalCLEF2025 metadata (byte-identical table and
+  metadata join). New `wildmatch prepare build|finish|compare-masks`, `slurm/sam3_masks.sbatch`;
+  the SAM 3 script moved into the package with `--masks-csv`, `--prompt-column` and an
+  overwrite guard. Registry: `prepare` blocks, data sources marked reproducible, CzechLynx source
+  named `CzechLynx`. Open: SAM 3 masks for WildlifeReID-10k are new and may differ from the
+  paper's (pilot pending). Tests: `tests/test_prepare_sources.py`; 384 pass.
 - 2026-10-04 (branch): refactor Phase 4, paper checkpoints and data preparation. The paper
   snapshot's 395 runs identify every fine-tuned checkpoint by SHA-256; all were found on disk and
   the registry now names them (renamed `legacy-*-mined/` folders, Nyala's

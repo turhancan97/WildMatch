@@ -240,6 +240,15 @@ Modern probe and finetune runs use `experiments/` and are self-contained. Paths 
 organized as dataset/animal/split/model/method/variant/run-id. Each run must retain
 `config.snapshot.yaml`, `run_manifest.json`, `metrics.json`, and `timings.json`;
 finetune runs also retain `training_metrics.csv` and canonical checkpoints.
+Manifests record the code that ran (branch `fix/manifest-code-identity`, 2026-10-04): `git_commit`
+is now the commit of the checkout the `wildmatch` package was imported from (before: `git rev-parse
+HEAD` in the working directory, wrong when another checkout's `src/` is on `PYTHONPATH`), and a
+`code` block holds `commit`, `dirty`, `checkout`, `changed_paths` and `diff_sha256`, counting
+tracked and untracked changes under `src/`, `pyproject.toml` and `uv.lock` only (edits to docs or
+notes do not make a run dirty). A dirty run also keeps the diff, untracked files included, as
+`code.diff` in its run folder. `file_identity` (backbone checkpoint of a probe, final checkpoint of
+a finetune) now includes the file's SHA-256; Vismatch checkpoints already recorded theirs in
+`vismatch_checkpoint`/`checkpoint_provenance`. Older manifests have neither field.
 
 `reports/runs.csv` is the central one-row-per-run index. Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
@@ -945,8 +954,6 @@ reproduction live under "Known issues" instead.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
 - [ ] Make central run-index updates safe for concurrent jobs and use unique temporary
   files or locking instead of a shared `reports/runs.csv.tmp` path.
-- [ ] Record SHA-256 checkpoint identities and repository dirty-state/diff identity in
-  manifests so uncommitted experiment code remains reproducible.
 
 
 ## Project page

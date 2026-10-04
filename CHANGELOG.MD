@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `fix/manifest-code-identity`): run manifests record the code that ran.
+  `git_commit` comes from the checkout the package was imported from; a new `code` block records
+  uncommitted and untracked changes under `src/`, `pyproject.toml` and `uv.lock` (paths and diff
+  SHA-256), and a dirty run keeps the diff as `code.diff`. `file_identity` adds the SHA-256 of
+  backbone and finetune checkpoints. Closes the future-work item on checkpoint and dirty-state
+  identity. Tests in `tests/test_code_identity.py`.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

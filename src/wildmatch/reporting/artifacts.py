@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import functools
 import hashlib
 import json
 import platform
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
 
 from omegaconf import DictConfig, OmegaConf
+
+from wildmatch.utils.fingerprints import sha256_file
 
 ARTIFACT_SCHEMA_VERSION = 1
 RUN_INDEX_COLUMNS = [
@@ -127,15 +130,58 @@ def _select(cfg: Any, key: str, default: Any = None) -> Any:
     return default if current is None and default is not None else current
 
 
-def _git_commit() -> str:
+# Paths whose uncommitted changes can change a run: the package (code and configs) and the
+# locked environment. Edits elsewhere (docs, notes, AGENTS.md) do not mark a run dirty.
+CODE_PATHS = ("src", "pyproject.toml", "uv.lock")
+CODE_DIFF_NAME = "code.diff"
+
+
+def _git(checkout: Path, *args: str) -> str:
+    return subprocess.check_output(["git", "-C", str(checkout), *args], stderr=subprocess.DEVNULL, text=True)
+
+
+def _code_identity(package_dir: Path) -> Dict[str, Any]:
+    """Commit and uncommitted changes of the git checkout that ``package_dir`` belongs to.
+
+    Uses the checkout the code was imported from, not the working directory, so a run started
+    from one checkout with another's code on PYTHONPATH records the code it actually ran. The
+    ``diff`` entry (text of tracked changes plus untracked files) is written to the run folder
+    as ``code.diff`` and left out of the manifest.
+    """
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
+        checkout = Path(_git(package_dir, "rev-parse", "--show-toplevel").strip())
+        commit = _git(checkout, "rev-parse", "HEAD").strip()
     except Exception:
-        return "unknown"
+        return {"commit": "unknown", "dirty": None, "checkout": None, "changed_paths": [], "diff_sha256": None}
+    status = _git(checkout, "status", "--porcelain", "--untracked-files=all", "--", *CODE_PATHS)
+    changed = sorted(line[3:] for line in status.splitlines() if line.strip())
+    diff = _git(checkout, "diff", "HEAD", "--binary", "--", *CODE_PATHS)
+    for line in status.splitlines():
+        if line.startswith("?? "):
+            path = checkout / line[3:]
+            try:
+                content = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                content = f"<unreadable or binary; sha256 {sha256_file(path) if path.is_file() else 'missing'}>\n"
+            diff += f"--- untracked: {line[3:]}\n{content}"
+    return {
+        "commit": commit,
+        "dirty": bool(changed),
+        "checkout": checkout.as_posix(),
+        "changed_paths": changed,
+        "diff_sha256": hashlib.sha256(diff.encode("utf-8")).hexdigest() if changed else None,
+        "diff": diff if changed else "",
+    }
+
+
+@functools.lru_cache(maxsize=None)
+def code_identity() -> Dict[str, Any]:
+    """The code identity of this process (computed once, when the first run records it)."""
+    return _code_identity(Path(__file__).resolve().parents[1])
+
+
+def _git_commit() -> str:
+    return str(code_identity()["commit"])
 
 
 def file_identity(path: Optional[Path]) -> Optional[Dict[str, Any]]:
@@ -152,6 +198,7 @@ def file_identity(path: Optional[Path]) -> Optional[Dict[str, Any]]:
         "exists": True,
         "size": int(stat.st_size),
         "mtime_ns": int(stat.st_mtime_ns),
+        "sha256": sha256_file(candidate),
     }
 
 
@@ -225,6 +272,7 @@ class RunContext:
             "workflow": self.workflow,
             "config_hash": self.config_hash,
             "git_commit": _git_commit(),
+            "code": {key: value for key, value in code_identity().items() if key != "diff"},
             "environment": environment_info(),
             "artifacts": {
                 "config": self.relative(self.config_snapshot_path),
@@ -236,6 +284,10 @@ class RunContext:
         }
         manifest.update(dict(payload))
         self.write_json(self.manifest_path, manifest)
+        identity = code_identity()
+        diff_path = self.run_dir / CODE_DIFF_NAME
+        if identity.get("dirty") and not diff_path.exists():
+            diff_path.write_text(str(identity["diff"]), encoding="utf-8")
         return manifest
 
 

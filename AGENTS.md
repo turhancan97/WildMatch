@@ -729,7 +729,12 @@ another Claude session; CzechLynx: the Kaggle release `picekl/czechlynx` is the 
 call CzechLynx v2 ("v2" is an internal name), so the registry `source` now says `CzechLynx`
 (the folder and `dataset.name` stay `CzechLynx_v2`, which experiment paths and caches use).
 Rules recovered and implemented in `wildmatch.data.prepare.sources`:
-- WildlifeReID-10k: per sub-dataset in the release's row order, identities without the
+- WildlifeReID-10k: the Kaggle release has its own `split` column, but the paper uses the
+  closed-set splits of WildFusion (Cermak et al., "WildFusion: Individual Animal Identification
+  with Calibrated Similarity Fusion", arXiv:2408.12934), which takes them from the
+  WildlifeDatasets toolkit (Cermak et al., WACV 2024): every individual on both sides (user,
+  2026-10-04; this is why the tables differ from the release on about 30 % of rows). Reproduced
+  as: per sub-dataset in the release's row order, identities without the
   `<dataset>_` prefix (as integers when all are numeric: ATRW, CowDataset, NyalaData split
   differently with string identities), wildlife-datasets `ClosedSetSplit(0.8, seed=666)`;
   BelugaID only its `beluga/` folder. Reproduces identity, path and split of all twelve tables

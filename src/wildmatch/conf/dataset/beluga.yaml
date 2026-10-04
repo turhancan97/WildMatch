@@ -39,5 +39,5 @@ registry:
   # reads that are made from it; reproducible: whether this repository can rebuild them.
   download:
     raw: "kaggle:wildlifedatasets/wildlifereid-10k (wildlife-datasets WildlifeReID10k)"
-    derived: "split table: wildmatch prepare build (exact); masks: SAM 3 (new, the original masking method is not recorded); metadata: wildmatch prepare finish"
+    derived: "split table: WildFusion closed-set split (arXiv:2408.12934), wildmatch prepare build (exact); masks: SAM 3 (new, the original masking method is not recorded); metadata: wildmatch prepare finish"
     reproducible: true

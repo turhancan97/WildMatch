@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): recorded why the WildlifeReID-10k tables differ from the release's `split`
+  column (user): the paper uses the closed-set splits of WildFusion (arXiv:2408.12934), taken
+  from the WildlifeDatasets toolkit; `ClosedSetSplit(0.8, seed=666)` reproduces them.
 - 2026-10-04 (branch): SAM 3 mask pilot 1 on six paper WildlifeReID-10k datasets (median IoU
   0.965-0.999 against the paper's masked files); disagreements were multi-animal photos merged by
   `union`, old speck masks, and dark photos. WildlifeReID-10k registry entries now use

@@ -3,6 +3,10 @@
 The rules were recovered from the tables the paper's runs read (2026-10-04) and reproduce them:
 
 WildlifeReID-10k (``metadata.csv`` of the Kaggle release ``wildlifedatasets/wildlifereid-10k``)
+    The release ships its own ``split`` column; the paper deliberately replaces it with the
+    closed-set splits of WildFusion (Cermak et al., arXiv:2408.12934), which follows the
+    WildlifeDatasets toolkit (Cermak et al., WACV 2024): every individual is in both the
+    database (train) and the query (test) set (user, 2026-10-04).
     Per sub-dataset, in the release's row order: identities without the ``<dataset>_`` prefix
     (as integers when all are numeric, which changes the split order), and a closed-set split from wildlife-datasets, ``ClosedSetSplit(0.8, seed=666)``, which put
     the same images in ``train``/``test`` as the teammate's tables for all twelve sub-datasets.

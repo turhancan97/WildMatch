@@ -33,7 +33,7 @@ from reid.training.accumulation import (
     accumulation_group_size,
     should_step_accumulated_gradients,
 )
-from reid.reporting.artifacts import build_run_context, run_index_row, upsert_run_index
+from reid.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
 from reid.reporting.wandb_naming import finetune_wandb_name
 from reid.utils.cache_identity import build_dataset_cache_identity
 from reid.utils.fingerprints import file_digest_cache

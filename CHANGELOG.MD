@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: fixed `reid/engine/finetune_runner.py` calling `file_identity` without importing
+  it (since 2026-08-13): every backbone fine-tuning run would have ended with a NameError while
+  writing its completed manifest, after training. No fine-tuning run exists, so no result was
+  affected. Found by ruff (F821) on the refactor branch, where it is fixed too.
 - 2026-10-04: launchers pass the frozen submission config with `--config-path` (both parallel
   launchers and `scripts/eval_loma_epoch_curve.sh`). With `--config-dir`, Hydra had kept
   `conf/probe.yaml` as the primary config, so array tasks read the live file instead of the

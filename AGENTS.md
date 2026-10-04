@@ -966,6 +966,10 @@ applied at load time.
   (`start_epoch >= train.epochs`). A zero-epoch run would still write final checkpoints and
   a completed manifest, hiding an unraised `train.epochs`; the guard runs before training
   setup so nothing is written.
+- Finetune runs record `checkpoint_identity` with `file_identity`, which `finetune_runner.py`
+  called without importing from 2026-08-13 until 2026-10-04: every fine-tuning run would have
+  crashed after training while writing its completed manifest (no run existed, so none was
+  affected; found by ruff's undefined-name check on the refactor branch).
 - Finetune reports select and reload the best model-only checkpoint for primary metrics;
   final-epoch metrics remain nested as `final_epoch_metrics`. The selection split is the
   test split, a documented limitation (see "Known issues", probe per-epoch validation).

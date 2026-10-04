@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from scripts.segment_with_sam3 import (
+from paper.tools.segment_with_sam3 import (
     MetadataError,
     build_masked_metadata,
     decode_mask,

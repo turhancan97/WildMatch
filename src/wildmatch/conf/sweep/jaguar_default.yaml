@@ -1,0 +1,11 @@
+# JaguarReID split_v2 with default weights only (no fine-tuned Jaguar matchers exist yet);
+# the grid of the last wildlife-launcher submission (2026-10-04).
+description: JaguarReID default-weight baselines
+datasets: [jaguar]
+candidate_k: [10]
+max_concurrent: 12
+variants:
+  - {method: cosine}
+  - {method: wildfusion}
+  - {method: vismatch, matcher: loma}
+  - {method: vismatch, matcher: rdd-lightglue}

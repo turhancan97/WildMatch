@@ -5,7 +5,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-from scripts import export_budget_tradeoff as bt  # noqa: E402
+from paper.page import export_budget_tradeoff as bt  # noqa: E402
 
 
 class HelperTests(unittest.TestCase):

@@ -1,4 +1,4 @@
-"""Tests for the GPU-free parts of scripts/export_before_after_demo.py."""
+"""Tests for the GPU-free parts of paper/page/export_before_after_demo.py."""
 
 import importlib.util
 import json
@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_before_after_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_before_after_demo.py"
 
 
 def _load():

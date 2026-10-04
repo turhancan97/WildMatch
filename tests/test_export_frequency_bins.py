@@ -7,7 +7,7 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-from scripts import export_frequency_bins as fb  # noqa: E402
+from paper.page import export_frequency_bins as fb  # noqa: E402
 
 
 class HelperTests(unittest.TestCase):

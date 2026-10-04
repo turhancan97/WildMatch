@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.plot_training_cost import (
+from paper.figures.plot_training_cost import (
     checkpoint_epoch,
     clock_seconds,
     cumulative_gpu_hours,

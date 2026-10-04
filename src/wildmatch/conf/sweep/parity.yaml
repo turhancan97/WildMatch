@@ -1,0 +1,14 @@
+# Refactor parity set (notes/parity_reference.md): SalamanderID2025 at k=50, the seven tasks of
+# the paper-v1 reference array 524155, in the same order.
+description: Refactor parity reference set (SalamanderID2025, k=50)
+datasets: [salamander]
+candidate_k: [50]
+max_concurrent: 12
+variants:
+  - {method: cosine}
+  - {method: wildfusion}
+  - {method: vismatch, matcher: loma}
+  - {method: vismatch, matcher: loma, checkpoint: custom}
+  - {method: vismatch, matcher: rdd-lightglue}
+  - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}
+  - {method: linear_probe, train_mode: classifier, class_weighting: weighted}

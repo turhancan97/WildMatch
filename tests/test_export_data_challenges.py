@@ -6,7 +6,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-from scripts import export_data_challenges as dc  # noqa: E402
+from paper.page import export_data_challenges as dc  # noqa: E402
 
 
 class ExampleListTests(unittest.TestCase):

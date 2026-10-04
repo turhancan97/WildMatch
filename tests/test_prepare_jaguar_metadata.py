@@ -1,4 +1,4 @@
-"""Tests for scripts/prepare_jaguar_metadata.py on synthetic RGBA images (CPU only)."""
+"""Tests for wildmatch.data.prepare.jaguar on synthetic RGBA images (CPU only)."""
 
 import pytest
 import csv
@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-import prepare_jaguar_metadata as P  # noqa: E402
+from wildmatch.data.prepare import jaguar as P  # noqa: E402
 
 
 def _rgba(seed: int, size=(48, 64), background=90) -> np.ndarray:

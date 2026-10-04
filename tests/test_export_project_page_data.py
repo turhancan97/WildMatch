@@ -1,4 +1,4 @@
-"""Tests for scripts/export_project_page_data.py on a synthetic paper results directory."""
+"""Tests for paper/page/export_project_page_data.py on a synthetic paper results directory."""
 
 import csv
 import importlib.util
@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_project_page_data.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_project_page_data.py"
 
 
 def _load():

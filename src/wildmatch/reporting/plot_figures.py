@@ -590,7 +590,7 @@ def plot_metrics(
                         dpi=600 if fmt == "png" else 300,
                         bbox_inches="tight",
                         facecolor="white",
-                        metadata={"Creator": "scripts/plot_paper_figures.py"},
+                        metadata={"Creator": "wildmatch figures"},
                     )
                     outputs.append(output_path)
             finally:
@@ -634,7 +634,7 @@ def plot_metrics(
                             dpi=600 if fmt == "png" else 300,
                             bbox_inches="tight",
                             facecolor="white",
-                            metadata={"Creator": "scripts/plot_paper_figures.py"},
+                            metadata={"Creator": "wildmatch figures"},
                         )
                         outputs.append(output_path)
                 finally:

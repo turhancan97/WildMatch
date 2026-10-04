@@ -30,6 +30,9 @@ dependencies = [
     "lightglue",
 ]
 
+[project.scripts]
+wildmatch = "wildmatch.cli:main"
+
 [project.optional-dependencies]
 # Exactly one torch build must be chosen: `uv sync --extra cpu` or `uv sync --extra cu126`.
 cpu = ["torch==2.8.0", "torchvision==0.23.0"]
@@ -113,7 +116,7 @@ allow-direct-references = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # The paper tooling under scripts/ is imported by tests as `scripts.<module>` or by module name.
-pythonpath = [".", "scripts"]
+pythonpath = ["."]
 markers = [
     "gpu: needs a CUDA device",
     "data: needs the datasets or experiment outputs on this machine",

@@ -1,0 +1,8 @@
+# CzechLynx closed split, joint (descriptor + matcher) fine-tuned LoMa; the grid of the last
+# CzechLynx-launcher table. Joint checkpoints exist for the closed split only.
+description: CzechLynx closed, joint fine-tuned LoMa
+datasets: [czechlynx_closed]
+candidate_k: [10]
+max_concurrent: 12
+variants:
+  - {method: vismatch, matcher: loma, checkpoint: joint-fine-tuned}

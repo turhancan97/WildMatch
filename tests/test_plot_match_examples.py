@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 
 from wildmatch.reporting.paper_datasets import PAPER_PROFILES
-from scripts.plot_match_examples import (
+from paper.figures.plot_match_examples import (
     EXAMPLES,
     PAPER_ORDER,
     RUNS,

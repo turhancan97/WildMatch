@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from scripts.build_unseen_eval_metadata import UnseenSplitError, generate_unseen_split
+from wildmatch.data.unseen_split import UnseenSplitError, generate_unseen_split
 
 
 class UnseenEvalMetadataTests(unittest.TestCase):

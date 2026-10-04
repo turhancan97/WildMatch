@@ -19,9 +19,12 @@ registry:
   source: "Kaggle Jaguar Re-ID"
   paper: false
   order: 1
-  # Fine-tuned matcher-only checkpoints the launcher uses by default (epoch 299 unless stated).
+  # Default fine-tuned checkpoints per sweep checkpoint label (epoch 299 unless stated):
+  # custom = matcher only, descriptor-fine-tuned = descriptor only, joint-fine-tuned =
+  # descriptor + matcher trained together. A sweep row whose label has no entry fails closed.
   checkpoints:
-    loma: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
-    rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
+    custom:
+      loma: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
+      rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
   download: null  # Phase 4: download route or "user-supplied"

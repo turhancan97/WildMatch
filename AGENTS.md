@@ -16,26 +16,38 @@ single-label animal-species classifier: identity labels represent individual ani
 The code is the installable `wildmatch` package (`pyproject.toml`, `src/` layout, environment
 locked in `uv.lock`); see "Package refactor" for the migration in progress.
 
-- src/wildmatch/entrypoints.py: Hydra entry points `probe` and `finetune` (configs resolved as
-  `pkg://wildmatch.conf`; job names pinned in the configs).
+- src/wildmatch/cli.py: the `wildmatch` command (`[project.scripts]`; `python -m wildmatch` is the
+  same). Subcommands: `evaluate`, `finetune-backbone`, `sweep`, `sweep-task`, `summarize-runs`,
+  `summarize-logs`, `tables`, `figures`, `build-unseen-split`, `class-balance`, `audit`.
+- src/wildmatch/entrypoints.py: Hydra entry points behind `evaluate` and `finetune-backbone`
+  (configs resolved as `pkg://wildmatch.conf`; job names pinned in the configs).
+- src/wildmatch/sweep/: evaluation sweeps (spec and task table, immutable submissions, task
+  runner, per-task log records); see "Sweeps".
 - src/wildmatch/models/model.py: pretrained backbone factory and ViT CLS adapter.
 - src/wildmatch/models/objective.py: ArcFace, triplet, softmax, and efficient-probe objectives.
 - src/wildmatch/train/finetune_runner.py: ArcFace finetuning and validation retrieval.
 - src/wildmatch/evaluate/probe_runner.py: cosine, WildFusion, local LightGlue, linear probe,
   efficient probe, and Vismatch matcher benchmark dispatch.
-- src/wildmatch/data/: dataset views, COCO-RLE masking, and split safety checks.
+- src/wildmatch/data/: dataset views, COCO-RLE masking, split safety checks, the unseen-split
+  builder (`unseen_split.py`), the image-quality audit (`image_quality.py`) and dataset
+  preparation (`prepare/jaguar.py`, run as `python -m wildmatch.data.prepare.jaguar`).
 - src/wildmatch/evaluate/metrics.py: top-k, balanced top-1, and mAP calculations.
 - src/wildmatch/train/: checkpoint serialization and accumulation helpers.
-- src/wildmatch/reporting/: run identities, manifests, metrics, visualization indexes, and summaries.
+- src/wildmatch/reporting/: run identities, manifests, metrics, visualization indexes, summaries,
+  and the `tables` / `figures` / `class-balance` / `summarize-runs` commands.
 - src/wildmatch/conf/: Hydra configuration for probe and finetuning (package data), with the
-  `paths/` profiles (`default`, `gmum`) and the dataset registry `dataset/<key>.yaml`.
+  `paths/` profiles (`default`, `gmum`), the dataset registry `dataset/<key>.yaml` and the
+  packaged sweep specs `sweep/<name>.yaml`.
 - src/wildmatch/paths.py, src/wildmatch/data/registry.py: path profiles and registry entries
   for code outside Hydra (see "Paths and the dataset registry").
 - src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
   later from `rdd-parallel-benchmark` and `lynx-finetuning`.
-- train/: thin wrappers (`python train/probe.py` = `wildmatch.entrypoints.probe`) kept for the
-  Slurm launchers; scripts/: analysis, export and plotting tools.
-- paper/tools/parity_check.py: compares refactored runs with the `paper-v1` reference runs.
+- slurm/: `sweep_task.sbatch` (one sweep array element), `evaluate.sbatch`,
+  `finetune_backbone.sbatch`, and `eval_loma_epoch_curve.sh` (training-cost ablation).
+- paper/: paper and project-page tooling run from a checkout (not part of the package):
+  `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
+  figures and analyses, `paper/tools/` (`parity_check.py`, `segment_with_sam3.py`, which runs in
+  the `lynx-app` environment). Run them as `python paper/<group>/<script>.py`.
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
   pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
 - tests/: dependency-light regression tests (pytest).
@@ -56,18 +68,20 @@ locked in `uv.lock`); see "Package refactor" for the migration in progress.
 Run from the repository root:
 
 ~~~bash
-python train/finetune.py
-python train/finetune.py train.epochs=10
-python train/probe.py
-python train/probe.py benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
-bash probe-parallel-czechlynx.sh --list-tasks
-bash probe-parallel-wildlife.sh --list-tasks
-python scripts/summarize_runs.py --format markdown
-python scripts/export_paper_tables.py
-python scripts/export_class_balance.py
-python scripts/audit_image_quality.py --dataset leopard --limit 400  # dev subset
+wildmatch finetune-backbone
+wildmatch finetune-backbone train.epochs=10
+wildmatch evaluate
+wildmatch evaluate dataset=salamander benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
+wildmatch sweep parity --list-tasks          # packaged spec or a YAML path; writes nothing
+wildmatch sweep my_sweep.yaml --submit        # Slurm array (slurm/sweep_task.sbatch); --local runs here
+wildmatch summarize-runs --format markdown
+wildmatch summarize-logs --write-index
+wildmatch tables
+wildmatch figures
+wildmatch class-balance
+wildmatch audit --dataset leopard --limit 400  # dev subset
 python -m pytest                    # tests (unittest-style classes, run by pytest)
-python -m py_compile src/wildmatch/*.py src/wildmatch/*/*.py train/*.py scripts/*.py
+python -m py_compile $(git ls-files 'src/*.py' 'paper/*.py' 'tests/*.py')
 uv lock && requirements/export.sh   # after a dependency change: re-lock and re-export the pins
 python paper/tools/parity_check.py --reference-root <paper-v1>/experiments/probe --candidate-root experiments/probe
 mkdocs build --strict   # project page; needs requirements-docs.txt installed
@@ -80,8 +94,8 @@ Single runs on the cluster need no extra flag in a checkout whose `wildmatch.loc
 
 ## Hydra configuration
 
-`train/probe.py` and `train/finetune.py` use Hydra 1.3 as their primary single-run
-configuration interface. Defaults live in `src/wildmatch/conf/probe.yaml` and `src/wildmatch/conf/finetune.yaml`;
+`wildmatch evaluate` and `wildmatch finetune-backbone` use Hydra 1.3 as their single-run
+configuration interface (everything after the subcommand goes to Hydra). Defaults live in `src/wildmatch/conf/probe.yaml` and `src/wildmatch/conf/finetune.yaml`;
 use nested dotlist overrides such as `benchmark.method=vismatch` or
 `train.epochs=10`. Hydra/OmegaConf performs type conversion and rejects unknown or
 misspelled configuration paths. The legacy argparse flags and `--config` option are
@@ -97,43 +111,52 @@ the current experiment contract. The Jaguar data runs through the shared pipelin
 the `JaguarReID` profile (see "JaguarReID"); the former standalone Kaggle submission
 workflow was deleted on 2026-10-04.
 
-`probe-parallel-czechlynx.sh` and `probe-parallel-wildlife.sh` are separate
-self-submitting Slurm launchers and must not modify or replace `probe.sh`. Each
-builds tasks from its explicit `VARIANTS` table and crosses them with the
-`CANDIDATE_K_VALUES` list. The active tables near the top of the selected launcher
-are the source of truth for its comparison grid. The CzechLynx launcher supports
-the independent `split-time_closed` and `split-time_open` profiles; either or
-both may be uncommented. The wildlife launcher takes one active profile at a time:
-a WildlifeReID-10k animal, SalamanderID2025 or JaguarReID (see the sections of those
-names below).
-`MAX_CONCURRENT_JOBS` becomes the Slurm array `%`
-throttle.
-The CzechLynx launcher is the only parallel launcher for CzechLynx; the wildlife
-launcher serves WildlifeReID-10k profiles plus the SalamanderID2025 profile
-(decided 2026-09-29, so Salamander reuses the same manifest, SHA-256 and log
-machinery instead of a copied launcher) and must not gain a CzechLynx profile.
-The CzechLynx launcher also contains a commented `czechlynx_unseen_eval` profile.
-After `scripts/build_unseen_eval_metadata.py` creates an evaluation CSV, the
-launcher defaults to the repository-local CzechLynx unseen-evaluation path;
-override `CZECHLYNX_UNSEEN_EVAL_METADATA_FILE` when using another output and
-uncomment that profile. It uses `unseen_eval_split` with `database/query` values, validates the
-generated CSV before task construction, and keeps its logs, manifests, runs, and
-caches separate from `split-time_open`. It is opt-in so ordinary closed/open
-submissions are unchanged.
-Launcher regression tests derive their expected candidate budgets from the active launcher table, so intentional budget edits do not require changing the launcher itself. The same applies to opt-in rows and profiles: tests validate whichever classifier-probe rows and CzechLynx profiles are active (skipping when none are) and never require a specific row to be uncommented. The closed/open profile-multiplication test disables `czechlynx_unseen_eval` and any active `joint-fine-tuned` rows in its temporary copy (joint checkpoints exist for the closed split only, so the launcher would otherwise fail closed on the open profile) and re-enables the split-agnostic cosine row so the table is never empty; the joint-only guard has its own test.
-`--list-tasks` and `PROBE_PARALLEL_DRY_RUN=1` are safe non-executing inspection
-modes. Custom Vismatch tasks explicitly declare their component mode;
-matcher fine-tuning uses `checkpoint_components=matcher_only` and descriptor
-fine-tuning uses `checkpoint_components=descriptor_only`;
-the selected launcher validates custom paths before submission and prints the
-complete Hydra command in each task log. CzechLynx custom checkpoint paths are
-stored per split; an open-split custom task fails closed if its path is missing or
-does not belong to the declared animal. The supplied open profile defaults to
-the `czechlynx-time-open` checkpoint root at epoch 299, using the
-`loma-b-finetuned-loma-mined-legacy` and `rdd-finetuned-loma-mined-legacy` subdirectories
-(both matchers are fine-tuned on LoMa-mined pairs; the closed profile uses the same names under
-`czechlynx-time-closed`). Split names appear in task manifests,
-metadata, log directories, and task filenames.
+### Sweeps
+
+Grids of runs go through `wildmatch sweep` (2026-10-04; it replaced the bash launchers
+`probe-parallel-wildlife.sh` and `probe-parallel-czechlynx.sh`, which remain in the `paper-v1`
+tag). A sweep spec is a YAML file, packaged under `src/wildmatch/conf/sweep/` (`parity`,
+`jaguar_default`, `czechlynx_joint`, and the annotated `example`) or anywhere on disk: registry
+`datasets`, `candidate_k` budgets, `max_concurrent` (Slurm array `%` throttle) and `variants`
+rows (`method`, `matcher`, `checkpoint`, `train_mode`, `class_weighting`, optional
+`checkpoint_path`/`components`), plus optional `dataset_overrides` (`checkpoints`,
+`checkpoint_owner`, `evaluation_animal`). The spec is the source of truth for its grid.
+Modes: `--list-tasks` (writes nothing), `--dry-run` (freezes the submission and prints the
+`sbatch` command), `--submit` (array job; extra options through `--sbatch-arg=...`), `--local`
+(runs every task here, one after another). The task table, Hydra overrides, manifest task
+records and checkpoint SHA-256 identities were checked equal to the launchers' for the parity,
+Jaguar and CzechLynx joint grids (2026-10-04).
+Rules carried over from the launchers, enforced before anything is written: tasks nest
+datasets > budgets > variants; classifier probes (`linear_probe`, `efficient_probe`) run once,
+at the first budget, and need `train_mode` (`classifier`, `partial`, `all`) and
+`class_weighting` (`weighted` -> `inverse_frequency`, `unweighted` -> `none`), which other
+methods must not set; fine-tuned rows are Vismatch only, and each label loads one component
+mode (`custom` = `matcher_only`, `descriptor-fine-tuned` = `descriptor_only`,
+`joint-fine-tuned` = `full`); `loma` always runs as `LoMa-B`; a repeated task fails. Fine-tuned
+paths come from the registry (`registry.checkpoints.<label>.<matcher>`), so a label without an
+entry (for example joint checkpoints outside the CzechLynx closed split) fails closed.
+Checkpoint owners are the dataset's animal, except a declared descriptor
+`checkpoint_owner` for cross-species tests; the manifest validates owner-identifiable
+WildlifeReID-10k paths and rejects unidentifiable cross-species paths. The unseen-eval entry
+requires its generated metadata (`CZECHLYNX_UNSEEN_EVAL_METADATA_FILE`) and the
+`unseen_eval_split` database/query values. Several datasets may share one sweep (the launchers'
+one-profile limit came from their global checkpoint variables). The launchers' checkpoint
+environment variables (`LOMA_CUSTOM_CHECKPOINT_PATH`, `CZECHLYNX_*_CHECKPOINT`, ...) are gone;
+use `dataset_overrides` or `checkpoint_path`.
+Each task reads only its submission (see "Immutable parallel probe submissions"), runs
+`python -m wildmatch evaluate --config-path <snapshot> --config-name probe paths=<profile>
+dataset=<key> ...` with the same explicit overrides the launchers passed, and mirrors its output
+into `logs/parallel_run/<dataset>/<animal>/<split_protocol>/job-<array job>/task-<index>__<split>__<method>[-<matcher>][-<mode>-<weighting>]__<checkpoint>__k<k>.{out,err,combined.log,json}`
+(wildlife tasks now get the split level too; the CzechLynx launcher already used it). The JSON
+record holds the command, status, timestamps, failure summary and the run directory parsed
+from the probe's `Saved JSON:` line; `logs/index.csv` is rebuilt under a lock after every task
+(`wildmatch summarize-logs` filters it). A validation failure records the reason, rebuilds the
+index and cancels only its own array element. Slurm's raw array output stays under
+`logs/parallel_run/`. `slurm/sweep_task.sbatch` works from `SLURM_SUBMIT_DIR`, so submit from
+the repository root. Submissions made by the launchers stay runnable with `wildmatch
+sweep-task --manifest <m> --index <i>`: manifests without config groups run with their own
+probe.yaml only (no `paths=`/`dataset=`), and branch-launcher manifests without
+`paths_profile` use `gmum`, which is what those launchers passed.
 
 **Fine-tuned matcher objective (decided 2026-09-29).** RDD-LightGlue and LoMa are now
 fine-tuned in the sibling `lynx-finetuning` repository with one shared recipe: the relaxed
@@ -146,7 +169,7 @@ Adam+L2, padded keypoints inside LightGlue's assignment softmax, and an effectiv
 batch of 4; wildlife RDD runs also mixed pair sources (RDD-mined for NyalaData and
 WhaleSharkID). All RDD runs feeding the paper are retrained under the shared recipe into the
 same canonical directory names, after the old directories are renamed to
-`<name>__filtered-archive`, so probe launcher paths do not change except the CzechLynx closed
+`<name>__filtered-archive`, so registry checkpoint paths do not change except the CzechLynx closed
 RDD descriptor default, which moves from `epoch_175` to `epoch_299` once the retrained
 checkpoint exists. RDD probe results produced before the retrain describe the archived
 checkpoints. Status checked on 2026-10-03: the retrain has not started under this plan (no
@@ -165,35 +188,10 @@ Descriptor profiles may explicitly separate `evaluation_animal` from
 `checkpoint_owner` for cross-species tests. The immutable manifest validates that
 an owner-identifiable WildlifeReID-10k path matches the declared checkpoint owner;
 unidentifiable cross-species paths fail closed.
-Both CzechLynx profiles use `dataset.no_background=true` and
-`dataset.image_variant=no_background`, matching the shipped probe configuration;
-the launcher passes these values explicitly rather than inheriting them from a
-mutable configuration file.
-The legacy `LOMA_CUSTOM_CHECKPOINT_PATH` and `RDD_CUSTOM_CHECKPOINT_PATH`
-environment variables remain accepted as closed-profile aliases only.
-The wildlife and CzechLynx launchers support three explicit classifier-probe
-variants for both `linear_probe` and `efficient_probe`: `classifier`, `partial`,
-and `all`; activate or comment the corresponding rows in the selected launcher’s
-`VARIANTS` table as needed. They pass the method-specific
-`benchmark.methods.<method>.train_mode=<mode>` directly to Hydra and run once per
-active mode; classifier probes do not need the full candidate-budget sweep, so
-each launcher uses the first configured candidate value only for the shared
-evaluation configuration. Each mode can be paired with a `weighted` or
-`unweighted` launcher row. These map to `class_weighting=inverse_frequency` or
-`class_weighting=none`; the weighting label is recorded in task names, commands,
-manifests, metadata, and logs. The active launcher table remains the source of
-truth, so uncomment both rows when a paired comparison is wanted.
-Slurm's raw array stdout and stderr remain under `logs/parallel_run/`; keep that
-directory separate from single-run probe logs. After a task starts, the selected
-launcher also mirrors output into
-`logs/parallel_run/<dataset>/<animal>/<split_protocol>/job-<array_job>/task-<index>__<split_protocol>__<method>__<checkpoint>__k<candidate>/`.
-Each task-local record contains `.out`, `.err`, `.combined.log`, and JSON metadata
-with the resolved command, status, timestamps, concise failure summary, and the
-experiment run directory when probe finalization prints it. `logs/index.csv` is
-rebuilt atomically from these metadata records and can be filtered with
-`scripts/summarize_logs.py`. Historical logs are not migrated. The launcher
-resolves its repository working directory from `SLURM_SUBMIT_DIR` because Slurm
-runs copied scripts from a non-writable spool directory.
+Both CzechLynx entries use `dataset.no_background=true` and
+`dataset.image_variant=no_background`, and every sweep task passes its dataset values
+explicitly rather than inheriting them from a mutable configuration file. Historical logs are
+not migrated.
 
 ## Paths and the dataset registry
 
@@ -207,19 +205,20 @@ cache key and the paper profiles, is identical to before (pinned by `tests/test_
 Hydra runs choose a profile with `paths=<name>`; `probe.yaml` and `finetune.yaml` default to
 `default`. Code outside Hydra calls `wildmatch.paths.load_paths()`, which takes the profile from its
 argument, then `WILDMATCH_PATHS`, then `paths:` in a gitignored `./wildmatch.local.yaml`, then
-`default`; `train/probe.py` and `train/finetune.py` apply the same choice when the command names no
-profile and loads no custom `--config-path`.
+`default`; `wildmatch evaluate` and `wildmatch finetune-backbone` apply the same choice when the
+command names no profile and loads no custom `--config-path`.
 The dataset registry is the Hydra group `src/wildmatch/conf/dataset/<key>.yaml`, one file per
 former launcher profile (17: the 12 WildlifeReID-10k profiles, SalamanderID2025, JaguarReID,
 CzechLynx closed, open and unseen-eval), selected with `dataset=<key>` (default
 `czechlynx_closed`). Each holds the probe's dataset fields, roots interpolated from
 `${paths.data_root}`, plus a `registry` block (paper key, label, source, paper flag and order,
-default fine-tuned matcher checkpoints from `${paths.checkpoint_root}`, licence and download to
-fill in Phase 4). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
+default fine-tuned checkpoints from `${paths.checkpoint_root}` keyed by sweep checkpoint label,
+`checkpoints.{custom,descriptor-fine-tuned,joint-fine-tuned}.{loma,rdd-lightglue}` (the launchers'
+defaults; only CzechLynx closed has descriptor and joint entries), licence and download to fill in
+Phase 4). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
 Hydra; `wildmatch.reporting.paper_datasets` builds `PAPER_PROFILES` and `BENCHMARK_ONLY_PROFILES`
-from it (same keys and order as before). The launchers still carry their bash profile tables until
-sweeps move to Python (Phase 3); they now pass `paths=gmum dataset=<profile>` before their explicit
-dataset fields, and a test keeps the tables and the registry identical. Submission snapshots
+from it (same keys and order as before). Sweeps build their tasks from it; the removed launchers'
+profile values are pinned as a literal in `tests/test_paths_registry.py`. Submission snapshots
 freeze `probe.yaml` together with the `paths/` and `dataset/` groups (from the package when a custom
 config has none) and record a `config_tree_sha256` that each task verifies. Scripts take dataset
 roots from the profile or registry and other repositories from `paths.external`; a missing
@@ -236,7 +235,7 @@ finetune runs also retain `training_metrics.csv` and canonical checkpoints.
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.
-Accuracy-versus-`k` figures are generated with `scripts/plot_paper_figures.py`
+Accuracy-versus-`k` figures are generated with `wildmatch figures`
 from the same completed run artifacts. It writes publication-quality PNG/PDF
 figures under `reports/figures/`, uses a color-blind-safe palette and redundant
 line/marker encodings, and renders WildFusion plus default/fine-tuned LoMa and
@@ -257,7 +256,7 @@ Split-aware artifacts are grouped by `split_protocol`, so CzechLynx
 split-specific filenames. Use `--split-protocol` to select one or more splits;
 never combine closed/open panels for a scientific comparison. Legacy artifacts
 without split provenance retain the unsuffixed output names.
-Paper tables are generated with `scripts/export_paper_tables.py` from completed
+Paper tables are generated with `wildmatch tables` from completed
 run-local manifests under `experiments/`, never from the aggregate benchmark
 CSV. The exporter discovers animals, split protocols, and methods automatically,
 selects the newest completed run for each split/method/matcher/backbone/train-mode/weighting/checkpoint/budget
@@ -313,8 +312,8 @@ saved as an accelerate epoch directory with `model.safetensors` (RDD) and
 `model_1.safetensors` (LightGlue), and LoMa DeDoDe + matcher (DaD frozen) saved as one
 complete bundle; both protocol files record `*_train_component=joint`. The Vismatch
 loader treats that protocol value as a complete model and refuses any other component
-mode; the CzechLynx launcher's `joint-fine-tuned` rows (closed split only, paths
-`CZECHLYNX_CLOSED_JOINT_{RDD,LOMA}_CHECKPOINT`) and the manifest enforce
+mode; sweep `joint-fine-tuned` rows (registry entries for the CzechLynx closed split only) and the
+manifest enforce
 `joint-fine-tuned` <=> `full`. Recipe: pretrained initialization, one AdamW learning
 rate (1e-5), relaxed score, effective batch 32, LoMa-mined pairs, legacy protocol,
 epoch 299. Verified 2026-09-30 on smoke checkpoints: detectors unchanged, descriptor
@@ -331,7 +330,7 @@ without primary timing fields must not be relabeled as matcher timings.
 
 
 Per-identity class-balance statistics for the paper are generated with
-`scripts/export_class_balance.py` into the ignored `experiments/class-balance/`
+`wildmatch class-balance` into the ignored `experiments/class-balance/`
 directory: one CSV per dataset/split (`nyala`, `beluga`, `hyena`, `leopard`,
 `sea_star`, `whale_shark`, `turtle`, `salamander`, `lynx_closed`, `lynx_open`, and the
 benchmark-only `jaguar`) with exact
@@ -347,7 +346,7 @@ split is neither side (490 unlabeled ZindiTurtleRecall rows) are excluded and co
 in `excluded_rows_other_split`. The paper reports CzechLynx closed and open splits
 only; the unseen-eval split is not part of the dataset statistics.
 
-Candidate low-quality images are audited with `scripts/audit_image_quality.py`
+Candidate low-quality images are audited with `wildmatch audit`
 into the ignored `experiments/image-quality/` directory. It measures the exact model
 input (pre-masked WildlifeReID-10k files; CzechLynx RLE masks applied through
 `BenchmarkDatasetView`) and writes per-image CSVs (foreground area, mask
@@ -392,12 +391,12 @@ not as harmful noise; the 5 blurry queries score 0.02 vs 0.33 (small n). Rows 12
 
 **Paper figures from confirmed examples.** History, panel lists and per-image values:
 `notes/history.md`, "Paper figure: data-quality examples and qualitative match examples".
-- `scripts/plot_data_quality_examples.py` writes `reports/figures/data_quality_examples.{pdf,png}`.
+- `paper/figures/plot_data_quality_examples.py` writes `reports/figures/data_quality_examples.{pdf,png}`.
   It shows raw source photos only (user decision 2026-09-30): masked inputs could be read
   as our masking error. Its `EXAMPLES` list holds only images confirmed by eye, and
   mask-only problems (masks on branches, provider mask failures, finger splits) stay in
   the text.
-- `scripts/plot_match_examples.py` has two steps. `candidates` writes contact sheets of
+- `paper/figures/plot_match_examples.py` has two steps. `candidates` writes contact sheets of
   correct top-1 pairs from the pinned fine-tuned LoMa runs (`RUNS`, matcher only, k=50);
   the user picks one pair per dataset into `EXAMPLES` by eye; `render` draws them into
   `reports/figures/match_examples.{pdf,png,json}` (`--no-tags --output-stem
@@ -415,14 +414,14 @@ not as harmful noise; the 5 blurry queries score 0.02 vs 0.33 (small n). Rows 12
 **Training-cost ablation (user decisions 2026-09-30 to 2026-10-01).** CzechLynx closed
 only: fine-tuned LoMa (matcher only) against the class-weighted classifier probes, with
 cumulative *training* GPU-hours on RTX 4090 on the x axis (mining, feature caches and
-inference excluded). `scripts/eval_loma_epoch_curve.sh` evaluates intermediate LoMa
+inference excluded). `slurm/eval_loma_epoch_curve.sh` evaluates intermediate LoMa
 checkpoints into `experiments/compute-efficiency/`, never `experiments/probe/`, because the
 table exporter keys runs by checkpoint label and k only, so an intermediate epoch there
-would replace epoch 299. `scripts/plot_training_cost.py` writes
+would replace epoch 299. `paper/figures/plot_training_cost.py` writes
 `reports/figures/training_cost*.{pdf,png,csv,json}`. The final figures are at k=250 from
 probe array 522223:
 
-    python scripts/plot_training_cost.py --candidate-k 250 --probe-job-dir logs/parallel_run/.../job-522223 \
+    python paper/figures/plot_training_cost.py --candidate-k 250 --probe-job-dir logs/parallel_run/.../job-522223 \
         --metrics balanced_top_1,top_5 --output-stem training_cost_k250_balanced_top5
 
 Rules for the paper: the curves are test-split curves, so no epoch may ever be selected
@@ -436,7 +435,7 @@ descriptor and joint runs, projections to 300 epochs, values and commands are in
 New visualizations belong inside the run’s `visualizations/` directory. Their
 `index.csv` must map query/database identities, ranks, scores, correctness, and
 artifact paths. Top-1 and failure contact sheets are optional when no images or
-labels are available. Use `scripts/summarize_runs.py` for filtered Markdown/CSV
+labels are available. Use `wildmatch summarize-runs` for filtered Markdown/CSV
 comparisons.
 
 Run directories use UTC timestamps plus a short resolved-configuration hash. Do not
@@ -465,8 +464,8 @@ reconcile glue-factory's unpinned LightGlue URL with the pinned commit. `ex-reid
 exact `ex-reid` versions (`[tool.uv] constraint-dependencies`); loosen them only deliberately.
 Two packaging traps: both OpenCV wheels write the same `cv2` folder, so both are pinned to
 4.11.0.86 (the version active in `ex-reid`); vismatch's `uniception` dependency installs a
-top-level `scripts` package that shadows this repository's `scripts/`, so it is excluded with
-an override (no matcher used here needs it; `ex-reid` never had it). gluefactory and LightGlue
+top-level `scripts` package that shadowed this repository's former `scripts/` folder, so it is
+excluded with an override (no matcher used here needs it; `ex-reid` never had it). gluefactory and LightGlue
 are not on PyPI and come from the git commits `ex-reid` used.
 Do not create or switch to another environment unless the user explicitly requests it.
 The only other repository environment is `wm-video` (explainer video tooling, see
@@ -521,8 +520,8 @@ policy, seen/unseen image and identity counts, and coverage are persisted in run
 metrics and reporting records. `embedding_retrieval: true` enables a separate,
 optional cosine diagnostic under `embedding_*`; it does not add an unknown class.
 
-The standalone `scripts/build_unseen_eval_metadata.py` creates an evaluation-only
-unseen-identity split without changing probe code, launchers, or reporting code.
+The standalone `wildmatch build-unseen-split` creates an evaluation-only
+unseen-identity split without changing probe or reporting code.
 It selects query identities absent from the source database identities, groups
 their images by the configured encounter/group columns, assigns the earliest
 ordered group to `database`, and assigns later groups to `query`. It must never
@@ -533,11 +532,11 @@ selection/exclusion reasons, path-overlap checks, duplicate-content hashes,
 missing files, and all split parameters. Missing/malformed columns or values,
 unreadable files, path overlap, duplicate content across generated sides, and
 identities that cannot produce both sides fail closed. Generated metadata is an
-external input to `train/probe.py`; archive it with the experiment and use
+external input to `wildmatch evaluate`; archive it with the experiment and use
 `dataset.split_col=unseen_eval_split`, `database_split_value=database`, and
 `query_split_value=query`. Its unique metadata path keeps caches and run
-identities separate from the source split. Existing launchers and probe scripts
-remain unchanged.
+identities separate from the source split. The sweep entry `czechlynx_unseen_eval` reads it
+from `CZECHLYNX_UNSEEN_EVAL_METADATA_FILE`.
 
 Linear-probe training uses identity-weighted cross-entropy by default. Weights
 are computed from database/training labels only, in deterministic label-index
@@ -664,6 +663,21 @@ reference; two controls (arrays 524178 and 524179) showed that run 2 is bit-iden
 reference's H100-extracted cache (see "Known issues", GPU-dependent Vismatch features). **Phase 1
 parity holds.** Later phases compare against run 2 on `rtx4090_batch`; details in
 `notes/parity_reference.md`.
+**Phase 3 (CLI, sweeps, layout), 2026-10-04.** One `wildmatch` command (`src/wildmatch/cli.py`);
+`wildmatch sweep` replaces both bash launchers (see "Sweeps"); `train/` wrappers, `probe.sh` and
+`finetune.sh` are gone (`slurm/evaluate.sbatch`, `slurm/finetune_backbone.sbatch` call the CLI);
+the core tools moved into the package (`summarize_runs`, `export_tables` (was
+`export_paper_tables`), `export_figures` (was `plot_paper_figures`), `class_balance`,
+`data/image_quality`, `data/unseen_split`, `data/prepare/jaguar`), the manifest and log helpers
+into `wildmatch.sweep`, and the paper and page tooling into `paper/` (no `scripts/` folder is
+left). Provenance strings written by these tools now name the new commands (`Creator` of the
+figure PDFs, `generator` of the class-balance and audit manifests, the Jaguar metadata
+manifests); committed page exports under `docs/` still say `scripts/...` until they are
+regenerated. Checked the same day: task tables, manifest task records, checkpoint SHA-256s and
+per-task Hydra overrides equal the launchers' for the parity, Jaguar and CzechLynx joint grids;
+`wildmatch tables` writes the 84 table files byte-identical to `paper-v1` from the main
+checkout's runs, and `wildmatch figures` the 72 figure files with pixel-identical PNGs (PDFs
+differ only in `Creator` and timestamp). Parity run 4 (the `parity` sweep) is pending.
 
 ## Known issues (open)
 
@@ -702,15 +716,15 @@ reproduction, and the measured impact so it can be picked up without re-investig
   triggered today because the base dataset yields PIL images, but it would silently blacken
   inputs if a transform were ever applied before the view.
 
-- **Wildlife launcher defaults point at renamed checkpoint folders (found 2026-10-03).**
-  Profiles without explicit layout fields default to `<animal>/{loma,rdd}-finetuned/legacy/`
-  and the newer ones name `legacy` explicitly, but several directories were renamed to
+- **Registry checkpoint defaults point at renamed checkpoint folders (found 2026-10-03).**
+  The registry keeps the wildlife launchers' defaults, `<animal>/{loma,rdd}-finetuned/legacy/`,
+  but several directories were renamed to
   `legacy-loma-mined/` or `legacy-rdd-mined/`. Default `epoch_299` paths are missing for
   ZindiTurtleRecall (LoMa, RDD), WhaleSharkID (LoMa), BelugaID (LoMa, RDD), LeopardID2022
   (LoMa, RDD) and HyenaID2022 (LoMa, RDD); ATRW, CowDataset and StripeSpotter have no
-  checkpoints. The launcher validates paths before submission, so this cannot produce wrong
-  results, but fine-tuned rows for those profiles need `LOMA_CUSTOM_CHECKPOINT_PATH` or
-  `RDD_CUSTOM_CHECKPOINT_PATH` until the profile fields are updated. NyalaData's `legacy`
+  checkpoints. A sweep validates paths before submission, so this cannot produce wrong
+  results, but fine-tuned rows for those datasets need `dataset_overrides` (or `checkpoint_path`)
+  until the registry entries are updated (Phase 4, located by the runs' SHA-256). NyalaData's `legacy`
   path exists but holds the file that overwrote the paper checkpoint on 2026-09-09 (see
   "Paper figures from confirmed examples").
 
@@ -851,7 +865,8 @@ or line style), because the paper notes found no safe fourth hue.
 
 **Page components.** Each data-driven part of the page has one exporter, a committed
 output, one JavaScript module under `docs/assets/js/` (mounted by `page.js` wherever its
-`#wm-*` element exists) and one test. Build history, selection decisions and measured
+`#wm-*` element exists) and one test. The exporters live in `paper/page/` (since 2026-10-04;
+run them as `python paper/page/<name>.py`). Build history, selection decisions and measured
 results: `notes/history.md`, "Project page: build history".
 
 | Component | Exporter (GPU if noted) | Output | Test |
@@ -1022,8 +1037,8 @@ applied at load time.
   device/inode/size/mtime so the safety-check, dataset-digest, and Vismatch cache-key paths
   share them despite constructing paths differently.
 - Split safety checks are intentionally disabled in the shipped `src/wildmatch/conf/probe.yaml`
-  (`safety_checks.enabled: false`), a user decision confirmed on 2026-09-23. Parallel
-  launchers inherit it through the copied config, so their runs skip path-overlap and
+  (`safety_checks.enabled: false`), a user decision confirmed on 2026-09-23. Sweeps
+  inherit it through the copied config, so their runs skip path-overlap and
   SHA-256 duplicate-content checks; `test_hydra_config` pins the `false` default. Do not
   re-enable it silently. When checks are off, verify split leakage separately (for
   example with a single `safety_checks.enabled=true` run) before publishing a new dataset
@@ -1077,28 +1092,34 @@ runs did not persist `scores.npz`.
 
 ## Immutable parallel probe submissions
 
-The selected dataset launcher creates a submission directory under `logs/parallel_run/submissions/<submission_id>/` containing the copied Hydra config (`probe.yaml`), task table (`tasks.tsv`), and JSON manifest (`manifest.json`). The manifest is passed to Slurm with `--export=ALL,PROBE_PARALLEL_MANIFEST=...`; array tasks must read it rather than rereading `src/wildmatch/conf/probe.yaml`, shell checkpoint variables, or mutable dataset settings.
+`wildmatch sweep` (any mode but `--list-tasks`) creates a submission directory under
+`logs/parallel_run/submissions/<submission_id>/` containing the copied Hydra config (`probe.yaml`
+plus its `paths/` and `dataset/` groups), the sweep spec copy (`sweep.yaml`), the task table
+(`tasks.tsv`, the launchers' pipe format) and the JSON manifest (`manifest.json`, schema 1,
+unchanged; it adds `sweep_spec_path`, `sweep_spec_sha256` and `paths_profile` in place of the
+launcher path and hash). The manifest is passed to Slurm with
+`--export=ALL,WILDMATCH_SWEEP_MANIFEST=...`; array tasks read it rather than the live
+`src/wildmatch/conf/`, the spec or mutable dataset settings. Every checkpoint is validated and
+hashed before anything is written, so a failing sweep leaves no partial submission.
 **Config-snapshot bug (found 2026-10-04, fixed on this branch).** The launchers passed the frozen
 `probe.yaml` with `--config-dir`, but Hydra then keeps the entry point's own config directory as
 the primary source, so every array task actually read the live repository `probe.yaml` at run
 time and the snapshot was ignored (verified on `paper-v1` code too). Results stay truthful, since
 each run's `config.snapshot.yaml` records the configuration it really used; only the promised
-isolation from later edits did not hold. The launchers and `scripts/eval_loma_epoch_curve.sh` now
-pass `--config-path`, which replaces the primary config location;
-`test_frozen_config_snapshot_wins_with_config_path` pins both behaviours. `main` still has the bug.
+isolation from later edits did not hold. Sweep tasks and `slurm/eval_loma_epoch_curve.sh` pass
+`--config-path`, which replaces the primary config location;
+`test_frozen_config_snapshot_wins_with_config_path` pins both behaviours. `main` was fixed the
+same way in `d676d40`.
 
-Dataset profiles explicitly pair dataset/animal settings with expected custom-checkpoint owners. Submission-time SHA-256 hashes and owner declarations are validated before model loading or cache writing. A missing, changed, or mismatched checkpoint/config fails closed and cancels only the current array element. The active benchmark grid and `probe.sh` contract remain unchanged. Use the selected launcher with `--list-tasks` or `--dry-run` for inspection, and never alter submitted manifests, copied configs, or checkpoint inputs.
-Exactly one `DATASET_PROFILES` entry must be active. The wildlife launcher includes
-templates for NyalaData, WhaleSharkID, BelugaID, ZindiTurtleRecall, ATRW, Giraffes,
-LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset, StripeSpotter, and
-SeaStarReID2023, plus a commented SalamanderID2025 profile; the current active entry
-is the uncommented row in the file. The
-added profiles use official pre-masked metadata and profile-specific checkpoint
-layout/epoch fields; the newer WildlifeReID-10k profiles name `legacy/epoch_299/model.safetensors`
-for both LoMa and RDD, which no longer exists for several animals (see "Known issues"). The launcher derives default LoMa and RDD checkpoint
-paths from the active profile and fails before task generation when zero or multiple
-profiles are active. Explicit checkpoint overrides remain supported but must belong
-to the active animal; `animal_name`, when supplied, must match it.
+Submission-time SHA-256 hashes and owner declarations are validated again by each task before
+model loading or cache writing. A missing, changed, or mismatched checkpoint/config fails
+closed and cancels only the current array element. Use `--list-tasks` or `--dry-run` for
+inspection, and never alter submitted manifests, copied configs, or checkpoint inputs.
+The registry holds every former launcher profile (NyalaData, WhaleSharkID, BelugaID,
+ZindiTurtleRecall, ATRW, Giraffes, LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset,
+StripeSpotter, SeaStarReID2023, SalamanderID2025, JaguarReID and the three CzechLynx splits);
+the newer WildlifeReID-10k entries name `legacy/epoch_299/model.safetensors` for both LoMa and
+RDD, which no longer exists for several animals (see "Known issues").
 
 ### SalamanderID2025
 
@@ -1107,7 +1128,7 @@ SalamanderID2025 (added 2026-09-29) is not part of WildlifeReID-10k: 1,384 image
 (repository symlink `dataset/czechlynx/SalamanderID2025`), with a time-closed
 `split` column of `database` (1,138) / `query` (246) values; every query identity is
 in the database and 372 database identities are singletons. Backgrounds were removed
-with `scripts/segment_with_sam3.py` (SAM3, prompt "Salamander", all detected instances
+with `paper/tools/segment_with_sam3.py` (SAM3, prompt "Salamander", all detected instances
 merged because an occluding finger splits one animal into several instances; one image,
 `query/images/9d1fc96e28c0058e_1277.jpg`, needed a reviewed 0.10 threshold). The script
 writes `masked_images/`, `masks.csv` (COCO-RLE and SAM3 quality fields) and
@@ -1135,7 +1156,7 @@ channel, but the RGB channels keep the original background, and the shared loade
 images with OpenCV's default flag (alpha dropped), so the files cannot be used directly.
 The files carry no capture time.
 
-`scripts/prepare_jaguar_metadata.py` (CPU) has three steps, all writing into the dataset
+`python -m wildmatch.data.prepare.jaguar` (CPU) has three steps, all writing into the dataset
 root. `prepare` writes `masked_images/<filename>` (RGB times alpha, black background) and
 `jaguar_reid_base.csv` (`image_id`, `identity`, masked `path`, `original_path`, COCO-RLE
 `mask` from alpha, 256-bit difference hash `dhash`, `masked_sha256`) with
@@ -1186,11 +1207,11 @@ results (2026-10-04, k=10, shortlist ceiling 68.4 %): cosine 45.2 / 60.0 Top-1 /
 (balanced Top-1 41.5), WildFusion 60.4 / 65.3 (57.8), default LoMa 61.8 / 66.9 (58.9),
 default RDD-LightGlue 60.0 / 66.1 (56.4). Shortlist ceilings from cosine: 81.5 % at k=50,
 87.1 % at k=100, 91.8 % at k=250, 95.3 % at k=500, 100 % at k=1000. The full k grid and the
-linear probes have not been run yet. The wildlife launcher carries the `jaguar` profile; no
-fine-tuned matchers exist yet, so only default rows can run until `lynx-finetuning` gets a
+linear probes have not been run yet. The registry entry `jaguar` (sweep `jaguar_default`) runs
+it; no fine-tuned matchers exist yet, so only default rows can run until `lynx-finetuning` gets a
 Jaguar config (shared recipe, both matchers on LoMa-mined pairs, checkpoints under
 `wildlife-reid-10k/JaguarReID/{loma,rdd}-finetuned/legacy-loma-mined/`, the paths the
-profile expects). The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
+registry expects). The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
 dataset. The image-quality audit (2026-10-03, RLE mask foreground) flagged 80 of 1,895
 photos by heuristics; none has been checked by eye.
 **Kaggle submission workflow deleted (user decision 2026-10-04).** The former standalone

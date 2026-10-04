@@ -7,6 +7,23 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): refactor Phase 3, CLI, sweeps and layout. One `wildmatch` command
+  (`[project.scripts]`, `python -m wildmatch`) with `evaluate`, `finetune-backbone`, `sweep`,
+  `sweep-task`, `summarize-runs`, `summarize-logs`, `tables`, `figures`, `build-unseen-split`,
+  `class-balance` and `audit`. `wildmatch sweep <spec> --list-tasks|--dry-run|--submit|--local`
+  (`src/wildmatch/sweep/`) replaces `probe-parallel-wildlife.sh` and `probe-parallel-czechlynx.sh`:
+  YAML specs (packaged `parity`, `jaguar_default`, `czechlynx_joint`, `example`) over registry
+  datasets, the launchers' rules in Python, immutable submissions (schema unchanged, plus the
+  spec copy and `paths_profile`), `slurm/sweep_task.sbatch` for array elements, per-task logs now
+  always under a split folder. Registry checkpoints are keyed by checkpoint label
+  (`custom`, `descriptor-fine-tuned`, `joint-fine-tuned`; CzechLynx closed gains the launcher's
+  descriptor and joint defaults). Moved: core tools into the package, paper and page tooling to
+  `paper/{page,figures,tools}/`, Slurm wrappers to `slurm/`; removed `train/`, `scripts/`,
+  `probe.sh`, `finetune.sh` and the manifest/log helper scripts. Provenance strings name the new
+  commands. Tests: `tests/test_sweep.py` replaces the launcher, manifest and log tests; the
+  registry test pins the launcher profiles as a literal. Verified: identical task tables,
+  manifest records, checkpoint hashes and Hydra overrides against the launchers; byte-identical
+  tables and pixel-identical figures from the main checkout's runs; 368 tests pass.
 - 2026-10-04 (branch): Phase 2 parity verified. Parity run 3 (array 524188, `paths=gmum
   dataset=salamander`, frozen config groups) is bit-identical to run 2 for all seven Salamander
   pairs, and every feature lookup hit the existing cache, so the cache keys are unchanged.

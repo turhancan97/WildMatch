@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover - Pillow is part of the shared environme
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-from scripts import build_demo_cards as cards  # noqa: E402
+from paper.page import build_demo_cards as cards  # noqa: E402
 
 
 @unittest.skipIf(Image is None, "Pillow is required")

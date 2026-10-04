@@ -1,4 +1,4 @@
-"""Tests for the GPU-free parts of scripts/export_mined_pairs_demo.py."""
+"""Tests for the GPU-free parts of paper/page/export_mined_pairs_demo.py."""
 
 import importlib.util
 import json
@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_mined_pairs_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_mined_pairs_demo.py"
 
 
 def _load():

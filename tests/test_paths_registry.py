@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -18,7 +17,6 @@ from wildmatch.data import registry as R
 from wildmatch.entrypoints import apply_paths_profile
 
 ROOT = Path(__file__).resolve().parents[1]
-LAUNCHERS = (ROOT / "probe-parallel-wildlife.sh", ROOT / "probe-parallel-czechlynx.sh")
 GMUM_DATA = "/shared/sets/datasets/vision/czechlynx"
 GMUM_CACHE = "/shared/results/common/kargin/lynx/results"
 
@@ -158,17 +156,45 @@ PROFILES_BEFORE_REGISTRY = {'paper': [{'key': 'nyala',
                      'mask_col': None}]}
 
 
-def _launcher_rows():
-    rows = {}
-    for launcher in LAUNCHERS:
-        text = launcher.read_text(encoding="utf-8")
-        block = re.search(r"^DATASET_PROFILES=\(\n(.*?)^\)", text, flags=re.M | re.S).group(1)
-        for line in block.splitlines():
-            match = re.match(r'^\s*#?\s*"([a-z0-9_]+\|.*)"\s*$', line)
-            if match:
-                fields = match.group(1).split("|")
-                rows.setdefault(fields[0], (launcher.name, fields))
-    return rows
+# The dataset profiles of the bash launchers removed on 2026-10-04 (probe-parallel-wildlife.sh and
+# probe-parallel-czechlynx.sh at d295f41): name|animal|root|metadata|label|mask|no_background|
+# image_variant|split|database|query|calibration. The registry must keep these values.
+LAUNCHER_PROFILES = {
+    "atrw": "WildlifeReID-10k|ATRW|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_ATRW.csv|identity|mask|false|no_background|split|train|test|100",
+    "beluga": "WildlifeReID-10k|BelugaID|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_no_background/metadata_BelugaID.csv|identity|mask|false|no_background|split|train|test|100",
+    "cowdataset": "WildlifeReID-10k|CowDataset|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_CowDataset.csv|identity|mask|false|no_background|split|train|test|100",
+    "czechlynx_closed": "CzechLynx_v2|CzechLynx|/shared/sets/datasets/vision/czechlynx/CzechLynx_v2|CzechLynxDataset-Metadata-Real.csv|unique_name|mask|true|no_background|split-time_closed|train|test|100",
+    "czechlynx_open": "CzechLynx_v2|CzechLynx|/shared/sets/datasets/vision/czechlynx/CzechLynx_v2|CzechLynxDataset-Metadata-Real.csv|unique_name|mask|true|no_background|split-time_open|train|test|100",
+    "czechlynx_unseen_eval": "CzechLynx_v2|CzechLynx|/shared/sets/datasets/vision/czechlynx/CzechLynx_v2|${CZECHLYNX_UNSEEN_EVAL_METADATA_FILE}|unique_name|mask|true|no_background|unseen_eval_split|database|query|100",
+    "giraffes": "WildlifeReID-10k|Giraffes|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_Giraffes.csv|identity|mask|false|no_background|split|train|test|100",
+    "giraffezebraid": "WildlifeReID-10k|GiraffeZebraID|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_GiraffeZebraID.csv|identity|mask|false|no_background|split|train|test|100",
+    "hyenaid2022": "WildlifeReID-10k|HyenaID2022|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_HyenaID2022.csv|identity|mask|false|no_background|split|train|test|100",
+    "jaguar": "JaguarReID|JaguarReID|/shared/sets/datasets/vision/czechlynx/jaguar|jaguar_reid_v2_no_background.csv|identity|mask|false|no_background|split_v2|database|query|100",
+    "leopardid2022": "WildlifeReID-10k|LeopardID2022|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_LeopardID2022.csv|identity|mask|false|no_background|split|train|test|100",
+    "nyala": "WildlifeReID-10k|NyalaData|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_no_background/metadata_NyalaData.csv|identity|mask|false|no_background|split|train|test|100",
+    "salamander": "SalamanderID2025|SalamanderID2025|/shared/sets/datasets/vision/czechlynx/SalamanderID2025|split_time_closed_no_background.csv|identity|mask|false|no_background|split|database|query|100",
+    "seastarreid2023": "WildlifeReID-10k|SeaStarReID2023|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_SeaStarReID2023.csv|identity|mask|false|no_background|split|train|test|100",
+    "stripespotter": "WildlifeReID-10k|StripeSpotter|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_mdsplit_no_background/metadata_StripeSpotter.csv|identity|mask|false|no_background|split|train|test|100",
+    "whaleshark": "WildlifeReID-10k|WhaleSharkID|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_no_background/metadata_WhaleSharkID.csv|identity|mask|false|no_background|split|train|test|100",
+    "zindi": "WildlifeReID-10k|ZindiTurtleRecall|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_no_background/metadata_ZindiTurtleRecall.csv|identity|mask|false|no_background|split|train|test|100",
+}
+# WildlifeReID-10k launcher checkpoint folders (LoMa, RDD) under <animal>/{loma,rdd}-finetuned/.
+LAUNCHER_CHECKPOINT_DIRS = {
+    "atrw": ('legacy', 'legacy'),
+    "beluga": ('legacy', 'legacy'),
+    "cowdataset": ('legacy', 'legacy'),
+    "giraffes": ('legacy', 'legacy'),
+    "giraffezebraid": ('legacy', 'legacy'),
+    "hyenaid2022": ('legacy', 'legacy'),
+    "jaguar": ('legacy-loma-mined', 'legacy-loma-mined'),
+    "leopardid2022": ('legacy', 'legacy'),
+    "nyala": ('legacy', 'legacy'),
+    "salamander": ('legacy-loma-mined', 'legacy-rdd-mined'),
+    "seastarreid2023": ('legacy', 'legacy'),
+    "stripespotter": ('legacy', 'legacy'),
+    "whaleshark": ('legacy', 'legacy'),
+    "zindi": ('legacy', 'legacy'),
+}
 
 
 class PathProfileTests(unittest.TestCase):
@@ -214,29 +240,48 @@ class PathProfileTests(unittest.TestCase):
 
 class RegistryTests(unittest.TestCase):
     def test_registry_covers_every_launcher_profile_with_identical_values(self):
-        rows = _launcher_rows()
-        self.assertEqual(sorted(rows), R.dataset_keys())
+        self.assertEqual(sorted(LAUNCHER_PROFILES), R.dataset_keys())
         fields = ("name", "animal", "root", "metadata_file", "label_col", "mask_col", "no_background",
                   "image_variant", "split_col", "database_split_value", "query_split_value", "calibration_size")
-        for key, (launcher, row) in rows.items():
+        for key, line in LAUNCHER_PROFILES.items():
             entry = R.load_dataset(key, "gmum")
-            for index, field in enumerate(fields, start=1):
+            for field, expected in zip(fields, line.split("|")):
                 if key == "czechlynx_unseen_eval" and field == "metadata_file":
-                    continue  # the launcher takes it from CZECHLYNX_UNSEEN_EVAL_METADATA_FILE
-                expected = row[index]
+                    continue  # the launcher took it from CZECHLYNX_UNSEEN_EVAL_METADATA_FILE
                 actual = entry[field]
                 if isinstance(actual, bool):
                     expected = expected == "true"
                 elif isinstance(actual, int):
                     expected = int(expected)
-                self.assertEqual(actual, expected, f"{key}.{field} ({launcher})")
+                self.assertEqual(actual, expected, f"{key}.{field}")
             self.assertEqual(entry.registry.key, key)
-            if launcher == "probe-parallel-wildlife.sh":
-                loma_dir = row[13] if len(row) > 13 and row[13] else "legacy"
-                rdd_dir = row[14] if len(row) > 14 and row[14] else "legacy"
+            if key in LAUNCHER_CHECKPOINT_DIRS:
+                loma_dir, rdd_dir = LAUNCHER_CHECKPOINT_DIRS[key]
                 base = f"{GMUM_DATA}/checkpoints/wildlife-reid-10k/{entry.animal}"
-                self.assertEqual(entry.registry.checkpoints.loma, f"{base}/loma-finetuned/{loma_dir}/epoch_299/model.safetensors")
-                self.assertEqual(entry.registry.checkpoints["rdd-lightglue"], f"{base}/rdd-finetuned/{rdd_dir}/epoch_299/model.safetensors")
+                custom = entry.registry.checkpoints.custom
+                self.assertEqual(custom.loma, f"{base}/loma-finetuned/{loma_dir}/epoch_299/model.safetensors")
+                self.assertEqual(custom["rdd-lightglue"], f"{base}/rdd-finetuned/{rdd_dir}/epoch_299/model.safetensors")
+
+    def test_czechlynx_checkpoints_match_the_launcher_defaults(self):
+        closed = f"{GMUM_DATA}/checkpoints/czechlynx-time-closed"
+        open_ = f"{GMUM_DATA}/checkpoints/czechlynx-time-open"
+        expected = {
+            "czechlynx_closed": {
+                "custom": {"loma": f"{closed}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                           "rdd-lightglue": f"{closed}/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"},
+                "descriptor-fine-tuned": {
+                    "loma": f"{closed}/loma-b-descriptor-finetuned-legacy/epoch_252/model.safetensors",
+                    "rdd-lightglue": f"{closed}/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors"},
+                "joint-fine-tuned": {
+                    "loma": f"{closed}/loma-b-joint-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                    "rdd-lightglue": f"{closed}/rdd-joint-finetuned-loma-mined-legacy/epoch_299"},
+            },
+        }
+        for key in ("czechlynx_open", "czechlynx_unseen_eval"):
+            expected[key] = {"custom": {"loma": f"{open_}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                                        "rdd-lightglue": f"{open_}/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"}}
+        for key, checkpoints in expected.items():
+            self.assertEqual(OmegaConf.to_container(R.load_dataset(key, "gmum").registry.checkpoints), checkpoints, key)
 
     def test_profiles_under_gmum_are_unchanged(self):
         code = ("import json\nfrom wildmatch.reporting.paper_datasets import PAPER_PROFILES, BENCHMARK_ONLY_PROFILES\n"
@@ -262,18 +307,15 @@ class RegistryTests(unittest.TestCase):
 
 class SubmissionSnapshotTests(unittest.TestCase):
     def test_snapshot_freezes_the_config_groups(self):
-        sys.path.insert(0, str(ROOT / "scripts"))
-        try:
-            import probe_parallel_manifest as M
-        finally:
-            sys.path.pop(0)
+        from wildmatch.sweep import manifest as M
+
         with tempfile.TemporaryDirectory() as tmp:
             custom = Path(tmp, "custom")
             custom.mkdir()
             (custom / "probe.yaml").write_text((ROOT / "src/wildmatch/conf/probe.yaml").read_text(encoding="utf-8"))
             snapshot = Path(tmp, "snapshot")
             snapshot.mkdir()
-            M._snapshot_config_groups(custom / "probe.yaml", ROOT, snapshot)  # groups come from the package
+            M._snapshot_config_groups(custom / "probe.yaml", snapshot)  # groups come from the package
             (snapshot / "probe.yaml").write_text((custom / "probe.yaml").read_text())
             self.assertEqual(sorted(p.name for p in (snapshot / "dataset").glob("*.yaml")),
                              [f"{k}.yaml" for k in R.dataset_keys()])

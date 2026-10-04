@@ -1,0 +1,40 @@
+# Every option of a sweep spec, with comments. Copy this file, edit it and run
+#   wildmatch sweep path/to/copy.yaml --list-tasks     # inspect, writes nothing
+#   wildmatch sweep path/to/copy.yaml --local          # run here, one task after another
+#   wildmatch sweep path/to/copy.yaml --submit         # Slurm array (slurm/sweep_task.sbatch)
+description: Annotated example (SalamanderID2025)
+
+# Registry keys (conf/dataset/<key>.yaml); one or more. Tasks nest datasets > budgets > variants.
+datasets: [salamander]
+
+# Candidate budgets k (the shortlist size every method shares). Classifier probes ignore k
+# and run once, at the first value.
+candidate_k: [50, 250]
+
+# Slurm array throttle (%N); `--max-concurrent` overrides it.
+max_concurrent: 12
+
+variants:
+  # Full-gallery and shortlist baselines.
+  - {method: cosine}
+  - {method: wildfusion}
+  # Vismatch matchers with their default weights.
+  - {method: vismatch, matcher: loma}
+  - {method: vismatch, matcher: rdd-lightglue}
+  # Fine-tuned matcher only (label `custom`; path from registry.checkpoints.custom.<matcher>).
+  - {method: vismatch, matcher: loma, checkpoint: custom}
+  # Other checkpoint labels: descriptor-fine-tuned (descriptor only) and joint-fine-tuned
+  # (descriptor + matcher); both need a registry entry or an explicit checkpoint_path:
+  # - {method: vismatch, matcher: loma, checkpoint: descriptor-fine-tuned, checkpoint_path: /abs/model.safetensors}
+  # Classifier probes: train_mode classifier (frozen backbone), partial or all; class_weighting
+  # weighted (inverse frequency) or unweighted.
+  - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
+  # - {method: efficient_probe, train_mode: classifier, class_weighting: weighted}
+
+# Optional per-dataset settings.
+# dataset_overrides:
+#   salamander:
+#     checkpoints:                      # replaces registry paths, per label and matcher
+#       custom: {loma: /abs/path/epoch_299/model.safetensors}
+#     checkpoint_owner: SalamanderID2025  # owner of descriptor-fine-tuned checkpoints (cross-species tests)
+#     evaluation_animal: SalamanderID2025

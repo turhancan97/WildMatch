@@ -1,4 +1,4 @@
-"""Tests for the CPU-only scripts/export_masking_demo.py."""
+"""Tests for the CPU-only paper/page/export_masking_demo.py."""
 
 import pytest
 import csv
@@ -17,7 +17,7 @@ from PIL import Image
 from pycocotools import mask as mask_utils
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_masking_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_masking_demo.py"
 
 
 def _load():

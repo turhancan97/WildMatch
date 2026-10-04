@@ -814,12 +814,13 @@ Audited on 2026-08-17 and deliberately deferred; re-checked against the code on
 2026-10-03, when all five were still present. Each entry records the symptom, a
 reproduction, and the measured impact so it can be picked up without re-investigation.
 
-- **Per-epoch image-level metrics dominate probe runtime.**
-  `_probe_retrieval_metrics` rebuilds the same `11924 x 27836` matrix and ranks it in full
-  every epoch: measured about 1 minute and 2.7 GB of transient allocation per epoch, so
-  roughly 50 minutes at the shipped `epochs: 50`. Previously invisible because both probes
-  crashed at epoch 1. Restrict the per-epoch call to identity-level metrics and compute the
-  `image_*` diagnostics once after training.
+- **Per-epoch image-level metrics dominated probe runtime (fixed on branch
+  `fix/probe-epoch-metrics`, 2026-10-04).** Every epoch, `run_linear_probe` and `run_efficient_probe`
+  rebuilt and ranked the full query x database matrix (about 1 minute and 2.7 GB per epoch on
+  CzechLynx; the Zindi probe of sweep 524372 took almost 2 hours) for metrics that only W&B logging
+  reads, which is off by default. Per-epoch retrieval metrics are now computed only when W&B is on,
+  and only at identity level; the reported metrics still come from the full call after training.
+  Pending: GPU check against parity run 4 (frozen weighted linear probe, SalamanderID2025, k=50).
 
 - **Probe per-epoch validation uses the query/test split.**
   `run_linear_probe` and `run_efficient_probe` build their `[*][val]` loader from

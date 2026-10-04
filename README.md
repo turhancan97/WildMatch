@@ -19,11 +19,10 @@ The code is organized into reusable modules under `reid/` and thin CLI entrypoin
 ```text
 .
 ├── conf/                 Hydra configs: probe.yaml, finetune.yaml
-├── config/               standalone Jaguar config (kaggle_jaguar.yaml)
 ├── models/               backbone factory, ViT CLS adapter, training objectives
 ├── reid/                 library code
 │   ├── data/             dataset views, COCO-RLE masking, split safety checks
-│   ├── engine/           finetune, probe and Jaguar runners
+│   ├── engine/           finetune and probe runners
 │   ├── evaluation/       metrics, stable ranking, candidate scoring
 │   ├── features/         feature containers
 │   ├── methods/          Vismatch (profiles, batching, checkpoints), WildFusion calibration
@@ -34,7 +33,7 @@ The code is organized into reusable modules under `reid/` and thin CLI entrypoin
 ├── scripts/              analysis, export and plotting tools (see below)
 ├── tests/                dependency-light unit tests
 ├── notebooks/            dataset annotation viewer (outputs stripped)
-├── probe.sh, finetune.sh, kaggle_jaguar_submit.sh      single-job Slurm wrappers
+├── probe.sh, finetune.sh      single-job Slurm wrappers
 ├── probe-parallel-czechlynx.sh, probe-parallel-wildlife.sh   Slurm array launchers
 ├── mkdocs.yml, docs/, overrides/   project page (MkDocs Material)
 ├── video/explainer/      explainer video sources (Manim + Kokoro, wm-video env)
@@ -45,7 +44,7 @@ The code is organized into reusable modules under `reid/` and thin CLI entrypoin
 
 Generated and ignored: `experiments/` (one directory per run), `reports/` (run index,
 paper tables, figures), `logs/` (Slurm and Hydra logs), `benchmark_runs/`,
-`kaggle_runs/`, `wandb/`, `site/` (page build) and `dataset/` (symlinks to the shared
+`wandb/`, `site/` (page build) and `dataset/` (symlinks to the shared
 datasets). `results/`, `cache/` and `visualizations/` appear only when old workflows run.
 
 ## Installation
@@ -145,7 +144,9 @@ The wildlife launcher includes ready-to-activate profiles for ATRW, Giraffes,
 LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset, StripeSpotter, and
 SeaStarReID2023 in addition to the existing WildlifeReID-10k animals. Activate
 exactly one profile at a time; each new profile expects the corresponding
-`legacy/epoch_299/model.safetensors` LoMa and RDD checkpoint paths.
+`legacy/epoch_299/model.safetensors` LoMa and RDD checkpoint paths; several of these
+folders have since been renamed (see AGENTS.md, "Known issues"). The launcher also carries
+commented SalamanderID2025 and JaguarReID profiles.
 
 The CzechLynx launcher contains separate `split-time_closed` and
 `split-time_open` profiles. The closed profile is active by default; uncomment
@@ -202,57 +203,11 @@ python scripts/summarize_logs.py --method vismatch --matcher loma --format csv
 Historical log files are not moved or rewritten; the descriptive layout applies to
 future parallel tasks.
 
-### Kaggle Jaguar Re-ID (new standalone pipeline)
+### Jaguar (JaguarReID)
 
-This repository now includes a dedicated competition pipeline that keeps the existing `train/finetune.py` and `train/probe.py` behavior unchanged:
-- finetune backbone with ArcFace
-- local validation (identity-balanced mAP on stratified train/val split)
-- Stage A retrieval (`cosine` or `wildfusion`)
-- optional Stage B Vismatch reranking
-- strict Kaggle submission validation and CSV export
-- optional PNG alpha-mask application (`alpha_mask.enabled`, default `true`)
-
-Config:
-- `config/kaggle_jaguar.yaml`
-
-Alpha-mask mode (Kaggle-only):
-- `alpha_mask.enabled: true` multiplies RGB with PNG alpha channel and caches masked RGB files.
-- Applies to both finetuning and inference stages.
-- Debug samples are saved under `<run_dir>/alpha_mask_debug/`.
-
-Submission mode:
-- `submission.mode: stage_a_plus_vismatch`: Stage A (`cosine` or `wildfusion`) + Stage B Vismatch reranking.
-- `submission.mode: stage_a_only`: skip Vismatch entirely and submit only Stage A scores.
-- Output files are mode-tagged, e.g. `submission_stage_a_only.csv` or `submission_stage_a_plus_vismatch.csv`.
-
-Vismatch fusion controls (Kaggle pipeline):
-- `submission.vismatch_fusion_mode`: `delta` (recommended), `blend`, or `replace`.
-- `submission.vismatch_fusion_alpha`: fusion strength used by `delta`/`blend` (for Jaguar, start around `0.08-0.10` and validate).
-- `submission.vismatch_min_stage_score`: only apply Vismatch fusion where Stage-A score is above threshold.
-- `submission.vismatch_fusion_symmetrize`: enforce symmetric all-vs-all similarity matrix before submission.
-
-Stage-A method:
-- `stage_a.method: cosine` uses finetuned backbone embeddings + cosine matrix.
-- `stage_a.method: wildfusion` runs calibrated WildFusion as Stage-A (`stage_a.wildfusion.*` settings).
-
-Run:
-
-```bash
-python scripts/kaggle_jaguar_submit.py --config config/kaggle_jaguar.yaml --data-dir /path/to/jaguar-re-id
-```
-
-Useful flags:
-
-```bash
-# quick debug
-python scripts/kaggle_jaguar_submit.py --config config/kaggle_jaguar.yaml --data-dir /path/to/jaguar-re-id --dry-run --pair-limit 2000
-
-# faster full-ish iteration
-python scripts/kaggle_jaguar_submit.py --config config/kaggle_jaguar.yaml --data-dir /path/to/jaguar-re-id --fast
-
-# skip finetune and use existing checkpoint
-python scripts/kaggle_jaguar_submit.py --config config/kaggle_jaguar.yaml --data-dir /path/to/jaguar-re-id --checkpoint /path/to/checkpoint.pth
-```
+The Kaggle Jaguar Re-ID training photos run through the shared probe pipeline as
+`JaguarReID`: prepare them once with `scripts/prepare_jaguar_metadata.py`, then activate the
+`jaguar` profile of `probe-parallel-wildlife.sh`. See AGENTS.md, "JaguarReID".
 
 ## Configuration Guide
 
@@ -263,8 +218,7 @@ syntax and values are type-converted by OmegaConf.
 
 Unknown keys and misspelled paths fail immediately. The old `--config`, `--method`,
 `--dataset-root`, and related argparse flags are no longer supported for these two
-entrypoints. The Jaguar submission script intentionally keeps its separate
-argparse plus `config/kaggle_jaguar.yaml` workflow.
+entrypoints.
 
 Hydra is configured not to change the working directory or replace project-managed
 artifact paths. Probe and finetune continue writing their normal run directories and
@@ -850,6 +804,7 @@ Data preparation:
 
 - `scripts/build_unseen_eval_metadata.py`: unseen-identity gallery/query split.
 - `scripts/segment_with_sam3.py`: SAM 3 background removal and pre-masked metadata (`lynx-app` env, A100/H100).
+- `scripts/prepare_jaguar_metadata.py`: brings the Kaggle Jaguar training data into the shared format (`JaguarReID`: `prepare` writes masked images and RLE masks, `embed` DINOv2 embeddings, `split` the burst-aware `split_v2` database/query split).
 
 Run and log inspection:
 

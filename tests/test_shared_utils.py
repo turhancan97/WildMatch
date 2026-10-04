@@ -96,7 +96,6 @@ class ConfigurationTests(unittest.TestCase):
         for relative_path in (
             "conf/finetune.yaml",
             "conf/probe.yaml",
-            "config/kaggle_jaguar.yaml",
         ):
             text = (root / relative_path).read_text(encoding="utf-8")
             match = re.search(r'(?m)^  type:\s*"([^"]+)"', text)
@@ -305,14 +304,8 @@ class VismatchProfileTests(unittest.TestCase):
         self.assertRegex(probe, r'(?m)^  method: "(?:vismatch|wildfusion)"')
         self.assertIn('    vismatch:', probe)
         self.assertNotIn('    rdd:', probe)
-        jaguar = (root / "config/kaggle_jaguar.yaml").read_text(encoding="utf-8")
         self.assertIn('      local_top_k: 512', probe)
-        self.assertIn('    local_top_k: 512', jaguar)
-        self.assertIn('vismatch:', jaguar)
         self.assertIn('loma', probe)
-        self.assertIn('loma', jaguar)
-        self.assertIn('stage_a_plus_vismatch', jaguar)
-        self.assertNotIn('stage_a_plus_rdd', jaguar)
     def test_image_variant_cache_identity_is_explicit_and_stable(self):
         from reid.utils.cache_identity import build_dataset_cache_identity, validate_image_variant
 

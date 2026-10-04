@@ -7,6 +7,62 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: standalone Kaggle Jaguar submission workflow deleted (user decision):
+  `reid/engine/kaggle_jaguar_runner.py`, `scripts/kaggle_jaguar_submit.py`,
+  `config/kaggle_jaguar.yaml` (the `config/` folder is gone with it) and
+  `kaggle_jaguar_submit.sh`, plus its outputs: `kaggle_runs/` (14 runs, 161 MB), the 10 GB
+  alpha-masked cache in the dataset's `cache/` folder and an empty results folder. Nothing in
+  JaguarReID depended on it (checked: no imports, paths or data shared). Tests: the Jaguar
+  config/entry-point test was removed and two config checks no longer read the Jaguar YAML.
+  README replaces the Kaggle section with a JaguarReID pointer; AGENTS.md, `.gitignore`
+  (`/kaggle_runs/`) and the preparation script's docstring no longer refer to it.
+- 2026-10-04: JaguarReID keeps only the burst-aware split (user decision); the first,
+  hash-only split was removed from the code. `scripts/prepare_jaguar_metadata.py` now has
+  three steps: `prepare` (masked images and a split-free `jaguar_reid_base.csv` with
+  masks, hashes and image SHA-256), `embed` (DINOv2-small embeddings) and `split` (the
+  burst-aware split, `jaguar_reid_v2_no_background.csv`, column `split_v2`). The `review`
+  step, the hash-only grouping and the `resplit` step that read the first split's CSV are
+  gone; tests were rewritten for the new flow. The split file was regenerated from the new
+  base table and is byte-identical to the one the existing `split_v2` runs used; the `v2`
+  names stay so those runs keep their provenance. AGENTS.md describes only this split.
+  First-split data deleted with the user's approval: its metadata and manifest in the
+  dataset folder, the six runs under `experiments/probe/JaguarReID/JaguarReID/split/`, their
+  task logs (`job-524007`; `logs/index.csv` rebuilt with `summarize_logs.py --write-index`,
+  exactly those six rows removed) and `reports/jaguar_reid/`. `reports/runs.csv` keeps six
+  stale rows for the deleted runs (no rebuild tool; not edited by hand).
+- 2026-10-04: JaguarReID split version 2 (burst-aware). `scripts/prepare_jaguar_metadata.py`
+  gains `embed` (DINOv2-small embeddings of the masked images, CPU) and `resplit` (joins
+  same-jaguar photos by hash distance <= 32, adjacent files with cosine >= 0.85, or cosine
+  >= 0.95 anywhere; reads the version-1 CSV, rewrites no image). Output
+  `jaguar_reid_v2_no_background.csv` with split column `split_v2`, so version-2 runs land
+  under `split_v2/` apart from the leaking version-1 runs. 1,408 database / 487 query
+  photos, 31 jaguars on both sides, no burst pair across sides, safety checks pass.
+  MegaDescriptor-L cosine Top-1 drops from 0.80 (version 1) to 0.45, the measure of the
+  removed leak. The launcher's `jaguar` profile, `BENCHMARK_ONLY_PROFILES`, class balance
+  and the audit now use version 2; version 1 and its runs are kept for provenance. Tests
+  cover burst linking, embedding validation, `resplit` and the real version-2 files.
+- 2026-10-03: first JaguarReID baselines (cosine, WildFusion, default LoMa and RDD-LightGlue
+  at k=10; two weighted linear probes still running) show that the near-duplicate split
+  still leaks burst frames beyond hash distance 32: Top-1 is near 1.00 for queries with a
+  same-jaguar database twin at distance 33-48 and 0.64 (cosine) beyond 64. Recorded as an
+  open problem in AGENTS.md ("JaguarReID"); the numbers are not to be reported until the
+  split is rebuilt.
+- 2026-10-03: Kaggle Jaguar data brought into the shared dataset structure as `JaguarReID`
+  (steps 1 and 2 of the approved plan). New `scripts/prepare_jaguar_metadata.py` (CPU):
+  `review` writes near-duplicate contact sheets; `prepare --threshold 32` wrote
+  `masked_images/` (black background from the alpha channel, pixel-identical to the
+  Kaggle runner's inputs), `jaguar_reid_no_background.csv` and `jaguar_reid_manifest.json`
+  into the dataset root. Decision: a split that keeps near-duplicate groups of the same
+  jaguar on one side (about 11 % of photos have a burst twin; a random split would leak
+  them), about 25 % query per jaguar: 1,402 database / 493 query photos, 31 jaguars on both
+  sides, no twin pair within hash distance 32 across sides; safety checks pass. The wildlife
+  launcher has a commented `jaguar` profile (default matchers only until fine-tuned
+  checkpoints exist); `reid/reporting/paper_datasets.py` gains `BENCHMARK_ONLY_PROFILES`
+  and `ALL_PROFILES` so class balance and the image-quality audit cover Jaguar while
+  `PAPER_PROFILES` stays the paper's list (paper rows of both summaries unchanged). Tests:
+  `tests/test_prepare_jaguar_metadata.py` (synthetic RGBA data plus checks of the real
+  prepared metadata) and a Jaguar launcher-profile test. The Kaggle submission tool is
+  unchanged.
 - 2026-10-03: repository cleanup outside the project page (each item approved by the user).
   Scripts and configs: `probe.sh` now loads the existing LoMa checkpoint
   `loma-b-finetuned-loma-mined-legacy/epoch_299` (the old `loma-b-finetuned-trainval-4gpu`

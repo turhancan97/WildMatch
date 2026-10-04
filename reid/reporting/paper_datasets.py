@@ -1,7 +1,12 @@
-"""Dataset/split profiles reported in the paper.
+"""Dataset/split profiles reported in the paper, plus benchmark-only datasets.
 
 Mirrors the DATASET_PROFILES rows in probe-parallel-wildlife.sh and
-probe-parallel-czechlynx.sh. Keep both in sync when a paper split changes.
+probe-parallel-czechlynx.sh. Keep both in sync when a split changes.
+
+``PAPER_PROFILES`` is exactly the paper's datasets; the paper figures and the project
+page look profiles up there. ``BENCHMARK_ONLY_PROFILES`` holds datasets that run through
+the same pipeline but are not in the paper; dataset-level tools (class balance, image
+quality audit) iterate ``ALL_PROFILES``.
 """
 
 from __future__ import annotations
@@ -15,6 +20,9 @@ CZECHLYNX_METADATA = CZECHLYNX_ROOT / "CzechLynxDataset-Metadata-Real.csv"
 # Not part of WildlifeReID-10k: its own time-closed database/query split, with
 # backgrounds removed by scripts/segment_with_sam3.py (pre-masked images).
 SALAMANDER_ROOT = Path("/shared/sets/datasets/vision/czechlynx/SalamanderID2025")
+# Kaggle Jaguar Re-ID training images, prepared by scripts/prepare_jaguar_metadata.py
+# (black-background images from the alpha channel, burst-aware split in column split_v2).
+JAGUAR_ROOT = Path("/shared/sets/datasets/vision/czechlynx/jaguar")
 
 
 class PaperProfile(NamedTuple):
@@ -64,3 +72,13 @@ PAPER_PROFILES = [
     _czechlynx("lynx_closed", "Lynx (closed)", "split-time_closed"),
     _czechlynx("lynx_open", "Lynx (open)", "split-time_open"),
 ]
+
+BENCHMARK_ONLY_PROFILES = [
+    PaperProfile(
+        "jaguar", "Jaguar", "Kaggle Jaguar Re-ID",
+        JAGUAR_ROOT / "jaguar_reid_v2_no_background.csv", "identity", "split_v2", "database", "query",
+        "JaguarReID", "JaguarReID", JAGUAR_ROOT, None,
+    ),
+]
+
+ALL_PROFILES = PAPER_PROFILES + BENCHMARK_ONLY_PROFILES

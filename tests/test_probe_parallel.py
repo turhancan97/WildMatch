@@ -90,8 +90,8 @@ class ParallelProbeLauncherTests(unittest.TestCase):
                 script_text,
             )
 
-    def salamander_launcher(self, temp_root: Path) -> Path:
-        """Temporary launcher copy with only the Salamander profile active.
+    def salamander_launcher(self, temp_root: Path, profile_id: str = "salamander") -> Path:
+        """Temporary launcher copy with only one profile active (Salamander by default).
 
         The editable launcher's active profile, variants and k grid change from
         run to run, so the copy pins a small known grid instead.
@@ -99,7 +99,7 @@ class ParallelProbeLauncherTests(unittest.TestCase):
         text = SCRIPT.read_text(encoding="utf-8")
         profiles = re.search(r"^DATASET_PROFILES=\(\n.*?^\)", text, flags=re.M | re.S).group(0)
         pinned = re.sub(r'^    "', '    # "', profiles, flags=re.M)
-        pinned = pinned.replace('    # "salamander|', '    "salamander|', 1)
+        pinned = pinned.replace(f'    # "{profile_id}|', f'    "{profile_id}|', 1)
         text = text.replace(profiles, pinned, 1)
         text = re.sub(
             r"^VARIANTS=\(\n.*?^\)",
@@ -162,6 +162,54 @@ class ParallelProbeLauncherTests(unittest.TestCase):
             "dataset.database_split_value=database",
             "dataset.query_split_value=query",
             "checkpoint_components=matcher_only",
+        ):
+            self.assertIn(override, dry.stdout)
+
+    def test_jaguar_profile_template(self):
+        text = SCRIPT.read_text(encoding="utf-8")
+        # The row may be commented or active, depending on the last submission.
+        self.assertIn(
+            '"jaguar|JaguarReID|JaguarReID|/shared/sets/datasets/vision/czechlynx/jaguar|'
+            'jaguar_reid_v2_no_background.csv|identity|mask|false|no_background|split_v2|database|query|100|'
+            'legacy-loma-mined|legacy-loma-mined|299|299"',
+            text,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            launcher = self.salamander_launcher(temp_root, "jaguar")
+            loma = temp_root / "loma.safetensors"
+            rdd = temp_root / "rdd.safetensors"
+            loma.write_bytes(b"loma")
+            rdd.write_bytes(b"rdd")
+            env = {**os.environ, **self.checkpoint_env(loma, rdd)}
+            env.pop("SLURM_ARRAY_TASK_ID", None)
+            listed = subprocess.run(
+                ["bash", str(launcher), "--list-tasks"], cwd=temp_root, env=env,
+                text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(listed.returncode, 0, listed.stderr)
+            rows = [dict(item.split("=", 1) for item in line.split())
+                    for line in listed.stdout.splitlines() if line.startswith("index=")]
+            self.assertEqual(len(rows), 6)
+            self.assertEqual({(row["profile"], row["dataset"], row["evaluation_animal"]) for row in rows},
+                             {("jaguar", "JaguarReID", "JaguarReID")})
+            cosine = next(row for row in rows if row["method"] == "cosine")
+            dry = subprocess.run(
+                ["bash", str(launcher), "--dry-run"], cwd=temp_root,
+                env={**env, "SLURM_ARRAY_TASK_ID": cosine["index"], "PROBE_PARALLEL_DRY_RUN": "1"},
+                text=True, capture_output=True, check=False,
+            )
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        for override in (
+            "dataset.name=JaguarReID",
+            "dataset.animal=JaguarReID",
+            "dataset.root=/shared/sets/datasets/vision/czechlynx/jaguar",
+            "dataset.metadata_file=jaguar_reid_v2_no_background.csv",
+            "dataset.no_background=false",
+            "dataset.image_variant=no_background",
+            "dataset.split_col=split_v2",
+            "dataset.database_split_value=database",
+            "dataset.query_split_value=query",
         ):
             self.assertIn(override, dry.stdout)
 

@@ -35,7 +35,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from reid.data.dataset_view import BenchmarkDatasetView
-from reid.reporting.paper_datasets import PAPER_PROFILES, PaperProfile
+from reid.reporting.paper_datasets import ALL_PROFILES, PaperProfile
 from reid.utils.fingerprints import sha256_file
 
 ANALYSIS_LONG_SIDE = 512
@@ -318,7 +318,7 @@ def summary_row(profile: PaperProfile, table: pd.DataFrame) -> Dict[str, object]
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--dataset", action="append", choices=[p.key for p in PAPER_PROFILES], help="Dataset key; repeat for several (default: all)")
+    parser.add_argument("--dataset", action="append", choices=[p.key for p in ALL_PROFILES], help="Dataset key; repeat for several (default: all)")
     parser.add_argument("--output-dir", type=Path, default=Path("experiments/image-quality"))
     parser.add_argument("--experiment-root", type=Path, default=Path("experiments"))
     parser.add_argument("--workers", type=int, default=4)
@@ -329,8 +329,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    profiles = [p for p in PAPER_PROFILES if not args.dataset or p.key in args.dataset]
-    profiles_by_key = {p.key: p for p in PAPER_PROFILES}
+    profiles = [p for p in ALL_PROFILES if not args.dataset or p.key in args.dataset]
+    profiles_by_key = {p.key: p for p in ALL_PROFILES}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     sheets_dir = args.output_dir / "contact_sheets"
     sheets_dir.mkdir(exist_ok=True)
@@ -377,7 +377,7 @@ def main() -> None:
     sources_by_key.update(fresh_sources)
     summaries: List[Dict[str, object]] = []
     sources: List[Dict[str, object]] = []
-    for profile in PAPER_PROFILES:
+    for profile in ALL_PROFILES:
         table_path = args.output_dir / f"{profile.key}.csv"
         if not table_path.is_file():
             continue

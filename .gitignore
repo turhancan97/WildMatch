@@ -228,7 +228,6 @@ __marimo__/
 /reports/
 /results/
 /benchmark_runs/
-/kaggle_runs/
 /logs/
 /visualizations/
 /wandb/

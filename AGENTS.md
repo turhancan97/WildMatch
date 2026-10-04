@@ -18,16 +18,14 @@ single-label animal-species classifier: identity labels represent individual ani
 - reid/engine/finetune_runner.py: ArcFace finetuning and validation retrieval.
 - reid/engine/probe_runner.py: cosine, WildFusion, local LightGlue, linear probe,
   efficient probe, and Vismatch matcher benchmark dispatch.
-- reid/engine/kaggle_jaguar_runner.py: standalone Jaguar workflow.
 - reid/data/: dataset views, COCO-RLE masking, and split safety checks.
 - reid/evaluation/metrics.py: top-k, balanced top-1, and mAP calculations.
 - reid/training/: checkpoint serialization and accumulation helpers.
 - reid/reporting/: run identities, manifests, metrics, visualization indexes, and summaries.
 - conf/: Hydra configuration for probe and finetuning.
-- config/: standalone Jaguar YAML configuration and other non-Hydra configs.
 - train/ and scripts/: command-line entrypoints.
 - tests/: dependency-light regression tests.
-- experiments/, reports/, logs/, benchmark_runs/, kaggle_runs/, and wandb/: generated
+- experiments/, reports/, logs/, benchmark_runs/, and wandb/: generated
   artifacts (ignored); do not edit them manually. results/, cache/, and visualizations/ are
   legacy locations that only old workflows create; none exists at the root today.
 - mkdocs.yml, docs/, overrides/: MkDocs Material project page (see "Project page");
@@ -48,7 +46,6 @@ python train/probe.py
 python train/probe.py benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
 bash probe-parallel-czechlynx.sh --list-tasks
 bash probe-parallel-wildlife.sh --list-tasks
-python scripts/kaggle_jaguar_submit.py --config config/kaggle_jaguar.yaml --data-dir /path/to/jaguar-re-id
 python scripts/summarize_runs.py --format markdown
 python scripts/export_paper_tables.py
 python scripts/export_class_balance.py
@@ -58,7 +55,6 @@ python -m py_compile models/*.py reid/**/*.py train/*.py scripts/*.py
 mkdocs build --strict   # project page; needs requirements-docs.txt installed
 ~~~
 
-Use --dry-run, --pair-limit, or --fast for Jaguar development runs.
 Do not run full GPU training or Vismatch benchmarks as a default validation step.
 
 ## Hydra configuration
@@ -76,9 +72,9 @@ to `logs/hydra/<job name>.log` (`hydra.run.dir` in both configs, pinned by
 `probe.log`/`finetune.log` at the repository root. New probe and finetune runs use the
 reporting-managed `experiments/` layout while legacy aggregate CSVs remain under
 `benchmark_runs/` and `results/`. Hydra multirun sweeps are intentionally outside
-the current experiment contract. Jaguar remains on its
-existing argparse and `config/kaggle_jaguar.yaml` workflow; its internal finetune
-template points to `conf/finetune.yaml`.
+the current experiment contract. The Jaguar data runs through the shared pipeline as
+the `JaguarReID` profile (see "JaguarReID"); the former standalone Kaggle submission
+workflow was deleted on 2026-10-04.
 
 `probe-parallel-czechlynx.sh` and `probe-parallel-wildlife.sh` are separate
 self-submitting Slurm launchers and must not modify or replace `probe.sh`. Each
@@ -87,7 +83,8 @@ builds tasks from its explicit `VARIANTS` table and crosses them with the
 are the source of truth for its comparison grid. The CzechLynx launcher supports
 the independent `split-time_closed` and `split-time_open` profiles; either or
 both may be uncommented. The wildlife launcher takes one active profile at a time:
-a WildlifeReID-10k animal or SalamanderID2025 (see "SalamanderID2025" below).
+a WildlifeReID-10k animal, SalamanderID2025 or JaguarReID (see the sections of those
+names below).
 `MAX_CONCURRENT_JOBS` becomes the Slurm array `%`
 throttle.
 The CzechLynx launcher is the only parallel launcher for CzechLynx; the wildlife
@@ -285,12 +282,17 @@ without primary timing fields must not be relabeled as matcher timings.
 Per-identity class-balance statistics for the paper are generated with
 `scripts/export_class_balance.py` into the ignored `experiments/class-balance/`
 directory: one CSV per dataset/split (`nyala`, `beluga`, `hyena`, `leopard`,
-`sea_star`, `whale_shark`, `turtle`, `salamander`, `lynx_closed`, `lynx_open`) with exact
+`sea_star`, `whale_shark`, `turtle`, `salamander`, `lynx_closed`, `lynx_open`, and the
+benchmark-only `jaguar`) with exact
 database/query image counts per identity, a `summary.csv` (counts, Gini, singleton
 fraction, top-decile query share), and a `manifest.json` with source metadata
 SHA-256 hashes. Its profiles come from `reid/reporting/paper_datasets.py`
-(`PAPER_PROFILES`), which mirrors the launcher metadata files, identity columns,
-split values, roots, and mask handling; keep it in sync when a paper split changes. Rows whose
+(`ALL_PROFILES` = `PAPER_PROFILES` + `BENCHMARK_ONLY_PROFILES`), which mirrors the
+launcher metadata files, identity columns, split values, roots, and mask handling; keep it
+in sync when a split changes. `PAPER_PROFILES` is exactly the paper's datasets and is what
+the paper figures and the page exporters look up; datasets outside the paper (JaguarReID)
+go into `BENCHMARK_ONLY_PROFILES`, and only the dataset-level tools (this export and
+`audit_image_quality.py`) iterate `ALL_PROFILES`. Rows whose
 split is neither side (490 unlabeled ZindiTurtleRecall rows) are excluded and counted
 in `excluded_rows_other_split`. The paper reports CzechLynx closed and open splits
 only; the unseen-eval split is not part of the dataset statistics.
@@ -515,7 +517,7 @@ Canonical finetune outputs are:
 
 Tagged model-only files such as checkpoint-final_<dataset_tag>.pth remain readable
 for compatibility with historical runs. Explicit checkpoint paths take precedence;
-automatic probe/Jaguar discovery searches the newest run for canonical model-only
+automatic probe discovery searches the newest run for canonical model-only
 files and then compatible tagged model-only final files. Never pass a *-full.pth
 file to inference code expecting a model-only state dict.
 
@@ -844,8 +846,8 @@ applied at load time.
 ## Research-validity reporting policy
 
 - Primary retrieval metrics use deterministic descending scores with original database
-  index as the tie-breaker. This rule is shared by evaluation, shortlisting, Jaguar,
-  and classifier probes. Visualization ranking is now migrated: the run-local
+  index as the tie-breaker. This rule is shared by evaluation, shortlisting, and
+  classifier probes. Visualization ranking is now migrated: the run-local
   `visualizations/index.csv` uses `stable_rank_1d`, so it resolves ties identically to the
   prediction grid it annotates and to the metrics. No ranking path may use
   `argsort()[::-1]`, which reverses a stable ascending sort and orders ties backwards.
@@ -994,6 +996,85 @@ fine-tuned on LoMa-mined and RDD-LightGlue on RDD-mined pairs (user decision), s
 this in the paper. A 2026-09-29 run with `safety_checks.enabled=true` found no path or
 content overlap between database and query. SAM3 runs in the `lynx-app` conda env on an
 A100/H100 only (its CUDA 13 PyTorch has no V100 kernels).
+
+### JaguarReID
+
+JaguarReID (added 2026-10-03) is the labelled part of the Kaggle Jaguar Re-ID data at
+`/shared/sets/datasets/vision/czechlynx/jaguar` (repository symlink
+`dataset/czechlynx/jaguar`): 1,895 training photos of 31 jaguars (13-183 each, no
+singletons). Kaggle's `test.csv` is an unlabelled list of 137,270 pairs over 371 test
+photos and is not used. The source PNGs are RGBA with the background removed in the alpha
+channel, but the RGB channels keep the original background, and the shared loader reads
+images with OpenCV's default flag (alpha dropped), so the files cannot be used directly.
+The files carry no capture time.
+
+`scripts/prepare_jaguar_metadata.py` (CPU) has three steps, all writing into the dataset
+root. `prepare` writes `masked_images/<filename>` (RGB times alpha, black background) and
+`jaguar_reid_base.csv` (`image_id`, `identity`, masked `path`, `original_path`, COCO-RLE
+`mask` from alpha, 256-bit difference hash `dhash`, `masked_sha256`) with
+`jaguar_reid_base_manifest.json`. `embed` writes `jaguar_reid_dinov2_small_cls.npz`:
+DINOv2-small CLS embeddings of the masked images on the CPU (a generic model, not the
+MegaDescriptor backbone being evaluated, so the split is not tuned against it). `split`
+writes `jaguar_reid_v2_no_background.csv` (base columns plus `dup_group`, `split_v2`
+database/query and `split_train_test` train/test for the lynx-finetuning wildlife
+pipeline) and `jaguar_reid_v2_manifest.json` (source hashes, parameters, counts, leakage).
+The `v2` file name and the `split_v2` column name are kept because the probe records the
+split column as the run's split protocol and the runs made on this split record the file's
+SHA-256; renaming would orphan them.
+
+**Burst-aware split (user decision 2026-10-04: keep it; the first, hash-only split was
+deleted).** The photos come in long bursts of near-identical frames, so a per-image split
+puts copies of a query in the gallery. `split` joins two photos of the same jaguar into
+one group when their hash distance is at most 32, when their files are adjacent
+(`train_0688`/`train_0689`; file order follows capture order within a jaguar) and their
+embedding cosine is at least 0.85, or when their cosine is at least 0.95 anywhere. Groups
+are joined transitively (only same-jaguar pairs; a cross-jaguar pair at hash distance 12
+or less fails closed as a probable label error). Per jaguar, whole groups go to `query`
+until about 25 % of its photos are there (groups that would overshoot the target by more
+than 20 % are skipped, seed 0), and every jaguar stays on both sides. Result: 416 groups
+(largest 90: Lua lying on one log for files 0835-0924, checked by eye), 1,408 database and
+487 query photos, all 31 jaguars on both sides, query share per jaguar 11-33 % (fewest
+queries: 3), no adjacent similar pair, no pair at cosine 0.95 and no hash twin across the
+sides; a safety-check run found no path overlap, no duplicate content and no unseen query
+jaguar.
+Why these settings: a hash-only grouping missed most bursts (adjacent frames of one
+sequence often differ by 80-120 bits because the mask cut-out changes), and on such a
+split Top-1 was near 1.00 for queries with a near-identical database twin. Contact sheets
+of adjacent same-jaguar frames showed bursts at cosine 0.85 and above, mixed bursts and
+new poses at 0.80-0.85, and mostly new poses or scenes below 0.80; different jaguars
+reach cosine 0.88 at the 99th percentile, so similarity alone cannot join non-adjacent
+photos. The cutoff matters: MegaDescriptor-L cosine Top-1 (full gallery, mean of five split
+seeds) is 0.53 at a 0.90 cutoff, 0.41 at 0.85 and 0.34 at 0.80 (seed-to-seed standard
+deviation about 0.03), and no cutoff gives a plateau, so this is a documented judgement
+call, not a time-based split.
+On 2026-10-04 the first split's files and results were deleted at the user's request: its
+metadata and manifest in the dataset folder, its six runs under `split/`, their task logs
+(`job-524007`, removed from `logs/index.csv` with `scripts/summarize_logs.py --write-index`)
+and the hash review sheets. `reports/runs.csv` still lists those six runs with missing
+manifests, because that index must not be edited by hand and has no rebuild tool.
+
+Probes use `no_background=false`, `image_variant=no_background`, `split_v2`
+database/query, and land in `experiments/probe/JaguarReID/JaguarReID/split_v2/`. First
+results (2026-10-04, k=10, shortlist ceiling 68.4 %): cosine 45.2 / 60.0 Top-1 / Top-5
+(balanced Top-1 41.5), WildFusion 60.4 / 65.3 (57.8), default LoMa 61.8 / 66.9 (58.9),
+default RDD-LightGlue 60.0 / 66.1 (56.4). Shortlist ceilings from cosine: 81.5 % at k=50,
+87.1 % at k=100, 91.8 % at k=250, 95.3 % at k=500, 100 % at k=1000. The full k grid and the
+linear probes have not been run yet. The wildlife launcher carries the `jaguar` profile; no
+fine-tuned matchers exist yet, so only default rows can run until `lynx-finetuning` gets a
+Jaguar config (shared recipe, both matchers on LoMa-mined pairs, checkpoints under
+`wildlife-reid-10k/JaguarReID/{loma,rdd}-finetuned/legacy-loma-mined/`, the paths the
+profile expects). The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
+dataset. The image-quality audit (2026-10-03, RLE mask foreground) flagged 80 of 1,895
+photos by heuristics; none has been checked by eye.
+**Kaggle submission workflow deleted (user decision 2026-10-04).** The former standalone
+pipeline (`reid/engine/kaggle_jaguar_runner.py`, `scripts/kaggle_jaguar_submit.py`,
+`config/kaggle_jaguar.yaml`, `kaggle_jaguar_submit.sh`: its own random split, ArcFace
+fine-tuning, cosine/WildFusion retrieval with Vismatch score fusion, identity-balanced
+all-vs-all mAP and Kaggle CSV export) was removed together with its outputs
+(`kaggle_runs/`, 14 runs from 2026-03-13 to 03-15, and its 10 GB alpha-masked image cache
+under the dataset's `cache/`). Nothing in JaguarReID used it. Its results (for example
+0.847 mAP) are no longer reproducible and were never comparable with JaguarReID results;
+recover the code from git history before 2026-10-04 if Kaggle submissions are needed.
 
 LoMa descriptor exports may omit standard BatchNorm running-stat buffers. Descriptor
 loading preserves those non-learned buffers from the active model defaults while

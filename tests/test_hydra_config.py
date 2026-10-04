@@ -185,14 +185,6 @@ class HydraConfigurationTests(unittest.TestCase):
         self.assertEqual(saved.benchmark.methods.vismatch.matcher, "loma")
         self.assertNotIn("${", snapshot_text)
 
-    def test_jaguar_keeps_its_argparse_config_workflow(self):
-        jaguar = OmegaConf.load(ROOT / "config/kaggle_jaguar.yaml")
-        submitter = (ROOT / "scripts/kaggle_jaguar_submit.py").read_text(encoding="utf-8")
-
-        self.assertEqual(jaguar.finetune.base_config, "conf/finetune.yaml")
-        self.assertIn("--config", submitter)
-        self.assertIn("argparse", submitter)
-
 
 if __name__ == "__main__":
     unittest.main()

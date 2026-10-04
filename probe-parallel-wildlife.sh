@@ -61,7 +61,13 @@ DATASET_PROFILES=(
     # launcher: its own root, SAM3 pre-masked metadata (scripts/segment_with_sam3.py),
     # database/query split values, LoMa fine-tuned on LoMa-mined and RDD on
     # RDD-mined pairs (checkpoints under wildlife-reid-10k/SalamanderID2025/).
-    "salamander|SalamanderID2025|SalamanderID2025|/shared/sets/datasets/vision/czechlynx/SalamanderID2025|split_time_closed_no_background.csv|identity|mask|false|no_background|split|database|query|100|legacy-loma-mined|legacy-rdd-mined|299|299"
+    # "salamander|SalamanderID2025|SalamanderID2025|/shared/sets/datasets/vision/czechlynx/SalamanderID2025|split_time_closed_no_background.csv|identity|mask|false|no_background|split|database|query|100|legacy-loma-mined|legacy-rdd-mined|299|299"
+    # JaguarReID is the labelled Kaggle Jaguar Re-ID training set (31 jaguars), brought
+    # into this format by scripts/prepare_jaguar_metadata.py: black-background images from
+    # the alpha channel and a burst-aware database/query split (column split_v2; runs land
+    # under split_v2/). No fine-tuned matchers exist yet, so only default rows can run;
+    # the checkpoint fields follow the shared recipe (both matchers on LoMa-mined pairs).
+    "jaguar|JaguarReID|JaguarReID|/shared/sets/datasets/vision/czechlynx/jaguar|jaguar_reid_v2_no_background.csv|identity|mask|false|no_background|split_v2|database|query|100|legacy-loma-mined|legacy-loma-mined|299|299"
 )
 
 # method|matcher|checkpoint_label|checkpoint_path|checkpoint_components|train_mode|class_weighting
@@ -69,14 +75,14 @@ DATASET_PROFILES=(
 # linear_probe|-|default|-|partial|weighted
 # linear_probe|-|default|-|all|weighted
 VARIANTS=(
-    # "cosine|-|default|-|-|-|-"
-    # "wildfusion|-|default|-|-|-|-"
+    "cosine|-|default|-|-|-|-"
+    "wildfusion|-|default|-|-|-|-"
     # "local_lightglue|-|default|-|-|-|-"
     # "linear_probe|-|default|-|-|classifier|weighted"
     # "linear_probe|-|default|-|classifier|unweighted"
     # "linear_probe|-|default|-|partial|weighted"
     # "linear_probe|-|default|-|partial|unweighted"
-    "linear_probe|-|default|-|-|all|weighted"
+    # "linear_probe|-|default|-|-|all|weighted"
     # "linear_probe|-|default|-|all|unweighted"
     # "efficient_probe|-|default|-|classifier|weighted"
     # "efficient_probe|-|default|-|classifier|unweighted"
@@ -84,10 +90,10 @@ VARIANTS=(
     # "efficient_probe|-|default|-|partial|unweighted"
     # "efficient_probe|-|default|-|all|weighted"
     # "efficient_probe|-|default|-|all|unweighted"
-    # "vismatch|loma|default|-|-|-|-"
+    "vismatch|loma|default|-|-|-|-"
     # "vismatch|loma|custom|${LOMA_CUSTOM_CHECKPOINT_PATH}|matcher_only|-|-"
     # "vismatch|loma|descriptor-fine-tuned|${DESCRIPTOR_LOMA_CUSTOM_CHECKPOINT_PATH}|descriptor_only|-|-"
-    # "vismatch|rdd-lightglue|default|-|-|-|-"
+    "vismatch|rdd-lightglue|default|-|-|-|-"
     # "vismatch|rdd-lightglue|custom|${RDD_CUSTOM_CHECKPOINT_PATH}|matcher_only|-|-"
     # "vismatch|rdd-lightglue|descriptor-fine-tuned|${DESCRIPTOR_RDD_CUSTOM_CHECKPOINT_PATH}|descriptor_only|-|-"
 )

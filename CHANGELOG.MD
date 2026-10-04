@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: deleted the PNGs under `visualizations/` of the 633 probe runs dated before
+  2026-10-03 (17,958 files, 7,055 MiB; user approval after a size and dependency check), keeping
+  every `index.csv`; home quota use fell from 60,262 to 53,172 of 61,440 MB.
 - 2026-10-04: home quota full during sweep 524499 (61,440 of 61,440 MB): 14 tasks failed and 9
   hung; the 9 were cancelled and all 23 resubmitted from the frozen submission as array 524682 (by
   the user) after freeing 1.2 GB (`~/.npm/_cacache`, `~/.nv/ComputeCache`, user approval).

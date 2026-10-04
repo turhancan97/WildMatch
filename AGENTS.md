@@ -254,7 +254,11 @@ logs died on the write error, so the child blocked on a full pipe). `_pump` in
 `src/wildmatch/sweep/runner.py` now drops a target that fails and keeps draining, and the task
 ends as failed with "log mirroring failed" (its stdout log, from which the run directory is read,
 is incomplete). The home directory has a 61,440 MB quota; keep about 1 GB free during sweeps
-(1.2 GB was freed by deleting `~/.npm/_cacache` and `~/.nv/ComputeCache`, with the user's approval). Legacy
+(1.2 GB was freed by deleting `~/.npm/_cacache` and `~/.nv/ComputeCache`, with the user's approval). Later the same
+day, at the user's request, the PNG files under `visualizations/` of the 633 probe runs dated
+before 2026-10-03 were deleted (17,958 files, 7,055 MiB); their `index.csv` files were kept, which
+is all the image-quality audit reads. Those runs' contact sheets and match drawings are gone;
+paper match figures are redrawn from `scores.npz` and are unaffected. Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.

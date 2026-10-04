@@ -1,0 +1,185 @@
+dataset:
+  name: SalamanderID2025
+  animal: SalamanderID2025
+  root: /shared/sets/datasets/vision/czechlynx/SalamanderID2025
+  metadata_file: split_time_closed_no_background.csv
+  label_col: identity
+  mask_col: mask
+  no_background: false
+  image_variant: no_background
+  split_col: split
+  database_split_value: database
+  query_split_value: query
+  calibration_size: 100
+model:
+  type: megadescriptor-l
+  mode: pretrained
+  device: auto
+  batch_size: 32
+  num_workers: 8
+  checkpoint:
+    path: null
+    from_latest_results: true
+    results_dir: experiments/finetune
+    legacy_results_dir: results
+    filename: checkpoint-final.pth
+benchmark:
+  method: vismatch
+  top_k:
+  - 1
+  - 5
+  - 10
+  compute_map: true
+  candidate_k: 50
+  classifier_evaluation:
+    open_set_policy: open
+    embedding_retrieval: false
+  calibration:
+    exclude_self_pairs: true
+    official_same_set: false
+    split_value: null
+  seed: 0
+  deterministic: false
+  cache:
+    enabled: true
+    dir: /shared/results/common/kargin/lynx/results/SalamanderID2025/SalamanderID2025/cache/features
+    format: pt
+  methods:
+    cosine: {}
+    wildfusion:
+      deep_batch_size: 16
+      deep_num_workers: 4
+      local_batch_size: 16
+      local_top_k: 512
+    local_lightglue:
+      local_batch_size: 16
+    linear_probe:
+      train_mode: classifier
+      class_weighting: inverse_frequency
+      class_weight_normalize: true
+      class_weight_max: 5.0
+      epochs: 50
+      log_every: 1
+      batch_size: 16
+      num_workers: 8
+      accumulation_steps: 4
+      optimizer: sgd
+      lr: 0.001
+      momentum: 0.9
+      weight_decay: 0.0001
+      eta_min_scale: 0.001
+      eval_batch_size: 64
+      eval_num_workers: 8
+      resume_checkpoint: null
+      save_checkpoint: false
+      save_every: 1
+      final_checkpoint_name: linear_probe_final.pth
+      partial_rules:
+        default:
+        - layers.3
+        - norm
+        megadescriptor-l:
+        - layers.3
+        - norm
+        lynx_megadescriptorV3:
+        - layers.3
+        - norm
+        lynx_megadescriptorV4:
+        - layers.3
+        - norm
+        dinov2:
+        - encoder.layer.11.
+        - layernorm.
+        dinov2-l:
+        - encoder.layer.23.
+        - layernorm.
+        dinov3:
+        - layer.11.
+        - norm.
+        dinov3-l:
+        - layer.23.
+        - norm.
+    efficient_probe:
+      train_mode: classifier
+      class_weighting: inverse_frequency
+      class_weight_normalize: true
+      class_weight_max: 5.0
+      epochs: 50
+      log_every: 1
+      batch_size: 64
+      num_workers: 8
+      accumulation_steps: 1
+      optimizer: sgd
+      lr: 0.001
+      momentum: 0.9
+      weight_decay: 0.0001
+      eta_min_scale: 0.001
+      dropout_rate: 0.0
+      num_queries: 4
+      d_out: 2
+      eval_batch_size: 128
+      eval_num_workers: 8
+      resume_checkpoint: null
+      save_checkpoint: false
+      save_every: 1
+      final_checkpoint_name: efficient_probe_final.pth
+      partial_rules:
+        default:
+        - layers.3
+        - norm
+        dinov2:
+        - encoder.layer.11.
+        - layernorm.
+        dinov2-l:
+        - encoder.layer.23.
+        - layernorm.
+        dinov3:
+        - layer.11.
+        - norm.
+        dinov3-l:
+        - layer.23.
+        - norm.
+    vismatch:
+      matcher: loma
+      checkpoint_source: default
+      checkpoint_path: null
+      checkpoint_components: auto
+      checkpoint_owner: null
+      evaluation_animal: null
+      loma_arch: LoMa-B
+      device: auto
+      path_col: path
+      resize_max: 512
+      top_k: 512
+      matcher_threshold: null
+      feature_matching_mode: feature_level
+      batch_mode: batched
+      match_batch_size: 16
+      extract_batch_size: 8
+      oom_backoff: true
+      cache_dir: /shared/results/common/kargin/lynx/results/SalamanderID2025/SalamanderID2025/cache/vismatch
+      stage_a_method: cosine
+visualization:
+  enabled: true
+  dir: visualizations
+  num_examples: 16
+  vismatch_max_matches: 20
+  attention_num_examples: 16
+  attention_average_queries: true
+  top_k: 3
+output:
+  experiment_root: experiments
+  run_dir: benchmark_runs
+  csv_path: benchmark_runs/benchmark_results.csv
+safety_checks:
+  enabled: false
+reporting:
+  enabled: true
+  index_path: reports/runs.csv
+wandb:
+  enabled: false
+  project: explainable-reid
+  entity: null
+  group: null
+  tags: []
+  name: null

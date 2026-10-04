@@ -8,15 +8,15 @@ from tempfile import TemporaryDirectory
 import numpy as np
 from omegaconf import OmegaConf
 
-from reid.reporting.artifacts import (
+from wildmatch.reporting.artifacts import (
     ARTIFACT_SCHEMA_VERSION,
     build_run_context,
     configuration_hash,
     safe_component,
     upsert_run_index,
 )
-from reid.reporting.summary import filter_run_rows, format_csv, format_markdown, sort_run_rows
-from reid.reporting.visualizations import finalize_visualizations
+from wildmatch.reporting.summary import filter_run_rows, format_csv, format_markdown, sort_run_rows
+from wildmatch.reporting.visualizations import finalize_visualizations
 
 
 def _config(root: str = "experiments"):
@@ -124,8 +124,8 @@ class ReportingArtifactTests(unittest.TestCase):
         # The index annotates the prediction grid, so it must resolve ties exactly as
         # `stable_rank_indices` does. A shortlist matrix is almost entirely `-inf` ties,
         # where a reversed argsort would order them backwards and describe other images.
-        from reid.evaluation.ranking import stable_rank_indices
-        from reid.reporting.visualizations import prediction_index_rows
+        from wildmatch.evaluate.ranking import stable_rank_indices
+        from wildmatch.reporting.visualizations import prediction_index_rows
 
         class Dataset:
             df = __import__("pandas").DataFrame(
@@ -157,8 +157,22 @@ class ReportingArtifactTests(unittest.TestCase):
 
     def test_summary_filter_sort_and_formats(self):
         rows = [
-            {"run_id": "a", "dataset": "lynx", "workflow": "probe", "method": "vismatch", "variant": "loma", "top_1": "0.7"},
-            {"run_id": "b", "dataset": "lynx", "workflow": "probe", "method": "cosine", "variant": "default", "top_1": "0.9"},
+            {
+                "run_id": "a",
+                "dataset": "lynx",
+                "workflow": "probe",
+                "method": "vismatch",
+                "variant": "loma",
+                "top_1": "0.7",
+            },
+            {
+                "run_id": "b",
+                "dataset": "lynx",
+                "workflow": "probe",
+                "method": "cosine",
+                "variant": "default",
+                "top_1": "0.9",
+            },
         ]
         filtered = filter_run_rows(rows, dataset="lynx", method="vismatch", matcher="loma")
         sorted_rows = sort_run_rows(filtered, "top_1")

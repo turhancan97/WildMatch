@@ -1,2 +1,0 @@
-"""Shared ReID utilities package."""
-

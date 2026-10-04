@@ -1,10 +1,13 @@
-name: ex-reid
+# Conda route (uv is the primary route; see README). From the repository root:
+#   conda env create -f environment.yml
+#   conda activate wildmatch
+#   pip install --no-deps -r requirements/cu126.txt     # or requirements/cpu.txt
+# The requirement files pin every package (exported from uv.lock), so pip installs them
+# without re-resolving (--no-deps); a plain resolve fails because glue-factory asks for an
+# unpinned LightGlue git URL while the lock pins the commit the paper code used.
+name: wildmatch
 channels:
-  - defaults
   - conda-forge
 dependencies:
-  - python=3.11
-  - omegaconf
+  - python=3.12
   - pip
-  - pip:
-    - -r requirements.txt

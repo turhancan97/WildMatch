@@ -6,13 +6,13 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
-from reid.methods.vismatch_preprocessing import (
+from wildmatch.matchers.vismatch_preprocessing import (
     preprocess_vismatch_image,
-    resize_long_side_divisible,
     resize_long_side_div32,
+    resize_long_side_divisible,
     to_rgb_float_tensor,
 )
-from reid.methods.vismatch_profiles import (
+from wildmatch.matchers.vismatch_profiles import (
     LOMA_PREPROCESSING_VERSION,
     VISMATCH_PREPROCESSING_VERSION,
     FrameFeatures,
@@ -22,7 +22,8 @@ from reid.methods.vismatch_profiles import (
 )
 
 try:
-    from reid.methods.vismatch import VismatchMatcherBackend, _loma_points_to_processed_pixel
+    from wildmatch.matchers.vismatch import VismatchMatcherBackend, _loma_points_to_processed_pixel
+
     HAS_VISMATCH_BACKEND = True
 except ModuleNotFoundError:
     HAS_VISMATCH_BACKEND = False
@@ -138,11 +139,13 @@ class VismatchPreprocessingTests(unittest.TestCase):
 
         self.assertIn("multiple of 14", loma.preprocessing)
         self.assertEqual(loma.preprocessing_version, LOMA_PREPROCESSING_VERSION)
-        self.assertNotEqual(profile_fingerprint(loma), profile_fingerprint(build_matcher_profile("rdd-lightglue", 512, 0.01)))
+        self.assertNotEqual(
+            profile_fingerprint(loma), profile_fingerprint(build_matcher_profile("rdd-lightglue", 512, 0.01))
+        )
 
     def test_shipped_vismatch_resolution_is_512(self):
         root = Path(__file__).resolve().parents[1]
-        text = (root / "conf/probe.yaml").read_text(encoding="utf-8")
+        text = (root / "src/wildmatch/conf/probe.yaml").read_text(encoding="utf-8")
 
         self.assertIn("resize_max: 512", text)
 
@@ -214,7 +217,7 @@ class VismatchPreprocessingTests(unittest.TestCase):
     def test_each_image_is_preprocessed_exactly_once(self):
         # Bucketing used to call prepared_shape(), which ran the whole resize just to read
         # the output shape, and extraction then repeated it. Preparation must happen once.
-        from reid.methods.vismatch import VismatchMatcherBackend
+        from wildmatch.matchers.vismatch import VismatchMatcherBackend
 
         class FakeExtractor:
             @staticmethod
@@ -257,7 +260,7 @@ class VismatchPreprocessingTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_VISMATCH_BACKEND, "Vismatch backend dependencies are not available")
     def test_prepared_extraction_matches_raw_image_extraction(self):
-        from reid.methods.vismatch import VismatchMatcherBackend
+        from wildmatch.matchers.vismatch import VismatchMatcherBackend
 
         class FakeExtractor:
             @staticmethod
@@ -284,9 +287,7 @@ class VismatchPreprocessingTests(unittest.TestCase):
         np.testing.assert_array_equal(from_raw.keypoints, from_prepared.keypoints)
         np.testing.assert_array_equal(from_raw.descriptors, from_prepared.descriptors)
         np.testing.assert_array_equal(from_raw.image_size, from_prepared.image_size)
-        np.testing.assert_array_equal(
-            from_raw.original_image_size, from_prepared.original_image_size
-        )
+        np.testing.assert_array_equal(from_raw.original_image_size, from_prepared.original_image_size)
 
     @unittest.skipUnless(HAS_VISMATCH_BACKEND, "Vismatch backend dependencies are not available")
     def test_loma_backend_prepares_div14_spatial_shapes(self):

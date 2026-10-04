@@ -9,8 +9,8 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from reid.data.safety_checks import run_split_safety_checks
-from reid.evaluation.candidate_scoring import (
+from wildmatch.data.safety_checks import run_split_safety_checks
+from wildmatch.evaluate.candidate_scoring import (
     build_shortlist_score_matrix,
     candidate_recall_metrics,
     load_score_matrix,
@@ -18,30 +18,32 @@ from reid.evaluation.candidate_scoring import (
     save_score_matrix,
     shortlist_pair_counts,
 )
-from reid.evaluation.metrics import _label_retrieval_metrics, _truncated_average_precision
-from reid.evaluation.ranking import stable_rank_indices
-from reid.methods.wildfusion_calibration import fit_pipeline_calibration
-from reid.training.accumulation import accumulation_group_size
-from reid.training.checkpointing import resolve_model_checkpoint, validate_resume_epochs
-from reid.training.results import build_final_training_metrics
-from reid.utils import fingerprints
-from reid.utils.fingerprints import file_digest_cache, hash_state_dict, sha256_file
+from wildmatch.evaluate.metrics import _label_retrieval_metrics, _truncated_average_precision
+from wildmatch.evaluate.ranking import stable_rank_indices
+from wildmatch.matchers.wildfusion_calibration import fit_pipeline_calibration
+from wildmatch.train.accumulation import accumulation_group_size
+from wildmatch.train.checkpointing import resolve_model_checkpoint, validate_resume_epochs
+from wildmatch.train.results import build_final_training_metrics
+from wildmatch.utils import fingerprints
+from wildmatch.utils.fingerprints import file_digest_cache, hash_state_dict, sha256_file
+
 try:
     from omegaconf import OmegaConf
-    from reid.engine.probe_runner import (
-        _classifier_metrics,
-        _cosine_similarity_matrix,
+
+    from wildmatch.evaluate.probe_runner import (
+        _classifier_metrics,  # noqa: F401 (import check for HAS_PROBE_CACHE_DEPS)
+        _cosine_similarity_matrix,  # noqa: F401 (import check for HAS_PROBE_CACHE_DEPS)
         _format_metric_value,
         _label_indices,
         _set_probe_training_mode,
-        classifier_open_set_coverage,
+        classifier_open_set_coverage,  # noqa: F401 (import check for HAS_PROBE_CACHE_DEPS)
         extract_deep_features_with_cache,
         validate_classifier_open_set_labels,
     )
+
     HAS_PROBE_CACHE_DEPS = True
 except ModuleNotFoundError:
     HAS_PROBE_CACHE_DEPS = False
-
 
 
 class _LabelledFrame:
@@ -94,8 +96,8 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runtime dependencies not available")
     def test_probe_reporting_imports_file_identity(self):
-        from reid.engine import probe_runner
-        from reid.reporting.artifacts import file_identity
+        from wildmatch.evaluate import probe_runner
+        from wildmatch.reporting.artifacts import file_identity
 
         self.assertIs(probe_runner.file_identity, file_identity)
 
@@ -157,11 +159,9 @@ class ResearchValidityTests(unittest.TestCase):
         # Regression: the classifier emits one column per identity, so an identity mask
         # built from database *images* cannot index that axis. Five images over three
         # identities is the shape that used to raise IndexError every epoch.
-        from reid.engine.probe_runner import _probe_retrieval_metrics
+        from wildmatch.evaluate.probe_runner import _probe_retrieval_metrics
 
-        cfg = OmegaConf.create(
-            {"benchmark": {"top_k": [1, 2], "compute_map": True, "candidate_k": 2}}
-        )
+        cfg = OmegaConf.create({"benchmark": {"top_k": [1, 2], "compute_map": True, "candidate_k": 2}})
         db_labels_idx = np.array([0, 0, 1, 1, 2])
         query_labels_idx = np.array([1, 2])
         probs_query = np.array([[0.1, 0.7, 0.2], [0.5, 0.2, 0.3]])
@@ -186,19 +186,25 @@ class ResearchValidityTests(unittest.TestCase):
     def test_identity_probe_metrics_score_each_identity_once(self):
         # Every database image of an identity shares that identity's single probability,
         # so duplicating an identity in the gallery must not change identity-level scores.
-        from reid.engine.probe_runner import _probe_retrieval_metrics
+        from wildmatch.evaluate.probe_runner import _probe_retrieval_metrics
 
-        cfg = OmegaConf.create(
-            {"benchmark": {"top_k": [1], "compute_map": True, "candidate_k": 1}}
-        )
+        cfg = OmegaConf.create({"benchmark": {"top_k": [1], "compute_map": True, "candidate_k": 1}})
         probs_query = np.array([[0.2, 0.8]])
         sparse = _probe_retrieval_metrics(
-            cfg, _LabelledFrame(["id1"]), _LabelledFrame(["id0", "id1"]),
-            probs_query, np.array([0, 1]), np.array([1]),
+            cfg,
+            _LabelledFrame(["id1"]),
+            _LabelledFrame(["id0", "id1"]),
+            probs_query,
+            np.array([0, 1]),
+            np.array([1]),
         )
         duplicated = _probe_retrieval_metrics(
-            cfg, _LabelledFrame(["id1"]), _LabelledFrame(["id0", "id0", "id0", "id1"]),
-            probs_query, np.array([0, 0, 0, 1]), np.array([1]),
+            cfg,
+            _LabelledFrame(["id1"]),
+            _LabelledFrame(["id0", "id0", "id0", "id1"]),
+            probs_query,
+            np.array([0, 0, 0, 1]),
+            np.array([1]),
         )
         self.assertEqual(sparse["top_1"], 1.0)
         self.assertEqual(duplicated["top_1"], sparse["top_1"])
@@ -206,21 +212,23 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_identity_probe_metrics_reject_labels_outside_the_classifier_head(self):
-        from reid.engine.probe_runner import _probe_retrieval_metrics
+        from wildmatch.evaluate.probe_runner import _probe_retrieval_metrics
 
-        cfg = OmegaConf.create(
-            {"benchmark": {"top_k": [1], "compute_map": True, "candidate_k": 1}}
-        )
+        cfg = OmegaConf.create({"benchmark": {"top_k": [1], "compute_map": True, "candidate_k": 1}})
         with self.assertRaises(ValueError) as ctx:
             _probe_retrieval_metrics(
-                cfg, _LabelledFrame(["id1"]), _LabelledFrame(["id0", "id5"]),
-                np.array([[0.4, 0.6]]), np.array([0, 5]), np.array([1]),
+                cfg,
+                _LabelledFrame(["id1"]),
+                _LabelledFrame(["id0", "id5"]),
+                np.array([[0.4, 0.6]]),
+                np.array([0, 5]),
+                np.array([1]),
             )
         self.assertIn("outside the classifier", str(ctx.exception))
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_open_world_classifier_metrics_map_unseen_queries_to_zero_credit(self):
-        from reid.engine.probe_runner import _classifier_metrics
+        from wildmatch.evaluate.probe_runner import _classifier_metrics
 
         labels = ["seen_a", "unseen", "seen_b"]
         mapping = {"seen_a": 0, "seen_b": 1}
@@ -246,14 +254,12 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_warn_policy_keeps_legacy_fields_seen_only(self):
-        from reid.engine.probe_runner import _classifier_metrics
+        from wildmatch.evaluate.probe_runner import _classifier_metrics
 
         labels = ["seen", "unseen"]
         mapping = {"seen": 0}
         indices = _label_indices(labels, mapping)
-        metrics = _classifier_metrics(
-            np.asarray([[1.0], [1.0]], dtype=np.float32), indices, labels, mapping, "warn"
-        )
+        metrics = _classifier_metrics(np.asarray([[1.0], [1.0]], dtype=np.float32), indices, labels, mapping, "warn")
         self.assertEqual(metrics["classification_seen_top_1"], 1.0)
         self.assertEqual(metrics["classification_open_top_1"], 0.5)
         self.assertEqual(metrics["classification_top_1"], 1.0)
@@ -267,34 +273,30 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_all_unseen_classifier_metrics_are_defined(self):
-        from reid.engine.probe_runner import _classifier_metrics
+        from wildmatch.evaluate.probe_runner import _classifier_metrics
 
         labels = ["unseen_a", "unseen_b"]
         mapping = {"seen": 0}
         indices = _label_indices(labels, mapping)
-        metrics = _classifier_metrics(
-            np.asarray([[1.0], [1.0]], dtype=np.float32), indices, labels, mapping, "open"
-        )
+        metrics = _classifier_metrics(np.asarray([[1.0], [1.0]], dtype=np.float32), indices, labels, mapping, "open")
         self.assertEqual(metrics["classification_open_top_1"], 0.0)
         self.assertEqual(metrics["classification_open_balanced_top_1"], 0.0)
         self.assertTrue(np.isnan(metrics["classification_seen_top_1"]))
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_embedding_similarity_diagnostic_is_dependency_light(self):
-        from reid.engine.probe_runner import _cosine_similarity_matrix
+        from wildmatch.evaluate.probe_runner import _cosine_similarity_matrix
 
         result = _cosine_similarity_matrix(
             np.asarray([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32),
             np.asarray([[1.0, 0.0], [1.0, 1.0]], dtype=np.float32),
         )
-        np.testing.assert_allclose(result, [[1.0, 2 ** -0.5], [0.0, 2 ** -0.5]], atol=1e-6)
+        np.testing.assert_allclose(result, [[1.0, 2**-0.5], [0.0, 2**-0.5]], atol=1e-6)
 
     def test_full_matrix_map_is_suppressed_on_a_shortlist_matrix(self):
         labels = np.array(["a", "b", "c", "d"])
         shortlist = np.array([[0.9, 0.1, -np.inf, -np.inf]], dtype=np.float32)
-        metrics = _label_retrieval_metrics(
-            np.array(["a"]), labels, shortlist, [1, 2], True, map_at_k=2
-        )
+        metrics = _label_retrieval_metrics(np.array(["a"]), labels, shortlist, [1, 2], True, map_at_k=2)
         self.assertTrue(np.isnan(metrics["mAP"]))
         self.assertTrue(np.isnan(metrics["mAP_eligible"]))
         self.assertEqual(metrics["score_coverage"], 0.5)
@@ -321,9 +323,7 @@ class ResearchValidityTests(unittest.TestCase):
         labels = np.array(["a", "b", "c", "d"])
         queries = np.array(["a", "d"])
         # Query 1 ranks its match first; query 2's identity never reached the shortlist.
-        scores = np.array(
-            [[0.9, 0.2, -np.inf, -np.inf], [0.9, 0.2, -np.inf, -np.inf]], dtype=np.float32
-        )
+        scores = np.array([[0.9, 0.2, -np.inf, -np.inf], [0.9, 0.2, -np.inf, -np.inf]], dtype=np.float32)
         metrics = _label_retrieval_metrics(queries, labels, scores, [1, 2], True, map_at_k=2)
         self.assertEqual(metrics["recall_at_k"], 0.5)
         self.assertEqual(metrics["num_queries_with_relevant_in_top_k"], 1.0)
@@ -341,9 +341,7 @@ class ResearchValidityTests(unittest.TestCase):
         self.assertGreater(better["mAP_at_k"], worse["mAP_at_k"])
 
     def test_map_at_k_is_omitted_when_no_cutoff_is_requested(self):
-        metrics = _label_retrieval_metrics(
-            np.array(["a"]), np.array(["a", "b"]), np.array([[0.9, 0.1]]), [1], True
-        )
+        metrics = _label_retrieval_metrics(np.array(["a"]), np.array(["a", "b"]), np.array([[0.9, 0.1]]), [1], True)
         self.assertNotIn("mAP_at_k", metrics)
         self.assertEqual(metrics["mAP"], 1.0)
 
@@ -462,8 +460,13 @@ class ResearchValidityTests(unittest.TestCase):
             df_a = pd.DataFrame({"identity": ["seen"], "path": ["a.jpg"]})
             df_b = pd.DataFrame({"identity": ["unseen"], "path": ["b.jpg"]})
             kwargs = dict(
-                df_a=df_a, df_b=df_b, split_a_name="database", split_b_name="query",
-                root=root, label_col="identity", run_dir=root / "run",
+                df_a=df_a,
+                df_b=df_b,
+                split_a_name="database",
+                split_b_name="query",
+                root=root,
+                label_col="identity",
+                run_dir=root / "run",
             )
             # Open-set retrieval continues and still reports the coverage gap.
             # Safety checks print a console report; capture it to keep test output clean.
@@ -548,7 +551,7 @@ class ResearchValidityTests(unittest.TestCase):
         dataset.df = pd.DataFrame({"path": ["a", "b"], "label": ["x", "y"]})
 
     def test_calibration_excludes_same_set_diagonal(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory():
             dataset = type("Dataset", (), {})()
             dataset.df = pd.DataFrame({"path": ["a", "b"], "label": ["x", "y"]})
             pipeline = _FakePipeline()
@@ -557,10 +560,8 @@ class ResearchValidityTests(unittest.TestCase):
             self.assertEqual(len(pipeline.calibration.scores), 2)
             self.assertTrue(pipeline.calibration_done)
 
-
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies not available")
     def test_classifier_probe_keeps_frozen_backbone_in_eval_mode(self):
-        import torch
         from torch import nn
 
         backbone = nn.Sequential(nn.BatchNorm1d(4), nn.Dropout(p=0.5), nn.Linear(4, 3))

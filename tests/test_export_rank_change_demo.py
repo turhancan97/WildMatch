@@ -1,4 +1,4 @@
-"""Tests for the GPU-free parts of scripts/export_rank_change_demo.py."""
+"""Tests for the GPU-free parts of paper/page/export_rank_change_demo.py."""
 
 import importlib.util
 import json
@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_rank_change_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_rank_change_demo.py"
 
 
 def _load():
@@ -38,8 +38,13 @@ class RankChangeHelpersTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             run = Path(tmp)
             # query 0: gallery 2 scores 0.9, gallery 1 and 3 tie at 0.5 (lower index first); query 1: nothing scored
-            np.savez(run / "scores.npz", shape=np.array([2, 4]), rows=np.array([0, 0, 0]), cols=np.array([3, 1, 2]),
-                     values=np.array([0.5, 0.5, 0.9], dtype=np.float32))
+            np.savez(
+                run / "scores.npz",
+                shape=np.array([2, 4]),
+                rows=np.array([0, 0, 0]),
+                cols=np.array([3, 1, 2]),
+                values=np.array([0.5, 0.5, 0.9], dtype=np.float32),
+            )
             orders = R.shortlist_rankings(run, 2, 4)
             self.assertEqual(orders[0].tolist(), [2, 1, 3])
             self.assertEqual(len(orders[1]), 0)
@@ -78,7 +83,8 @@ class CommittedRankChangeTests(unittest.TestCase):
             ft_ok, def_ok = q["rankings"]["finetuned"]["true_rank"] == 1, q["rankings"]["default"]["true_rank"] == 1
             self.assertEqual(q["category"], R.categorize(q["rankings"]["cosine"]["true_rank"] == 1, def_ok, ft_ok))
         text = self.DEMO.read_text(encoding="utf-8")
-        self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
+        self.assertNotIn("/shared/", text)
+        self.assertNotIn("/home/", text)
 
 
 if __name__ == "__main__":

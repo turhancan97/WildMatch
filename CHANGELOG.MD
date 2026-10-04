@@ -7,17 +7,170 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
-- 2026-10-04: fixed `reid/engine/finetune_runner.py` calling `file_identity` without importing
-  it (since 2026-08-13): every backbone fine-tuning run would have ended with a NameError while
-  writing its completed manifest, after training. No fine-tuning run exists, so no result was
-  affected. Found by ruff (F821) on the refactor branch, where it is fixed too.
-- 2026-10-04: launchers pass the frozen submission config with `--config-path` (both parallel
-  launchers and `scripts/eval_loma_epoch_curve.sh`). With `--config-dir`, Hydra had kept
-  `conf/probe.yaml` as the primary config, so array tasks read the live file instead of the
-  snapshot; each run's own `config.snapshot.yaml` remains accurate. Tests pin the behaviour.
-  Recorded as a known issue: Vismatch features depend on the GPU type (H100 vs RTX 4090), and
-  neither the cache key nor the run manifest records it. Both found during the package-refactor
-  parity checks (branch `refactor/wildmatch-package`).
+- 2026-10-04 (branch): `main` merged into the branch (`54dbdf3`; its three commits were already
+  contained, tree unchanged) and pull request #2 opened into `main` with the description from
+  `notes/pr_refactor_wildmatch.md`; CI (lint, format, CPU tests, page build) passed.
+- 2026-10-04 (branch): sweep `wildlife_sam3` (array 524372) completed, 42/42. On the SAM 3 inputs,
+  Top-1 differs from the paper by a mean of +0.73 points (range -2.0 to +3.7); Zindi WildFusion's
+  -2.0 traced to near-tie flips with unchanged masks; accepted by the user. Phase 5 commits from the
+  temporary `format-tmp` branch fast-forwarded into this branch after the sweep; ruff installed in
+  the environment.
+- 2026-10-04 (branch): AGENTS.md pass for the finished package: refactor marked done, Known
+  issues point at functions instead of line numbers (both issues re-checked), future-work items
+  for CI and machine-local paths closed, licence item narrowed to what is still open, docs
+  dependencies described for uv.
+- 2026-10-04 (branch): sweep specs take `inputs: current | paper` (spec-wide or per dataset), so
+  grids can run on the paper's WildlifeReID-10k tables (`registry.paper_inputs`) as well as the
+  SAM 3 ones.
+- 2026-10-04 (branch): the original SalamanderID2025 split script
+  (`results/make_salamander_split.py`, paper repository) confirms the reconstructed rule;
+  `salamander_table` now runs its three leakage checks (output still byte-identical).
+- 2026-10-04 (branch): Phase 5. ruff configuration, a formatting-only commit (AST-identical) and a
+  lint-fix commit; CI workflow (lint, format, CPU tests, strict page build; rehearsed locally, uses
+  `uv run --no-sync`); Apache-2.0 `LICENSE`, `NOTICE`, `THIRD_PARTY_LICENSES.md`; README quickstart
+  and `docs/reproduce` pages on the `wildmatch` commands; `wildmatch demo` on 24 bundled synthetic
+  lynx renders (CPU). Bug fix found by ruff: missing `file_identity` import in the fine-tuning
+  runner.
+- 2026-10-04 (branch): fixed `finetune_runner.py` calling `file_identity` without importing it
+  (present since 2026-08-13, also in `paper-v1`): every backbone fine-tuning run would have ended
+  with a NameError while writing its completed manifest, after training. No run was affected (no
+  modern fine-tuning run exists; the paper does not use ArcFace fine-tuning). Found by ruff F821;
+  `tests/test_finetune_imports.py` guards it.
+- 2026-10-04 (branch): `paper/tools/compare_with_paper.py` compares a sweep's runs with the paper
+  snapshot (identity: method, matcher, backbone, checkpoint label, probe mode and weighting, k).
+- 2026-10-04 (branch): sweep task records fill `error_summary` only for failed tasks (completed
+  tasks showed their last stderr line, a progress bar). Sweep `wildlife_sam3` (array 524372)
+  started; first results on the SAM 3 inputs: cosine Top-1 Hyena 0.714 (paper 0.708), Leopard 0.623
+  (paper 0.624).
+- 2026-10-04 (branch): SAM 3 retries done and the twelve WildlifeReID-10k `metadata_sam3/` tables
+  written (whole photos: BelugaID 685, SeaStar 40, WhaleShark 16, 18 elsewhere); new sweep spec
+  `wildlife_sam3` (six paper datasets x seven main methods at k=250).
+- 2026-10-04 (branch): `slurm/sam3_masks.sbatch` calls the SAM 3 Python by full path
+  (`SAM3_PYTHON`, default lynx-app): the retry jobs 524354-524362 were submitted from a shell with
+  the wildmatch venv active, sbatch exported it, and `python` resolved to the venv (no `iopath`).
+- 2026-10-04 (branch): empty SAM 3 masks (BelugaID 1,125, SeaStar 42, WhaleShark 39, a few
+  elsewhere) are redone: `wildmatch prepare retry-empty` reruns only those images with per-dataset
+  `retry_prompts`, and `sam3_masks.py --empty-policy full_frame` keeps the whole image when still
+  nothing is detected (flag `sam3_full_frame`); `finish` merges the retry table. Compare-masks
+  results for the full run recorded in AGENTS.md.
+- 2026-10-04 (branch): `sam3_masks.py` creates output folders with a retry: three of the twelve
+  WildlifeReID-10k SAM 3 jobs (ATRW, WhaleSharkID, ZindiTurtleRecall; 524321, 524331, 524332)
+  died with `FileExistsError` when several jobs created `masked_images_sam3/` at once on the
+  shared filesystem. They wrote nothing and were resubmitted.
+- 2026-10-04 (branch): `slurm/sam3_masks.sbatch` defaults to `rtx4090_batch` (user request); the
+  lynx-app PyTorch (2.13.0+cu130) has sm_86 kernels that RTX 4090s run, only V100s are excluded.
+- 2026-10-04 (branch): new SAM 3 masks adopted for WildlifeReID-10k (user decision). Registry
+  entries read `metadata_sam3/` tables with `masked_images_sam3/`; `registry.paper_inputs` keeps
+  the paper's tables for `PAPER_PROFILES`. `sam3_masks.py --masked-dir`; mask tables under
+  `wildmatch_prepare/`. Fixed: the `paper_inputs` insertion had moved BelugaID's `include` out
+  of its `prepare` block (Beluga split table rebuilt with 5,902 rows; test added).
+- 2026-10-04 (branch): SAM 3 pilot 2: `largest` matches the paper's WildlifeReID-10k masks best
+  (Nyala IoU >= 0.9 for 99 % of images against 95 % for `best` and 64 % for `union`; never below
+  `best` elsewhere); registry entries switched to `merge: largest`.
+- 2026-10-04 (branch): recorded why the WildlifeReID-10k tables differ from the release's `split`
+  column (user): the paper uses the closed-set splits of WildFusion (arXiv:2408.12934), taken
+  from the WildlifeDatasets toolkit; `ClosedSetSplit(0.8, seed=666)` reproduces them.
+- 2026-10-04 (branch): SAM 3 mask pilot 1 on six paper WildlifeReID-10k datasets (median IoU
+  0.965-0.999 against the paper's masked files); disagreements were multi-animal photos merged by
+  `union`, old speck masks, and dark photos. WildlifeReID-10k registry entries now use
+  `merge: best`; `sam3_masks.py` gains `--merge largest`.
+- 2026-10-04 (branch): rebuilding the prepared inputs (user decisions on the Phase 4 questions).
+  Rules recovered from the tables the runs read and implemented in
+  `wildmatch.data.prepare.sources`: WildlifeReID-10k split tables (release order, prefix-free
+  identities, integers when numeric, `ClosedSetSplit(0.8, seed=666)`; all twelve reproduced) and
+  the SalamanderID2025 time split from the AnimalCLEF2025 metadata (byte-identical table and
+  metadata join). New `wildmatch prepare build|finish|compare-masks`, `slurm/sam3_masks.sbatch`;
+  the SAM 3 script moved into the package with `--masks-csv`, `--prompt-column` and an
+  overwrite guard. Registry: `prepare` blocks, data sources marked reproducible, CzechLynx source
+  named `CzechLynx`. Open: SAM 3 masks for WildlifeReID-10k are new and may differ from the
+  paper's (pilot pending). Tests: `tests/test_prepare_sources.py`; 384 pass.
+- 2026-10-04 (branch): refactor Phase 4, paper checkpoints and data preparation. The paper
+  snapshot's 395 runs identify every fine-tuned checkpoint by SHA-256; all were found on disk and
+  the registry now names them (renamed `legacy-*-mined/` folders, Nyala's
+  `model__actual_nyala.safetensors`, the relaxed-score RDD checkpoints behind the paper's CzechLynx
+  closed and Nyala RDD rows, joint epoch 100). `conf/weights.yaml` + `wildmatch weights
+  list|verify|download|stage` publish the 18 matcher-only paper checkpoints (8 datasets plus
+  CzechLynx open for the unseen protocol) and 4 protocol files through the Hugging Face Hub with
+  SHA-256 checks; no Hub repository exists yet. `wildmatch prepare status|download|jaguar|unseen-split`:
+  per-dataset checks, raw WildlifeReID-10k download via wildlife-datasets, JaguarReID steps, and the
+  unseen-identity split, which reproduces the paper's CSV byte for byte. Registry `download` blocks
+  record raw sources and whether derived inputs are reproducible; the unseen entry defaults to the
+  existing metadata file. New known issues: checkpoint fingerprints contain absolute paths;
+  WildlifeReID-10k masked crops and metadata, and the Salamander time split, cannot be rebuilt
+  here. Tests: `tests/test_weights.py`; 378 pass.
+- 2026-10-04 (branch): Phase 3 parity run 4 (array 524200, `wildmatch sweep parity --submit`):
+  cosine, WildFusion and default/fine-tuned LoMa and RDD-LightGlue are bit-identical to run 2
+  (max score difference 0, no Top-1 change) with unchanged Vismatch cache fingerprints, and so
+  is the frozen weighted linear probe: 7/7 pairs, Phase 3 parity holds.
+- 2026-10-04 (branch): refactor Phase 3, CLI, sweeps and layout. One `wildmatch` command
+  (`[project.scripts]`, `python -m wildmatch`) with `evaluate`, `finetune-backbone`, `sweep`,
+  `sweep-task`, `summarize-runs`, `summarize-logs`, `tables`, `figures`, `build-unseen-split`,
+  `class-balance` and `audit`. `wildmatch sweep <spec> --list-tasks|--dry-run|--submit|--local`
+  (`src/wildmatch/sweep/`) replaces `probe-parallel-wildlife.sh` and `probe-parallel-czechlynx.sh`:
+  YAML specs (packaged `parity`, `jaguar_default`, `czechlynx_joint`, `example`) over registry
+  datasets, the launchers' rules in Python, immutable submissions (schema unchanged, plus the
+  spec copy and `paths_profile`), `slurm/sweep_task.sbatch` for array elements, per-task logs now
+  always under a split folder. Registry checkpoints are keyed by checkpoint label
+  (`custom`, `descriptor-fine-tuned`, `joint-fine-tuned`; CzechLynx closed gains the launcher's
+  descriptor and joint defaults). Moved: core tools into the package, paper and page tooling to
+  `paper/{page,figures,tools}/`, Slurm wrappers to `slurm/`; removed `train/`, `scripts/`,
+  `probe.sh`, `finetune.sh` and the manifest/log helper scripts. Provenance strings name the new
+  commands. Tests: `tests/test_sweep.py` replaces the launcher, manifest and log tests; the
+  registry test pins the launcher profiles as a literal. Verified: identical task tables,
+  manifest records, checkpoint hashes and Hydra overrides against the launchers; byte-identical
+  tables and pixel-identical figures from the main checkout's runs; 368 tests pass.
+- 2026-10-04 (branch): Phase 2 parity verified. Parity run 3 (array 524188, `paths=gmum
+  dataset=salamander`, frozen config groups) is bit-identical to run 2 for all seven Salamander
+  pairs, and every feature lookup hit the existing cache, so the cache keys are unchanged.
+- 2026-10-04 (branch): refactor Phase 2, paths and dataset registry. Path profiles
+  `conf/paths/{default,gmum}.yaml` (relative defaults with environment overrides; `gmum` = the
+  pre-refactor cluster locations, so resolved paths and cache keys are unchanged) and
+  `wildmatch.paths` for code outside Hydra (argument, `WILDMATCH_PATHS`, gitignored
+  `wildmatch.local.yaml`, `default`). Dataset registry as the Hydra group `conf/dataset/` (17
+  entries generated from the launcher profiles) with `wildmatch.data.registry`;
+  `PAPER_PROFILES`/`BENCHMARK_ONLY_PROFILES` built from it (identical under `gmum`). `probe.yaml`
+  and `finetune.yaml` use `${paths.*}` and a defaults list; launchers and wrappers pass
+  `paths=gmum` (launchers also `dataset=<profile>`); submission snapshots freeze the config groups
+  with a tree digest; eight scripts take locations from the profile or registry; data- and
+  GPU-dependent tests marked. New `tests/test_paths_registry.py` (profiles, registry vs launcher
+  tables, unchanged paper profiles, Hydra composition, snapshot groups, a pre-refactor run read
+  from `tests/fixtures/legacy_experiments`).
+- 2026-10-04 (branch): Phase 1 parity verified. Parity run 2 (array 524170, fresh cache) and
+  two controls (array 524178: `paper-v1` in `ex-reid` with a fresh cache; array 524179: a branch
+  twin) show the branch is bit-identical to `paper-v1` for all seven Salamander methods when both
+  extract on the same GPU type. Finding (Known issues): Vismatch features depend on the GPU type
+  (H100 vs RTX 4090: pair scores differ up to 0.5, Top-1 photos change for up to 96 of 246
+  queries, headline metrics unchanged), and neither the cache key nor the run manifest records the
+  GPU. Later parity checks pin `rtx4090_batch` and compare against run 2.
+- 2026-10-04 (branch): config-snapshot bug found during refactor parity. The parallel
+  launchers passed the frozen submission `probe.yaml` with Hydra's `--config-dir`, which only adds
+  a search path; the entry point's own config stayed primary, so array tasks read the live
+  repository `probe.yaml` (also on `paper-v1` code). Each run's own `config.snapshot.yaml` remains
+  accurate. Fixed on the branch with `--config-path` in both launchers and
+  `scripts/eval_loma_epoch_curve.sh`, with tests. Parity run 1 (array 524163): seven of seven
+  Salamander pairs (cosine, WildFusion, default and fine-tuned LoMa and RDD-LightGlue, linear probe) bit-identical
+  to the `paper-v1` reference, with features from the shared cache because of the bug.
+- 2026-10-04 (branch `refactor/wildmatch-package`): refactor Phase 1, environment and
+  packaging, no behaviour change intended. `reid/`, `models/` and `conf/` moved with `git mv`
+  into the installable `wildmatch` package (`src/wildmatch/`: `data`, `evaluate`, `features`,
+  `matchers`, `models`, `reporting`, `train`, `utils`, `conf`, plus empty `mining` and
+  `matcher_finetune` slots); imports rewritten; repo-root `sys.path` inserts removed. Hydra
+  entry points moved to `wildmatch.entrypoints` (configs as `pkg://wildmatch.conf`, job names
+  pinned so `logs/hydra/probe.log` keeps its name); `train/*.py` are three-line wrappers.
+  `pyproject.toml` (hatchling, Python 3.12, extras `cpu`/`cu126` for torch 2.8.0 from the
+  PyTorch indexes, `matchers`, `wandb`, `mining`; groups `dev`, `docs`) and `uv.lock`;
+  parity-relevant packages constrained to the exact `ex-reid` versions; gluefactory and
+  LightGlue from the git commits `ex-reid` used; both OpenCV wheels pinned to 4.11.0.86 (they
+  overwrite the same `cv2`); vismatch's `uniception` excluded (it ships a top-level `scripts`
+  package that shadowed `scripts/`). `requirements.txt` (stale pins: it named Pillow 9.5.0 and
+  opencv 4.7 while `ex-reid` runs 12.1.0 and 4.11) replaced by `requirements/{cpu,cu126}.txt`
+  exported from the lock; `environment.yml` now builds a `wildmatch` conda env from them.
+  Environment `$UV_ENV_ROOT/wildmatch` created (shared disk). Tests run with pytest (`pythonpath`
+  for `scripts/`); new tests for package-resource configs and for
+  `paper/tools/parity_check.py`, which pairs refactored runs with the `paper-v1` reference runs
+  and checks scores, Top-1 and metrics. Slurm scripts activate the uv environment
+  (`WILDMATCH_ENV` overrides). Work happens in a separate worktree so Slurm jobs from the main
+  checkout keep running the paper code. The approved plan is in `notes/refactor_plan.md`.
 - 2026-10-04: package refactor started (approved plan: `wildmatch` package with uv,
   `pyproject.toml`, `src/` layout, single CLI, dataset registry, portable paths, CPU/CUDA
   extras, Apache-2.0). Phase 0 on `main`: tag `paper-v1` on `4bad498` (the paper code, pushed);

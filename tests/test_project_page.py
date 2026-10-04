@@ -87,7 +87,9 @@ class ProjectPageConfigTests(unittest.TestCase):
         self.assertEqual(used - mount_ids, set(), "mount points in pages without a module")
         for imported in re.findall(r'from "\./([a-z-]+\.js)"', page):
             self.assertTrue((DOCS_DIR / "assets" / "js" / imported).is_file(), imported)
-        modules = [e for e in self.config.get("extra_javascript", []) if isinstance(e, dict) and e.get("type") == "module"]
+        modules = [
+            e for e in self.config.get("extra_javascript", []) if isinstance(e, dict) and e.get("type") == "module"
+        ]
         self.assertTrue(any(e["path"] == "assets/js/page.js" for e in modules), "page.js is not registered as a module")
 
     def test_brand_palette_is_defined(self):

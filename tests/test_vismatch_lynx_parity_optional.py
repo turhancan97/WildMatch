@@ -3,10 +3,10 @@ import sys
 import unittest
 from pathlib import Path
 
+import pytest
 import torch
 
-from reid.methods.vismatch_preprocessing import resize_long_side_div32
-
+from wildmatch.matchers.vismatch_preprocessing import resize_long_side_div32
 
 LYNX_ROOT = Path(
     os.environ.get(
@@ -17,6 +17,7 @@ LYNX_ROOT = Path(
 RUN_PARITY = os.environ.get("RUN_VISMATCH_LYNX_PARITY") == "1"
 
 
+@pytest.mark.data
 @unittest.skipUnless(
     RUN_PARITY and (LYNX_ROOT / "contrastive_finetuning" / "train_common.py").is_file(),
     "set RUN_VISMATCH_LYNX_PARITY=1 with an available lynx-finetuning checkout",

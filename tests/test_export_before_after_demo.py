@@ -1,4 +1,4 @@
-"""Tests for the GPU-free parts of scripts/export_before_after_demo.py."""
+"""Tests for the GPU-free parts of paper/page/export_before_after_demo.py."""
 
 import importlib.util
 import json
@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_before_after_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_before_after_demo.py"
 
 
 def _load():
@@ -26,8 +26,13 @@ B = _load()
 
 class BeforeAfterHelpersTests(unittest.TestCase):
     def test_match_record_maps_points_and_orders_by_confidence(self):
-        result = SimpleNamespace(score=0.5, match_count=2, confidences=np.array([0.2, 0.9]),
-                                 matched_kpts0=np.array([[-1.0, -1.0], [0.0, 0.0]]), matched_kpts1=np.array([[1.0, 1.0], [0.0, 0.0]]))
+        result = SimpleNamespace(
+            score=0.5,
+            match_count=2,
+            confidences=np.array([0.2, 0.9]),
+            matched_kpts0=np.array([[-1.0, -1.0], [0.0, 0.0]]),
+            matched_kpts1=np.array([[1.0, 1.0], [0.0, 0.0]]),
+        )
         rec = B.match_record(result, (100, 50), (200, 80))
         self.assertEqual(rec["match_count"], 2)
         self.assertEqual(rec["points"]["query"][0], [-0.5, -0.5])
@@ -35,11 +40,30 @@ class BeforeAfterHelpersTests(unittest.TestCase):
         self.assertEqual(rec["order_by_confidence"], [1, 0])
 
     def test_payload_shape_and_private_path_guard(self):
-        pair = {"dataset": "hyena", "label": "Hyena", "query": {"image": {"file": "hyena_query.jpg", "width": 10, "height": 10}, "source": "x"},
-                "gallery": {"image": {"file": "hyena_gallery.jpg", "width": 10, "height": 10}, "source": "y"},
-                "checkpoint_sha256": "abc", "probe_score": 0.6,
-                "results": {"default": {"score": 0.1, "match_count": 0, "points": {"query": [], "gallery": []}, "confidence": [], "order_by_confidence": []},
-                            "finetuned": {"score": 0.6, "match_count": 0, "points": {"query": [], "gallery": []}, "confidence": [], "order_by_confidence": []}}}
+        pair = {
+            "dataset": "hyena",
+            "label": "Hyena",
+            "query": {"image": {"file": "hyena_query.jpg", "width": 10, "height": 10}, "source": "x"},
+            "gallery": {"image": {"file": "hyena_gallery.jpg", "width": 10, "height": 10}, "source": "y"},
+            "checkpoint_sha256": "abc",
+            "probe_score": 0.6,
+            "results": {
+                "default": {
+                    "score": 0.1,
+                    "match_count": 0,
+                    "points": {"query": [], "gallery": []},
+                    "confidence": [],
+                    "order_by_confidence": [],
+                },
+                "finetuned": {
+                    "score": 0.6,
+                    "match_count": 0,
+                    "points": {"query": [], "gallery": []},
+                    "confidence": [],
+                    "order_by_confidence": [],
+                },
+            },
+        }
         payload = B.build_payload([pair], {"loma_arch": "LoMa-B"})
         self.assertEqual(set(payload["matchers"]), {"default", "finetuned"})
         self.assertIn("background-removed", payload["inputs"])
@@ -70,9 +94,12 @@ class CommittedBeforeAfterTests(unittest.TestCase):
                 for side in ("query", "gallery"):
                     size = p[side]["image"]
                     for x, y in r["points"][side]:
-                        self.assertTrue(-1 <= x <= size["width"] and -1 <= y <= size["height"], (p["dataset"], key, side))
+                        self.assertTrue(
+                            -1 <= x <= size["width"] and -1 <= y <= size["height"], (p["dataset"], key, side)
+                        )
         text = self.DEMO.read_text(encoding="utf-8")
-        self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
+        self.assertNotIn("/shared/", text)
+        self.assertNotIn("/home/", text)
 
 
 if __name__ == "__main__":

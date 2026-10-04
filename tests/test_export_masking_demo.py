@@ -1,4 +1,4 @@
-"""Tests for the CPU-only scripts/export_masking_demo.py."""
+"""Tests for the CPU-only paper/page/export_masking_demo.py."""
 
 import csv
 import importlib.util
@@ -12,11 +12,12 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 from pycocotools import mask as mask_utils
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_masking_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_masking_demo.py"
 
 
 def _load():
@@ -38,8 +39,10 @@ def _rle(mask: np.ndarray) -> str:
 
 class MaskingDemoHelpersTests(unittest.TestCase):
     def test_iou(self):
-        a = np.zeros((4, 4), bool); a[:2, :] = True
-        b = np.zeros((4, 4), bool); b[1:3, :] = True
+        a = np.zeros((4, 4), bool)
+        a[:2, :] = True
+        b = np.zeros((4, 4), bool)
+        b[1:3, :] = True
         self.assertAlmostEqual(M.iou(a, b), 4 / 12)
         self.assertEqual(M.iou(np.zeros((2, 2), bool), np.zeros((2, 2), bool)), 1.0)
 
@@ -51,28 +54,59 @@ class MaskingDemoHelpersTests(unittest.TestCase):
 
     def test_export_end_to_end_on_synthetic_inputs(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / "data"; (root / "imgs").mkdir(parents=True)
-            sam3 = Path(tmp) / "sam3"; sam3.mkdir()
+            root = Path(tmp) / "data"
+            (root / "imgs").mkdir(parents=True)
+            sam3 = Path(tmp) / "sam3"
+            sam3.mkdir()
             out = Path(tmp) / "out"
-            renders = [{"tag": "Q_lynx_1", "path": "imgs/synthetic_lynx_1/a.jpg", "identity": "lynx_1", "role": "query"},
-                       {"tag": "G_lynx_1", "path": "imgs/synthetic_lynx_1/b.jpg", "identity": "lynx_1", "role": "gallery"}]
+            renders = [
+                {"tag": "Q_lynx_1", "path": "imgs/synthetic_lynx_1/a.jpg", "identity": "lynx_1", "role": "query"},
+                {"tag": "G_lynx_1", "path": "imgs/synthetic_lynx_1/b.jpg", "identity": "lynx_1", "role": "gallery"},
+            ]
             h, w = 40, 60
-            dataset_mask = np.zeros((h, w), np.uint8); dataset_mask[10:30, 10:50] = 1
-            sam3_mask = np.zeros((h, w), np.uint8); sam3_mask[12:30, 10:50] = 1
+            dataset_mask = np.zeros((h, w), np.uint8)
+            dataset_mask[10:30, 10:50] = 1
+            sam3_mask = np.zeros((h, w), np.uint8)
+            sam3_mask[12:30, 10:50] = 1
             with (root / "meta.csv").open("w", newline="", encoding="utf-8") as fh:
-                wr = csv.DictWriter(fh, fieldnames=["path", "mask"]); wr.writeheader()
+                wr = csv.DictWriter(fh, fieldnames=["path", "mask"])
+                wr.writeheader()
                 for r in renders:
                     (root / r["path"]).parent.mkdir(parents=True, exist_ok=True)
                     Image.fromarray(np.full((h, w, 3), 120, np.uint8)).save(root / r["path"])
                     wr.writerow({"path": r["path"], "mask": _rle(dataset_mask)})
             with (sam3 / "masks.csv").open("w", newline="", encoding="utf-8") as fh:
-                wr = csv.DictWriter(fh, fieldnames=["path", "masked_path", "n_detections", "best_score", "threshold_used",
-                                                    "prompt_used", "merge", "fg_fraction", "bbox", "mask"])
+                wr = csv.DictWriter(
+                    fh,
+                    fieldnames=[
+                        "path",
+                        "masked_path",
+                        "n_detections",
+                        "best_score",
+                        "threshold_used",
+                        "prompt_used",
+                        "merge",
+                        "fg_fraction",
+                        "bbox",
+                        "mask",
+                    ],
+                )
                 wr.writeheader()
                 for r in renders:
-                    wr.writerow({"path": r["path"], "masked_path": "x", "n_detections": "2", "best_score": "0.91",
-                                 "threshold_used": "0.5", "prompt_used": "Lynx", "merge": "union",
-                                 "fg_fraction": str(sam3_mask.mean()), "bbox": "", "mask": _rle(sam3_mask)})
+                    wr.writerow(
+                        {
+                            "path": r["path"],
+                            "masked_path": "x",
+                            "n_detections": "2",
+                            "best_score": "0.91",
+                            "threshold_used": "0.5",
+                            "prompt_used": "Lynx",
+                            "merge": "union",
+                            "fg_fraction": str(sam3_mask.mean()),
+                            "bbox": "",
+                            "mask": _rle(sam3_mask),
+                        }
+                    )
             # The exporter prints a per-render report, and pycocotools 2.x triggers a NumPy 2
             # DeprecationWarning inside its RLE decoder; neither is our code under test.
             with redirect_stdout(io.StringIO()), warnings.catch_warnings():
@@ -94,6 +128,7 @@ class MaskingDemoHelpersTests(unittest.TestCase):
             text = (out / "masking_demo.json").read_text(encoding="utf-8")
             self.assertNotIn("/home/", text)
 
+    @pytest.mark.data
     def test_real_items_resolve_raw_paths_and_references(self):
         if not M.MATCH_EXAMPLES_JSON.is_file() or not all(Path(p.metadata).is_file() for p in M.PAPER_PROFILES):
             self.skipTest("match examples or dataset metadata not available")
@@ -133,13 +168,16 @@ class CommittedMaskingDemoTests(unittest.TestCase):
                 with Image.open(self.DEMO.parent / item["sam3_mask"]) as sam3_mask:
                     self.assertEqual(sam3_mask.size, (item["image"]["width"], item["image"]["height"]))
                 if item["dataset_mask"] is None:
-                    self.assertIsNone(item["iou_with_dataset_mask"]); self.assertIsNone(item["reference_mask_source"])
+                    self.assertIsNone(item["iou_with_dataset_mask"])
+                    self.assertIsNone(item["reference_mask_source"])
                 else:
-                    self.assertTrue(0.0 <= item["iou_with_dataset_mask"] <= 1.0); self.assertTrue(item["reference_mask_source"])
+                    self.assertTrue(0.0 <= item["iou_with_dataset_mask"] <= 1.0)
+                    self.assertTrue(item["reference_mask_source"])
                 if group["key"] == "real":
                     self.assertEqual(item["dataset_mask"] is not None, item["dataset"] == "lynx_closed")
         text = self.DEMO.read_text(encoding="utf-8")
-        self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
+        self.assertNotIn("/shared/", text)
+        self.assertNotIn("/home/", text)
 
 
 if __name__ == "__main__":

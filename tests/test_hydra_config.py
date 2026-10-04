@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import sys
 import unittest
@@ -9,13 +10,14 @@ from hydra.errors import ConfigCompositionException
 from omegaconf import OmegaConf
 
 try:
-    from reid.engine.probe_runner import resolve_candidate_k, resolve_map_at_k
+    from wildmatch.evaluate.probe_runner import resolve_candidate_k, resolve_map_at_k
+
     HAS_PROBE_RUNNER = True
 except ModuleNotFoundError:
     HAS_PROBE_RUNNER = False
 
 ROOT = Path(__file__).resolve().parents[1]
-CONF_DIR = ROOT / "conf"
+CONF_DIR = ROOT / "src" / "wildmatch" / "conf"
 
 
 def compose_config(name, overrides=()):
@@ -56,19 +58,46 @@ class HydraConfigurationTests(unittest.TestCase):
         self.assertEqual(finetune.dataset.image_variant, "background")
         self.assertEqual(finetune.train.epochs, 30)
 
+    def test_configs_load_as_package_resources(self):
+        # The entry points live in wildmatch/entrypoints.py, so Hydra resolves the configs as
+        # pkg://wildmatch.conf; this needs conf/ to be an importable package.
+        from hydra import initialize_config_module
+
+        for name, job in (("probe", "probe"), ("finetune", "finetune")):
+            with initialize_config_module(version_base="1.3", config_module="wildmatch.conf"):
+                cfg = compose(config_name=name, return_hydra_config=True)
+            self.assertEqual(cfg.model.type, "megadescriptor-l")
+            self.assertEqual(cfg.hydra.job.name, job)
+
     def test_frozen_config_snapshot_wins_with_config_path(self):
-        # The launchers pass the submission's frozen probe.yaml with --config-path. With
-        # --config-dir Hydra keeps conf/probe.yaml as primary and ignores the snapshot.
+        # Sweep tasks pass the submission's frozen probe.yaml with --config-path. With
+        # --config-dir Hydra keeps the packaged probe.yaml as primary and ignores the snapshot.
         with TemporaryDirectory() as tmp:
-            snapshot = (CONF_DIR / "probe.yaml").read_text(encoding="utf-8").replace(
-                "cache/features", "cache/FROM_SNAPSHOT"
+            snapshot = (
+                (CONF_DIR / "probe.yaml").read_text(encoding="utf-8").replace("cache/features", "cache/FROM_SNAPSHOT")
             )
             Path(tmp, "probe.yaml").write_text(snapshot, encoding="utf-8")
+            for group in ("paths", "dataset"):  # a submission snapshot freezes the config groups too
+                shutil.copytree(CONF_DIR / group, Path(tmp, group))
             outputs = {}
             for flag in ("--config-path", "--config-dir"):
                 result = subprocess.run(
-                    [sys.executable, str(ROOT / "train" / "probe.py"), flag, tmp, "--config-name", "probe", "--cfg", "job"],
-                    cwd=tmp, capture_output=True, text=True, check=True,
+                    [
+                        sys.executable,
+                        "-m",
+                        "wildmatch",
+                        "evaluate",
+                        flag,
+                        tmp,
+                        "--config-name",
+                        "probe",
+                        "--cfg",
+                        "job",
+                    ],
+                    cwd=tmp,
+                    capture_output=True,
+                    text=True,
+                    check=True,
                 )
                 outputs[flag] = result.stdout
         self.assertIn("cache/FROM_SNAPSHOT", outputs["--config-path"])
@@ -185,7 +214,7 @@ class HydraConfigurationTests(unittest.TestCase):
                     resolve_candidate_k(cfg)
 
     def test_legacy_cli_budget_override_has_migration_error(self):
-        from train.probe import reject_removed_probe_budget_overrides
+        from wildmatch.entrypoints import reject_removed_probe_budget_overrides
 
         with self.assertRaisesRegex(ValueError, "benchmark.candidate_k"):
             reject_removed_probe_budget_overrides(["benchmark.map_at_k=50"])

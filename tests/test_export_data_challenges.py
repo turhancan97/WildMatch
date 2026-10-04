@@ -1,13 +1,11 @@
 import json
 import re
-import sys
 import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
 
-from scripts import export_data_challenges as dc  # noqa: E402
+from paper.page import export_data_challenges as dc  # noqa: E402
 
 
 class ExampleListTests(unittest.TestCase):

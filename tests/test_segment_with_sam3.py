@@ -1,18 +1,19 @@
-from contextlib import redirect_stderr
 import io
-from pathlib import Path
 import tempfile
 import unittest
 import warnings
+from contextlib import redirect_stderr
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from scripts.segment_with_sam3 import (
+from wildmatch.data.prepare.sam3_masks import (
     MetadataError,
     build_masked_metadata,
     decode_mask,
     encode_mask,
+    ensure_directory,
     merge_instances,
     parse_args,
     parse_mapping,
@@ -37,6 +38,12 @@ class MergeInstancesTests(unittest.TestCase):
     def test_best_keeps_only_the_top_piece(self):
         mask, _, _ = merge_instances(self.masks, self.scores, "best")
         self.assertTrue(np.array_equal(mask, self.masks[1, 0]))
+
+    def test_largest_keeps_the_piece_with_most_pixels(self):
+        sizes = self.masks.reshape(self.masks.shape[0], -1).sum(axis=1)
+        mask, _, best = merge_instances(self.masks, self.scores, "largest")
+        self.assertTrue(np.array_equal(mask, self.masks[int(np.argmax(sizes)), 0]))
+        self.assertAlmostEqual(best, 0.9)  # the reported score stays the best detection's
 
     def test_no_detection_is_reported_not_dropped(self):
         mask, count, best = merge_instances(np.zeros((0, 3, 5), dtype=bool), np.zeros(0), "union")
@@ -72,22 +79,26 @@ class ParsingTests(unittest.TestCase):
 
 class MaskedMetadataTests(unittest.TestCase):
     def _fixture(self, root: Path):
-        source = pd.DataFrame({
-            "image_id": [1, 2, 3],
-            "identity": ["a", "a", "b"],
-            "path": ["database/images/1.jpg", "query/images/2.jpg", "database/images/3.jpg"],
-            "split": ["database", "query", "database"],
-        })
-        masks = pd.DataFrame({
-            "path": source["path"],
-            "masked_path": "masked_images/" + source["path"],
-            "mask": [encode_mask(np.ones((2, 2), dtype=bool))] * 3,
-            "best_score": [0.9, 0.8, 0.1],
-            "fg_fraction": [0.3, 0.4, 0.2],
-            "n_detections": [1, 2, 3],
-            "threshold_used": [0.5, 0.5, 0.1],
-            "prompt_used": ["Salamander"] * 3,
-        })
+        source = pd.DataFrame(
+            {
+                "image_id": [1, 2, 3],
+                "identity": ["a", "a", "b"],
+                "path": ["database/images/1.jpg", "query/images/2.jpg", "database/images/3.jpg"],
+                "split": ["database", "query", "database"],
+            }
+        )
+        masks = pd.DataFrame(
+            {
+                "path": source["path"],
+                "masked_path": "masked_images/" + source["path"],
+                "mask": [encode_mask(np.ones((2, 2), dtype=bool))] * 3,
+                "best_score": [0.9, 0.8, 0.1],
+                "fg_fraction": [0.3, 0.4, 0.2],
+                "n_detections": [1, 2, 3],
+                "threshold_used": [0.5, 0.5, 0.1],
+                "prompt_used": ["Salamander"] * 3,
+            }
+        )
         for rel in masks["masked_path"]:
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             (root / rel).write_bytes(b"x")
@@ -97,13 +108,31 @@ class MaskedMetadataTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source, masks = self._fixture(root)
-            out = build_masked_metadata(source, masks, root, split_col="split",
-                                        split_map={"database": "train", "query": "test"},
-                                        split_map_column="split_train_test")
-        self.assertEqual(list(out.columns), [
-            "image_id", "identity", "path", "split", "original_path", "mask", "sam3_score",
-            "sam3_fg_fraction", "sam3_n_instances", "sam3_threshold", "sam3_prompt", "split_train_test",
-        ])
+            out = build_masked_metadata(
+                source,
+                masks,
+                root,
+                split_col="split",
+                split_map={"database": "train", "query": "test"},
+                split_map_column="split_train_test",
+            )
+        self.assertEqual(
+            list(out.columns),
+            [
+                "image_id",
+                "identity",
+                "path",
+                "split",
+                "original_path",
+                "mask",
+                "sam3_score",
+                "sam3_fg_fraction",
+                "sam3_n_instances",
+                "sam3_threshold",
+                "sam3_prompt",
+                "split_train_test",
+            ],
+        )
         self.assertTrue(out["path"].str.startswith("masked_images/").all())
         self.assertEqual(list(out["original_path"]), list(source["path"]))
         self.assertEqual(list(out["split"]), ["database", "query", "database"])  # untouched
@@ -121,10 +150,39 @@ class MaskedMetadataTests(unittest.TestCase):
                 build_masked_metadata(source, masks, root)
             self._fixture(root)
             with self.assertRaisesRegex(MetadataError, "without a mapping"):
-                build_masked_metadata(source, masks, root, split_col="split",
-                                      split_map={"database": "train"}, split_map_column="split_train_test")
+                build_masked_metadata(
+                    source,
+                    masks,
+                    root,
+                    split_col="split",
+                    split_map={"database": "train"},
+                    split_map_column="split_train_test",
+                )
             with self.assertRaisesRegex(MetadataError, "duplicate"):
                 build_masked_metadata(pd.concat([source, source.iloc[:1]]), masks, root)
+
+
+class EnsureDirectoryTests(unittest.TestCase):
+    def test_retries_a_concurrent_creation(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp, "a", "b")
+            real_mkdir = Path.mkdir
+            calls = []
+
+            def flaky(self, *args, **kwargs):
+                calls.append(self)
+                if len(calls) == 1:
+                    raise FileExistsError(str(self))
+                return real_mkdir(self, *args, **kwargs)
+
+            with mock.patch.object(Path, "mkdir", flaky), mock.patch("time.sleep"):
+                ensure_directory(target)
+            self.assertTrue(target.is_dir())
+            self.assertGreaterEqual(len(calls), 2)
 
 
 if __name__ == "__main__":

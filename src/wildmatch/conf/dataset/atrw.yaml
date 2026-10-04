@@ -1,0 +1,50 @@
+# Dataset registry entry `atrw` (generated 2026-10-04 from the launcher profile of the same name).
+# Selected with `dataset=atrw`; the `registry` block is metadata for tools, not read by the probe.
+name: "WildlifeReID-10k"
+animal: "ATRW"
+root: "${paths.data_root}/WildlifeReID-10k"
+metadata_file: "metadata_sam3/metadata_ATRW.csv"  # SAM 3 inputs (wildmatch prepare)
+label_col: "identity"
+mask_col: "mask"
+no_background: false
+image_variant: "no_background"
+split_col: "split"
+database_split_value: "train"
+query_split_value: "test"
+calibration_size: 100
+registry:
+  key: "atrw"
+  paper_key: null
+  label: null
+  source: "ATRW"
+  paper: false
+  order: null
+  # Default fine-tuned checkpoints per sweep checkpoint label (epoch 299 unless stated):
+  # custom = matcher only, descriptor-fine-tuned = descriptor only, joint-fine-tuned =
+  # descriptor + matcher trained together. A sweep row whose label has no entry fails closed.
+  checkpoints:
+    custom:
+      loma: "${paths.checkpoint_root}/wildlife-reid-10k/ATRW/loma-finetuned/legacy/epoch_299/model.safetensors"
+      rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/ATRW/rdd-finetuned/legacy/epoch_299/model.safetensors"
+  licence: null   # to verify before release (Phase 4)
+  # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
+  prepare:
+    builder: wildlifereid10k
+    include: null
+    # One animal per photo: keep the largest SAM 3 detection. Photos often show several animals
+    # (NyalaData, GiraffeZebraID); in the 2026-10-04 pilots against the paper's masked files,
+    # merging all ("union") gave Nyala IoU >= 0.9 for 64 % of images, "best" 95 %, "largest" 99 %.
+    merge: largest
+    masked_dir: masked_images_sam3
+    # Extra prompts for images with an empty mask (`wildmatch prepare retry-empty`); still empty -> whole image.
+    retry_prompts: ["big cat"]
+  # The table the paper's runs read (team masks, 2026-02/08); paper tooling that analyses those
+  # runs uses it. New runs use metadata_file above (decided 2026-10-04: publish the SAM 3 masks).
+  paper_inputs:
+    metadata_file: "metadata_mdsplit_no_background/metadata_ATRW.csv"
+  # Where the data comes from. raw: the published source; derived: the files this registry entry
+  # reads that are made from it; reproducible: whether this repository can rebuild them.
+  download:
+    raw: "kaggle:wildlifedatasets/wildlifereid-10k (wildlife-datasets WildlifeReID10k)"
+    derived: "split table: WildFusion closed-set split (arXiv:2408.12934), wildmatch prepare build (exact); masks: SAM 3 (new, the original masking method is not recorded); metadata: wildmatch prepare finish"
+    reproducible: true

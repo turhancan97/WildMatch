@@ -1,8 +1,8 @@
 # Explainable Individual Re-Identification
 
 Modular deep learning codebase for wildlife individual re-identification (ReID), with:
-- backbone finetuning (`train/finetune.py`)
-- retrieval probing / benchmarking (`train/probe.py`)
+- backbone finetuning (`wildmatch finetune-backbone`)
+- retrieval probing / benchmarking (`wildmatch evaluate`, grids with `wildmatch sweep`)
 - optional mask-based background removal
 - optional Weights & Biases logging
 
@@ -12,33 +12,75 @@ The repository supports two workflows:
 - `finetune`: train a backbone with ArcFace loss on a train split and evaluate retrieval on a validation split.
 - `probe`: benchmark retrieval methods (`cosine`, `wildfusion`, `local_lightglue`, `linear_probe`, `efficient_probe`, `vismatch`) with pretrained or finetuned backbones.
 
-The code is organized into reusable modules under `reid/` and thin CLI entrypoints under `train/`.
+The code is the installable `wildmatch` package under `src/wildmatch/`, run through one
+`wildmatch` command (`wildmatch --help` lists the subcommands). (The package refactor is in
+progress on this branch; see AGENTS.md, "Package refactor".)
+
+## Quickstart
+
+```bash
+# 1. Install (Python 3.12; pick one PyTorch build: --extra cpu or --extra cu126)
+uv sync --extra cu126 --extra matchers --group dev
+source .venv/bin/activate                     # or prefix the commands below with `uv run`
+
+# 1b. Check the installation on any machine (CPU, ~1 min, no dataset needed)
+wildmatch demo                                # cosine on 24 bundled synthetic lynx renders
+wildmatch demo --method loma                  # default LoMa over the cosine candidates (~2 min)
+
+# 2. Data: see what each registry dataset needs, then download or rebuild it
+wildmatch prepare status
+wildmatch prepare download zindi              # raw WildlifeReID-10k (Kaggle credentials)
+wildmatch prepare build zindi                 # split table; prints the SAM 3 masking command
+wildmatch prepare finish zindi                # pre-masked metadata, after the masks exist
+
+# 3. Fine-tuned matcher checkpoints of the paper (Hugging Face Hub)
+wildmatch weights download --dataset zindi
+
+# 4. One evaluation (Hydra overrides)
+wildmatch evaluate dataset=zindi benchmark.method=vismatch \
+    benchmark.methods.vismatch.matcher=loma benchmark.candidate_k=250
+
+# 5. A grid of evaluations (sweep spec: datasets x budgets x methods)
+wildmatch sweep example --list-tasks          # src/wildmatch/conf/sweep/example.yaml
+wildmatch sweep my_sweep.yaml --local         # or --submit on Slurm
+
+# 6. Results
+wildmatch summarize-runs --format markdown
+wildmatch tables && wildmatch figures
+```
+
+`wildmatch --help` lists every command. The sections below describe installation options,
+data locations, the dataset registry and each workflow in detail.
 
 ## Repository Structure
 
 ```text
 .
-├── conf/                 Hydra configs: probe.yaml, finetune.yaml
-├── models/               backbone factory, ViT CLS adapter, training objectives
-├── reid/                 library code
+├── pyproject.toml, uv.lock      package metadata and the locked environment (uv)
+├── requirements/          pinned pip/conda requirements exported from uv.lock
+├── environment.yml        conda route (installs requirements/cu126.txt)
+├── src/wildmatch/         the package
+│   ├── cli.py            the `wildmatch` command
+│   ├── conf/             Hydra configs (probe.yaml, finetune.yaml), paths/, dataset/ registry, sweep/ specs
+│   ├── entrypoints.py    Hydra entry points for evaluation (probe) and backbone fine-tuning
+│   ├── sweep/            sweep specs, immutable submissions, task runner, task logs
 │   ├── data/             dataset views, COCO-RLE masking, split safety checks
-│   ├── engine/           finetune and probe runners
-│   ├── evaluation/       metrics, stable ranking, candidate scoring
+│   ├── evaluate/         probe runner, metrics, stable ranking, candidate scoring
 │   ├── features/         feature containers
-│   ├── methods/          Vismatch (profiles, batching, checkpoints), WildFusion calibration
+│   ├── matchers/         Vismatch (profiles, batching, checkpoints), WildFusion calibration
+│   ├── models/           backbone factory, ViT CLS adapter, training objectives
 │   ├── reporting/        manifests, run index, paper tables and figures, W&B names
-│   ├── training/         checkpointing, accumulation, class weights
-│   └── utils/            I/O, fingerprints, cache identities, reproducibility
-├── train/                CLI entrypoints: finetune.py, probe.py
-├── scripts/              analysis, export and plotting tools (see below)
-├── tests/                dependency-light unit tests
+│   ├── train/            backbone fine-tuning runner, checkpointing, accumulation, class weights
+│   ├── utils/            I/O, fingerprints, cache identities, reproducibility, config defaults
+│   └── mining/, matcher_finetune/   slots for pair mining and matcher fine-tuning (merged in later)
+├── slurm/                sweep_task.sbatch, evaluate.sbatch, finetune_backbone.sbatch, eval_loma_epoch_curve.sh
+├── paper/                page exporters (page/), paper figures and analyses (figures/), tools/ (parity check, SAM 3)
+├── tests/                unit tests (pytest)
 ├── notebooks/            dataset annotation viewer (outputs stripped)
-├── probe.sh, finetune.sh      single-job Slurm wrappers
-├── probe-parallel-czechlynx.sh, probe-parallel-wildlife.sh   Slurm array launchers
 ├── mkdocs.yml, docs/, overrides/   project page (MkDocs Material)
 ├── video/explainer/      explainer video sources (Manim + Kokoro, wm-video env)
 ├── AGENTS.md             operating guide, decisions and open work
-├── notes/history.md      narrative history moved out of AGENTS.md
+├── notes/                narrative history and the refactor's parity reference
 └── CHANGELOG.MD          chronological record of changes
 ```
 
@@ -49,12 +91,48 @@ datasets). `results/`, `cache/` and `visualizations/` appear only when old workf
 
 ## Installation
 
-### Conda (recommended)
+Python 3.12. Pick exactly one torch build: `cu126` (CUDA 12.6) or `cpu`.
+
+### uv (recommended)
 
 ```bash
-conda env create -f environment.yml
-conda activate ex-reid
+uv sync --extra cu126 --extra matchers --group dev   # or --extra cpu
+uv run wildmatch evaluate --help
 ```
+
+`--extra matchers` adds Vismatch (RDD-LightGlue, LoMa and the other local matchers);
+`--extra wandb` adds Weights & Biases logging. `uv.lock` pins every package, including the
+git dependencies (wildlife-tools, wildlife-datasets, Vismatch, glue-factory, LightGlue).
+uv creates `.venv/` in the repository unless `UV_PROJECT_ENVIRONMENT` points elsewhere,
+for example to keep large environments off a small home directory:
+
+```bash
+export UV_PROJECT_ENVIRONMENT=/path/with/space/wildmatch
+```
+
+### Data locations
+
+Paths come from a profile in `src/wildmatch/conf/paths/`: `default` expects datasets under
+`./data`, writes caches to `./cache` and looks for checkpoints in `./checkpoints` (override with
+`WILDMATCH_DATA_ROOT`, `WILDMATCH_CACHE_ROOT`, `WILDMATCH_CHECKPOINT_ROOT`); `gmum` is the GMUM
+cluster layout. Choose one per run with `paths=<name>`, per shell with `WILDMATCH_PATHS`, or per
+checkout with a gitignored `wildmatch.local.yaml` containing `paths: <name>`. Datasets are
+selected from the registry in `src/wildmatch/conf/dataset/` with `dataset=<key>`, for example
+`wildmatch evaluate dataset=salamander benchmark.method=cosine`.
+
+### Conda
+
+```bash
+conda env create -f environment.yml                  # Python 3.12 and pip
+conda activate wildmatch
+pip install --no-deps -r requirements/cu126.txt      # or requirements/cpu.txt
+pip install pytest                                   # only to run the tests
+```
+
+The requirement files pin every package; `requirements/export.sh` generates them from
+`uv.lock`, so both routes install the same versions. `--no-deps` is required: a normal pip
+resolve fails because glue-factory asks for an unpinned LightGlue git URL while the lock pins
+a commit. `pip check` then reports only `uniception`, which is excluded on purpose.
 
 ## Supported Models
 
@@ -101,118 +179,105 @@ Default path in configs:
 ### Finetune
 
 ```bash
-python train/finetune.py
+wildmatch finetune-backbone
 ```
 
 Override configuration values with Hydra dotlist syntax:
 
 ```bash
-python train/finetune.py train.epochs=10 train.batch_size=32
+wildmatch finetune-backbone train.epochs=10 train.batch_size=32
 ```
 
 ### Probe / Benchmark
 
 ```bash
-python train/probe.py
+wildmatch evaluate
 ```
 
 Select methods and override nested settings with Hydra:
 
 ```bash
-python train/probe.py benchmark.method=linear_probe
-python train/probe.py benchmark.method=efficient_probe
-python train/probe.py benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
+wildmatch evaluate benchmark.method=linear_probe
+wildmatch evaluate benchmark.method=efficient_probe
+wildmatch evaluate benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
 ```
 
-For the reproducible Slurm ablation grid, use the separate launcher:
+For grids of runs (method x checkpoint x candidate budget over registry datasets), write a
+sweep spec and run it with `wildmatch sweep`. Packaged specs live in
+`src/wildmatch/conf/sweep/`; `example.yaml` there documents every option.
 
 ```bash
-# Submit the CzechLynx task table.
-bash probe-parallel-czechlynx.sh
-
-# Submit the WildlifeReID-10k task table.
-bash probe-parallel-wildlife.sh
-
-# Inspect either task table without submitting jobs.
-bash probe-parallel-czechlynx.sh --list-tasks
-bash probe-parallel-wildlife.sh --list-tasks
-
-# Print an array submission command without submitting it.
-PROBE_PARALLEL_DRY_RUN=1 bash probe-parallel-wildlife.sh
+wildmatch sweep parity --list-tasks              # print the task table; writes nothing
+wildmatch sweep my_sweep.yaml --dry-run          # freeze the submission, print the sbatch command
+wildmatch sweep my_sweep.yaml --submit           # Slurm array (slurm/sweep_task.sbatch), from the repo root
+wildmatch sweep my_sweep.yaml --local            # run every task here, one after another
+wildmatch sweep my_sweep.yaml --submit --max-concurrent 4 --sbatch-arg=--partition=gpu
 ```
-The wildlife launcher includes ready-to-activate profiles for ATRW, Giraffes,
-LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset, StripeSpotter, and
-SeaStarReID2023 in addition to the existing WildlifeReID-10k animals. Activate
-exactly one profile at a time; each new profile expects the corresponding
-`legacy/epoch_299/model.safetensors` LoMa and RDD checkpoint paths; several of these
-folders have since been renamed (see AGENTS.md, "Known issues"). The launcher also carries
-commented SalamanderID2025 and JaguarReID profiles.
 
-The CzechLynx launcher contains separate `split-time_closed` and
-`split-time_open` profiles. The closed profile is active by default; uncomment
-the open profile to run it as well in the same array. Both profiles use the same
-active `VARIANTS` and candidate grid, but each has independent custom LoMa/RDD
-checkpoint settings. The open profile defaults to
-`/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-open`, epoch
-`299`, with `loma-b-finetuned-legacy/epoch_299/model.safetensors` and
-`rdd-finetuned-legacy/epoch_299/model.safetensors`. These paths can be overridden
-by the `CZECHLYNX_OPEN_*` variables, but are never inferred from the closed-split
-checkpoint root. Logs and task metadata
-include the split name, and the resulting experiment paths are split-specific.
+A spec names registry `datasets`, `candidate_k` budgets and `variants` rows:
 
-`probe-parallel-czechlynx.sh` and `probe-parallel-wildlife.sh` leave `probe.sh`
-unchanged and provide separate task tables for CzechLynx and WildlifeReID-10k.
-Each launcher crosses its active variants with the candidate budgets listed in
-`CANDIDATE_K_VALUES`; its `VARIANTS` table is the source of truth for which methods
-run. The CzechLynx launcher may have one or both split profiles active; the
-wildlife launcher uses one active animal profile. The concurrency cap is
-controlled by `MAX_CONCURRENT_JOBS` near the top of the selected file. Custom
-Vismatch checkpoint paths are editable there; matcher-fine-tuned variants use
-`checkpoint_components=matcher_only` and descriptor-fine-tuned variants use
-`checkpoint_components=descriptor_only`, while default variants use Vismatch-managed
-weights. Descriptor rows are opt-in and the selected launcher fails before submission if a custom checkpoint is
-missing. Slurm's raw stdout and stderr remain under `logs/parallel_run/`, while each task also creates descriptive copies under
-`logs/parallel_run/<dataset>/<animal>/<split_protocol>/job-<array_job>/`. Files are
-named with the task index, split, method, matcher, checkpoint, and candidate budget. Each task writes
-`.out`, `.err`, `.combined.log`, and a JSON metadata record containing
-its command, status, timestamps, error summary, and experiment-run link.
-`logs/index.csv` is updated atomically as tasks start and finish. The launcher uses
-Slurm's `SLURM_SUBMIT_DIR`, so it remains valid even though Slurm executes a copied
-script from its private spool directory. Use
-`MAX_CONCURRENT_JOBS=2 bash probe-parallel-wildlife.sh` to change the throttle.
-For `linear_probe` and `efficient_probe` comparisons, add launcher rows ending in
-`|weighted` or `|unweighted`. These become `inverse_frequency` and `none` Hydra
-overrides, respectively, and are included in task names, commands, manifests, and
-logs. The generated paper tables also show the policy in the checkpoint cell, for
-example `frozen (weighted)` and `frozen (unweighted)`, so paired classifier rows
-cannot be confused. The audit CSV retains the separate `class_weighting` column.
+```yaml
+datasets: [salamander]
+candidate_k: [50, 250]
+variants:
+  - {method: cosine}
+  - {method: vismatch, matcher: loma}                       # default weights
+  - {method: vismatch, matcher: loma, checkpoint: custom}   # fine-tuned matcher (registry path)
+  - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
+```
 
-Descriptor profiles may be cross-species: set the evaluation animal and checkpoint
-owner independently. The launcher requires the checkpoint path to contain the
-declared owner in the WildlifeReID-10k layout, so an accidental owner/path mismatch
-fails before model loading or cache creation.
+`inputs: paper` in a spec (or per dataset in `dataset_overrides`) runs on the tables the paper's
+runs read instead of the current ones (WildlifeReID-10k: the team's masks instead of SAM 3).
+Classifier probes run once, at the first budget. Fine-tuned rows take their checkpoint from the
+dataset's registry entry (`custom` = matcher only, `descriptor-fine-tuned`, `joint-fine-tuned`)
+unless the row or `dataset_overrides` names a path; a missing checkpoint fails before
+submission. Every non-listing mode freezes an immutable submission under
+`logs/parallel_run/submissions/<id>/` (config snapshot, spec copy, task table, manifest with
+checkpoint SHA-256s); each task re-validates it before loading a model and mirrors its output
+into `logs/parallel_run/<dataset>/<animal>/<split>/job-<id>/task-...{.out,.err,.combined.log,.json}`.
+`logs/index.csv` is rebuilt after every task. Weighted and unweighted classifier rows map to
+`inverse_frequency` and `none` and are shown in paper tables as, for example,
+`frozen (weighted)`. Descriptor rows may be cross-species: set `checkpoint_owner` and
+`evaluation_animal` in `dataset_overrides`; the owner must match an owner-identifiable path.
 
-To inspect the organized logs:
+To inspect the task logs:
 
 ```bash
-python scripts/summarize_logs.py --format markdown
-python scripts/summarize_logs.py --dataset WildlifeReID-10k --status failed
-python scripts/summarize_logs.py --method vismatch --matcher loma --format csv
+wildmatch summarize-logs --format markdown
+wildmatch summarize-logs --dataset WildlifeReID-10k --status failed
+wildmatch summarize-logs --method vismatch --matcher loma --format csv
 ```
 
-Historical log files are not moved or rewritten; the descriptive layout applies to
-future parallel tasks.
+Historical log files are not moved or rewritten.
+
+### Data and paper checkpoints
+
+```bash
+wildmatch prepare status                      # what each registry dataset has on disk, and its source
+wildmatch prepare download zindi              # raw WildlifeReID-10k from Kaggle (needs Kaggle credentials)
+wildmatch prepare unseen-split                # rebuild the CzechLynx unseen-identity split
+wildmatch prepare build salamander --source <animal-clef-2025 folder>   # split table + images, prints the SAM 3 command
+sbatch slurm/sam3_masks.sbatch <printed arguments>                       # SAM 3 masks (rtx4090_batch by default)
+wildmatch prepare finish salamander           # pre-masked metadata the registry reads
+wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
+wildmatch weights download --dataset salamander   # from the Hub (--repo or WILDMATCH_HUB_REPO; HF_TOKEN)
+wildmatch weights verify
+```
+
+Downloaded checkpoints land where the dataset registry expects them (under the profile's
+`checkpoint_root`), so fine-tuned sweep rows find them without extra settings. The split tables are rebuilt exactly, but the prepared inputs are not all identical: new SAM 3 masks for WildlifeReID-10k can differ from the masks the paper used
+(AGENTS.md, "Known issues").
 
 ### Jaguar (JaguarReID)
 
 The Kaggle Jaguar Re-ID training photos run through the shared probe pipeline as
-`JaguarReID`: prepare them once with `scripts/prepare_jaguar_metadata.py`, then activate the
-`jaguar` profile of `probe-parallel-wildlife.sh`. See AGENTS.md, "JaguarReID".
+`JaguarReID`: prepare them once with `wildmatch prepare jaguar prepare`, `... embed` and `... split`, then run
+`wildmatch sweep jaguar_default`. See AGENTS.md, "JaguarReID".
 
 ## Configuration Guide
 
 Hydra is the primary configuration interface for probe and finetuning. The shipped
-defaults are in `conf/probe.yaml` and `conf/finetune.yaml`; Hydra resolves their
+defaults are in `src/wildmatch/conf/probe.yaml` and `src/wildmatch/conf/finetune.yaml`; Hydra resolves their
 interpolations before the runner starts. Nested overrides use `key=value` dotlist
 syntax and values are type-converted by OmegaConf.
 
@@ -225,7 +290,7 @@ artifact paths. Probe and finetune continue writing their normal run directories
 store a fully resolved `config.snapshot.yaml` in each run. Hydra multirun sweeps are
 not part of the supported experiment workflow.
 
-### `conf/finetune.yaml`
+### `src/wildmatch/conf/finetune.yaml`
 
 Key blocks:
 - `dataset`: root, metadata file, split values, `no_background`, `mask_col`, and `image_variant` (`background` or `no_background`)
@@ -239,7 +304,7 @@ Key blocks:
 - `safety_checks`: pre-run split validation (`enabled`)
 - `wandb`: optional experiment logging
 
-### `conf/probe.yaml`
+### `src/wildmatch/conf/probe.yaml`
 
 Key blocks:
 - `dataset`: root/splits + mask options and explicit `image_variant` (`background` or `no_background`)
@@ -301,15 +366,15 @@ added.
 #### Building an unseen-identity evaluation split
 
 For an evaluation-only open-world test, the standalone
-`scripts/build_unseen_eval_metadata.py` utility can derive a new metadata CSV
-without changing the probe pipeline or either parallel launcher. It selects
+`wildmatch build-unseen-split` utility can derive a new metadata CSV
+without changing the probe pipeline. It selects
 identities that occur in the source query split but not in the source database
 split, assigns the earliest encounter to `database`, and assigns later
 encounters to `query` using the supplied order column. It never performs a
 random image-level split. For example, for CzechLynx:
 
 ```bash
-python scripts/build_unseen_eval_metadata.py \
+wildmatch build-unseen-split \
   --metadata /shared/sets/datasets/vision/czechlynx/CzechLynx_v2/CzechLynxDataset-Metadata-Real.csv \
   --output-dir /path/to/czechlynx-unseen-eval \
   --label-col unique_name \
@@ -330,7 +395,7 @@ outputs with the resulting experiment. Consume the generated CSV through the
 normal Hydra contract:
 
 ```bash
-python train/probe.py \
+wildmatch evaluate \
   dataset.name=CzechLynx_v2 dataset.animal=CzechLynx \
   dataset.metadata_file=/path/to/czechlynx-unseen-eval/metadata_unseen_eval.csv \
   dataset.split_col=unseen_eval_split \
@@ -344,17 +409,12 @@ generated gallery/query metadata. The generated metadata path and split name
 keep the experiment and feature-cache identities separate from
 `split-time_open`; existing artifacts are not rewritten.
 
-The CzechLynx parallel launcher also contains a commented
-`czechlynx_unseen_eval` profile. It defaults to the repository-local generated
-CSV shown below; override `CZECHLYNX_UNSEEN_EVAL_METADATA_FILE` when using a
-different output, uncomment the profile, and inspect it with:
-
-```bash
-bash probe-parallel-czechlynx.sh --list-tasks
-```
-
-The profile fails before submission if the generated metadata file is missing
-or if its split settings are not `unseen_eval_split`, `database`, and `query`.
+The registry entry `czechlynx_unseen_eval` runs it in a sweep. Point
+`CZECHLYNX_UNSEEN_EVAL_METADATA_FILE` at the generated CSV, list
+`czechlynx_unseen_eval` under `datasets:` in a sweep spec, and inspect it with
+`wildmatch sweep <spec> --list-tasks`. The sweep fails before submission if the generated
+metadata file is missing or if its split settings are not `unseen_eval_split`, `database`,
+and `query`.
 It uses the same active `VARIANTS` table as the other CzechLynx profiles, so
 uncomment the desired default or fine-tuned rows before submitting.
 
@@ -507,7 +567,7 @@ Checkpoint selection options:
 For the current LightGlue-only RDD checkpoint, use:
 
 ```bash
-python train/probe.py benchmark.method=vismatch benchmark.methods.vismatch.matcher=rdd-lightglue benchmark.methods.vismatch.checkpoint_source=custom benchmark.methods.vismatch.checkpoint_path=/path/to/epoch_15 benchmark.methods.vismatch.checkpoint_components=matcher_only
+wildmatch evaluate benchmark.method=vismatch benchmark.methods.vismatch.matcher=rdd-lightglue benchmark.methods.vismatch.checkpoint_source=custom benchmark.methods.vismatch.checkpoint_path=/path/to/epoch_15 benchmark.methods.vismatch.checkpoint_components=matcher_only
 ```
 
 The resolver detects components from tensor schemas and optionally validates `checkpoint_manifest.json`; it does not trust filenames such as `model.safetensors` or `model_1.safetensors`. RDD-LightGlue may combine custom RDD and LightGlue files, while a LightGlue/RDD checkpoint is never accepted for LoMa. Custom component hashes are included in feature-cache identities and run manifests.
@@ -515,7 +575,7 @@ The resolver detects components from tensor schemas and optionally validates `ch
 Descriptor-only fine-tuning is selected explicitly with `checkpoint_components=descriptor_only`:
 
 ```bash
-python train/probe.py benchmark.method=vismatch \
+wildmatch evaluate benchmark.method=vismatch \
   benchmark.methods.vismatch.matcher=rdd-lightglue \
   benchmark.methods.vismatch.checkpoint_source=custom \
   benchmark.methods.vismatch.checkpoint_path=/path/to/descriptor/epoch_175 \
@@ -532,10 +592,9 @@ different cache identities. Their manifests record the effective component mode,
 protocol metadata, applied/ignored prefixes, checkpoint hash, and retained default
 components. Optimizer, scheduler, RNG, and scaler files are never loaded.
 
-Descriptor variants in the two parallel launchers are commented out by default.
-Uncomment a descriptor row only after setting the split/profile-specific descriptor
-checkpoint path. Cross-species tests must declare a separate checkpoint owner and
-evaluation animal; normal profiles remain fail-closed on ownership mismatches.
+Descriptor rows (`checkpoint: descriptor-fine-tuned`) need a registry entry or an explicit
+checkpoint path; only CzechLynx closed has one. Cross-species tests must declare a separate
+checkpoint owner and evaluation animal in `dataset_overrides`; ownership mismatches fail closed.
 
 To run LoMa instead of RDD-LightGlue, keep `benchmark.method: "vismatch"` and set:
 
@@ -608,21 +667,21 @@ available. Historical `visualizations/<run_id>/` folders are not migrated.
 Summarize runs with:
 
 ```bash
-python scripts/summarize_runs.py --dataset CzechLynx_v2
-python scripts/summarize_runs.py --method vismatch --matcher loma
-python scripts/summarize_runs.py --sort-by top_1 --format markdown
+wildmatch summarize-runs --dataset CzechLynx_v2
+wildmatch summarize-runs --method vismatch --matcher loma
+wildmatch summarize-runs --sort-by top_1 --format markdown
 
 # Generate per-animal CVPR-ready LaTeX and audit CSV tables
-python scripts/export_paper_tables.py
-python scripts/export_paper_tables.py --animal BelugaID
-python scripts/export_paper_tables.py --animal CzechLynx --split-protocol split-time_open
-python scripts/export_paper_tables.py --detailed-comments  # opt in to provenance comments
+wildmatch tables
+wildmatch tables --animal BelugaID
+wildmatch tables --animal CzechLynx --split-protocol split-time_open
+wildmatch tables --detailed-comments  # opt in to provenance comments
 
 # Generate CVPR-style accuracy-versus-candidate-budget figures
-python scripts/plot_paper_figures.py
-python scripts/plot_paper_figures.py --metric top_1
-python scripts/plot_paper_figures.py --animal BelugaID --metric top_5 --formats png pdf
-python scripts/plot_paper_figures.py --animal CzechLynx --split-protocol split-time_closed
+wildmatch figures
+wildmatch figures --metric top_1
+wildmatch figures --animal BelugaID --metric top_5 --formats png pdf
+wildmatch figures --animal CzechLynx --split-protocol split-time_closed
 ```
 
 For the standalone unseen-identity split, plotting automatically uses only
@@ -667,7 +726,7 @@ By default, generated LaTeX omits timestamp, run-ID, and manifest comments; pass
 `--detailed-comments` when those provenance comments are needed.
 Include a generated table with `\input{reports/paper_tables/BelugaID_main.tex}`.
 
-`scripts/plot_paper_figures.py` reads completed probe artifacts directly from
+`wildmatch figures` reads completed probe artifacts directly from
 `experiments/` and writes one multi-panel figure per requested metric under
 `reports/figures/` (PNG and PDF by default). The default `paper` style uses a
 color-blind-safe palette, redundant line/marker encodings, publication
@@ -772,54 +831,60 @@ explicit `wandb.name` when a custom name is preferred; it always takes priority.
 
 ## Testing
 
-Run unit tests:
+Run the tests (pytest; the tests are unittest-style classes):
 
 ```bash
-python -m unittest discover -s tests -p 'test_*.py'
+uv run pytest                       # or: python -m pytest, inside the conda env
+uv run pytest -m "not gpu and not data"    # what runs on any machine (no datasets, no GPU)
+uv run ruff check src paper tests          # lint
+uv run ruff format --check src paper tests # formatting
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the lint, format and CPU test steps with the CPU
+PyTorch build, and builds the project page with `mkdocs build --strict`, on every push.
 
 ## Troubleshooting
 
-- `ModuleNotFoundError: reid`
-  - Run from repository root and use `python train/<script>.py`.
+- `ModuleNotFoundError: wildmatch`
+  - Install the package (`uv sync ...` or the conda route); the code no longer patches `sys.path`.
 - mask decoding errors with `no_background: true`
   - Verify metadata has valid `mask` field (JSON string or COCO-RLE dict).
 - CUDA mismatch or availability issues
   - Adjust device/AMP settings in config.
 
-## Scripts beyond training and probing
+## Tools beyond training and probing
 
 Paper tables and figures (all read completed runs under `experiments/`):
 
-- `scripts/export_paper_tables.py`: per-animal LaTeX and audit CSV tables.
-- `scripts/plot_paper_figures.py`: accuracy against candidate budget k.
-- `scripts/plot_training_cost.py`: test accuracy against training GPU-hours (CzechLynx closed).
-- `scripts/eval_loma_epoch_curve.sh`: Slurm array that evaluates intermediate LoMa checkpoints for that plot.
-- `scripts/plot_match_examples.py`: qualitative figure, one fine-tuned LoMa match per dataset.
-- `scripts/plot_data_quality_examples.py`: confirmed low-quality examples as raw photos.
-- `scripts/export_class_balance.py`: per-identity image counts and imbalance statistics.
-- `scripts/audit_image_quality.py`: heuristic low-quality image flags for review by eye.
+- `wildmatch tables`: per-animal LaTeX and audit CSV tables.
+- `wildmatch figures`: accuracy against candidate budget k.
+- `paper/figures/plot_training_cost.py`: test accuracy against training GPU-hours (CzechLynx closed).
+- `slurm/eval_loma_epoch_curve.sh`: Slurm array that evaluates intermediate LoMa checkpoints for that plot.
+- `paper/figures/plot_match_examples.py`: qualitative figure, one fine-tuned LoMa match per dataset.
+- `paper/figures/plot_data_quality_examples.py`: confirmed low-quality examples as raw photos.
+- `wildmatch class-balance`: per-identity image counts and imbalance statistics.
+- `wildmatch audit`: heuristic low-quality image flags for review by eye.
 
 Data preparation:
 
-- `scripts/build_unseen_eval_metadata.py`: unseen-identity gallery/query split.
-- `scripts/segment_with_sam3.py`: SAM 3 background removal and pre-masked metadata (`lynx-app` env, A100/H100).
-- `scripts/prepare_jaguar_metadata.py`: brings the Kaggle Jaguar training data into the shared format (`JaguarReID`: `prepare` writes masked images and RLE masks, `embed` DINOv2 embeddings, `split` the burst-aware `split_v2` database/query split).
+- `wildmatch build-unseen-split`: unseen-identity gallery/query split.
+- `src/wildmatch/data/prepare/sam3_masks.py` (via `slurm/sam3_masks.sbatch`): SAM 3 background removal and pre-masked metadata (`lynx-app` env; any GPU but V100).
+- `python -m wildmatch.data.prepare.jaguar`: brings the Kaggle Jaguar training data into the shared format (`JaguarReID`: `prepare` writes masked images and RLE masks, `embed` DINOv2 embeddings, `split` the burst-aware `split_v2` database/query split).
 
 Run and log inspection:
 
-- `scripts/summarize_runs.py`: filter and sort `reports/runs.csv`.
-- `scripts/summarize_logs.py`: index the organized Slurm task logs.
-- `scripts/probe_parallel_manifest.py`, `scripts/probe_log_metadata.py`: helpers called by the parallel launchers.
+- `wildmatch summarize-runs`: filter and sort `reports/runs.csv`.
+- `wildmatch summarize-logs`: list sweep task logs; `--write-index` rebuilds `logs/index.csv`.
 
-Project page exporters (write committed files under `docs/`; GPU where noted):
+Project page exporters in `paper/page/` (write committed files under `docs/`; GPU where noted;
+run as `python paper/page/<name>.py`):
 
-- `scripts/export_project_page_data.py`: results, curves and page figures from the paper's results snapshot.
-- `scripts/export_score_separation.py`, `scripts/export_frequency_bins.py`, `scripts/export_budget_tradeoff.py`: the "why it works" views.
-- `scripts/export_before_after_demo.py` (GPU), `scripts/export_rank_change_demo.py`, `scripts/export_mined_pairs_demo.py` (GPU), `scripts/export_masking_demo.py`, `scripts/export_synthetic_demo.py` (GPU): the demos.
-- `scripts/export_data_challenges.py`: the data-challenges galleries.
-- `scripts/build_demo_cards.py`: Demo hub thumbnails.
-- `scripts/analyze_background_matches.py` (GPU): analysis only, writes to `reports/`.
+- `export_project_page_data.py`: results, curves and page figures from the paper's results snapshot.
+- `export_score_separation.py`, `export_frequency_bins.py`, `export_budget_tradeoff.py`: the "why it works" views.
+- `export_before_after_demo.py` (GPU), `export_rank_change_demo.py`, `export_mined_pairs_demo.py` (GPU), `export_masking_demo.py`, `export_synthetic_demo.py` (GPU): the demos.
+- `export_data_challenges.py`: the data-challenges galleries.
+- `build_demo_cards.py`: Demo hub thumbnails.
+- `paper/figures/analyze_background_matches.py` (GPU): analysis only, writes to `reports/`.
 
 The project page builds with `mkdocs build --strict` (dependencies in
 `requirements-docs.txt`). The explainer video is built from `video/explainer/`; see
@@ -838,6 +903,12 @@ policy" and "Immutable parallel probe submissions" sections. In short:
 - Every probe run writes `scores.npz`, so metrics can be recomputed without rerunning a matcher.
 - Feature caches are keyed on image content, metadata, preprocessing, image variant and model
   or checkpoint weights; mask contents are not hashed yet.
-- The parallel launchers snapshot each submission (config copy, task table, manifest) under
+- Sweeps snapshot each submission (config copy, spec, task table, manifest) under
   `logs/parallel_run/submissions/`; tasks read only that snapshot, and custom checkpoints are
   checked for owner and SHA-256 before loading.
+
+## Licence
+
+The code is licensed under Apache-2.0 (`LICENSE`, `NOTICE`). Dependencies, model weights and
+datasets keep their own licences; see `THIRD_PARTY_LICENSES.md`. MegaDescriptor-L weights are
+CC BY-NC 4.0 (non-commercial), and work that uses the SAM 3 masks must acknowledge SAM.

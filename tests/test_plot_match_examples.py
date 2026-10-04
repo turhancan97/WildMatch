@@ -1,30 +1,30 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-from reid.reporting.paper_datasets import PAPER_PROFILES
-from scripts.plot_match_examples import (
+from paper.figures.plot_match_examples import (
     EXAMPLES,
     PAPER_ORDER,
     RUNS,
     Example,
     correct_top1_pairs,
     crop_box_around,
-    dim_background,
-    padding_box,
-    points_outside_boxes,
-    spread_selection,
     dhash,
+    dim_background,
     hamming,
     normalized_to_raw_pixels,
+    padding_box,
     pair_rejection,
+    points_outside_boxes,
     raw_image_path,
     resolve_recorded_checkpoint,
+    spread_selection,
     validate_examples,
 )
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES
 
 PROFILES = {profile.key: profile for profile in PAPER_PROFILES}
 
@@ -133,15 +133,19 @@ class CheckpointResolutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             recorded = root / "legacy" / "epoch_299" / "model.safetensors"
-            for path, content in ((recorded, b"overwritten"),
-                                  (root / "legacy-mined" / "latest" / "model.safetensors", b"used"),
-                                  (root / "legacy-mined" / "epoch_299" / "model.safetensors", b"used")):
+            for path, content in (
+                (recorded, b"overwritten"),
+                (root / "legacy-mined" / "latest" / "model.safetensors", b"used"),
+                (root / "legacy-mined" / "epoch_299" / "model.safetensors", b"used"),
+            ):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(content)
             hasher = lambda path: path.read_bytes().decode()
             self.assertEqual(resolve_recorded_checkpoint(recorded, "overwritten", root, hasher), recorded)
-            self.assertEqual(resolve_recorded_checkpoint(recorded, "used", root, hasher),
-                             root / "legacy-mined" / "epoch_299" / "model.safetensors")
+            self.assertEqual(
+                resolve_recorded_checkpoint(recorded, "used", root, hasher),
+                root / "legacy-mined" / "epoch_299" / "model.safetensors",
+            )
             with self.assertRaises(FileNotFoundError):
                 resolve_recorded_checkpoint(recorded, "absent", root, hasher)
 

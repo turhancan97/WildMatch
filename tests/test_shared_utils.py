@@ -7,38 +7,39 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import pandas as pd
 
-from reid.evaluation.metrics import compute_metrics
-
-from reid.config_defaults import (
-    DEFAULT_MODEL_TYPE,
-    SUPPORTED_MODEL_TYPES,
-    validate_model_type,
-)
-from reid.training.accumulation import should_step_accumulated_gradients
-from reid.utils.io import append_csv_row, update_csv_rows
-from reid.methods.vismatch_profiles import FrameFeatures
-from reid.methods.vismatch_profiles import (
+from wildmatch.evaluate.metrics import compute_metrics
+from wildmatch.matchers.vismatch_profiles import (
     FEATURE_SCHEMA_VERSION,
     SUPPORTED_VISMATCH_MATCHERS,
-    default_matcher_threshold,
+    FrameFeatures,
     build_matcher_profile,
+    default_matcher_threshold,
     normalize_match_confidences,
     profile_fingerprint,
     validate_matcher_name,
 )
+from wildmatch.train.accumulation import should_step_accumulated_gradients
+from wildmatch.utils.config_defaults import (
+    DEFAULT_MODEL_TYPE,
+    SUPPORTED_MODEL_TYPES,
+    validate_model_type,
+)
+from wildmatch.utils.io import append_csv_row, update_csv_rows
 
 try:
-    from reid.data.dataset_view import BenchmarkDatasetView
-    from reid.features.containers import normalize_features
+    from wildmatch.data.dataset_view import BenchmarkDatasetView
+    from wildmatch.features.containers import normalize_features
+
     HAS_DATASET_DEPS = True
 except ModuleNotFoundError:
     HAS_DATASET_DEPS = False
 
 try:
-    from reid.training.checkpointing import (
+    from wildmatch.train.checkpointing import (
         resolve_configured_model_checkpoint,
         resolve_model_checkpoint,
     )
+
     HAS_CHECKPOINT_DEPS = True
 except ModuleNotFoundError:
     HAS_CHECKPOINT_DEPS = False
@@ -94,8 +95,8 @@ class ConfigurationTests(unittest.TestCase):
     def test_shipped_yaml_model_defaults_are_supported(self):
         root = Path(__file__).resolve().parents[1]
         for relative_path in (
-            "conf/finetune.yaml",
-            "conf/probe.yaml",
+            "src/wildmatch/conf/finetune.yaml",
+            "src/wildmatch/conf/probe.yaml",
         ):
             text = (root / relative_path).read_text(encoding="utf-8")
             match = re.search(r'(?m)^  type:\s*"([^"]+)"', text)
@@ -211,17 +212,11 @@ class CsvRuntimeTests(unittest.TestCase):
 
 class AccumulationTests(unittest.TestCase):
     def test_divisible_batches_step_only_at_accumulation_boundaries(self):
-        flags = [
-            should_step_accumulated_gradients(i, total_batches=4, accumulation_steps=2)
-            for i in range(4)
-        ]
+        flags = [should_step_accumulated_gradients(i, total_batches=4, accumulation_steps=2) for i in range(4)]
         self.assertEqual(flags, [False, True, False, True])
 
     def test_partial_final_group_is_flushed(self):
-        flags = [
-            should_step_accumulated_gradients(i, total_batches=5, accumulation_steps=2)
-            for i in range(5)
-        ]
+        flags = [should_step_accumulated_gradients(i, total_batches=5, accumulation_steps=2) for i in range(5)]
         self.assertEqual(flags, [False, True, False, True, True])
 
     def test_invalid_accumulation_steps_fail(self):
@@ -298,33 +293,42 @@ class VismatchProfileTests(unittest.TestCase):
 
     def test_shipped_configs_use_vismatch_public_method(self):
         root = Path(__file__).resolve().parents[1]
-        probe = (root / "conf/probe.yaml").read_text(encoding="utf-8")
+        probe = (root / "src/wildmatch/conf/probe.yaml").read_text(encoding="utf-8")
         # Keep the user's current Stage-A default intact while validating that
         # Vismatch remains a shipped, independently selectable public method.
         self.assertRegex(probe, r'(?m)^  method: "(?:vismatch|wildfusion)"')
-        self.assertIn('    vismatch:', probe)
-        self.assertNotIn('    rdd:', probe)
-        self.assertIn('      local_top_k: 512', probe)
-        self.assertIn('loma', probe)
-    def test_image_variant_cache_identity_is_explicit_and_stable(self):
-        from reid.utils.cache_identity import build_dataset_cache_identity, validate_image_variant
+        self.assertIn("    vismatch:", probe)
+        self.assertNotIn("    rdd:", probe)
+        self.assertIn("      local_top_k: 512", probe)
+        self.assertIn("loma", probe)
 
-        base = type("DatasetConfig", (), {
-            "root": "/tmp/dataset",
-            "metadata_file": "metadata_with_background/metadata_NyalaData.csv",
-            "image_variant": "background",
-        })()
+    def test_image_variant_cache_identity_is_explicit_and_stable(self):
+        from wildmatch.utils.cache_identity import build_dataset_cache_identity, validate_image_variant
+
+        base = type(
+            "DatasetConfig",
+            (),
+            {
+                "root": "/tmp/dataset",
+                "metadata_file": "metadata_with_background/metadata_NyalaData.csv",
+                "image_variant": "background",
+            },
+        )()
         identity = build_dataset_cache_identity(base)
         self.assertEqual(identity["image_variant"], "background")
         self.assertEqual(identity["metadata_file"], "metadata_with_background/metadata_NyalaData.csv")
         self.assertNotIn("/tmp/", identity["metadata_file"])
         self.assertEqual(validate_image_variant("NO_BACKGROUND"), "no_background")
 
-        masked = type("DatasetConfig", (), {
-            "root": "/tmp/dataset",
-            "metadata_file": "metadata_no_background/metadata_NyalaData.csv",
-            "image_variant": "no_background",
-        })()
+        masked = type(
+            "DatasetConfig",
+            (),
+            {
+                "root": "/tmp/dataset",
+                "metadata_file": "metadata_no_background/metadata_NyalaData.csv",
+                "image_variant": "no_background",
+            },
+        )()
         masked_identity = build_dataset_cache_identity(masked)
         self.assertNotEqual(identity, masked_identity)
         with self.assertRaises(ValueError):

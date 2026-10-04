@@ -3,7 +3,10 @@
 import os
 import unittest
 
+import pytest
 
+
+@pytest.mark.gpu
 @unittest.skipUnless(os.environ.get("RUN_VISMATCH_SMOKE") == "1", "Vismatch smoke tests disabled")
 class VismatchEnvironmentSmokeTests(unittest.TestCase):
     def test_import_and_supported_factory_names(self):

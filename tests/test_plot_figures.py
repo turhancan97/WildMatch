@@ -4,13 +4,13 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from reid.reporting.paper_tables import discover_records
-from reid.reporting.plot_figures import (
+from wildmatch.reporting.paper_tables import discover_records
+from wildmatch.reporting.plot_figures import (
     DEFAULT_PLOT_BUDGETS,
     DEFAULT_PLOT_METRICS,
     PLOT_STYLES,
-    prepare_series_data,
     plot_metrics,
+    prepare_series_data,
     render_metric_figure,
 )
 
@@ -100,9 +100,27 @@ class PlotFigureTests(unittest.TestCase):
     def test_prepare_series_data_maps_runs_and_leaves_missing_budgets(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
-            write_plot_run(root, animal="Lynx", run_id="20260101_loma_10", method="vismatch", matcher="loma", candidate_k=10, top_1=0.50)
-            write_plot_run(root, animal="Lynx", run_id="20260102_loma_100", method="vismatch", matcher="loma", candidate_k=100, top_1=0.70)
-            write_plot_run(root, animal="Lynx", run_id="20260103_wildfusion_10", method="wildfusion", candidate_k=10, top_1=0.40)
+            write_plot_run(
+                root,
+                animal="Lynx",
+                run_id="20260101_loma_10",
+                method="vismatch",
+                matcher="loma",
+                candidate_k=10,
+                top_1=0.50,
+            )
+            write_plot_run(
+                root,
+                animal="Lynx",
+                run_id="20260102_loma_100",
+                method="vismatch",
+                matcher="loma",
+                candidate_k=100,
+                top_1=0.70,
+            )
+            write_plot_run(
+                root, animal="Lynx", run_id="20260103_wildfusion_10", method="wildfusion", candidate_k=10, top_1=0.40
+            )
             records = discover_records(root)
 
             series = prepare_series_data(records, animal="Lynx", metric="top_1")
@@ -148,11 +166,26 @@ class PlotFigureTests(unittest.TestCase):
     def test_descriptor_series_is_separate(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
-            write_plot_run(root, animal="Lynx", run_id="20260101_default", method="vismatch", matcher="loma", candidate_k=10)
-            write_plot_run(root, animal="Lynx", run_id="20260102_descriptor", method="vismatch", matcher="loma", checkpoint="custom", candidate_k=10, top_1=0.8)
+            write_plot_run(
+                root, animal="Lynx", run_id="20260101_default", method="vismatch", matcher="loma", candidate_k=10
+            )
+            write_plot_run(
+                root,
+                animal="Lynx",
+                run_id="20260102_descriptor",
+                method="vismatch",
+                matcher="loma",
+                checkpoint="custom",
+                candidate_k=10,
+                top_1=0.8,
+            )
             manifest_path = root / "probe" / "Dataset" / "Lynx" / "20260102_descriptor" / "run_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["vismatch_checkpoint"] = {"source": "custom", "resolved_component_mode": "descriptor_only", "checkpoint_variant": "descriptor-fine-tuned"}
+            manifest["vismatch_checkpoint"] = {
+                "source": "custom",
+                "resolved_component_mode": "descriptor_only",
+                "checkpoint_variant": "descriptor-fine-tuned",
+            }
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             records = discover_records(root)
             series = prepare_series_data(records, animal="Lynx", metric="top_1", descriptor_family="loma")
@@ -162,11 +195,26 @@ class PlotFigureTests(unittest.TestCase):
     def test_joint_series_is_separate_from_matcher_fine_tuned_series(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
-            write_plot_run(root, animal="Lynx", run_id="20260101_default", method="vismatch", matcher="loma", candidate_k=10)
-            write_plot_run(root, animal="Lynx", run_id="20260102_joint", method="vismatch", matcher="loma", checkpoint="custom", candidate_k=10, top_1=0.9)
+            write_plot_run(
+                root, animal="Lynx", run_id="20260101_default", method="vismatch", matcher="loma", candidate_k=10
+            )
+            write_plot_run(
+                root,
+                animal="Lynx",
+                run_id="20260102_joint",
+                method="vismatch",
+                matcher="loma",
+                checkpoint="custom",
+                candidate_k=10,
+                top_1=0.9,
+            )
             manifest_path = root / "probe" / "Dataset" / "Lynx" / "20260102_joint" / "run_manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["vismatch_checkpoint"] = {"source": "custom", "resolved_component_mode": "full", "checkpoint_variant": "full-fine-tuned"}
+            manifest["vismatch_checkpoint"] = {
+                "source": "custom",
+                "resolved_component_mode": "full",
+                "checkpoint_variant": "full-fine-tuned",
+            }
             manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
             records = discover_records(root)
             joint = prepare_series_data(records, animal="Lynx", metric="top_1", descriptor_family="joint_loma")
@@ -290,7 +338,9 @@ class PlotFigureTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "experiments"
             output = Path(temp_dir) / "reports" / "figures"
-            write_plot_run(root, animal="Lynx", run_id="20260101_loma_10", method="vismatch", matcher="loma", candidate_k=10)
+            write_plot_run(
+                root, animal="Lynx", run_id="20260101_loma_10", method="vismatch", matcher="loma", candidate_k=10
+            )
             write_plot_run(root, animal="Whale", run_id="20260101_wildfusion_10", method="wildfusion", candidate_k=10)
             records = discover_records(root)
             figure = render_metric_figure(records, animals=["Lynx", "Whale"], metric="top_1")

@@ -1,4 +1,4 @@
-"""Tests for the GPU-free parts of scripts/export_synthetic_demo.py."""
+"""Tests for the GPU-free parts of paper/page/export_synthetic_demo.py."""
 
 import importlib.util
 import json
@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "export_synthetic_demo.py"
+SCRIPT = REPO_ROOT / "paper/page" / "export_synthetic_demo.py"
 
 
 def _load():
@@ -28,13 +28,16 @@ D = _load()
 
 class SyntheticDemoHelpersTests(unittest.TestCase):
     def test_identity_parsing(self):
-        self.assertEqual(D.identity_of("CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg"), "lynx_173")
+        self.assertEqual(
+            D.identity_of("CzechLynx_Synthetic/synthetic/synthetic_lynx_173/09954_synthetic_lynx_173.jpg"), "lynx_173"
+        )
         with self.assertRaises(ValueError):
             D.identity_of("not/a/render.jpg")
 
     def test_apply_mask_blackens_outside_the_mask(self):
         array = np.full((6, 5, 3), 200, dtype=np.uint8)
-        mask = np.zeros((6, 5), dtype=np.uint8); mask[1:4, 1:3] = 1
+        mask = np.zeros((6, 5), dtype=np.uint8)
+        mask[1:4, 1:3] = 1
         out = np.asarray(D.apply_mask(Image.fromarray(array, "RGB"), mask))
         self.assertTrue((out[1:4, 1:3] == 200).all())
         self.assertEqual(int(out.sum()), 200 * 3 * 6)
@@ -46,7 +49,9 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
         self.enterContext(warnings.catch_warnings())
         warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"pycocotools\.")
         from pycocotools import mask as mask_utils
-        mask = np.zeros((7, 9), dtype=np.uint8); mask[2:5, 3:8] = 1
+
+        mask = np.zeros((7, 9), dtype=np.uint8)
+        mask[2:5, 3:8] = 1
         rle = mask_utils.encode(np.asfortranarray(mask))
         rle["counts"] = rle["counts"].decode("ascii")
         decoded = D.decode_rle(json.dumps(rle))
@@ -54,6 +59,7 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
 
     def test_load_rows_fails_closed_on_missing_render(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "meta.csv").write_text("source,path,mask\nsynthetic,a/b.jpg,{}\n", encoding="utf-8")
@@ -69,22 +75,39 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
 
     def test_ranking_and_payload(self):
         def result(score, confs):
-            return SimpleNamespace(score=score, match_count=len(confs), confidences=np.array(confs),
-                                   matched_kpts0=None, matched_kpts1=None)
-        kq = np.array([[1.0, 2.0], [3.0, 4.0]]); kg = np.array([[5.0, 6.0], [7.0, 8.0]])
+            return SimpleNamespace(
+                score=score, match_count=len(confs), confidences=np.array(confs), matched_kpts0=None, matched_kpts1=None
+            )
+
+        kq = np.array([[1.0, 2.0], [3.0, 4.0]])
+        kg = np.array([[5.0, 6.0], [7.0, 8.0]])
         cands = [
-            D.candidate_record("G_lynx_129", "x/synthetic_lynx_129/a.jpg", "lynx_173", (520, 520), result(0.02, [0.3, 0.9]), kq, kg),
-            D.candidate_record("G_lynx_173", "x/synthetic_lynx_173/b.jpg", "lynx_173", (520, 520), result(0.4, [0.5, 0.8]), kq, kg),
+            D.candidate_record(
+                "G_lynx_129", "x/synthetic_lynx_129/a.jpg", "lynx_173", (520, 520), result(0.02, [0.3, 0.9]), kq, kg
+            ),
+            D.candidate_record(
+                "G_lynx_173", "x/synthetic_lynx_173/b.jpg", "lynx_173", (520, 520), result(0.4, [0.5, 0.8]), kq, kg
+            ),
         ]
-        queries = [{"tag": "Q_lynx_173", "identity": "lynx_173", "image": {"file": "Q_lynx_173.jpg", "width": 520, "height": 520},
-                    "candidates": cands}]
-        gallery = [{"tag": "G_lynx_173", "identity": "lynx_173", "image": {}}, {"tag": "G_lynx_129", "identity": "lynx_129", "image": {}}]
+        queries = [
+            {
+                "tag": "Q_lynx_173",
+                "identity": "lynx_173",
+                "image": {"file": "Q_lynx_173.jpg", "width": 520, "height": 520},
+                "candidates": cands,
+            }
+        ]
+        gallery = [
+            {"tag": "G_lynx_173", "identity": "lynx_173", "image": {}},
+            {"tag": "G_lynx_129", "identity": "lynx_129", "image": {}},
+        ]
         payload = D.build_payload(queries, gallery, {"checkpoint_sha256": "abc"})
         ranked = payload["queries"][0]["candidates"]
         self.assertEqual([c["tag"] for c in ranked], ["G_lynx_173", "G_lynx_129"])
         self.assertEqual([c["rank"] for c in ranked], [1, 2])
         self.assertEqual(payload["queries"][0]["correct_rank"], 1)
-        self.assertTrue(ranked[0]["same_individual"]); self.assertFalse(ranked[1]["same_individual"])
+        self.assertTrue(ranked[0]["same_individual"])
+        self.assertFalse(ranked[1]["same_individual"])
         self.assertEqual(ranked[1]["order_by_confidence"], [1, 0])
         self.assertTrue(payload["synthetic"])
         self.assertIn("CC BY 4.0", payload["attribution"])
@@ -101,7 +124,9 @@ class SyntheticDemoHelpersTests(unittest.TestCase):
 
     def test_payload_rejects_private_paths(self):
         with self.assertRaises(ValueError):
-            D.build_payload([{"tag": "q", "identity": "lynx_1", "source": "/shared/x.jpg", "image": {}, "candidates": []}], [], {})
+            D.build_payload(
+                [{"tag": "q", "identity": "lynx_1", "source": "/shared/x.jpg", "image": {}, "candidates": []}], [], {}
+            )
 
 
 class CommittedDemoTests(unittest.TestCase):
@@ -134,9 +159,12 @@ class CommittedDemoTests(unittest.TestCase):
                 for side in ("query", "gallery"):
                     size = q["image"] if side == "query" else c["image"]
                     for x, y in c["points"][side]:
-                        self.assertTrue(-1 <= x <= size["width"] and -1 <= y <= size["height"], (q["tag"], c["tag"], side, x, y))
+                        self.assertTrue(
+                            -1 <= x <= size["width"] and -1 <= y <= size["height"], (q["tag"], c["tag"], side, x, y)
+                        )
         text = self.DEMO.read_text(encoding="utf-8")
-        self.assertNotIn("/shared/", text); self.assertNotIn("/home/", text)
+        self.assertNotIn("/shared/", text)
+        self.assertNotIn("/home/", text)
 
 
 if __name__ == "__main__":

@@ -1,19 +1,18 @@
-"""Tests for scripts/prepare_jaguar_metadata.py on synthetic RGBA images (CPU only)."""
+"""Tests for wildmatch.data.prepare.jaguar on synthetic RGBA images (CPU only)."""
 
 import csv
 import json
-import sys
 import tempfile
 import unittest
 import warnings
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
-import prepare_jaguar_metadata as P  # noqa: E402
+from wildmatch.data.prepare import jaguar as P  # noqa: E402
 
 
 def _rgba(seed: int, size=(48, 64), background=90) -> np.ndarray:
@@ -89,12 +88,14 @@ class BurstGroupTests(unittest.TestCase):
         return P.burst_groups(np.asarray(distances), e @ e.T, numbers, identities, **options)
 
     def test_adjacent_similar_frames_join_and_far_dissimilar_ones_do_not(self):
-        distances = np.full((4, 4), 200); np.fill_diagonal(distances, 0)
-        groups = self._groups(distances, [[1, 0, 0], [0.9, 0.1, 0], [1, 0, 0.05], [0, 1, 0]],
-                              [1, 2, 10, 11], ["a"] * 4, any_cos=0.999)
-        self.assertEqual(groups[0], groups[1])        # adjacent and similar
-        self.assertNotEqual(groups[0], groups[2])     # similar but far apart, below any_cos
-        self.assertNotEqual(groups[2], groups[3])     # adjacent but dissimilar
+        distances = np.full((4, 4), 200)
+        np.fill_diagonal(distances, 0)
+        groups = self._groups(
+            distances, [[1, 0, 0], [0.9, 0.1, 0], [1, 0, 0.05], [0, 1, 0]], [1, 2, 10, 11], ["a"] * 4, any_cos=0.999
+        )
+        self.assertEqual(groups[0], groups[1])  # adjacent and similar
+        self.assertNotEqual(groups[0], groups[2])  # similar but far apart, below any_cos
+        self.assertNotEqual(groups[2], groups[3])  # adjacent but dissimilar
 
     def test_hash_twins_join_wherever_they_sit(self):
         groups = self._groups([[0, 20], [20, 0]], [[1, 0], [0, 1]], [1, 50], ["a", "a"])
@@ -105,9 +106,11 @@ class BurstGroupTests(unittest.TestCase):
         self.assertEqual(groups[0], groups[1])
 
     def test_groups_join_transitively(self):
-        distances = np.full((3, 3), 200); np.fill_diagonal(distances, 0)
-        groups = self._groups(distances, [[1, 0], [0.95, 0.31], [0.81, 0.59]], [1, 2, 3], ["a"] * 3,
-                              adjacent_cos=0.94, any_cos=0.999)
+        distances = np.full((3, 3), 200)
+        np.fill_diagonal(distances, 0)
+        groups = self._groups(
+            distances, [[1, 0], [0.95, 0.31], [0.81, 0.59]], [1, 2, 3], ["a"] * 3, adjacent_cos=0.94, any_cos=0.999
+        )
         self.assertEqual(len(set(groups)), 1)
 
     def test_different_jaguars_are_never_joined(self):
@@ -168,8 +171,11 @@ class AssignSplitTests(unittest.TestCase):
 
 class PrepareTests(unittest.TestCase):
     def test_prepare_writes_masked_images_and_base_table(self):
-        specs = [(f"train_{3 * i + k + 1:04d}.png", identity, _rgba(10 * i + k))
-                 for i, identity in enumerate(("Abril", "Bento")) for k in range(3)]
+        specs = [
+            (f"train_{3 * i + k + 1:04d}.png", identity, _rgba(10 * i + k))
+            for i, identity in enumerate(("Abril", "Bento"))
+            for k in range(3)
+        ]
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_dataset(root, specs)
@@ -207,24 +213,43 @@ class SplitDatasetTests(unittest.TestCase):
         for k, identity in enumerate(("a", "b")):
             for i in range(n_per_identity):
                 image_id = f"train_{k * 100 + i:04d}"
-                rows.append({c: "" for c in P.BASE_COLUMNS} | {
-                    "image_id": image_id, "identity": identity, "path": f"masked_images/{image_id}.png",
-                    "dhash": P.bits_to_hex(rng.integers(0, 2, 256).astype(bool))})
+                rows.append(
+                    {c: "" for c in P.BASE_COLUMNS}
+                    | {
+                        "image_id": image_id,
+                        "identity": identity,
+                        "path": f"masked_images/{image_id}.png",
+                        "dhash": P.bits_to_hex(rng.integers(0, 2, 256).astype(bool)),
+                    }
+                )
                 # pairs of consecutive files form one burst (nearly identical vectors)
                 vectors.append(rng.normal(size=8) if i % 2 == 0 else vectors[-1] + rng.normal(scale=0.01, size=8))
         with open(root / P.BASE_NAME, "w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=P.BASE_COLUMNS)
-            writer.writeheader(); writer.writerows(rows)
-        np.savez(root / P.EMBEDDINGS_NAME, image_id=np.array([r["image_id"] for r in rows]), emb=_unit(vectors),
-                 spec=np.array(P.EMBEDDING_SPEC))
+            writer.writeheader()
+            writer.writerows(rows)
+        np.savez(
+            root / P.EMBEDDINGS_NAME,
+            image_id=np.array([r["image_id"] for r in rows]),
+            emb=_unit(vectors),
+            spec=np.array(P.EMBEDDING_SPEC),
+        )
         return rows
 
     def test_split_keeps_bursts_together_and_writes_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._base(root)
-            manifest = P.split_dataset(root, threshold=0, adjacent_gap=1, adjacent_cos=0.9, any_cos=0.999,
-                                       query_ratio=0.25, min_query=2, seed=0)
+            manifest = P.split_dataset(
+                root,
+                threshold=0,
+                adjacent_gap=1,
+                adjacent_cos=0.9,
+                any_cos=0.999,
+                query_ratio=0.25,
+                min_query=2,
+                seed=0,
+            )
             with open(root / P.METADATA_NAME, newline="", encoding="utf-8") as handle:
                 rows = list(csv.DictReader(handle))
             self.assertEqual(list(rows[0]), P.METADATA_COLUMNS)
@@ -244,12 +269,16 @@ class SplitDatasetTests(unittest.TestCase):
             rows = self._base(root)
             with self.assertRaises(P.PreparationError):
                 P.load_embeddings(root / P.EMBEDDINGS_NAME, [r["image_id"] for r in rows][::-1])
-            np.savez(root / P.EMBEDDINGS_NAME, image_id=np.array([r["image_id"] for r in rows]),
-                     emb=np.ones((len(rows), 8), np.float32))
+            np.savez(
+                root / P.EMBEDDINGS_NAME,
+                image_id=np.array([r["image_id"] for r in rows]),
+                emb=np.ones((len(rows), 8), np.float32),
+            )
             with self.assertRaises(P.PreparationError):
                 P.load_embeddings(root / P.EMBEDDINGS_NAME, [r["image_id"] for r in rows])
 
 
+@pytest.mark.data
 class PreparedDatasetTests(unittest.TestCase):
     """Checks the real JaguarReID metadata when it exists on this machine."""
 

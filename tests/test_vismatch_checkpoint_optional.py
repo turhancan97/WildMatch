@@ -2,6 +2,7 @@ import os
 import unittest
 from pathlib import Path
 
+import pytest
 
 CHECKPOINT_DIR = Path(
     os.environ.get(
@@ -12,6 +13,7 @@ CHECKPOINT_DIR = Path(
 RUN_SMOKE = os.environ.get("RUN_VISMATCH_CHECKPOINT_SMOKE") == "1"
 
 
+@pytest.mark.gpu
 @unittest.skipUnless(
     RUN_SMOKE and CHECKPOINT_DIR.exists(),
     "set RUN_VISMATCH_CHECKPOINT_SMOKE=1 with an available custom checkpoint",
@@ -20,7 +22,7 @@ class VismatchCheckpointEnvironmentTests(unittest.TestCase):
     def test_custom_rdd_lightglue_checkpoint_constructs(self):
         import torch
 
-        from reid.methods.vismatch import VismatchMatcherBackend
+        from wildmatch.matchers.vismatch import VismatchMatcherBackend
 
         backend = VismatchMatcherBackend(
             "rdd-lightglue",

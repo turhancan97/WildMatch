@@ -1,6 +1,5 @@
 import json
 import re
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,9 +10,8 @@ except ImportError:  # pragma: no cover - Pillow is part of the shared environme
     Image = None
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
 
-from scripts import build_demo_cards as cards  # noqa: E402
+from paper.page import build_demo_cards as cards  # noqa: E402
 
 
 @unittest.skipIf(Image is None, "Pillow is required")
@@ -71,9 +69,13 @@ class CommittedCardsTests(unittest.TestCase):
             self.assertTrue((REPO_ROOT / "docs" / "demo" / f"{name}.md").is_file(), name)
 
     def test_card_sources_are_committed_exports(self):
-        for rel in ("before_after/before_after.json", "rank_change/rank_change.json",
-                    "mined_pairs/mined_pairs.json", "synthetic/synthetic_demo.json",
-                    "masking/masking_demo.json"):
+        for rel in (
+            "before_after/before_after.json",
+            "rank_change/rank_change.json",
+            "mined_pairs/mined_pairs.json",
+            "synthetic/synthetic_demo.json",
+            "masking/masking_demo.json",
+        ):
             path = cards.DEMO_ROOT / rel
             self.assertTrue(path.is_file(), rel)
             json.loads(path.read_text(encoding="utf-8"))

@@ -1,6 +1,6 @@
 import unittest
 
-from reid.reporting.wandb_naming import finetune_wandb_name, probe_wandb_name
+from wildmatch.reporting.wandb_naming import finetune_wandb_name, probe_wandb_name
 
 
 class WandbNamingTests(unittest.TestCase):
@@ -15,7 +15,10 @@ class WandbNamingTests(unittest.TestCase):
             },
         }
         name = probe_wandb_name(cfg, "20260916T120000Z_abcdef12")
-        self.assertIn("probe-wildlifereid-10k-nyaladata-split-megadescriptor-l-pretrained-vismatch-loma-finetuned-k100-masked", name)
+        self.assertIn(
+            "probe-wildlifereid-10k-nyaladata-split-megadescriptor-l-pretrained-vismatch-loma-finetuned-k100-masked",
+            name,
+        )
         self.assertTrue(name.endswith("-abcdef12"))
 
     def test_linear_weighting_and_finetune_name(self):

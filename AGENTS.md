@@ -647,7 +647,9 @@ the paper tooling until Phase 3, the video tooling and the optional lynx parity 
 or stored artifact depends on module paths (caches hold plain arrays and state dicts), so the
 rename does not invalidate them.
 **Phase 2 (paths and dataset registry), 2026-10-04:** see "Paths and the dataset registry".
-Parity is checked against parity run 2 on `rtx4090_batch` (pending).
+Backward compatibility verified the same day: the new code reads the 641 run records under the main
+checkout's `experiments/` byte-identically to the `paper-v1` code (`discover_records`). Parity is
+checked against parity run 2 on `rtx4090_batch` (pending).
 Parity run 1 (array 524163 from the worktree, 2026-10-04): all seven Salamander pairs, including
 the frozen weighted linear probe, pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
 bug, these tasks read the packaged `probe.yaml` instead of the `parity_v2` snapshot and reused the

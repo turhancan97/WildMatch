@@ -25,12 +25,13 @@ jobs:
           enable-cache: true
       - name: Install (CPU PyTorch, dev tools)
         run: uv sync --frozen --python 3.12 --extra cpu --group dev
+      # --no-sync: a plain `uv run` would re-sync to the default extras and swap the CPU PyTorch build.
       - name: Lint
-        run: uv run --frozen ruff check src paper tests
+        run: uv run --no-sync ruff check src paper tests
       - name: Format
-        run: uv run --frozen ruff format --check src paper tests
+        run: uv run --no-sync ruff format --check src paper tests
       - name: Tests (no GPU, no datasets)
-        run: uv run --frozen pytest -m "not gpu and not data"
+        run: uv run --no-sync pytest -m "not gpu and not data"
 
   docs:
     runs-on: ubuntu-latest

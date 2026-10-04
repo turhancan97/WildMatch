@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `fix/cache-key-device`): feature caches hash the mask of each image when
+  masks are applied at load time (`dataset.no_background=true`, CzechLynx): `mask_digest` in
+  `utils/fingerprints.py`, added to `dataset_digest` (standard caches) and to the Vismatch per-image
+  key. Keys of pre-masked datasets are unchanged; CzechLynx standard caches are recomputed once
+  after the merge. Closes the future-work item on mask fingerprints. Tests in
+  `tests/test_mask_cache_identity.py`.
 - 2026-10-04 (branch `fix/cache-key-device`, not merged): Vismatch feature-cache keys include the
   compute device (GPU model and capability) and no longer any checkpoint path; the checkpoint
   fingerprint (version 2) is content-only; runs record `vismatch_device`. Merging invalidates all

@@ -83,6 +83,24 @@ def sha256_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
     return digest
 
 
+def mask_digest(raw_mask: Any) -> str:
+    """SHA-256 of one metadata mask cell (COCO-RLE as a JSON string or a dict; missing -> "none").
+
+    Feature caches add it when masks are applied at load time (``dataset.no_background``), so an
+    edited mask invalidates the features of its image; pre-masked files are covered by their
+    content hash instead.
+    """
+    import json
+
+    if raw_mask is None or (isinstance(raw_mask, float) and raw_mask != raw_mask):
+        payload = "none"
+    elif isinstance(raw_mask, Mapping):
+        payload = json.dumps(raw_mask, sort_keys=True, separators=(",", ":"), default=str)
+    else:
+        payload = str(raw_mask)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def fingerprint_files(paths: Iterable[Path]) -> list[dict[str, str]]:
     """Return deterministic path/digest records for existing files."""
     records: list[dict[str, str]] = []

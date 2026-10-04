@@ -932,8 +932,6 @@ reproduction live under "Known issues" instead.
 - [ ] Implement truly disjoint calibration inputs for WildFusion and local matcher
   calibration; the current split setting selects one dataset and passes it to both
   sides of calibration.
-- [ ] Include mask metadata/content fingerprints in standard and Vismatch feature
-  caches so mask edits invalidate features, not only image-file edits.
 - [ ] Make legacy checkpoint discovery recursive for the existing nested no-manifest
   `results/<dataset>/<animal>/mask_<...>/run_<...>` layout.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
@@ -1246,8 +1244,12 @@ applied at load time.
   sample paths and unreadable-file counts.
 - Standard and Vismatch feature caches include image-content SHA-256, preprocessing,
   metadata, image variant, model/checkpoint identity, and matcher profile/weight identity,
-  but do not yet include mask metadata/content hashes. Image contents at a fixed path
-  invalidate caches; mask edits require the future cache-fingerprint fix.
+  and, when masks are applied at load time (`dataset.no_background=true`, the three CzechLynx
+  entries), the SHA-256 of each image's mask cell (`mask_digest`; branch `fix/cache-key-device`,
+  2026-10-04), so an edited mask invalidates its features. Pre-masked inputs (WildlifeReID-10k,
+  SalamanderID2025, JaguarReID) are covered by the image-content hash, and their keys are
+  unchanged by this; merging it invalidates the CzechLynx standard caches (cosine, WildFusion,
+  probes) once, and with the device fix every Vismatch cache.
 - Automatic inference checkpoint discovery searches recursively under modern finetune
   experiments, ignores failed/incomplete manifests and `*-full.pth`, prefers completed
   canonical model-only files, then tagged legacy files, and preserves explicit-path priority.

@@ -51,7 +51,7 @@ from wildmatch.matchers.vismatch_profiles import (
     validate_matcher_name,
 )
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
-from wildmatch.utils.fingerprints import hash_mapping, model_fingerprint, sha256_file
+from wildmatch.utils.fingerprints import hash_mapping, mask_digest, model_fingerprint, sha256_file
 from wildmatch.utils.io import ensure_file
 
 # Compatibility name for internal callers and saved feature semantics.
@@ -680,8 +680,12 @@ def _cache_key(
     resize_max: int,
     top_k: int,
     cfg_tag: str,
+    mask_hash: Optional[str] = None,
 ) -> str:
     payload = f"{split_name}|{image_path}|content={image_content_hash}|resize_max={resize_max}|top_k={top_k}|{cfg_tag}"
+    if mask_hash is not None:
+        # masks applied at load time (no_background): an edited mask must miss the cache
+        payload += f"|mask={mask_hash}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -1011,6 +1015,7 @@ def _extract_split_features(
             resize_max=resize_max,
             top_k=top_k,
             cfg_tag=cfg_tag,
+            mask_hash=mask_digest(dataset.df.iloc[idx].get(mask_col)) if no_background else None,
         )
         cache_path = _cache_path(cache_dir, key)
         t_cache_lookup = time.perf_counter()

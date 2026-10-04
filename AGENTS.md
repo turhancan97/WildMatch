@@ -610,7 +610,13 @@ so Slurm jobs submitted from the main checkout keep running the paper code.
 the repo-root `sys.path` inserts removed (the remaining ones serve script-to-script imports in
 the paper tooling until Phase 3, the video tooling and the optional lynx parity test). No cache
 or stored artifact depends on module paths (caches hold plain arrays and state dicts), so the
-rename does not invalidate them. Parity of the reference set is pending (run from the worktree).
+rename does not invalidate them.
+Parity run 1 (array 524163 from the worktree, 2026-10-04): all six Salamander matcher, WildFusion
+and cosine pairs pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
+bug, these tasks read the packaged `probe.yaml` instead of the `parity_v2` snapshot and reused the
+reference runs' cached features, so this run proves parity of everything after feature extraction
+(shortlists, Vismatch/WildFusion matching, scoring, metrics) in the new environment. Parity run 2,
+with the fixed launcher and the fresh `parity_v2` cache, covers extraction.
 
 ## Known issues (open)
 
@@ -1013,6 +1019,14 @@ runs did not persist `scores.npz`.
 ## Immutable parallel probe submissions
 
 The selected dataset launcher creates a submission directory under `logs/parallel_run/submissions/<submission_id>/` containing the copied Hydra config (`probe.yaml`), task table (`tasks.tsv`), and JSON manifest (`manifest.json`). The manifest is passed to Slurm with `--export=ALL,PROBE_PARALLEL_MANIFEST=...`; array tasks must read it rather than rereading `src/wildmatch/conf/probe.yaml`, shell checkpoint variables, or mutable dataset settings.
+**Config-snapshot bug (found 2026-10-04, fixed on this branch).** The launchers passed the frozen
+`probe.yaml` with `--config-dir`, but Hydra then keeps the entry point's own config directory as
+the primary source, so every array task actually read the live repository `probe.yaml` at run
+time and the snapshot was ignored (verified on `paper-v1` code too). Results stay truthful, since
+each run's `config.snapshot.yaml` records the configuration it really used; only the promised
+isolation from later edits did not hold. The launchers and `scripts/eval_loma_epoch_curve.sh` now
+pass `--config-path`, which replaces the primary config location;
+`test_frozen_config_snapshot_wins_with_config_path` pins both behaviours. `main` still has the bug.
 
 Dataset profiles explicitly pair dataset/animal settings with expected custom-checkpoint owners. Submission-time SHA-256 hashes and owner declarations are validated before model loading or cache writing. A missing, changed, or mismatched checkpoint/config fails closed and cancels only the current array element. The active benchmark grid and `probe.sh` contract remain unchanged. Use the selected launcher with `--list-tasks` or `--dry-run` for inspection, and never alter submitted manifests, copied configs, or checkpoint inputs.
 Exactly one `DATASET_PROFILES` entry must be active. The wildlife launcher includes

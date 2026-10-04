@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): config-snapshot bug found during refactor parity. The parallel
+  launchers passed the frozen submission `probe.yaml` with Hydra's `--config-dir`, which only adds
+  a search path; the entry point's own config stayed primary, so array tasks read the live
+  repository `probe.yaml` (also on `paper-v1` code). Each run's own `config.snapshot.yaml` remains
+  accurate. Fixed on the branch with `--config-path` in both launchers and
+  `scripts/eval_loma_epoch_curve.sh`, with tests. Parity run 1 (array 524163): six of six
+  Salamander pairs (cosine, WildFusion, default and fine-tuned LoMa and RDD-LightGlue) bit-identical
+  to the `paper-v1` reference, with features from the shared cache because of the bug.
 - 2026-10-04 (branch `refactor/wildmatch-package`): refactor Phase 1, environment and
   packaging, no behaviour change intended. `reid/`, `models/` and `conf/` moved with `git mv`
   into the installable `wildmatch` package (`src/wildmatch/`: `data`, `evaluate`, `features`,

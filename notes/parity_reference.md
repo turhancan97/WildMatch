@@ -60,3 +60,10 @@ Salamander reference runs (array 524155, 2026-10-04, code at `69fc403` = `paper-
 
 The refactor's parity runs use a fresh feature cache (`parity_v2`), so feature extraction is
 re-run in the new environment instead of reusing these runs' cached features.
+
+## Parity results on `refactor/wildmatch-package`
+
+| Run | Array | Scope | Result |
+| --- | --- | --- | --- |
+| 1 (Phase 1) | 524163 | features from the shared cache (the launcher still passed `--config-dir`, so the `parity_v2` snapshot was ignored) | 6/6 matcher, WildFusion and cosine pairs bit-identical, no Top-1 change; linear probe below |
+| 2 (Phase 1) | pending | fixed launcher (`--config-path`), fresh `parity_v2` cache: feature extraction in the new environment | pending |

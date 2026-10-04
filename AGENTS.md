@@ -852,8 +852,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
   fingerprint, part of the feature-cache key, includes the requested checkpoint path and the
   protocol file path, so the same weights at another location (a Hub download, a moved folder)
   miss every cache filled from the old location. Results are unaffected; it costs one extraction.
-  Planned with the GPU-type fix before the release: key the fingerprint on file hashes and
-  protocol contents only (this invalidates existing caches once).
+  Fix on the same branch `fix/cache-key-device`: the fingerprint (version 2) hashes file
+  checksums, component modes and protocol contents only, and the cache tag no longer contains the
+  raw checkpoint path; manifests keep the paths.
 
 - **New SAM 3 masks for WildlifeReID-10k may differ from the paper's inputs (2026-10-04).**
   The runs read `masked_images/` files made by a teammate (owner `kubaty`, 2026-02 to 2026-08;

@@ -44,6 +44,29 @@ class VismatchCheckpointTests(unittest.TestCase):
             self.assertEqual([item.component for item in resolution.files], ["lightglue"])
             self.assertEqual(resolution.default_components, ("rdd_extractor",))
 
+    def test_fingerprint_depends_on_content_not_location(self):
+        state = {
+            "transformers.0.weight": torch.zeros(2, 2),
+            "log_assignment.0.weight": torch.zeros(2, 2),
+            "token_confidence.0.weight": torch.zeros(1, 2),
+        }
+        with tempfile.TemporaryDirectory() as first_dir, tempfile.TemporaryDirectory() as second_dir:
+            first = Path(first_dir) / "epoch_299" / "model.pth"
+            second = Path(second_dir) / "elsewhere" / "renamed.pth"
+            first.parent.mkdir()
+            second.parent.mkdir()
+            self._save(first, state)
+            second.write_bytes(first.read_bytes())
+            a = resolve_vismatch_checkpoint("rdd-lightglue", "custom", first)
+            b = resolve_vismatch_checkpoint("rdd-lightglue", "custom", second)
+            self.assertNotEqual(a.requested_path, b.requested_path)
+            self.assertEqual(a.fingerprint, b.fingerprint)  # same weights, same cache key
+            self.assertNotEqual(a.as_dict()["components"], b.as_dict()["components"])  # manifest keeps paths
+            changed = dict(state, **{"transformers.0.weight": torch.ones(2, 2)})
+            self._save(second, changed)
+            c = resolve_vismatch_checkpoint("rdd-lightglue", "custom", second)
+            self.assertNotEqual(a.fingerprint, c.fingerprint)
+
     def test_directory_detects_rdd_and_lightglue_independent_of_file_order(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

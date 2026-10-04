@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): sweep task records fill `error_summary` only for failed tasks (completed
+  tasks showed their last stderr line, a progress bar). Sweep `wildlife_sam3` (array 524372)
+  started; first results on the SAM 3 inputs: cosine Top-1 Hyena 0.714 (paper 0.708), Leopard 0.623
+  (paper 0.624).
 - 2026-10-04 (branch): SAM 3 retries done and the twelve WildlifeReID-10k `metadata_sam3/` tables
   written (whole photos: BelugaID 685, SeaStar 40, WhaleShark 16, 18 elsewhere); new sweep spec
   `wildlife_sam3` (six paper datasets x seven main methods at k=250).

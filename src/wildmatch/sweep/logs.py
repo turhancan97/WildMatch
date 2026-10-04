@@ -117,7 +117,8 @@ def update_record(path: Path, *, status: str, end_time: str, experiment_run_dire
     payload["status"] = status
     payload["end_time"] = end_time
     payload["experiment_run_directory"] = experiment_run_directory or ""
-    payload["error_summary"] = error_summary(error_file)
+    # Only failures get a summary: a successful task's last stderr line is usually a progress bar.
+    payload["error_summary"] = error_summary(error_file) if status == "failed" else ""
     if validation_status:
         payload["validation_status"] = validation_status
     if validation_error:

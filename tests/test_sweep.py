@@ -342,6 +342,7 @@ class RunTaskTests(_TempDir):
         self.assertEqual((record["status"], record["validation_status"], record["experiment_run_directory"],
                           record["split_protocol"], record["submission_id"]),
                          ("completed", "validated", str(self.tmp / "run"), "split", "s1"))
+        self.assertEqual(record["error_summary"], "")  # stderr had an error-looking line, but the task succeeded
         with (self.tmp / "logs" / "index.csv").open() as handle:
             rows = list(csv.DictReader(handle))
         self.assertEqual([(row["task_id"], row["status"]) for row in rows], [("0", "completed")])

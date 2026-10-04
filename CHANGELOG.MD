@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): fixed `finetune_runner.py` calling `file_identity` without importing it
+  (present since 2026-08-13, also in `paper-v1`): every backbone fine-tuning run would have ended
+  with a NameError while writing its completed manifest, after training. No run was affected (no
+  modern fine-tuning run exists; the paper does not use ArcFace fine-tuning). Found by ruff F821;
+  `tests/test_finetune_imports.py` guards it.
 - 2026-10-04 (branch): `paper/tools/compare_with_paper.py` compares a sweep's runs with the paper
   snapshot (identity: method, matcher, backbone, checkpoint label, probe mode and weighting, k).
 - 2026-10-04 (branch): sweep task records fill `error_summary` only for failed tasks (completed

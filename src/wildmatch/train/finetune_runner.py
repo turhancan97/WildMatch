@@ -33,7 +33,7 @@ from wildmatch.train.accumulation import (
     accumulation_group_size,
     should_step_accumulated_gradients,
 )
-from wildmatch.reporting.artifacts import build_run_context, run_index_row, upsert_run_index
+from wildmatch.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
 from wildmatch.reporting.wandb_naming import finetune_wandb_name
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
 from wildmatch.utils.fingerprints import file_digest_cache

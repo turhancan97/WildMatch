@@ -82,7 +82,7 @@ wildmatch sweep parity --list-tasks          # packaged spec or a YAML path; wri
 wildmatch sweep my_sweep.yaml --submit        # Slurm array (slurm/sweep_task.sbatch); --local runs here
 wildmatch summarize-runs --format markdown
 wildmatch summarize-logs --write-index
-wildmatch tables
+wildmatch tables                    # --inputs paper (default) | current | all, see "Experiment artifacts"
 wildmatch figures
 wildmatch class-balance
 wildmatch audit --dataset leopard --limit 400  # dev subset
@@ -270,7 +270,18 @@ Paper tables are generated with `wildmatch tables` from completed
 run-local manifests under `experiments/`, never from the aggregate benchmark
 CSV. The exporter discovers animals, split protocols, and methods automatically,
 selects the newest completed run for each split/method/matcher/backbone/train-mode/weighting/checkpoint/budget
-identity, and writes ignored generated files under `reports/paper_tables/`. Main tables use
+identity, and writes ignored generated files under `reports/paper_tables/`.
+The input table is not part of that identity, so both `wildmatch tables` and `wildmatch figures`
+first filter runs by the `dataset.metadata_file` in their `config.snapshot.yaml` (`--inputs`, added
+2026-10-04 on branch `fix/exporter-inputs`): `paper` (default) keeps, for the twelve WildlifeReID-10k
+animals, only runs on `registry.paper_inputs.metadata_file` (the team masks), `current` only runs on
+the registry's `metadata_file` (SAM 3), `all` everything (the earlier behaviour); other animals are
+never filtered, and a run without a readable snapshot is dropped by `paper`/`current`. Before the
+filter, the SAM 3 sweeps had silently replaced the paper's rows for all six paper WildlifeReID-10k
+datasets (28 of 84 table files and 4 of 72 figures changed). Checked 2026-10-04 against the Phase 3
+`paper-v1` output: `--inputs paper` writes the 84 table files byte-identical except the four
+SalamanderID2025 files (see "Known issues", Salamander parity runs) and the 72 figures with
+pixel-identical PNGs. Main tables use
 `candidate_k=50` and use the compact paired default/fine-tuned layout with
 same-budget gain arrows; ablation tables use `[10, 50, 100, 250, 500, 1000]` and show
 missing configurations as `--`. LaTeX displays percentage points and labels
@@ -905,6 +916,14 @@ reproduction, and the measured impact so it can be picked up without re-investig
   the same 100 images; the 125-lost vs 62-gained asymmetry is unexplained). User (2026-10-04):
   differences of this size are acceptable. The remaining budgets (k = 10, 50, 100, 500, 1000) run
   with sweep `wildlife_sam3_grid` (150 tasks, user request 2026-10-04).
+
+- **SalamanderID2025 tables show parity runs (found 2026-10-04).** The parity runs 1 and 2 of the
+  package refactor were written to `experiments/probe/SalamanderID2025/` and are the newest
+  completed runs there, so the exporters select them, not the paper's 2026-09-30 runs (already so in
+  the Phase 3 reference; run 2 replaced run 1 when the worktree's runs were copied in). Top-1, Top-5
+  and balanced Top-1 are identical; mAP@k differs by at most 0.03 points (GPU-dependent Vismatch
+  features) and the runtimes differ. Not fixed: a `--run-before`/exclusion option or moving the
+  parity runs out of `experiments/probe/` would; ask the user before moving runs.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

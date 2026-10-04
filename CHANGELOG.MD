@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `fix/exporter-inputs`): `wildmatch tables` and `wildmatch figures` take
+  `--inputs paper|current|all` (default `paper`) and filter runs by the `dataset.metadata_file` in
+  their config snapshot before picking the newest run per identity. Without it the SAM 3 sweeps
+  silently replaced the paper's rows of the six paper WildlifeReID-10k datasets (28 of 84 table
+  files, 4 of 72 figures). With `paper`, the tables are byte-identical to the Phase 3 `paper-v1`
+  output except SalamanderID2025, whose newest runs are the refactor parity runs (same Top-1/Top-5/
+  balanced Top-1, mAP@k within 0.03 points, other runtimes; recorded under Known issues), and the
+  72 figure PNGs are pixel-identical. Tests in `tests/test_export_inputs.py`.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

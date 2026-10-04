@@ -28,6 +28,13 @@ def parse_args(argv=None, prog=None) -> argparse.Namespace:
         help="Ablation budgets; unseen_eval_split defaults to 10, 50, 100, 160.",
     )
     parser.add_argument(
+        "--inputs",
+        choices=["paper", "current", "all"],
+        default="paper",
+        help="Runs to use for datasets with two input tables (WildlifeReID-10k): paper = the team masks "
+        "the paper's runs read (default), current = the registry's SAM 3 tables, all = newest run regardless.",
+    )
+    parser.add_argument(
         "--detailed-comments",
         action="store_true",
         help="Include generation timestamp, run IDs, and manifest paths in LaTeX comments.",
@@ -45,6 +52,7 @@ def main(argv=None, prog=None) -> None:
         main_candidate_k=args.main_candidate_k,
         budgets=args.budgets,
         detailed_comments=args.detailed_comments,
+        inputs=args.inputs,
     )
     for output in outputs:
         print(output)

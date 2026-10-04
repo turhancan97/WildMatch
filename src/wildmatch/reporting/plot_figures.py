@@ -10,6 +10,7 @@ from wildmatch.reporting.paper_tables import (
     discover_animals,
     discover_records,
     discover_splits,
+    filter_records_by_inputs,
     select_latest_records,
 )
 
@@ -513,15 +514,18 @@ def plot_metrics(
     shared_y: bool | None = None,
     label_endpoints: bool = False,
     exclude_methods: Sequence[str] | None = None,
+    inputs: str = "paper",
 ) -> list[Path]:
     """Render selected metrics for the requested or automatically discovered animals."""
-    records = discover_records(experiment_root)
+    records = filter_records_by_inputs(discover_records(experiment_root), inputs)
     excluded_methods = _normalise_excluded_methods(exclude_methods)
     discovered = discover_animals(records)
     selected_animals = list(animals) if animals else discovered
     missing_animals = sorted(set(selected_animals) - set(discovered))
     if missing_animals:
-        raise ValueError(f"no completed probe records found for animal(s): {', '.join(missing_animals)}")
+        raise ValueError(
+            f"no completed probe records found for animal(s) with --inputs {inputs}: {', '.join(missing_animals)}"
+        )
     selected_metrics = tuple(metrics)
     if "all" in selected_metrics:
         selected_metrics = tuple(PLOT_METRICS)

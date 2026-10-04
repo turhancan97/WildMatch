@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): Phase 5. ruff configuration, a formatting-only commit (AST-identical) and a
+  lint-fix commit; CI workflow (lint, format, CPU tests, strict page build; rehearsed locally, uses
+  `uv run --no-sync`); Apache-2.0 `LICENSE`, `NOTICE`, `THIRD_PARTY_LICENSES.md`; README quickstart
+  and `docs/reproduce` pages on the `wildmatch` commands; `wildmatch demo` on 24 bundled synthetic
+  lynx renders (CPU). Bug fix found by ruff: missing `file_identity` import in the fine-tuning
+  runner.
 - 2026-10-04 (branch): fixed `finetune_runner.py` calling `file_identity` without importing it
   (present since 2026-08-13, also in `paper-v1`): every backbone fine-tuning run would have ended
   with a NameError while writing its completed manifest, after training. No run was affected (no

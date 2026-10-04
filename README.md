@@ -23,6 +23,10 @@ progress on this branch; see AGENTS.md, "Package refactor".)
 uv sync --extra cu126 --extra matchers --group dev
 source .venv/bin/activate                     # or prefix the commands below with `uv run`
 
+# 1b. Check the installation on any machine (CPU, ~1 min, no dataset needed)
+wildmatch demo                                # cosine on 24 bundled synthetic lynx renders
+wildmatch demo --method loma                  # default LoMa over the cosine candidates (~2 min)
+
 # 2. Data: see what each registry dataset needs, then download or rebuild it
 wildmatch prepare status
 wildmatch prepare download zindi              # raw WildlifeReID-10k (Kaggle credentials)

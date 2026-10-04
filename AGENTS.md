@@ -687,6 +687,31 @@ per-task Hydra overrides equal the launchers' for the parity, Jaguar and CzechLy
 checkout's runs, and `wildmatch figures` the 72 figure files with pixel-identical PNGs (PDFs
 differ only in `Creator` and timestamp). Parity run 4 (array 524200, the `parity` sweep): 7/7 pairs bit-identical to run 2, linear probe included, with unchanged cache fingerprints. **Phase 3 parity holds.**
 **Phase 4 (weights and data preparation), 2026-10-04:** see "Paper checkpoints and data preparation".
+**Phase 5 (quality, demo, docs), 2026-10-04.** Done on a temporary branch (`format-tmp`, separate
+worktree) while sweep 524372 ran, so no file changed under running jobs; fast-forwarded into this
+branch afterwards:
+- ruff (`[tool.ruff]` in `pyproject.toml`, line length 120, rules E/F/W/I with long lines and
+  one-line statements left to the formatter; ruff 0.15.5 in the dev group). One formatting-only
+  commit, verified AST-identical for all 88 reformatted files (docstring whitespace aside), then a
+  lint-fix commit (import order, unused imports, five dead assignments). Ruff's undefined-name
+  rule found a real bug, fixed separately: `finetune_runner.py` used `file_identity` without
+  importing it since 2026-08-13 (also in `paper-v1` and on `main`), so every backbone fine-tuning
+  run would have crashed after training; no run was affected.
+- CI: `.github/workflows/ci.yml` (lint, format check, `pytest -m "not gpu and not data"` with the
+  CPU PyTorch build, `mkdocs build --strict`; no deploy). Rehearsed on a clean export with a fresh
+  CPU environment; it showed that a plain `uv run` re-syncs to the default extras and swaps the CPU
+  PyTorch build, so the steps use `uv run --no-sync`.
+- Licences: `LICENSE` (canonical Apache-2.0 text, SHA-256 `cfc7749b...`), `NOTICE`,
+  `THIRD_PARTY_LICENSES.md` (checked from package metadata, upstream LICENSE files and model cards:
+  MegaDescriptor-L CC BY-NC 4.0; SAM License requires acknowledging SAM in publications; LoMa code
+  MIT with an Apache-2.0 matcher; RDD Apache-2.0; Vismatch BSD-3-Clause). Open: licences of the
+  default matcher weights, the release licence of our checkpoints, dataset licences.
+- README quickstart; `docs/reproduce/probing.md`, `docs/datasets/index.md` and `docs/paper.md` use
+  the `wildmatch` commands and describe the WildlifeReID-10k masks and split as made by the team.
+- `wildmatch demo`: the evaluation pipeline on 24 bundled, masked synthetic CzechLynx renders (six
+  individuals, CC BY 4.0, `src/wildmatch/demo/`, built by `paper/tools/build_demo_data.py`), CPU,
+  outputs under `demo_runs/`; cosine with MegaDescriptor-T in 43 s, default LoMa in about 2 min
+  (2026-10-04). The images ship in the wheel. Not a benchmark (synthetic coats share one texture).
 
 ### Paper checkpoints and data preparation
 

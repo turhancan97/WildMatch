@@ -45,6 +45,7 @@ COMMANDS: Dict[str, Command] = {
         "check, download or rebuild datasets (status, download, build, finish, compare-masks, jaguar, unseen-split)",
     ),
     "weights": Command("wildmatch.weights:main", "list, verify, download or stage the paper checkpoints"),
+    "demo": Command("wildmatch.demo:main", "run the pipeline on 24 bundled synthetic lynx renders (CPU)"),
 }
 
 

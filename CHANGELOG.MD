@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): `main` merged into the branch (`54dbdf3`; its three commits were already
+  contained, tree unchanged) and pull request #2 opened into `main` with the description from
+  `notes/pr_refactor_wildmatch.md`; CI (lint, format, CPU tests, page build) passed.
 - 2026-10-04 (branch): sweep `wildlife_sam3` (array 524372) completed, 42/42. On the SAM 3 inputs,
   Top-1 differs from the paper by a mean of +0.73 points (range -2.0 to +3.7); Zindi WildFusion's
   -2.0 traced to near-tie flips with unchanged masks; accepted by the user. Phase 5 commits from the

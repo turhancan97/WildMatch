@@ -4,6 +4,7 @@ import gc
 import hashlib
 import json
 import os
+import tempfile
 import time
 import zipfile
 from dataclasses import dataclass
@@ -679,7 +680,11 @@ def _save_cached_feat(path: Path, feat: FrameFeat) -> None:
     """Write a feature cache atomically so interrupted jobs cannot poison a run."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = path.with_name(path.name + ".tmp.npz")
+    # A unique temporary name: parallel sweep tasks extracting the same image (same key) must not
+    # write into one temporary file. Either complete file may win the replace; they are identical.
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp.npz", dir=path.parent)
+    os.close(fd)
+    temporary_path = Path(temporary)
     try:
         np.savez_compressed(
             temporary_path,

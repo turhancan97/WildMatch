@@ -16,6 +16,8 @@ from typing import Any, Dict, Mapping, Optional
 
 from omegaconf import DictConfig, OmegaConf
 
+from wildmatch.utils.io import file_lock, write_csv_atomically
+
 ARTIFACT_SCHEMA_VERSION = 1
 RUN_INDEX_COLUMNS = [
     "run_id",
@@ -296,9 +298,13 @@ def build_run_context(
 
 
 def upsert_run_index(index_path: Path, row: Mapping[str, Any]) -> None:
-    """Insert or replace one run in the central CSV index."""
+    """Insert or replace one run in the central CSV index (locked: parallel tasks share it)."""
 
-    index_path.parent.mkdir(parents=True, exist_ok=True)
+    with file_lock(index_path):
+        _upsert_run_index_locked(index_path, row)
+
+
+def _upsert_run_index_locked(index_path: Path, row: Mapping[str, Any]) -> None:
     rows: list[Dict[str, Any]] = []
     fieldnames = list(RUN_INDEX_COLUMNS)
     if index_path.is_file():
@@ -318,12 +324,7 @@ def upsert_run_index(index_path: Path, row: Mapping[str, Any]) -> None:
             break
     if not replaced:
         rows.append(new_row)
-    tmp_path = index_path.with_suffix(index_path.suffix + ".tmp")
-    with tmp_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
-    tmp_path.replace(index_path)
+    write_csv_atomically(index_path, fieldnames, rows)
 
 
 def run_index_row(context: RunContext, payload: Mapping[str, Any]) -> Dict[str, Any]:

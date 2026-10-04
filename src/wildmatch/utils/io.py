@@ -1,6 +1,10 @@
 import csv
+import fcntl
+import os
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterator, List, Sequence
 
 
 def ensure_file(path: Path, description: str) -> None:
@@ -13,8 +17,57 @@ def ensure_dir(path: Path, description: str) -> None:
         raise FileNotFoundError(f"{description} not found: {path}")
 
 
+@contextmanager
+def file_lock(path: Path) -> Iterator[None]:
+    """Hold an exclusive lock on ``<path>.lock`` around a read-modify-write of a shared file.
+
+    Parallel sweep tasks update the same CSVs (``reports/runs.csv``, the legacy benchmark CSV);
+    without the lock two tasks can each read the old file and the later write drops the other's row.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(path.name + ".lock").open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def write_csv_atomically(csv_path: Path, header: Sequence[str], rows: Sequence[Dict[str, Any]]) -> None:
+    """Write a CSV through a unique temporary file in the same folder, then replace the target.
+
+    The old fixed ``<name>.tmp`` path was shared by every writer, so two processes could write into
+    one temporary file. The target keeps its permissions (a new file gets the umask default).
+    """
+    fd, temporary = tempfile.mkstemp(prefix=f".{csv_path.name}.", suffix=".tmp", dir=csv_path.parent)
+    try:
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(header), extrasaction="ignore")
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(_sanitize_row(row))
+        os.chmod(temporary, _target_mode(csv_path))
+        os.replace(temporary, csv_path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def _target_mode(path: Path) -> int:
+    try:
+        return path.stat().st_mode & 0o777
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        return 0o666 & ~umask
+
+
 def append_csv_row(csv_path: Path, row: Dict[str, Any]) -> None:
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with file_lock(csv_path):
+        _append_csv_row_locked(csv_path, row)
+
+
+def _append_csv_row_locked(csv_path: Path, row: Dict[str, Any]) -> None:
     if not csv_path.is_file():
         fieldnames = list(row.keys())
         with csv_path.open("w", newline="", encoding="utf-8") as f:
@@ -57,6 +110,15 @@ def update_csv_rows(
     updates: Dict[str, Any],
 ) -> int:
     """Update rows matching all key/value pairs and rewrite the CSV atomically."""
+    with file_lock(csv_path):
+        return _update_csv_rows_locked(csv_path, match, updates)
+
+
+def _update_csv_rows_locked(
+    csv_path: Path,
+    match: Dict[str, Any],
+    updates: Dict[str, Any],
+) -> int:
 
     if not csv_path.is_file():
         return 0
@@ -80,13 +142,7 @@ def update_csv_rows(
 
 
 def _rewrite_csv_with_header(csv_path: Path, rows: List[Dict[str, Any]], header: List[str]) -> None:
-    tmp_path = csv_path.with_suffix(csv_path.suffix + ".tmp")
-    with tmp_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=header, extrasaction="ignore")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow(_sanitize_row(row))
-    tmp_path.replace(csv_path)
+    write_csv_atomically(csv_path, header, rows)
 
 
 def _sanitize_row(row: Dict[str, Any]) -> Dict[str, Any]:

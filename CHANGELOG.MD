@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `fix/concurrent-writes`): shared CSVs (`reports/runs.csv`, the legacy
+  benchmark and training CSVs) are updated under an exclusive file lock across the read-modify-write
+  and written through unique temporary files that keep the target's permissions; Vismatch
+  feature-cache files use unique temporary names. Previously parallel sweep tasks shared one
+  `<file>.tmp` without a lock (a six-process test lost 14 of 90 rows on the old code). Tests in
+  `tests/test_concurrent_writes.py`. Closes the future-work item on run-index concurrency.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

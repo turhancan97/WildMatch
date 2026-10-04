@@ -241,7 +241,13 @@ organized as dataset/animal/split/model/method/variant/run-id. Each run must ret
 `config.snapshot.yaml`, `run_manifest.json`, `metrics.json`, and `timings.json`;
 finetune runs also retain `training_metrics.csv` and canonical checkpoints.
 
-`reports/runs.csv` is the central one-row-per-run index. Legacy
+`reports/runs.csv` is the central one-row-per-run index. Parallel sweep tasks update it (and the legacy CSVs) under an
+exclusive lock on `<file>.lock` held across the whole read-modify-write, writing through a unique
+temporary file (`file_lock`, `write_csv_atomically` in `src/wildmatch/utils/io.py`; branch
+`fix/concurrent-writes`, 2026-10-04). Before, every writer used one fixed `<file>.tmp` without a
+lock, so parallel tasks could drop each other's rows: a test with six processes lost 14 of 90
+appended rows on the old code. Vismatch feature-cache files are written through unique temporary
+names too (two tasks may extract the same image; either identical file wins the replace). Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.
@@ -943,8 +949,6 @@ reproduction live under "Known issues" instead.
   release licence of the WildMatch checkpoints, and the dataset licences (`registry.licence`).
 - [ ] Consider atomic checkpoint writes and explicit checkpoint retention.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
-- [ ] Make central run-index updates safe for concurrent jobs and use unique temporary
-  files or locking instead of a shared `reports/runs.csv.tmp` path.
 - [ ] Record SHA-256 checkpoint identities and repository dirty-state/diff identity in
   manifests so uncommitted experiment code remains reproducible.
 

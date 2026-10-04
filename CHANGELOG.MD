@@ -7,6 +7,8 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `fix/probe-epoch-metrics`): GPU check passed (job 524526): bit-identical to
+  parity run 4 for the frozen weighted linear probe.
 - 2026-10-04 (branch `fix/probe-epoch-metrics`): classifier probes no longer build the image-level
   query x database matrix every epoch; per-epoch retrieval metrics run only with W&B, identity level
   only. Reported metrics unchanged (computed after training as before).

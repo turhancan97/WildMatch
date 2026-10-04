@@ -820,7 +820,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
   CzechLynx; the Zindi probe of sweep 524372 took almost 2 hours) for metrics that only W&B logging
   reads, which is off by default. Per-epoch retrieval metrics are now computed only when W&B is on,
   and only at identity level; the reported metrics still come from the full call after training.
-  Pending: GPU check against parity run 4 (frozen weighted linear probe, SalamanderID2025, k=50).
+  GPU check (job 524526, 2026-10-04): the frozen weighted linear probe on SalamanderID2025 at k=50
+  is bit-identical to parity run 4 (scores and all 63 metrics); training 793 s against 808 s (small
+  gallery, so the saving is small here; it is about a minute per epoch on CzechLynx-sized data).
 
 - **Probe per-epoch validation uses the query/test split.**
   `run_linear_probe` and `run_efficient_probe` build their `[*][val]` loader from

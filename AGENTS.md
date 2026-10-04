@@ -611,8 +611,8 @@ the repo-root `sys.path` inserts removed (the remaining ones serve script-to-scr
 the paper tooling until Phase 3, the video tooling and the optional lynx parity test). No cache
 or stored artifact depends on module paths (caches hold plain arrays and state dicts), so the
 rename does not invalidate them.
-Parity run 1 (array 524163 from the worktree, 2026-10-04): all six Salamander matcher, WildFusion
-and cosine pairs pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
+Parity run 1 (array 524163 from the worktree, 2026-10-04): all seven Salamander pairs, including
+the frozen weighted linear probe, pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
 bug, these tasks read the packaged `probe.yaml` instead of the `parity_v2` snapshot and reused the
 reference runs' cached features, so this run proves parity of everything after feature extraction
 (shortlists, Vismatch/WildFusion matching, scoring, metrics) in the new environment. Parity run 2,

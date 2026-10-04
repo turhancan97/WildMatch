@@ -65,5 +65,5 @@ re-run in the new environment instead of reusing these runs' cached features.
 
 | Run | Array | Scope | Result |
 | --- | --- | --- | --- |
-| 1 (Phase 1) | 524163 | features from the shared cache (the launcher still passed `--config-dir`, so the `parity_v2` snapshot was ignored) | 6/6 matcher, WildFusion and cosine pairs bit-identical, no Top-1 change; linear probe below |
+| 1 (Phase 1) | 524163 | features from the shared cache (the launcher still passed `--config-dir`, so the `parity_v2` snapshot was ignored) | 7/7 pairs bit-identical (cosine, WildFusion, default and fine-tuned LoMa and RDD-LightGlue, frozen weighted linear probe), no Top-1 change |
 | 2 (Phase 1) | pending | fixed launcher (`--config-path`), fresh `parity_v2` cache: feature extraction in the new environment | pending |

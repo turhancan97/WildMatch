@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: pull request #2 merged (`a58ba68`); the main checkout was fast-forwarded, its leftover
+  bytecode-only `reid/`, `scripts/`, `train/` and `models/` folders removed, the uv environment
+  re-installed from it (editable) and `wildmatch.local.yaml` (`paths: gmum`) added; 395 tests pass.
 - 2026-10-04 (branch): `main` merged into the branch (`54dbdf3`; its three commits were already
   contained, tree unchanged) and pull request #2 opened into `main` with the description from
   `notes/pr_refactor_wildmatch.md`; CI (lint, format, CPU tests, page build) passed.

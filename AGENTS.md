@@ -645,9 +645,10 @@ runs listed in `notes/parity_reference.md` (cosine, WildFusion and RDD-LightGlue
 1e-4 with identical Top-1, LoMa within 1e-2, the probe within seed noise); phases 1 to 3 were
 verified bit-identical on the same GPU type. On this branch the guide describes the branch;
 `main` keeps its own copy for the paper code until the branch is merged (user's decision).
-Pull request #2 (2026-10-04) proposes the merge: `main` was merged into the branch first (`54dbdf3`,
-nine conflicts resolved in favour of the branch, tree unchanged); CI passed on it. Merge with a
-merge commit, not squash.
+Pull request #2 merged the branch into `main` on 2026-10-04 (`a58ba68`, merge commit). Since then
+`main` is the package: the main checkout is installed in editable mode in the uv environment
+`$UV_ENV_ROOT/wildmatch` and carries a gitignored `wildmatch.local.yaml` (`paths: gmum`). The old
+`ex-reid` workflow (`python train/probe.py`, the bash launchers) lives on in tag `paper-v1`.
 The refactor runs in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`),
 so Slurm jobs submitted from the main checkout keep running the paper code.
 

@@ -44,7 +44,7 @@ from wildmatch.train.accumulation import accumulation_group_size, should_step_ac
 from wildmatch.train.checkpointing import resolve_configured_model_checkpoint, resolve_model_checkpoint
 from wildmatch.train.class_weights import compute_identity_class_weights
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
-from wildmatch.utils.fingerprints import file_digest_cache, model_fingerprint, sha256_file
+from wildmatch.utils.fingerprints import file_digest_cache, mask_digest, model_fingerprint, sha256_file
 from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file
 from wildmatch.utils.repro import set_reproducible
 
@@ -326,7 +326,15 @@ def get_calibration_dataset(
     return WildlifeDataset(root, df=dataset_database.metadata.iloc[:size], load_label=True, col_label=label_col)
 
 
-def dataset_digest(dataset: WildlifeDataset, label_col: str, root: Optional[Path] = None) -> str:
+def cache_mask_col(cfg: DictConfig) -> Optional[str]:
+    """The mask column whose cells feature caches must hash: only when masks are applied at load."""
+    return str(cfg.dataset.mask_col) if bool(cfg.dataset.no_background) else None
+
+
+def dataset_digest(
+    dataset: WildlifeDataset, label_col: str, root: Optional[Path] = None, mask_col: Optional[str] = None
+) -> str:
+    """Digest of paths, labels, image contents and (with ``mask_col``) the masks applied at load."""
     df = dataset.df if hasattr(dataset, "df") else dataset.metadata
     candidate_cols = ["path", "filepath", "file", "image_path", label_col]
     cols = [c for c in candidate_cols if c in df.columns]
@@ -335,7 +343,8 @@ def dataset_digest(dataset: WildlifeDataset, label_col: str, root: Optional[Path
     if cols:
         records = []
         path_col = next((c for c in ("path", "filepath", "file", "image_path") if c in df.columns), None)
-        for _, row in df[cols].iterrows():
+        mask_values = df[mask_col].tolist() if mask_col is not None and mask_col in df.columns else None
+        for position, (_, row) in enumerate(df[cols].iterrows()):
             values = [str(row[col]) for col in cols]
             if path_col is not None and root is not None:
                 path = Path(values[cols.index(path_col)])
@@ -345,6 +354,8 @@ def dataset_digest(dataset: WildlifeDataset, label_col: str, root: Optional[Path
                     values.append(sha256_file(path))
                 except (OSError, FileNotFoundError):
                     values.append("missing")
+            if mask_values is not None:
+                values.append(f"mask={mask_digest(mask_values[position])}")
             records.append("|".join(values))
         payload = "\n".join(records)
     else:
@@ -1051,7 +1062,7 @@ def extract_deep_features_with_cache(
     method_name: str,
     checkpoint_path: Optional[Path],
 ) -> np.ndarray:
-    dataset_sig = dataset_digest(dataset, cfg.dataset.label_col, Path(str(cfg.dataset.root)))
+    dataset_sig = dataset_digest(dataset, cfg.dataset.label_col, Path(str(cfg.dataset.root)), cache_mask_col(cfg))
     weight_fingerprint = getattr(model, "_reid_weight_fingerprint", None)
     if weight_fingerprint is None:
         weight_fingerprint = model_fingerprint(model, revision=str(cfg.model.type))
@@ -1098,7 +1109,9 @@ class CachedDeepExtractor:
         self.model_weight_fingerprint = model_fingerprint(model, revision=str(cfg.model.type))
 
     def __call__(self, dataset: WildlifeDataset) -> np.ndarray:
-        dataset_sig = dataset_digest(dataset, self.cfg.dataset.label_col, Path(str(self.cfg.dataset.root)))
+        dataset_sig = dataset_digest(
+            dataset, self.cfg.dataset.label_col, Path(str(self.cfg.dataset.root)), cache_mask_col(self.cfg)
+        )
         cache_key = make_cache_key(
             self.cfg,
             self.method_name,
@@ -2355,6 +2368,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
         "visualizations": visuals,
         "cache_fingerprints": list(cache.used_keys),
         "vismatch_checkpoint": vismatch_checkpoint,
+        "vismatch_device": method_artifacts.get("vismatch_device"),
         "checkpoint_provenance": checkpoint_provenance,
         "checkpoint_source": checkpoint_source,
         "checkpoint_variant": checkpoint_variant,
@@ -2393,6 +2407,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
             "visualizations": visuals,
             "cache_fingerprints": list(cache.used_keys),
             "vismatch_checkpoint": vismatch_checkpoint,
+            "vismatch_device": method_artifacts.get("vismatch_device"),
             "checkpoint_provenance": checkpoint_provenance,
             "checkpoint_source": checkpoint_source,
             "checkpoint_variant": checkpoint_variant,

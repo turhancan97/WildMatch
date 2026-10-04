@@ -857,8 +857,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
   fingerprint, part of the feature-cache key, includes the requested checkpoint path and the
   protocol file path, so the same weights at another location (a Hub download, a moved folder)
   miss every cache filled from the old location. Results are unaffected; it costs one extraction.
-  Planned with the GPU-type fix before the release: key the fingerprint on file hashes and
-  protocol contents only (this invalidates existing caches once).
+  Fix on the same branch `fix/cache-key-device`: the fingerprint (version 2) hashes file
+  checksums, component modes and protocol contents only, and the cache tag no longer contains the
+  raw checkpoint path; manifests keep the paths.
 
 - **New SAM 3 masks for WildlifeReID-10k may differ from the paper's inputs (2026-10-04).**
   The runs read `masked_images/` files made by a teammate (owner `kubaty`, 2026-02 to 2026-08;
@@ -919,9 +920,11 @@ reproduction, and the measured impact so it can be picked up without re-investig
   balanced Top-1 are identical and mAP@k moves by at most 0.03 points. Extraction is deterministic
   on one GPU type (bit-identical twins). The cache key omits the device, so a cache can mix GPU
   types, and run manifests do not record the GPU model, so the paper's numbers depend on which
-  GPU first filled each cache. Fix later: add the device name/compute capability to the Vismatch
-  cache key and the run manifest (this invalidates existing caches), and report the GPU with
-  matcher results.
+  GPU first filled each cache. Fix on branch `fix/cache-key-device` (2026-10-04, not merged): the cache tag includes
+  `device_identity(device)` (`cpu` or `cuda:<GPU model>:sm<cc>`) and runs record it as
+  `vismatch_device` in `result.json` and `run_manifest.json`; report the GPU with matcher results.
+  Merging invalidates every existing Vismatch feature cache once (user: just before the release,
+  after all runs).
 
 ## Future-work checklist
 
@@ -934,8 +937,6 @@ reproduction live under "Known issues" instead.
 - [ ] Implement truly disjoint calibration inputs for WildFusion and local matcher
   calibration; the current split setting selects one dataset and passes it to both
   sides of calibration.
-- [ ] Include mask metadata/content fingerprints in standard and Vismatch feature
-  caches so mask edits invalidate features, not only image-file edits.
 - [ ] Make legacy checkpoint discovery recursive for the existing nested no-manifest
   `results/<dataset>/<animal>/mask_<...>/run_<...>` layout.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
@@ -1246,8 +1247,12 @@ applied at load time.
   sample paths and unreadable-file counts.
 - Standard and Vismatch feature caches include image-content SHA-256, preprocessing,
   metadata, image variant, model/checkpoint identity, and matcher profile/weight identity,
-  but do not yet include mask metadata/content hashes. Image contents at a fixed path
-  invalidate caches; mask edits require the future cache-fingerprint fix.
+  and, when masks are applied at load time (`dataset.no_background=true`, the three CzechLynx
+  entries), the SHA-256 of each image's mask cell (`mask_digest`; branch `fix/cache-key-device`,
+  2026-10-04), so an edited mask invalidates its features. Pre-masked inputs (WildlifeReID-10k,
+  SalamanderID2025, JaguarReID) are covered by the image-content hash, and their keys are
+  unchanged by this; merging it invalidates the CzechLynx standard caches (cosine, WildFusion,
+  probes) once, and with the device fix every Vismatch cache.
 - Automatic inference checkpoint discovery searches recursively under modern finetune
   experiments, ignores failed/incomplete manifests and `*-full.pth`, prefers completed
   canonical model-only files, then tagged legacy files, and preserves explicit-path priority.

@@ -63,18 +63,24 @@ class VismatchCheckpointResolution:
 
     @property
     def fingerprint(self) -> str:
+        """Content identity of the loaded checkpoint, part of the Vismatch feature-cache key.
+
+        Hashes file checksums, component modes and protocol contents, never file paths (since
+        2026-10-04), so the same weights hit the same caches wherever they are stored (a Hub
+        download, a moved folder). The run manifest (``as_dict``) still records the paths.
+        """
         payload = {
+            "fingerprint_version": 2,
             "source": self.source,
-            "requested_path": self.requested_path,
             "matcher": self.matcher,
             "component_mode": self.component_mode,
             "resolved_component_mode": self.resolved_component_mode or self.component_mode,
             "checkpoint_variant": self.checkpoint_variant,
             "loma_arch": self.loma_arch,
-            "files": [item.manifest_entry() for item in self.files],
+            "files": [
+                {"component": item.component, "format": item.file_format, "sha256": item.sha256} for item in self.files
+            ],
             "default_components": list(self.default_components),
-            "manifest_path": self.manifest_path,
-            "protocol_path": self.protocol_path,
             "validation": self.validation,
             "protocol_metadata": dict(self.protocol_metadata or {}),
             "applied_prefixes": list(self.applied_prefixes),

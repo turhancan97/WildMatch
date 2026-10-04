@@ -19,6 +19,16 @@ kept under Unreleased until a project version is assigned.
   SHA-256), and a dirty run keeps the diff as `code.diff`. `file_identity` adds the SHA-256 of
   backbone and finetune checkpoints. Closes the future-work item on checkpoint and dirty-state
   identity. Tests in `tests/test_code_identity.py`.
+- 2026-10-04 (branch `fix/cache-key-device`): feature caches hash the mask of each image when
+  masks are applied at load time (`dataset.no_background=true`, CzechLynx): `mask_digest` in
+  `utils/fingerprints.py`, added to `dataset_digest` (standard caches) and to the Vismatch per-image
+  key. Keys of pre-masked datasets are unchanged; CzechLynx standard caches are recomputed once
+  after the merge. Closes the future-work item on mask fingerprints. Tests in
+  `tests/test_mask_cache_identity.py`.
+- 2026-10-04 (branch `fix/cache-key-device`, not merged): Vismatch feature-cache keys include the
+  compute device (GPU model and capability) and no longer any checkpoint path; the checkpoint
+  fingerprint (version 2) is content-only; runs record `vismatch_device`. Merging invalidates all
+  Vismatch caches once.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

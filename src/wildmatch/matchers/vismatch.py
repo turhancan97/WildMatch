@@ -51,7 +51,7 @@ from wildmatch.matchers.vismatch_profiles import (
     validate_matcher_name,
 )
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
-from wildmatch.utils.fingerprints import hash_mapping, model_fingerprint, sha256_file
+from wildmatch.utils.fingerprints import hash_mapping, mask_digest, model_fingerprint, sha256_file
 from wildmatch.utils.io import ensure_file
 
 # Compatibility name for internal callers and saved feature semantics.
@@ -103,6 +103,20 @@ def scored_rank1(row: np.ndarray) -> Optional[int]:
     """
     index = int(stable_rank_1d(row)[0])
     return index if np.isfinite(row[index]) else None
+
+
+def device_identity(device: torch.device) -> str:
+    """The compute device as it affects extracted features: ``cpu`` or ``cuda:<GPU model>:sm<major><minor>``.
+
+    Vismatch keypoints and descriptors differ between GPU types (H100 against RTX 4090 changed
+    pair scores by up to 0.5 on SalamanderID2025, 2026-10-04), while extraction is deterministic on
+    one GPU type; the identity is therefore part of the feature-cache key and recorded per run.
+    """
+    if device.type != "cuda" or not torch.cuda.is_available():
+        return device.type
+    index = device.index if device.index is not None else torch.cuda.current_device()
+    major, minor = torch.cuda.get_device_capability(index)
+    return f"cuda:{torch.cuda.get_device_name(index)}:sm{major}{minor}"
 
 
 def _as_numpy(value: Any) -> np.ndarray:
@@ -676,8 +690,12 @@ def _cache_key(
     resize_max: int,
     top_k: int,
     cfg_tag: str,
+    mask_hash: Optional[str] = None,
 ) -> str:
     payload = f"{split_name}|{image_path}|content={image_content_hash}|resize_max={resize_max}|top_k={top_k}|{cfg_tag}"
+    if mask_hash is not None:
+        # masks applied at load time (no_background): an edited mask must miss the cache
+        payload += f"|mask={mask_hash}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -1007,6 +1025,7 @@ def _extract_split_features(
             resize_max=resize_max,
             top_k=top_k,
             cfg_tag=cfg_tag,
+            mask_hash=mask_digest(dataset.df.iloc[idx].get(mask_col)) if no_background else None,
         )
         cache_path = _cache_path(cache_dir, key)
         t_cache_lookup = time.perf_counter()
@@ -1107,7 +1126,7 @@ def run_vismatch_benchmark(
         (
             f"matcher={matcher_name}|vismatch_commit={VISMATCH_COMMIT}|stage_a={stage_a_method}|"
             f"model_type={cfg.model.type}|model_mode={cfg.model.mode}|checkpoint={checkpoint_tag}|"
-            f"checkpoint_source={checkpoint_source}|checkpoint_path={requested_checkpoint_path}|"
+            f"checkpoint_source={checkpoint_source}|device={device_identity(device)}|"
             f"checkpoint_components={checkpoint_components}|loma_arch={loma_arch}|"
             f"top_k={top_k}|resize_max={resize_max}|threshold={threshold}|no_bg={no_background}|"
             f"preprocessing={profile.preprocessing_version}|profile={profile_fingerprint(profile)}|"
@@ -1142,6 +1161,7 @@ def run_vismatch_benchmark(
     ).hexdigest()
     if method_artifacts is not None:
         method_artifacts["vismatch_checkpoint"] = backend.checkpoint_resolution.as_dict()
+        method_artifacts["vismatch_device"] = device_identity(device)
     backend.batch_diagnostics["configured_extract_batch_size"] = extract_batch_size
     backend.batch_diagnostics["configured_match_batch_size"] = match_batch_size
     model_build_sec = time.perf_counter() - t_build

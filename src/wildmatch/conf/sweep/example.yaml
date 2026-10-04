@@ -31,6 +31,10 @@ variants:
   - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
   # - {method: efficient_probe, train_mode: classifier, class_weighting: weighted}
 
+# Which metadata tables: current (default; WildlifeReID-10k: the SAM 3 masks) or paper (the tables
+# the paper's runs read, registry.paper_inputs). Per dataset: dataset_overrides.<key>.inputs.
+# inputs: paper
+
 # Optional per-dataset settings.
 # dataset_overrides:
 #   salamander:

@@ -10,11 +10,13 @@ A spec is a YAML mapping::
       - {method: vismatch, matcher: loma}                       # default weights
       - {method: vismatch, matcher: loma, checkpoint: custom}   # fine-tuned, matcher only
       - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
+    inputs: current                 # or paper: the tables the paper's runs read (registry.paper_inputs)
     dataset_overrides:              # optional, per registry key
       salamander:
         checkpoints: {custom: {loma: /path/to/epoch_299/model.safetensors}}
         checkpoint_owner: SalamanderID2025     # descriptor-fine-tuned rows only
         evaluation_animal: SalamanderID2025
+        inputs: paper                          # this dataset only
 
 Checkpoint labels follow the run manifests: ``default`` (Vismatch weights), ``custom``
 (matcher only), ``descriptor-fine-tuned`` (descriptor only) and ``joint-fine-tuned``
@@ -72,8 +74,11 @@ CHECKPOINT_LABELS = ("default", *COMPONENTS)
 LOMA_ARCH = "LoMa-B"
 UNSEEN_EVAL_KEY = "czechlynx_unseen_eval"
 _VARIANT_KEYS = {"method", "matcher", "checkpoint", "checkpoint_path", "components", "train_mode", "class_weighting"}
-_SPEC_KEYS = {"datasets", "candidate_k", "max_concurrent", "variants", "dataset_overrides", "description"}
-_OVERRIDE_KEYS = {"checkpoints", "checkpoint_owner", "evaluation_animal"}
+_SPEC_KEYS = {"datasets", "candidate_k", "max_concurrent", "variants", "dataset_overrides", "description", "inputs"}
+_OVERRIDE_KEYS = {"checkpoints", "checkpoint_owner", "evaluation_animal", "inputs"}
+# current: the registry's metadata_file; paper: registry.paper_inputs.metadata_file, the table the
+# paper's runs read (WildlifeReID-10k team masks; entries without paper_inputs use metadata_file).
+INPUTS = ("current", "paper")
 
 
 class SweepError(ValueError):
@@ -119,6 +124,10 @@ def load_spec(path: Path) -> Dict[str, Any]:
         unknown = set(override or {}) - _OVERRIDE_KEYS
         if unknown:
             raise SweepError(f"unknown dataset_overrides keys: {', '.join(sorted(unknown))}")
+        if (override or {}).get("inputs", "current") not in INPUTS:
+            raise SweepError(f"inputs must be one of {', '.join(INPUTS)}")
+    if spec.setdefault("inputs", "current") not in INPUTS:
+        raise SweepError(f"inputs must be one of {', '.join(INPUTS)}; got {spec['inputs']!r}")
     return spec
 
 
@@ -224,6 +233,10 @@ def build_tasks(spec: Mapping[str, Any], profile: Optional[str] = None) -> List[
         if str(key) == UNSEEN_EVAL_KEY:
             _check_unseen_eval(entry)
         overrides = overrides_by_key.get(key) or {}
+        inputs = str(overrides.get("inputs") or spec.get("inputs") or "current")
+        metadata_file = str(entry.metadata_file)
+        if inputs == "paper" and entry.registry.get("paper_inputs") is not None:
+            metadata_file = str(entry.registry.paper_inputs.metadata_file)
         animal = str(entry.animal)
         evaluation_animal = str(overrides.get("evaluation_animal") or animal)
         descriptor_owner = str(overrides.get("checkpoint_owner") or animal)
@@ -243,7 +256,7 @@ def build_tasks(spec: Mapping[str, Any], profile: Optional[str] = None) -> List[
                         "dataset_name": str(entry.name),
                         "animal": animal,
                         "root": str(entry.root),
-                        "metadata_file": str(entry.metadata_file),
+                        "metadata_file": metadata_file,
                         "label_col": str(entry.label_col),
                         "mask_col": str(entry.mask_col),
                         "no_background": _text(bool(entry.no_background)),

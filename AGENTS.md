@@ -126,8 +126,9 @@ tag). A sweep spec is a YAML file, packaged under `src/wildmatch/conf/sweep/` (`
 `jaguar_default`, `czechlynx_joint`, and the annotated `example`) or anywhere on disk: registry
 `datasets`, `candidate_k` budgets, `max_concurrent` (Slurm array `%` throttle) and `variants`
 rows (`method`, `matcher`, `checkpoint`, `train_mode`, `class_weighting`, optional
-`checkpoint_path`/`components`), plus optional `dataset_overrides` (`checkpoints`,
-`checkpoint_owner`, `evaluation_animal`). The spec is the source of truth for its grid.
+`checkpoint_path`/`components`), `inputs` (`current`, the default, or `paper`: the registry's
+`paper_inputs` table, i.e. the WildlifeReID-10k team masks the paper's runs read), plus optional
+`dataset_overrides` (`checkpoints`, `checkpoint_owner`, `evaluation_animal`, `inputs`). The spec is the source of truth for its grid.
 Modes: `--list-tasks` (writes nothing), `--dry-run` (freezes the submission and prints the
 `sbatch` command), `--submit` (array job; extra options through `--sbatch-arg=...`), `--local`
 (runs every task here, one after another). The task table, Hydra overrides, manifest task

@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): sweep specs take `inputs: current | paper` (spec-wide or per dataset), so
+  grids can run on the paper's WildlifeReID-10k tables (`registry.paper_inputs`) as well as the
+  SAM 3 ones.
 - 2026-10-04 (branch): the original SalamanderID2025 split script
   (`results/make_salamander_split.py`, paper repository) confirms the reconstructed rule;
   `salamander_table` now runs its three leakage checks (output still byte-identical).

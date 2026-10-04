@@ -216,6 +216,20 @@ class SpecTests(unittest.TestCase):
             ("unseen_eval_split", "database", "query"),
         )
 
+    def test_inputs_choose_the_current_or_the_paper_tables(self):
+        (current,) = _build(datasets=["hyenaid2022"])
+        self.assertEqual(current["metadata_file"], "metadata_sam3/metadata_HyenaID2022.csv")
+        (paper,) = _build(datasets=["hyenaid2022"], inputs="paper")
+        self.assertEqual(paper["metadata_file"], "metadata_mdsplit_no_background/metadata_HyenaID2022.csv")
+        both = _build(datasets=["hyenaid2022", "salamander"], dataset_overrides={"hyenaid2022": {"inputs": "paper"}})
+        self.assertEqual(
+            [t["metadata_file"] for t in both],
+            ["metadata_mdsplit_no_background/metadata_HyenaID2022.csv", "split_time_closed_no_background.csv"],
+        )
+        # entries without paper_inputs keep their table
+        (salamander,) = _build(datasets=["salamander"], inputs="paper")
+        self.assertEqual(salamander["metadata_file"], "split_time_closed_no_background.csv")
+
     def test_spec_file_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp, "s.yaml")
@@ -224,6 +238,7 @@ class SpecTests(unittest.TestCase):
                 (_spec(variants=[]), "non-empty"),
                 (dict(_spec(), extra=1), "unknown sweep keys"),
                 (_spec(max_concurrent=0), "max_concurrent"),
+                (_spec(inputs="old"), "inputs must be one of"),
             ):
                 path.write_text(yaml.safe_dump(content), encoding="utf-8")
                 with self.subTest(message), self.assertRaisesRegex(S.SweepError, message):

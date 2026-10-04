@@ -226,6 +226,8 @@ variants:
   - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
 ```
 
+`inputs: paper` in a spec (or per dataset in `dataset_overrides`) runs on the tables the paper's
+runs read instead of the current ones (WildlifeReID-10k: the team's masks instead of SAM 3).
 Classifier probes run once, at the first budget. Fine-tuned rows take their checkpoint from the
 dataset's registry entry (`custom` = matcher only, `descriptor-fine-tuned`, `joint-fine-tuned`)
 unless the row or `dataset_overrides` names a path; a missing checkpoint fails before

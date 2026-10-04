@@ -95,6 +95,16 @@ def _choose_vismatch_device(device_cfg: str) -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def scored_rank1(row: np.ndarray) -> Optional[int]:
+    """Rank-1 database index of one query's score row, or None when nothing was scored.
+
+    When every position is -inf the stable ranking returns database index 0, which is not a
+    match; drawing it would show a pair the matcher never compared.
+    """
+    index = int(stable_rank_1d(row)[0])
+    return index if np.isfinite(row[index]) else None
+
+
 def _as_numpy(value: Any) -> np.ndarray:
     if isinstance(value, (list, tuple)):
         if len(value) == 1:
@@ -1265,9 +1275,13 @@ def run_vismatch_benchmark(
         max_matches = int(getattr(cfg.visualization, "vismatch_max_matches", 200))
         out_dir = Path(run_dir) / "visualizations" / "matches"
         match_paths: List[str] = []
+        skipped_unscored = 0
         for q_idx in sampled_indices:
             q_idx_int = int(q_idx)
-            db_idx = int(stable_rank_1d(similarity[q_idx_int])[0])
+            db_idx = scored_rank1(similarity[q_idx_int])
+            if db_idx is None:
+                skipped_unscored += 1
+                continue
             q_row = dataset_query.df.iloc[q_idx_int]
             db_row = dataset_database.df.iloc[db_idx]
             q_img = _load_raw_rgb_image(q_row, q_idx_int, dataset_root, path_col, no_background, mask_col)
@@ -1302,8 +1316,11 @@ def run_vismatch_benchmark(
                     f"q{q_idx_int}:{q_label} -> db{db_idx}:{db_label} | matcher={matcher_name}",
                 )
             )
+        if skipped_unscored:
+            print(f"[vismatch] match drawings: skipped {skipped_unscored} sampled queries with no scored candidate")
         if method_artifacts is not None:
             method_artifacts["vismatch_match_paths"] = match_paths
+            method_artifacts["vismatch_match_skipped_unscored"] = skipped_unscored
 
     timings = {
         "vismatch_model_build_sec": float(model_build_sec),

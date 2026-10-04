@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `fix/small-known-bugs`): three known issues fixed, none affecting reported
+  numbers: Vismatch match drawings skip queries with no scored candidate (`scored_rank1`, count in
+  `vismatch_match_skipped_unscored`) instead of drawing database index 0; the probes compute
+  training-set probabilities for logging under `torch.no_grad()`; `_to_hwc_uint8` scales float
+  images in `[0, 1]` by 255 instead of truncating them to 0/1. Regression tests in
+  `tests/test_small_known_bugs.py`.
 - 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
   and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
   SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).

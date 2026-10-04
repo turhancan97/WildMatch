@@ -1,0 +1,42 @@
+# CPU-only checks on every push and pull request: lint, format, the test suite without GPU or
+# dataset tests, and a strict build of the project page. Nothing is deployed (the page is
+# published with `mkdocs gh-deploy` by hand, after the review embargo).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install (CPU PyTorch, dev tools)
+        run: uv sync --frozen --python 3.12 --extra cpu --group dev
+      - name: Lint
+        run: uv run --frozen ruff check src paper tests
+      - name: Format
+        run: uv run --frozen ruff format --check src paper tests
+      - name: Tests (no GPU, no datasets)
+        run: uv run --frozen pytest -m "not gpu and not data"
+
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build the project page
+        run: uv run --frozen --python 3.12 --only-group docs mkdocs build --strict

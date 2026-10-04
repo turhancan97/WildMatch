@@ -1,0 +1,87 @@
+# Paper checkpoints published on the Hugging Face Hub (`wildmatch weights`): the matcher-only
+# fine-tuned LoMa and RDD-LightGlue weights behind the paper's results, located by the SHA-256
+# that the paper snapshot's 395 runs recorded (2026-10-04). `local` is the file's path under
+# `paths.checkpoint_root` and equals the registry's `checkpoints.custom.<matcher>`; `hub` is its
+# name in the Hub repository. `protocol` files are training provenance that the Vismatch loader
+# reads next to the weights (part of the checkpoint fingerprint), shipped alongside.
+# czechlynx_open also serves czechlynx_unseen_eval (the paper's unseen-identity protocol).
+# Not published: descriptor-only and joint checkpoints, and datasets outside the paper.
+repo_id: ${oc.env:WILDMATCH_HUB_REPO,null}   # set when the Hub repository exists
+revision: main
+entries:
+  - dataset: hyenaid2022
+    matcher: loma
+    files:
+      - {hub: hyenaid2022/loma/model.safetensors, local: wildlife-reid-10k/HyenaID2022/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: faba16040c5d0102f25483b3b7a609de40926a62097d05dd995bc86f9dcfb7ec}
+  - dataset: hyenaid2022
+    matcher: rdd-lightglue
+    files:
+      - {hub: hyenaid2022/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/HyenaID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 06499866d7fcfb0349e273f51d19b1a7d3b9ba8163cbf5b0cad669b6ac9c1a37}
+  - dataset: leopardid2022
+    matcher: loma
+    files:
+      - {hub: leopardid2022/loma/model.safetensors, local: wildlife-reid-10k/LeopardID2022/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: bdd4819017b28c51cbbd2c51c72d313a6e425679dac0aeb080af7827d99ecc6b}
+  - dataset: leopardid2022
+    matcher: rdd-lightglue
+    files:
+      - {hub: leopardid2022/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/LeopardID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 6a18b876d661b48a66a72660ec46c1be7d0f5dcc85ef4ef138ff3c35ce5e4f59}
+  - dataset: nyala
+    matcher: loma
+    files:
+      - {hub: nyala/loma/model.safetensors, local: wildlife-reid-10k/NyalaData/loma-finetuned/legacy/epoch_299/model__actual_nyala.safetensors, sha256: c0cbe570e99235d73a19a0329ecdbdd232ae94fd0d73c5bc1d170cde918a6d05}
+  - dataset: nyala
+    matcher: rdd-lightglue
+    files:
+      - {hub: nyala/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed/epoch_299/model.safetensors, sha256: d2da7c9e7eb57f612774a5057645f2543c4f12041b317783237655f661792b81}
+  - dataset: seastarreid2023
+    matcher: loma
+    files:
+      - {hub: seastarreid2023/loma/model.safetensors, local: wildlife-reid-10k/SeaStarReID2023/loma-finetuned/legacy/epoch_299/model.safetensors, sha256: 90749f5d8aeea46cf903a510a029288b085dc2529895cbc1237c9a6faef440d6}
+  - dataset: seastarreid2023
+    matcher: rdd-lightglue
+    files:
+      - {hub: seastarreid2023/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/SeaStarReID2023/rdd-finetuned/legacy/epoch_299/model.safetensors, sha256: 6e7b99d7553526bc6dea404455bb3ec2e40ab61294355a9c7123857c0d6877df}
+  - dataset: whaleshark
+    matcher: loma
+    files:
+      - {hub: whaleshark/loma/model.safetensors, local: wildlife-reid-10k/WhaleSharkID/loma-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: 756e0f3ab36ed672fe10206b3c4530305daf556b63e5b00258473662109188e9}
+  - dataset: whaleshark
+    matcher: rdd-lightglue
+    files:
+      - {hub: whaleshark/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: 25490a6bf2d1dd6144584d57dadfd230d58c45f040900d1bb109d874556df4e5}
+  - dataset: zindi
+    matcher: loma
+    files:
+      - {hub: zindi/loma/model.safetensors, local: wildlife-reid-10k/ZindiTurtleRecall/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: b42611b142a7a95a71d79ead8344b6ae44c7bdb24de3352e916af7477bc15032}
+  - dataset: zindi
+    matcher: rdd-lightglue
+    files:
+      - {hub: zindi/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 016b5874972498abcec2002197ec1fe3fc7108ed83dab80e1911f937596d9d2f}
+  - dataset: salamander
+    matcher: loma
+    files:
+      - {hub: salamander/loma/model.safetensors, local: wildlife-reid-10k/SalamanderID2025/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 73e0cd864190773ba1bc227fd99a3031e7bc5853098c609365c651c2f4a176a1}
+  - dataset: salamander
+    matcher: rdd-lightglue
+    files:
+      - {hub: salamander/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: bdf41cddbb49fdf0a3ab0259b7e57540d0892c833b93e570d29f0c9c9d76dee4}
+  - dataset: czechlynx_closed
+    matcher: loma
+    files:
+      - {hub: czechlynx_closed/loma/model.safetensors, local: czechlynx-time-closed/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors, sha256: a7cb990e399d371886d1eb4495f3737367e7a931454bc00375985b9428e37f49}
+      - {hub: czechlynx_closed/loma/czechlynx_protocol.json, local: czechlynx-time-closed/loma-b-finetuned-loma-mined-legacy/czechlynx_protocol.json, sha256: 1725cece94781e20101607a153d48cd45025ca7061a57746ca3cfa946dc6746d}
+  - dataset: czechlynx_closed
+    matcher: rdd-lightglue
+    files:
+      - {hub: czechlynx_closed/rdd-lightglue/model.safetensors, local: czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed/epoch_299/model.safetensors, sha256: 39a255e619de26a5eac7243e47582253088d0c0734a96ad178513c90d2bc2624}
+      - {hub: czechlynx_closed/rdd-lightglue/czechlynx_protocol.json, local: czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed/czechlynx_protocol.json, sha256: 18f9f16a998f5fd68c8ebc1802e73adf2b74d4c19123c8447d8865ceaf2fe2c7}
+  - dataset: czechlynx_open
+    matcher: loma
+    files:
+      - {hub: czechlynx_open/loma/model.safetensors, local: czechlynx-time-open/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors, sha256: c9d917dbefd7713e95e18025f4382ee8bbbd0670da4f0180c6e6f6465971ba22}
+      - {hub: czechlynx_open/loma/czechlynx_protocol.json, local: czechlynx-time-open/loma-b-finetuned-loma-mined-legacy/czechlynx_protocol.json, sha256: f09b2f9135979fbc505838d5a7728ccf21133ebd04059e206268766086492ce6}
+  - dataset: czechlynx_open
+    matcher: rdd-lightglue
+    files:
+      - {hub: czechlynx_open/rdd-lightglue/model.safetensors, local: czechlynx-time-open/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors, sha256: c7cc7575fd66b9b27045b23c4ccc42f454e0e8b1c0c045c84113fbe1573b7fad}
+      - {hub: czechlynx_open/rdd-lightglue/czechlynx_protocol.json, local: czechlynx-time-open/rdd-finetuned-loma-mined-legacy/czechlynx_protocol.json, sha256: eb08547f728999b33428f1d735db7caf47d711d69a3913297dd3fea9e2c1ebd0}

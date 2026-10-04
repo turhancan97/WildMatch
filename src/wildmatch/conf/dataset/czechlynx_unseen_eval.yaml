@@ -3,7 +3,7 @@
 name: "CzechLynx_v2"
 animal: "CzechLynx"
 root: "${paths.data_root}/CzechLynx_v2"
-metadata_file: "${oc.env:CZECHLYNX_UNSEEN_EVAL_METADATA_FILE,metadata_unseen_eval.csv}"
+metadata_file: "${oc.env:CZECHLYNX_UNSEEN_EVAL_METADATA_FILE,metadata/czechlynx-unseen-eval/metadata_unseen_eval.csv}"
 label_col: "unique_name"
 mask_col: "mask"
 no_background: true
@@ -27,4 +27,9 @@ registry:
       loma: "${paths.checkpoint_root}/czechlynx-time-open/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-open/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
-  download: null  # Phase 4: download route or "user-supplied"
+  # Where the data comes from. raw: the published source; derived: the files this registry entry
+  # reads that are made from it; reproducible: whether this repository can rebuild them.
+  download:
+    raw: "kaggle:picekl/czechlynx (wildlife-datasets CzechLynx; that this holds v2 with the split-time_* columns and RLE masks is unverified)"
+    derived: "wildmatch prepare unseen-split (from czechlynx_open, encounter groups, date order)"
+    reproducible: true

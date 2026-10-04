@@ -7,6 +7,20 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): refactor Phase 4, paper checkpoints and data preparation. The paper
+  snapshot's 395 runs identify every fine-tuned checkpoint by SHA-256; all were found on disk and
+  the registry now names them (renamed `legacy-*-mined/` folders, Nyala's
+  `model__actual_nyala.safetensors`, the relaxed-score RDD checkpoints behind the paper's CzechLynx
+  closed and Nyala RDD rows, joint epoch 100). `conf/weights.yaml` + `wildmatch weights
+  list|verify|download|stage` publish the 18 matcher-only paper checkpoints (8 datasets plus
+  CzechLynx open for the unseen protocol) and 4 protocol files through the Hugging Face Hub with
+  SHA-256 checks; no Hub repository exists yet. `wildmatch prepare status|download|jaguar|unseen-split`:
+  per-dataset checks, raw WildlifeReID-10k download via wildlife-datasets, JaguarReID steps, and the
+  unseen-identity split, which reproduces the paper's CSV byte for byte. Registry `download` blocks
+  record raw sources and whether derived inputs are reproducible; the unseen entry defaults to the
+  existing metadata file. New known issues: checkpoint fingerprints contain absolute paths;
+  WildlifeReID-10k masked crops and metadata, and the Salamander time split, cannot be rebuilt
+  here. Tests: `tests/test_weights.py`; 378 pass.
 - 2026-10-04 (branch): Phase 3 parity run 4 (array 524200, `wildmatch sweep parity --submit`):
   cosine, WildFusion and default/fine-tuned LoMa and RDD-LightGlue are bit-identical to run 2
   (max score difference 0, no Top-1 change) with unchanged Vismatch cache fingerprints, and so

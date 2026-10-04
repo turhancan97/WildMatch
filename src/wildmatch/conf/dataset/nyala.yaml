@@ -24,7 +24,12 @@ registry:
   # descriptor + matcher trained together. A sweep row whose label has no entry fails closed.
   checkpoints:
     custom:
-      loma: "${paths.checkpoint_root}/wildlife-reid-10k/NyalaData/loma-finetuned/legacy/epoch_299/model.safetensors"
-      rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/NyalaData/rdd-finetuned/legacy/epoch_299/model.safetensors"
+      loma: "${paths.checkpoint_root}/wildlife-reid-10k/NyalaData/loma-finetuned/legacy/epoch_299/model__actual_nyala.safetensors"
+      rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
-  download: null  # Phase 4: download route or "user-supplied"
+  # Where the data comes from. raw: the published source; derived: the files this registry entry
+  # reads that are made from it; reproducible: whether this repository can rebuild them.
+  download:
+    raw: "kaggle:wildlifedatasets/wildlifereid-10k (wildlife-datasets WildlifeReID10k)"
+    derived: "masked crops (masked_images/) and the metadata_*_no_background/ tables were made by the team; their script and a publication route are still open"
+    reproducible: false

@@ -212,10 +212,26 @@ wildmatch summarize-logs --method vismatch --matcher loma --format csv
 
 Historical log files are not moved or rewritten.
 
+### Data and paper checkpoints
+
+```bash
+wildmatch prepare status                      # what each registry dataset has on disk, and its source
+wildmatch prepare download zindi              # raw WildlifeReID-10k from Kaggle (needs Kaggle credentials)
+wildmatch prepare unseen-split                # rebuild the CzechLynx unseen-identity split
+wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
+wildmatch weights download --dataset salamander   # from the Hub (--repo or WILDMATCH_HUB_REPO; HF_TOKEN)
+wildmatch weights verify
+```
+
+Downloaded checkpoints land where the dataset registry expects them (under the profile's
+`checkpoint_root`), so fine-tuned sweep rows find them without extra settings. Some prepared
+inputs (the WildlifeReID-10k masked crops, the Salamander time split) cannot be rebuilt from this
+repository yet; `prepare status` says which (AGENTS.md, "Known issues").
+
 ### Jaguar (JaguarReID)
 
 The Kaggle Jaguar Re-ID training photos run through the shared probe pipeline as
-`JaguarReID`: prepare them once with `python -m wildmatch.data.prepare.jaguar`, then run
+`JaguarReID`: prepare them once with `wildmatch prepare jaguar prepare`, `... embed` and `... split`, then run
 `wildmatch sweep jaguar_default`. See AGENTS.md, "JaguarReID".
 
 ## Configuration Guide

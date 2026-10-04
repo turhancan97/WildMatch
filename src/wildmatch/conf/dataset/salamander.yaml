@@ -27,4 +27,9 @@ registry:
       loma: "${paths.checkpoint_root}/wildlife-reid-10k/SalamanderID2025/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors"
   licence: null   # to verify before release (Phase 4)
-  download: null  # Phase 4: download route or "user-supplied"
+  # Where the data comes from. raw: the published source; derived: the files this registry entry
+  # reads that are made from it; reproducible: whether this repository can rebuild them.
+  download:
+    raw: "AnimalCLEF2025 SalamanderID2025 (Kaggle competition data; wildlife-datasets AnimalCLEF2025_SalamanderID2025)"
+    derived: "split_time_closed.csv (time-closed database/query split; how it was made is not recorded) and SAM 3 masks via paper/tools/segment_with_sam3.py"
+    reproducible: false

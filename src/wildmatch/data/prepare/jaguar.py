@@ -557,8 +557,8 @@ def split_dataset(root: Path, *, threshold: int, adjacent_gap: int, adjacent_cos
 # ---------------------------------------------------------------------------
 
 
-def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+def parse_args(argv: Iterable[str] | None = None, prog: str | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Kaggle Jaguar dataset root")
     parser.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 1))
     sub = parser.add_subparsers(dest="command", required=True)
@@ -577,8 +577,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv: Iterable[str] | None = None) -> None:
-    args = parse_args(argv)
+def main(argv: Iterable[str] | None = None, prog: str | None = None) -> None:
+    args = parse_args(argv, prog)
     if args.command == "prepare":
         print(json.dumps(prepare(args.root, workers=args.workers)["counts"], indent=2))
     elif args.command == "embed":

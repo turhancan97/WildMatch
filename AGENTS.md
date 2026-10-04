@@ -28,9 +28,11 @@ locked in `uv.lock`); see "Package refactor" for the migration in progress.
 - src/wildmatch/train/finetune_runner.py: ArcFace finetuning and validation retrieval.
 - src/wildmatch/evaluate/probe_runner.py: cosine, WildFusion, local LightGlue, linear probe,
   efficient probe, and Vismatch matcher benchmark dispatch.
+- src/wildmatch/weights.py, src/wildmatch/conf/weights.yaml: the paper checkpoints on the Hugging
+  Face Hub (`wildmatch weights`); see "Paper checkpoints and data preparation".
 - src/wildmatch/data/: dataset views, COCO-RLE masking, split safety checks, the unseen-split
   builder (`unseen_split.py`), the image-quality audit (`image_quality.py`) and dataset
-  preparation (`prepare/jaguar.py`, run as `python -m wildmatch.data.prepare.jaguar`).
+  preparation (`prepare/`: `wildmatch prepare status|download|jaguar|unseen-split`).
 - src/wildmatch/evaluate/metrics.py: top-k, balanced top-1, and mAP calculations.
 - src/wildmatch/train/: checkpoint serialization and accumulation helpers.
 - src/wildmatch/reporting/: run identities, manifests, metrics, visualization indexes, summaries,
@@ -80,6 +82,8 @@ wildmatch tables
 wildmatch figures
 wildmatch class-balance
 wildmatch audit --dataset leopard --limit 400  # dev subset
+wildmatch prepare status                       # what each registry dataset has on disk
+wildmatch weights verify                       # paper checkpoints against their SHA-256
 python -m pytest                    # tests (unittest-style classes, run by pytest)
 python -m py_compile $(git ls-files 'src/*.py' 'paper/*.py' 'tests/*.py')
 uv lock && requirements/export.sh   # after a dependency change: re-lock and re-export the pins
@@ -177,7 +181,8 @@ checkpoints. Status checked on 2026-10-03: the retrain has not started under thi
 checkpoint is still `epoch_175`. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
-their purpose is not recorded. The probe runs reference
+the paper snapshot's CzechLynx closed and NyalaData RDD-LightGlue rows come from them (found
+2026-10-04 from the snapshot's run ids), so the registry now points at them. The probe runs reference
 `<animal>/rdd-finetuned/legacy/epoch_299` for five wildlife animals that was missing on
 2026-09-29. For HyenaID2022 and LeopardID2022 it was renamed, not lost:
 `legacy-loma-mined/epoch_299/model.safetensors` matches the SHA-256 recorded in their runs
@@ -213,9 +218,9 @@ CzechLynx closed, open and unseen-eval), selected with `dataset=<key>` (default
 `czechlynx_closed`). Each holds the probe's dataset fields, roots interpolated from
 `${paths.data_root}`, plus a `registry` block (paper key, label, source, paper flag and order,
 default fine-tuned checkpoints from `${paths.checkpoint_root}` keyed by sweep checkpoint label,
-`checkpoints.{custom,descriptor-fine-tuned,joint-fine-tuned}.{loma,rdd-lightglue}` (the launchers'
-defaults; only CzechLynx closed has descriptor and joint entries), licence and download to fill in
-Phase 4). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
+`checkpoints.{custom,descriptor-fine-tuned,joint-fine-tuned}.{loma,rdd-lightglue}` (the files the
+paper's runs used, see "Paper checkpoints and data preparation"; only CzechLynx closed has
+descriptor and joint entries), licence (still `null`) and the data source `download` block). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
 Hydra; `wildmatch.reporting.paper_datasets` builds `PAPER_PROFILES` and `BENCHMARK_ONLY_PROFILES`
 from it (same keys and order as before). Sweeps build their tasks from it; the removed launchers'
 profile values are pinned as a literal in `tests/test_paths_registry.py`. Submission snapshots
@@ -678,6 +683,44 @@ per-task Hydra overrides equal the launchers' for the parity, Jaguar and CzechLy
 `wildmatch tables` writes the 84 table files byte-identical to `paper-v1` from the main
 checkout's runs, and `wildmatch figures` the 72 figure files with pixel-identical PNGs (PDFs
 differ only in `Creator` and timestamp). Parity run 4 (array 524200, the `parity` sweep): 7/7 pairs bit-identical to run 2, linear probe included, with unchanged cache fingerprints. **Phase 3 parity holds.**
+**Phase 4 (weights and data preparation), 2026-10-04:** see "Paper checkpoints and data preparation".
+
+### Paper checkpoints and data preparation
+
+The checkpoints behind the paper were located by SHA-256: the 395 run ids in the paper
+repository's `results/` snapshot all exist under the main checkout's `experiments/probe/`,
+and each fine-tuned run records its component hashes. Every file was found on disk (2026-10-04),
+and the registry's `checkpoints` now name them: BelugaID, HyenaID2022, LeopardID2022 and
+ZindiTurtleRecall in `legacy-loma-mined/`; WhaleSharkID in `legacy-rdd-mined/` (its LoMa too);
+NyalaData LoMa is `legacy/epoch_299/model__actual_nyala.safetensors` (the folder's
+`model.safetensors` is the 2026-09-09 overwrite) and its RDD the relaxed
+`legacy-rdd-mined-relaxed/`; CzechLynx closed RDD is `rdd-finetuned-rdd-mined-legacy-relaxed/`
+(the older `rdd-finetuned-loma-mined-legacy/` runs are superseded in the snapshot); the joint
+entries are epoch 100, the epoch the paper's joint rows used (the RDD joint run stops at 185).
+ATRW, CowDataset and StripeSpotter checkpoints are gone; Giraffes and GiraffeZebraID keep
+`legacy/`. None of these four sets is a paper dataset.
+`conf/weights.yaml` lists the files to publish: the matcher-only LoMa and RDD-LightGlue
+checkpoints of the eight paper datasets plus CzechLynx open (it serves the unseen-identity
+protocol), 18 files of 47 MB, each with its Hub name (`<registry key>/<matcher>/model.safetensors`),
+its place under `checkpoint_root` (`local`, equal to the registry path, so sweeps find downloads
+without settings) and its SHA-256, plus the four CzechLynx `czechlynx_protocol.json` files, which
+the loader reads next to the weights. Descriptor-only and joint checkpoints are not published
+(user decision: paper matcher-only checkpoints only). `wildmatch weights list|verify|download|stage`:
+`download` fetches from the Hub repository (`--repo` or `WILDMATCH_HUB_REPO`; `HF_TOKEN` for a
+private repository), rejects a file whose SHA-256 differs and keeps valid local files; `stage`
+copies the verified local files into a folder with the Hub layout and `SHA256SUMS.md`, for the
+user to upload with `hf upload <repo> <folder> . --repo-type model --private`. All 22 files
+verified on 2026-10-04. No Hub repository exists yet.
+`wildmatch prepare status` checks each registry entry (root, metadata, split values, a sample of
+images, the mask column when masks are applied at load) and prints its `registry.download`
+block (`raw` source, `derived` files, `reproducible`); all 17 entries are ready on the cluster.
+`prepare download <key>` fetches raw WildlifeReID-10k through wildlife-datasets (Kaggle
+credentials); `prepare jaguar <prepare|embed|split>` runs the JaguarReID steps; `prepare
+unseen-split` rebuilds the CzechLynx unseen-identity split from `czechlynx_open` with the paper's
+parameters (encounter groups, date order) and reproduced the paper's
+`metadata/czechlynx-unseen-eval/metadata_unseen_eval.csv` byte for byte (SHA-256 `eef513b5...`).
+The registry's unseen entry now defaults to that file (the old default pointed at a file that
+does not exist). Licences in the registry are still `null`.
 
 ## Known issues (open)
 
@@ -716,17 +759,22 @@ reproduction, and the measured impact so it can be picked up without re-investig
   triggered today because the base dataset yields PIL images, but it would silently blacken
   inputs if a transform were ever applied before the view.
 
-- **Registry checkpoint defaults point at renamed checkpoint folders (found 2026-10-03).**
-  The registry keeps the wildlife launchers' defaults, `<animal>/{loma,rdd}-finetuned/legacy/`,
-  but several directories were renamed to
-  `legacy-loma-mined/` or `legacy-rdd-mined/`. Default `epoch_299` paths are missing for
-  ZindiTurtleRecall (LoMa, RDD), WhaleSharkID (LoMa), BelugaID (LoMa, RDD), LeopardID2022
-  (LoMa, RDD) and HyenaID2022 (LoMa, RDD); ATRW, CowDataset and StripeSpotter have no
-  checkpoints. A sweep validates paths before submission, so this cannot produce wrong
-  results, but fine-tuned rows for those datasets need `dataset_overrides` (or `checkpoint_path`)
-  until the registry entries are updated (Phase 4, located by the runs' SHA-256). NyalaData's `legacy`
-  path exists but holds the file that overwrote the paper checkpoint on 2026-09-09 (see
-  "Paper figures from confirmed examples").
+- **Checkpoint fingerprints contain absolute paths (found 2026-10-04).** The Vismatch checkpoint
+  fingerprint, part of the feature-cache key, includes the requested checkpoint path and the
+  protocol file path, so the same weights at another location (a Hub download, a moved folder)
+  miss every cache filled from the old location. Results are unaffected; it costs one extraction.
+  Planned with the GPU-type fix before the release: key the fingerprint on file hashes and
+  protocol contents only (this invalidates existing caches once).
+
+- **The WildlifeReID-10k inputs cannot be rebuilt from this repository (found 2026-10-04).**
+  The runs read `masked_images/` (pre-masked crops; Hyena paths end in `_0`, one crop per
+  annotation) and the `metadata_no_background/`, `metadata_mdsplit_no_background/` tables, all
+  made by a teammate (owner `kubaty`, 2026-02 to 2026-08), not shipped with the Kaggle release
+  (`wildlifedatasets/wildlifereid-10k`); they hold no mask column, and the script is not here.
+  Likewise the SalamanderID2025 time split `split_time_closed.csv` has no recorded origin, and
+  whether Kaggle `picekl/czechlynx` holds CzechLynx v2 (with `split-time_*` and RLE masks) is
+  unverified. Registry `download` blocks record this (`reproducible: false`); open question for
+  the user and the team before the release.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

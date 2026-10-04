@@ -131,7 +131,7 @@ class SpecTests(unittest.TestCase):
         (task,) = _build(datasets=["czechlynx_closed"], variants=[row])
         self.assertEqual(task["checkpoint_components"], "full")
         self.assertEqual(task["checkpoint_path"],
-                         f"{GMUM_CHECKPOINTS}/czechlynx-time-closed/rdd-joint-finetuned-loma-mined-legacy/epoch_299")
+                         f"{GMUM_CHECKPOINTS}/czechlynx-time-closed/rdd-joint-finetuned-loma-mined-legacy/epoch_100")
         for key in ("czechlynx_open", "salamander"):
             with self.subTest(key), self.assertRaisesRegex(S.SweepError, "no joint-fine-tuned"):
                 _build(datasets=[key], variants=[row])

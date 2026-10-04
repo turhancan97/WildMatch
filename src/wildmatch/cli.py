@@ -34,6 +34,8 @@ COMMANDS: Dict[str, Command] = {
     "build-unseen-split": Command("wildmatch.data.unseen_split:main", "build the unseen-identity evaluation split"),
     "class-balance": Command("wildmatch.reporting.class_balance:main", "per-identity image counts of every dataset split"),
     "audit": Command("wildmatch.data.image_quality:main", "flag candidate low-quality images for review"),
+    "prepare": Command("wildmatch.data.prepare:main", "check, download or build datasets (status, download, jaguar, unseen-split)"),
+    "weights": Command("wildmatch.weights:main", "list, verify, download or stage the paper checkpoints"),
 }
 
 

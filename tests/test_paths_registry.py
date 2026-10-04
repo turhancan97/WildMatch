@@ -178,6 +178,9 @@ LAUNCHER_PROFILES = {
     "whaleshark": "WildlifeReID-10k|WhaleSharkID|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_no_background/metadata_WhaleSharkID.csv|identity|mask|false|no_background|split|train|test|100",
     "zindi": "WildlifeReID-10k|ZindiTurtleRecall|/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k|metadata_no_background/metadata_ZindiTurtleRecall.csv|identity|mask|false|no_background|split|train|test|100",
 }
+# Registry entries whose launcher checkpoint default was a renamed or overwritten folder; since
+# 2026-10-04 they name the file each paper run recorded by SHA-256 (tests/test_weights.py).
+RELOCATED_CHECKPOINTS = {"beluga", "hyenaid2022", "leopardid2022", "nyala", "whaleshark", "zindi"}
 # WildlifeReID-10k launcher checkpoint folders (LoMa, RDD) under <animal>/{loma,rdd}-finetuned/.
 LAUNCHER_CHECKPOINT_DIRS = {
     "atrw": ('legacy', 'legacy'),
@@ -255,7 +258,7 @@ class RegistryTests(unittest.TestCase):
                     expected = int(expected)
                 self.assertEqual(actual, expected, f"{key}.{field}")
             self.assertEqual(entry.registry.key, key)
-            if key in LAUNCHER_CHECKPOINT_DIRS:
+            if key in LAUNCHER_CHECKPOINT_DIRS and key not in RELOCATED_CHECKPOINTS:
                 loma_dir, rdd_dir = LAUNCHER_CHECKPOINT_DIRS[key]
                 base = f"{GMUM_DATA}/checkpoints/wildlife-reid-10k/{entry.animal}"
                 custom = entry.registry.checkpoints.custom
@@ -268,13 +271,15 @@ class RegistryTests(unittest.TestCase):
         expected = {
             "czechlynx_closed": {
                 "custom": {"loma": f"{closed}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
-                           "rdd-lightglue": f"{closed}/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"},
+                           # the paper's CzechLynx closed RDD rows use the relaxed-score checkpoint
+                           "rdd-lightglue": f"{closed}/rdd-finetuned-rdd-mined-legacy-relaxed/epoch_299/model.safetensors"},
                 "descriptor-fine-tuned": {
                     "loma": f"{closed}/loma-b-descriptor-finetuned-legacy/epoch_252/model.safetensors",
                     "rdd-lightglue": f"{closed}/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors"},
                 "joint-fine-tuned": {
-                    "loma": f"{closed}/loma-b-joint-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
-                    "rdd-lightglue": f"{closed}/rdd-joint-finetuned-loma-mined-legacy/epoch_299"},
+                    # the paper's joint rows use epoch 100 (the RDD joint run has no epoch 299)
+                    "loma": f"{closed}/loma-b-joint-finetuned-loma-mined-legacy/epoch_100/model.safetensors",
+                    "rdd-lightglue": f"{closed}/rdd-joint-finetuned-loma-mined-legacy/epoch_100"},
             },
         }
         for key in ("czechlynx_open", "czechlynx_unseen_eval"):

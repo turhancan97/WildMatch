@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): `slurm/sam3_masks.sbatch` calls the SAM 3 Python by full path
+  (`SAM3_PYTHON`, default lynx-app): the retry jobs 524354-524362 were submitted from a shell with
+  the wildmatch venv active, sbatch exported it, and `python` resolved to the venv (no `iopath`).
 - 2026-10-04 (branch): empty SAM 3 masks (BelugaID 1,125, SeaStar 42, WhaleShark 39, a few
   elsewhere) are redone: `wildmatch prepare retry-empty` reruns only those images with per-dataset
   `retry_prompts`, and `sam3_masks.py --empty-policy full_frame` keeps the whole image when still

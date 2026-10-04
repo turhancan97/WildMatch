@@ -17,8 +17,12 @@
 
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:?run through sbatch}"
-# The SAM 3 environment; override with SAM3_ENV (a conda env name or prefix).
-source "${CONDA_SH:-/shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh}"
-conda activate "${SAM3_ENV:-lynx-app}"
+# The SAM 3 environment's Python, called by its full path: sbatch exports the submitting shell's
+# environment, and with another environment active there (for example the wildmatch venv, needed
+# to run `wildmatch prepare ...`) a bare `python` resolved to that one and SAM 3 failed to import
+# (jobs 524354-524362, 2026-10-04). Override with SAM3_PYTHON.
+SAM3_PYTHON="${SAM3_PYTHON:-/shared/results/common/kargin/tck_miniconda3/envs/lynx-app/bin/python}"
+[[ -x "${SAM3_PYTHON}" ]] || { echo "SAM 3 Python not found: ${SAM3_PYTHON}" >&2; exit 1; }
+unset VIRTUAL_ENV PYTHONPATH PYTHONHOME
 nvidia-smi -L
-python src/wildmatch/data/prepare/sam3_masks.py "$@"
+"${SAM3_PYTHON}" src/wildmatch/data/prepare/sam3_masks.py "$@"

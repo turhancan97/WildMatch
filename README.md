@@ -260,7 +260,7 @@ wildmatch prepare build salamander --source <animal-clef-2025 folder>   # split 
 sbatch slurm/sam3_masks.sbatch <printed arguments>                       # SAM 3 masks (rtx4090_batch by default)
 wildmatch prepare finish salamander           # pre-masked metadata the registry reads
 wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
-wildmatch weights download --dataset salamander   # from the Hub (--repo or WILDMATCH_HUB_REPO; HF_TOKEN)
+wildmatch weights download --dataset salamander   # from turhancan97/wildmatch-checkpoints (private for now: HF_TOKEN)
 wildmatch weights verify
 ```
 

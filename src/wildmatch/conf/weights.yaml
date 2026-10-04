@@ -6,7 +6,7 @@
 # reads next to the weights (part of the checkpoint fingerprint), shipped alongside.
 # czechlynx_open also serves czechlynx_unseen_eval (the paper's unseen-identity protocol).
 # Not published: descriptor-only and joint checkpoints, and datasets outside the paper.
-repo_id: ${oc.env:WILDMATCH_HUB_REPO,null}   # set when the Hub repository exists
+repo_id: ${oc.env:WILDMATCH_HUB_REPO,turhancan97/wildmatch-checkpoints}   # private until the release; HF_TOKEN needed
 revision: main
 entries:
   - dataset: hyenaid2022

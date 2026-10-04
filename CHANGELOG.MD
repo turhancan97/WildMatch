@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: paper checkpoints uploaded to the private Hugging Face repository
+  `turhancan97/wildmatch-checkpoints` (18 checkpoints, 4 protocol files, checksums, README) and set
+  as the default `repo_id` in `conf/weights.yaml`; a full `wildmatch weights download` into an empty
+  folder verified every SHA-256.
 - 2026-10-04: deleted the merged remote branch `refactor/wildmatch-package` and the SAM 3 pilot
   folder `wildmatch-prepare-pilot/` (667 MB; superseded by the full masking run, numbers kept in
   AGENTS.md), at the user's request.

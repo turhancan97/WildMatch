@@ -752,7 +752,12 @@ the loader reads next to the weights. Descriptor-only and joint checkpoints are 
 private repository), rejects a file whose SHA-256 differs and keeps valid local files; `stage`
 copies the verified local files into a folder with the Hub layout and `SHA256SUMS.md`, for the
 user to upload with `hf upload <repo> <folder> . --repo-type model --private`. All 22 files
-verified on 2026-10-04. No Hub repository exists yet.
+verified on 2026-10-04. Hub repository (user decision 2026-10-04): `turhancan97/wildmatch-checkpoints`,
+private until the release (the user's personal account; an organisation was considered), the
+default `repo_id` in `conf/weights.yaml` (override with `WILDMATCH_HUB_REPO`; private access needs
+`HF_TOKEN` or `hf auth login`). Uploaded 2026-10-04 (commit `b15cf351`): 18 checkpoints, 4 protocol
+files, `SHA256SUMS.md` and a README that leaves the licence open; a full download into an empty
+folder matched every recorded SHA-256.
 `wildmatch prepare status` checks each registry entry (root, metadata, split values, a sample of
 images, the mask column when masks are applied at load) and prints its `registry.download`
 block (`raw` source, `derived` files, `reproducible`); all 17 entries are ready on the cluster.

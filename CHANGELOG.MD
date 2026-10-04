@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): sweep `wildlife_sam3` (array 524372) completed, 42/42. On the SAM 3 inputs,
+  Top-1 differs from the paper by a mean of +0.73 points (range -2.0 to +3.7); Zindi WildFusion's
+  -2.0 traced to near-tie flips with unchanged masks; accepted by the user. Phase 5 commits from the
+  temporary `format-tmp` branch fast-forwarded into this branch after the sweep; ruff installed in
+  the environment.
 - 2026-10-04 (branch): AGENTS.md pass for the finished package: refactor marked done, Known
   issues point at functions instead of line numbers (both issues re-checked), future-work items
   for CI and machine-local paths closed, licence item narrowed to what is still open, docs

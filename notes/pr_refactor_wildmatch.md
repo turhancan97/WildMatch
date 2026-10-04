@@ -59,10 +59,11 @@ pins a pre-refactor manifest).
 - WildlifeReID-10k entries read new SAM 3 masked inputs (`metadata_sam3/`, `masked_images_sam3/`)
   by default; the team's masked files the paper used stay untouched and are reachable as
   `registry.paper_inputs` and `inputs: paper` in sweep specs. On the six paper datasets at k=250
-  (sweep `wildlife_sam3`, array 524372) results stay close: Top-1 changes by a mean of +0.75
-  points (median +0.5, range -2.0 to +3.7); Sea star gains about 2.4 (old masks were specks on
-  close-ups), Zindi WildFusion loses 2.0 (near-tie flips, masks unchanged). Table:
-  `reports/sam3_vs_paper.csv`.
+  (sweep `wildlife_sam3`, array 524372, all 42 runs) results stay close: Top-1 changes by a mean
+  of +0.73 points (median +0.5, range -2.0 to +3.7; 27 of 42 within one point, 14 higher, one
+  lower), balanced Top-1 by +0.52; Sea star gains about 2.4 (old masks were specks on close-ups),
+  Zindi WildFusion loses 2.0 (near-tie flips, masks unchanged). Table: `reports/sam3_vs_paper.csv`
+  (`python paper/tools/compare_with_paper.py --job 524372`).
 - Registry checkpoint paths point at the files the paper's runs used (renamed folders, Nyala's
   `model__actual_nyala.safetensors`, the relaxed RDD checkpoints for CzechLynx closed and Nyala,
   joint epoch 100).

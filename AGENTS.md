@@ -879,7 +879,15 @@ reproduction, and the measured impact so it can be picked up without re-investig
   Zindi 1 (old masks there were mostly specks; BelugaID's were good, so its whole photos are a
   regression on a non-paper dataset). All twelve `metadata_sam3/` tables were written on
   2026-10-04; split counts equal the paper's tables and `prepare status` is ready for all entries.
-  Sweep `wildlife_sam3` (42 tasks, k=250) reruns the paper's main-table methods on them.
+  Sweep `wildlife_sam3` (42 tasks, k=250, array 524372, all completed 2026-10-04) reran the
+  paper's main-table methods on them. Against the paper's runs (`paper/tools/compare_with_paper.py
+  --job 524372`): Top-1 mean +0.73 points (median +0.5, range -2.0 to +3.7; 27 of 42 within one
+  point, 14 higher, one lower), balanced Top-1 mean +0.52. Per dataset: Sea star +2.4 (old speck
+  masks), Nyala +1.2 (old masks sometimes another animal), Hyena +0.8, Whale shark +0.4, Leopard
+  +0.2, Zindi -0.6 (WildFusion -2.0: queries that flipped were near-ties, median margin 0.08 vs 0.41;
+  query and gallery masks unchanged at IoU 0.995; score distributions unchanged; calibration uses
+  the same 100 images; the 125-lost vs 62-gained asymmetry is unexplained). User (2026-10-04):
+  differences of this size are acceptable.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

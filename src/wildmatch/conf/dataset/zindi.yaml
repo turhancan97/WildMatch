@@ -3,7 +3,7 @@
 name: "WildlifeReID-10k"
 animal: "ZindiTurtleRecall"
 root: "${paths.data_root}/WildlifeReID-10k"
-metadata_file: "metadata_no_background/metadata_ZindiTurtleRecall.csv"
+metadata_file: "metadata_sam3/metadata_ZindiTurtleRecall.csv"  # SAM 3 inputs (wildmatch prepare)
 label_col: "identity"
 mask_col: "mask"
 no_background: false
@@ -30,11 +30,16 @@ registry:
   # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
   prepare:
     builder: wildlifereid10k
+    include: null
     # One animal per photo: keep the largest SAM 3 detection. Photos often show several animals
     # (NyalaData, GiraffeZebraID); in the 2026-10-04 pilots against the paper's masked files,
     # merging all ("union") gave Nyala IoU >= 0.9 for 64 % of images, "best" 95 %, "largest" 99 %.
     merge: largest
-    include: null
+    masked_dir: masked_images_sam3
+  # The table the paper's runs read (team masks, 2026-02/08); paper tooling that analyses those
+  # runs uses it. New runs use metadata_file above (decided 2026-10-04: publish the SAM 3 masks).
+  paper_inputs:
+    metadata_file: "metadata_no_background/metadata_ZindiTurtleRecall.csv"
   # Where the data comes from. raw: the published source; derived: the files this registry entry
   # reads that are made from it; reproducible: whether this repository can rebuild them.
   download:

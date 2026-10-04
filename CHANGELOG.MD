@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): new SAM 3 masks adopted for WildlifeReID-10k (user decision). Registry
+  entries read `metadata_sam3/` tables with `masked_images_sam3/`; `registry.paper_inputs` keeps
+  the paper's tables for `PAPER_PROFILES`. `sam3_masks.py --masked-dir`; mask tables under
+  `wildmatch_prepare/`. Fixed: the `paper_inputs` insertion had moved BelugaID's `include` out
+  of its `prepare` block (Beluga split table rebuilt with 5,902 rows; test added).
 - 2026-10-04 (branch): SAM 3 pilot 2: `largest` matches the paper's WildlifeReID-10k masks best
   (Nyala IoU >= 0.9 for 99 % of images against 95 % for `best` and 64 % for `union`; never below
   `best` elsewhere); registry entries switched to `merge: largest`.

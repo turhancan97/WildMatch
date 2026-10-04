@@ -90,6 +90,12 @@ def _prepare_block(entry) -> Dict[str, object]:
     return dict(block) if block is not None else {}
 
 
+def _masks_name(entry) -> str:
+    if _prepare_block(entry)["builder"] == "wildlifereid10k":
+        return f"wildmatch_prepare/masks_{entry.animal}.csv"
+    return "masks.csv"
+
+
 def _split_table_path(entry, out: Path) -> Path:
     if _prepare_block(entry)["builder"] == "wildlifereid10k":
         return out / "wildmatch_prepare" / f"{entry.animal}_split.csv"
@@ -100,8 +106,8 @@ def _sam3_arguments(entry, out: Path) -> List[str]:
     block, root = _prepare_block(entry), Path(str(entry.root))
     if block["builder"] == "wildlifereid10k":
         return ["--root", str(root / "images"), "--csv", str(_split_table_path(entry, out)), "--out-dir", str(out),
-                "--masks-csv", f"masks_{entry.animal}.csv", "--prompt-column", "prompt",
-                "--merge", str(block.get("merge") or "union")]
+                "--masks-csv", _masks_name(entry), "--prompt-column", "prompt",
+                "--merge", str(block.get("merge") or "union"), "--masked-dir", str(block.get("masked_dir") or "masked_images")]
     arguments = ["--root", str(out), "--csv", _split_table_path(entry, out).name, "--out-dir", str(out),
                  "--prompt", str(block["prompt"]), "--merge", str(block.get("merge") or "union")]
     for item in block.get("threshold_override") or []:
@@ -144,8 +150,7 @@ def finish(key: str, profile: Optional[str], output: Optional[Path], overwrite: 
     block = _prepare_block(entry)
     out = output or Path(str(entry.root))
     source = pd.read_csv(_split_table_path(entry, out))
-    masks_name = f"masks_{entry.animal}.csv" if block["builder"] == "wildlifereid10k" else sam3_masks.MASKS_FILE
-    masks = pd.read_csv(out / masks_name)
+    masks = pd.read_csv(out / _masks_name(entry))
     mapping = sam3_masks.parse_mapping(str(block.get("split_map") or "")) or None
     metadata = sam3_masks.build_masked_metadata(source, masks, out, split_col=str(entry.split_col),
                                                 split_map=mapping, split_map_column=block.get("split_map_column"))
@@ -236,7 +241,12 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
               f"run `wildmatch prepare status --dataset {args.dataset}` for what is still missing")
         return 0
     if args.action == "build":
-        command = build(args.dataset, profile, args.source, args.output_dir, args.overwrite)
+        from wildmatch.data.prepare.sources import SourceError
+
+        try:
+            command = build(args.dataset, profile, args.source, args.output_dir, args.overwrite)
+        except SourceError as exc:
+            parser.exit(1, f"{parser.prog}: {exc}\n")
         print("Next, on a GPU node in the SAM 3 environment (A100/H100), from the repository root:\n  "
               + " ".join(command) + f"\nthen: wildmatch prepare finish {args.dataset}"
               + (f" --output-dir {args.output_dir}" if args.output_dir else ""))

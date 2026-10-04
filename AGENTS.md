@@ -819,9 +819,15 @@ reproduction, and the measured impact so it can be picked up without re-investig
   0.991/0.95, Zindi 0.995/0.96, never below `best`. By eye, of the 14 images under IoU 0.8 only
   two are real disagreements (one Nyala photo picks another animal, one two-shark photo); the
   rest are dark-photo artefacts or old speck/fragment masks where SAM 3 is better. WildlifeReID-10k
-  entries therefore use `merge: largest` (Salamander keeps `union`). Open: run the masks for all
-  entries, decide whether to publish new or old masked files, and rerun the affected results if
-  the new masks are adopted.
+  entries therefore use `merge: largest` (Salamander keeps `union`). **Decision (user,
+  2026-10-04): publish the new SAM 3 masks.** WildlifeReID-10k registry entries now read
+  `metadata_sam3/metadata_<animal>.csv` with images in `masked_images_sam3/` (both inside the
+  release folder, next to the untouched team files); `registry.paper_inputs.metadata_file` keeps
+  the table the paper's runs read, and `PAPER_PROFILES` uses it so the paper tooling still matches
+  those runs. The split tables for all twelve entries were written to `wildmatch_prepare/` on
+  2026-10-04; the masks (one `slurm/sam3_masks.sbatch` job per entry) and `prepare finish` follow,
+  then the affected results are rerun on the new inputs. Until `finish` has run, sweeps on these
+  entries fail at load (`prepare status` shows the missing tables).
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

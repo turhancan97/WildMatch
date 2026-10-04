@@ -208,7 +208,7 @@ def run_segmentation(args: argparse.Namespace) -> None:
     overrides = parse_threshold_overrides(args.threshold_override)
     meta = pd.read_csv(args.root / args.csv)
     if not args.overwrite:
-        existing = [rel for rel in meta["path"].astype(str) if (args.out_dir / MASKED_DIR / rel).exists()]
+        existing = [rel for rel in meta["path"].astype(str) if (args.out_dir / args.masked_dir / rel).exists()]
         if (args.out_dir / args.masks_csv).exists():
             existing.insert(0, args.masks_csv)
         if existing:
@@ -255,7 +255,7 @@ def run_segmentation(args: argparse.Namespace) -> None:
             mask = np.zeros((height, width), dtype=bool)
         pixels = np.asarray(image).copy()
         pixels[~mask] = 0
-        masked_rel = Path(MASKED_DIR) / rel
+        masked_rel = Path(args.masked_dir) / rel
         (args.out_dir / masked_rel).parent.mkdir(parents=True, exist_ok=True)
         Image.fromarray(pixels).save(args.out_dir / masked_rel, quality=95)
         ys, xs = np.nonzero(mask)
@@ -270,6 +270,7 @@ def run_segmentation(args: argparse.Namespace) -> None:
             print(f"[sam3] {n}/{len(meta)} images, {(time.time() - t0) / n:.2f} s/img", flush=True)
 
     out = pd.DataFrame(rows)
+    (args.out_dir / args.masks_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_dir / args.masks_csv, index=False)
     print(f"[sam3] done: {len(out)} images, prompt={args.prompt_column or args.prompt!r}, merge={args.merge}, "
           f"empty={int((out.n_detections == 0).sum())}, "
@@ -301,7 +302,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p.add_argument("--split-col", default="split")
     p.add_argument("--split-map", default="", help="e.g. database=train,query=test")
     p.add_argument("--split-map-column", default=None, help="e.g. split_train_test")
-    p.add_argument("--masks-csv", default=MASKS_FILE, help="mask table name inside --out-dir")
+    p.add_argument("--masks-csv", default=MASKS_FILE, help="mask table path inside --out-dir")
+    p.add_argument("--masked-dir", default=MASKED_DIR, help="folder for masked images inside --out-dir")
     p.add_argument("--overwrite", action="store_true", help="replace existing masked images, mask table or metadata")
     args = p.parse_args(argv)
     if not args.segment and args.write_metadata is None:

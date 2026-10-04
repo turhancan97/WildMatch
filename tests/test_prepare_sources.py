@@ -125,7 +125,7 @@ class PrepareStepTests(unittest.TestCase):
             Image.fromarray(np.full((4, 6, 3), 200, np.uint8)).save(target)
         pd.DataFrame({"path": table.path, "masked_path": "masked_images/" + table.path, "mask": sam3_masks.encode_mask(full),
                       "best_score": 0.9, "fg_fraction": 1.0, "n_detections": 1, "threshold_used": 0.5,
-                      "prompt_used": "hyena"}).to_csv(self.root / "masks_HyenaID2022.csv", index=False)
+                      "prompt_used": "hyena"}).to_csv(self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv", index=False)
         target = self.run_with_entry(P.finish, "hyena", None, None, False)
         metadata = pd.read_csv(target)
         self.assertEqual(target, self.root / self.entry.metadata_file)
@@ -133,7 +133,7 @@ class PrepareStepTests(unittest.TestCase):
         self.assertIn("mask", metadata.columns)
         with self.assertRaises(SystemExit):
             self.run_with_entry(P.finish, "hyena", None, None, False)
-        scores = self.run_with_entry(P.compare_masks, "hyena", None, self.root / "masks_HyenaID2022.csv")
+        scores = self.run_with_entry(P.compare_masks, "hyena", None, self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv")
         self.assertEqual(len(scores), len(table))
         self.assertTrue((scores.iou == 1.0).all())
 
@@ -141,6 +141,22 @@ class PrepareStepTests(unittest.TestCase):
         self.entry.registry.prepare.builder = "official"
         with self.assertRaises(SystemExit):
             self.run_with_entry(P.build, "x", None, None, None, False)
+
+
+class RegistryPrepareBlockTests(unittest.TestCase):
+    def test_wildlife_entries_keep_their_build_settings_together(self):
+        from wildmatch.data.registry import dataset_keys, load_dataset
+
+        for key in dataset_keys():
+            entry = load_dataset(key, "default")
+            block = entry.registry.get("prepare")
+            if block is None or block.builder != "wildlifereid10k":
+                continue
+            self.assertEqual(set(block), {"builder", "include", "merge", "masked_dir"}, key)
+            self.assertEqual(block.merge, "largest", key)
+            self.assertEqual(str(entry.metadata_file), f"metadata_sam3/metadata_{entry.animal}.csv", key)
+            self.assertEqual(set(entry.registry.paper_inputs), {"metadata_file"}, key)
+        self.assertEqual(load_dataset("beluga", "default").registry.prepare.include, "BelugaID/beluga/")
 
 
 class Sam3GuardTests(unittest.TestCase):

@@ -36,11 +36,18 @@ class PaperProfile(NamedTuple):
     mask_col: Optional[str]
 
 
+def _paper_metadata(entry) -> str:
+    """The table the paper's runs read: ``registry.paper_inputs.metadata_file`` when the entry
+    has moved on to new inputs (WildlifeReID-10k SAM 3 masks), else ``metadata_file``."""
+    paper = entry.registry.get("paper_inputs")
+    return str(paper.metadata_file) if paper is not None else str(entry.metadata_file)
+
+
 def _profile(entry) -> PaperProfile:
     root = Path(str(entry.root))
     return PaperProfile(
         str(entry.registry.paper_key), str(entry.registry.label), str(entry.registry.source),
-        root / str(entry.metadata_file), str(entry.label_col), str(entry.split_col),
+        root / str(_paper_metadata(entry)), str(entry.label_col), str(entry.split_col),
         str(entry.database_split_value), str(entry.query_split_value), str(entry.name), str(entry.animal),
         root, str(entry.mask_col) if bool(entry.no_background) else None,
     )

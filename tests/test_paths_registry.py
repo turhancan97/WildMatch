@@ -252,6 +252,8 @@ class RegistryTests(unittest.TestCase):
                 if key == "czechlynx_unseen_eval" and field == "metadata_file":
                     continue  # the launcher took it from CZECHLYNX_UNSEEN_EVAL_METADATA_FILE
                 actual = entry[field]
+                if field == "metadata_file" and entry.registry.get("paper_inputs") is not None:
+                    actual = entry.registry.paper_inputs.metadata_file  # new runs read the SAM 3 table
                 if isinstance(actual, bool):
                     expected = expected == "true"
                 elif isinstance(actual, int):

@@ -50,7 +50,9 @@ locked in `uv.lock`); see "Package refactor" for the migration in progress.
   `finetune_backbone.sbatch`, and `eval_loma_epoch_curve.sh` (training-cost ablation).
 - paper/: paper and project-page tooling run from a checkout (not part of the package):
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
-  figures and analyses, `paper/tools/` (`parity_check.py`). Run them as `python paper/<group>/<script>.py`.
+  figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
+  new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
+  `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`). Run them as `python paper/<group>/<script>.py`.
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
   pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
 - tests/: dependency-light regression tests (pytest).

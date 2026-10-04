@@ -7,6 +7,8 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): `paper/tools/compare_with_paper.py` compares a sweep's runs with the paper
+  snapshot (identity: method, matcher, backbone, checkpoint label, probe mode and weighting, k).
 - 2026-10-04 (branch): sweep task records fill `error_summary` only for failed tasks (completed
   tasks showed their last stderr line, a progress bar). Sweep `wildlife_sam3` (array 524372)
   started; first results on the SAM 3 inputs: cosine Top-1 Hyena 0.714 (paper 0.708), Leopard 0.623

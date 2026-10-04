@@ -247,7 +247,7 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
             command = build(args.dataset, profile, args.source, args.output_dir, args.overwrite)
         except SourceError as exc:
             parser.exit(1, f"{parser.prog}: {exc}\n")
-        print("Next, on a GPU node in the SAM 3 environment (A100/H100), from the repository root:\n  "
+        print("Next, on a GPU node in the SAM 3 environment (not V100), e.g. sbatch slurm/sam3_masks.sbatch <arguments>, from the repository root:\n  "
               + " ".join(command) + f"\nthen: wildmatch prepare finish {args.dataset}"
               + (f" --output-dir {args.output_dir}" if args.output_dir else ""))
         return 0

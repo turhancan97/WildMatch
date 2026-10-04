@@ -979,7 +979,7 @@ results: `notes/history.md`, "Project page: build history".
 | Before/after demo | `export_before_after_demo.py` (GPU) | `docs/assets/demo/before_after/` | `test_export_before_after_demo` |
 | Rank changes | `export_rank_change_demo.py` | `docs/assets/demo/rank_change/` | `test_export_rank_change_demo` |
 | Mined pairs | `export_mined_pairs_demo.py` (GPU) | `docs/assets/demo/mined_pairs/` | `test_export_mined_pairs_demo` |
-| Background masking | `export_masking_demo.py` (after `sam3_masks.py`, `lynx-app`, A100/H100) | `docs/assets/demo/masking/` | `test_export_masking_demo` |
+| Background masking | `export_masking_demo.py` (after `sam3_masks.py`, `lynx-app`, not V100) | `docs/assets/demo/masking/` | `test_export_masking_demo` |
 | Synthetic matching | `export_synthetic_demo.py` (GPU) | `docs/assets/demo/synthetic/` | `test_export_synthetic_demo` |
 | Data challenges | `export_data_challenges.py` | `docs/assets/datasets/challenges/`, `docs/data/image_quality_summary.json` | `test_export_data_challenges` |
 | Demo hub cards | `build_demo_cards.py` | `docs/assets/demo/cards/` | `test_build_demo_cards` |
@@ -1244,7 +1244,7 @@ fine-tuned on LoMa-mined and RDD-LightGlue on RDD-mined pairs (user decision), s
 `wildlife-reid-10k/SalamanderID2025/{loma,rdd}-finetuned/legacy-{loma,rdd}-mined/`; state
 this in the paper. A 2026-09-29 run with `safety_checks.enabled=true` found no path or
 content overlap between database and query. SAM3 runs in the `lynx-app` conda env on an
-A100/H100 only (its CUDA 13 PyTorch has no V100 kernels).
+A100/H100 or RTX 4090 (its CUDA 13 PyTorch has no V100 kernels; the 4090 runs the sm_86 kernels).
 
 ### JaguarReID
 

@@ -7,6 +7,8 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): `slurm/sam3_masks.sbatch` defaults to `rtx4090_batch` (user request); the
+  lynx-app PyTorch (2.13.0+cu130) has sm_86 kernels that RTX 4090s run, only V100s are excluded.
 - 2026-10-04 (branch): new SAM 3 masks adopted for WildlifeReID-10k (user decision). Registry
   entries read `metadata_sam3/` tables with `masked_images_sam3/`; `registry.paper_inputs` keeps
   the paper's tables for `PAPER_PROFILES`. `sam3_masks.py --masked-dir`; mask tables under

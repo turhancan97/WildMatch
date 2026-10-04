@@ -46,14 +46,17 @@ above (`cosine`, `wildfusion`, `vismatch|loma|default`, `vismatch|loma|custom|${
     bash probe-parallel-parity.sh                # submits; the array runs from the frozen manifest
     rm probe-parallel-parity.sh                  # not needed after submission
 
-Salamander reference runs (fill in after the array finishes):
+Salamander reference runs (array 524155, 2026-10-04, code at `69fc403` = `paper-v1` code, `ex-reid`):
 
-| Task | Run |
-| --- | --- |
-| 0 cosine | |
-| 1 wildfusion | |
-| 2 loma default | |
-| 3 loma fine-tuned | |
-| 4 rdd default | |
-| 5 rdd fine-tuned | |
-| 6 linear probe | |
+| Task | Run | Top-1 | Top-5 | Balanced Top-1 |
+| --- | --- | --- | --- | --- |
+| 0 cosine | `20261004T075043Z_6032a6f6` | 3.66 | 9.35 | 3.62 |
+| 1 wildfusion | `20261004T075043Z_a4ae34a5` | 26.83 | 27.24 | 27.68 |
+| 2 loma default | `20261004T075035Z_fc961e4d` | 30.89 | 31.71 | 32.20 |
+| 3 loma fine-tuned | `20261004T075035Z_57276f29` | 32.11 | 32.11 | 33.56 |
+| 4 rdd default | `20261004T075035Z_7d93fc25` | 27.64 | 27.64 | 28.58 |
+| 5 rdd fine-tuned | `20261004T075035Z_41712b9f` | 28.05 | 28.86 | 29.03 |
+| 6 linear probe (frozen, weighted) | `20261004T075044Z_3b9240fb` | 1.22 | 2.03 | 1.06 |
+
+The refactor's parity runs use a fresh feature cache (`parity_v2`), so feature extraction is
+re-run in the new environment instead of reusing these runs' cached features.

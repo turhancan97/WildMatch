@@ -224,11 +224,11 @@ __marimo__/
 
 # Generated experiment outputs, reports and logs (never edit by hand; see AGENTS.md).
 # Anchored to the root so docs/results/ and other nested folders are not ignored.
-/experiments/
+/experiments
 /reports/
 /results/
 /benchmark_runs/
-/logs/
+/logs
 /visualizations/
 /wandb/
 /cache/

@@ -774,6 +774,10 @@ Rules recovered and implemented in `wildmatch.data.prepare.sources`:
   `split_time_closed.csv` byte for byte; the images are the competition files unchanged (two
   checked by SHA-256); joining the existing `masks.csv` reproduces
   `split_time_closed_no_background.csv` byte for byte.
+  The original script was found later (2026-10-04) in the paper repository,
+  `results/make_salamander_split.py` (written by another Claude session): same rule, same sort,
+  plus three checks (no encounter on both sides, every query individual in the database, every
+  query later than its database photos) that `salamander_table` now runs too.
 Steps: `wildmatch prepare build <key> [--source] [--output-dir]` writes the split table
 (WildlifeReID-10k: `wildmatch_prepare/<animal>_split.csv`; Salamander also copies the images) and
 prints the SAM 3 command (`sbatch slurm/sam3_masks.sbatch <args>`, H100 by default);

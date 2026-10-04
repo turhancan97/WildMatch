@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): the original SalamanderID2025 split script
+  (`results/make_salamander_split.py`, paper repository) confirms the reconstructed rule;
+  `salamander_table` now runs its three leakage checks (output still byte-identical).
 - 2026-10-04 (branch): Phase 5. ruff configuration, a formatting-only commit (AST-identical) and a
   lint-fix commit; CI workflow (lint, format, CPU tests, strict page build; rehearsed locally, uses
   `uv run --no-sync`); Apache-2.0 `LICENSE`, `NOTICE`, `THIRD_PARTY_LICENSES.md`; README quickstart

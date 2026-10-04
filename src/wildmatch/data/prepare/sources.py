@@ -16,7 +16,8 @@ WildlifeReID-10k (``metadata.csv`` of the Kaggle release ``wildlifedatasets/wild
     ``species`` column): the teammate's masking method is not recorded, so masked inputs, and with
     them scores, can differ from the paper's (compare with ``wildmatch prepare compare-masks``).
 
-SalamanderID2025 (``metadata.csv`` of the AnimalCLEF2025 Kaggle competition)
+SalamanderID2025 (``metadata.csv`` of the AnimalCLEF2025 Kaggle competition; the original split
+script is ``results/make_salamander_split.py`` in the paper repository, which this rule matches)
     The labelled ``database`` photos of ``SalamanderID2025`` that have a date (four undated ones
     are dropped). For every individual photographed on two or more dates, all photos of its
     latest date become ``query``, the rest ``database``; ``cross_view`` marks a query whose
@@ -98,6 +99,18 @@ def salamander_table(metadata: pd.DataFrame) -> pd.DataFrame:
         split == "query" and view not in database_views.get(identity, set())
         for split, view, identity in zip(rows["split"], rows["orientation"], rows["identity"])
     ]
+    # The original script's checks: no capture date of one individual on both sides, every query
+    # individual in the database, every query later than its individual's database photos.
+    query, database = rows[rows["split"] == "query"], rows[rows["split"] == "database"]
+    query_dates = pd.to_datetime(query["date"])
+    database_dates = pd.to_datetime(database["date"])
+    if set(zip(query["identity"], query_dates)) & set(zip(database["identity"], database_dates)):
+        raise SourceError("an encounter (individual, date) is on both sides")
+    if not set(query["identity"]) <= set(database["identity"]):
+        raise SourceError("a query individual has no database photo")
+    latest_database = database_dates.groupby(database["identity"]).max()
+    if not (query_dates.to_numpy() > latest_database.loc[query["identity"]].to_numpy()).all():
+        raise SourceError("a query is not later than its individual's database photos")
     columns = ["image_id", "identity", "path", "date", "orientation", "split", "cross_view"]
     return rows.sort_values(["split", "identity", "date", "image_id"])[columns]
 

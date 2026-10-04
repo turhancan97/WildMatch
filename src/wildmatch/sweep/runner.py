@@ -191,16 +191,26 @@ def _cancel_own_array_element() -> None:
         subprocess.run(["scancel", target], check=False)
 
 
-def _pump(stream, targets, lock) -> None:
-    """Copy bytes as they arrive (like ``tee``), so progress-bar carriage returns stay intact."""
+def _pump(stream, targets, lock, errors: list) -> None:
+    """Copy bytes as they arrive (like ``tee``), so progress-bar carriage returns stay intact.
+
+    A target that fails to write (disk quota exceeded, 2026-10-04) is dropped and the error kept in
+    ``errors``; the pipe is always drained to the end. Before, the thread died on the first failed
+    write, nothing read the pipe any more and the child blocked forever on a full pipe.
+    """
+    targets = list(targets)
     while True:
         chunk = stream.read1(65536)
         if not chunk:
             break
         with lock:
-            for handle in targets:
-                handle.write(chunk)
-                handle.flush()
+            for handle in list(targets):
+                try:
+                    handle.write(chunk)
+                    handle.flush()
+                except (OSError, ValueError) as exc:
+                    targets.remove(handle)
+                    errors.append(f"{getattr(handle, 'name', handle)}: {exc}")
     stream.close()
 
 
@@ -225,18 +235,26 @@ def _console(stream):
 def _run_teed(command: Sequence[str], paths: Mapping[str, Path]) -> int:
     """Run ``command``, mirroring stdout/stderr to the console and the task's log files."""
     lock = threading.Lock()
+    errors: list = []
     environment = dict(os.environ, PYTHONUNBUFFERED="1")  # live logs; no effect on results
     with paths["out"].open("ab") as out, paths["err"].open("ab") as err, paths["combined.log"].open("ab") as combined:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment)
         threads = [
-            threading.Thread(target=_pump, args=(process.stdout, (_console(sys.stdout), out, combined), lock)),
-            threading.Thread(target=_pump, args=(process.stderr, (_console(sys.stderr), err, combined), lock)),
+            threading.Thread(target=_pump, args=(process.stdout, (_console(sys.stdout), out, combined), lock, errors)),
+            threading.Thread(target=_pump, args=(process.stderr, (_console(sys.stderr), err, combined), lock, errors)),
         ]
         for thread in threads:
             thread.start()
         code = process.wait()
         for thread in threads:
             thread.join()
+    if errors:
+        # The logs are incomplete, so the run directory (parsed from stdout) cannot be trusted.
+        try:
+            sys.stderr.write("[sweep] log mirroring failed: " + "; ".join(errors) + "\n")
+        except OSError:
+            pass
+        return code or 1
     return code
 
 

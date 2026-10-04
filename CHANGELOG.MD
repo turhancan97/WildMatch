@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: home quota full during sweep 524499 (61,440 of 61,440 MB): 14 tasks failed and 9
+  hung; the 9 were cancelled and all 23 resubmitted from the frozen submission as array 524682 (by
+  the user) after freeing 1.2 GB (`~/.npm/_cacache`, `~/.nv/ComputeCache`, user approval).
+  Branch `fix/concurrent-writes`: the sweep runner's output pump drops a log target whose write
+  fails and keeps draining the child's pipe, so the task fails ("log mirroring failed") instead of
+  hanging; `tests/test_sweep_pump.py` (the old pump deadlocks on it).
 - 2026-10-04 (branch `fix/concurrent-writes`): shared CSVs (`reports/runs.csv`, the legacy
   benchmark and training CSVs) are updated under an exclusive file lock across the read-modify-write
   and written through unique temporary files that keep the target's permissions; Vismatch

@@ -247,7 +247,14 @@ temporary file (`file_lock`, `write_csv_atomically` in `src/wildmatch/utils/io.p
 `fix/concurrent-writes`, 2026-10-04). Before, every writer used one fixed `<file>.tmp` without a
 lock, so parallel tasks could drop each other's rows: a test with six processes lost 14 of 90
 appended rows on the old code. Vismatch feature-cache files are written through unique temporary
-names too (two tasks may extract the same image; either identical file wins the replace). Legacy
+names too (two tasks may extract the same image; either identical file wins the replace). Sweep tasks
+survive a failing log write: on 2026-10-04 the home quota filled up during sweep 524499 (14 tasks
+failed at once, and 9 hung at 0 % GPU because the thread copying the child's output into the task
+logs died on the write error, so the child blocked on a full pipe). `_pump` in
+`src/wildmatch/sweep/runner.py` now drops a target that fails and keeps draining, and the task
+ends as failed with "log mirroring failed" (its stdout log, from which the run directory is read,
+is incomplete). The home directory has a 61,440 MB quota; keep about 1 GB free during sweeps
+(1.2 GB was freed by deleting `~/.npm/_cacache` and `~/.nv/ComputeCache`, with the user's approval). Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.

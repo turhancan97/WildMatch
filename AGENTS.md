@@ -615,8 +615,14 @@ Parity run 1 (array 524163 from the worktree, 2026-10-04): all seven Salamander 
 the frozen weighted linear probe, pass with bit-identical scores and no Top-1 change. Because of the config-snapshot
 bug, these tasks read the packaged `probe.yaml` instead of the `parity_v2` snapshot and reused the
 reference runs' cached features, so this run proves parity of everything after feature extraction
-(shortlists, Vismatch/WildFusion matching, scoring, metrics) in the new environment. Parity run 2,
-with the fixed launcher and the fresh `parity_v2` cache, covers extraction.
+(shortlists, Vismatch/WildFusion matching, scoring, metrics) in the new environment. Parity run 2
+(array 524170, fixed launcher, fresh `parity_v2` cache) matches cosine within 8.6e-07, WildFusion
+within 9.2e-06 and the linear probe bit for bit, while Vismatch pair scores drifted against the
+reference; two controls (arrays 524178 and 524179) showed that run 2 is bit-identical to
+`paper-v1` extracting fresh on the same GPU type and to its own twin, so the drift comes from the
+reference's H100-extracted cache (see "Known issues", GPU-dependent Vismatch features). **Phase 1
+parity holds.** Later phases compare against run 2 on `rtx4090_batch`; details in
+`notes/parity_reference.md`.
 
 ## Known issues (open)
 
@@ -666,6 +672,18 @@ reproduction, and the measured impact so it can be picked up without re-investig
   `RDD_CUSTOM_CHECKPOINT_PATH` until the profile fields are updated. NyalaData's `legacy`
   path exists but holds the file that overwrote the paper checkpoint on 2026-09-09 (see
   "Paper figures from confirmed examples").
+
+- **Vismatch features depend on the GPU type and the cache key does not record it (found
+  2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache
+  written by run `20260930T063532Z_9ecdc517`) and on an RTX 4090 give pair scores that differ by
+  up to 0.032 (default LoMa), 0.50 (fine-tuned LoMa), 0.0075 and 0.015 (default and fine-tuned
+  RDD-LightGlue), and change the Top-1 photo of up to 96 of 246 queries, yet Top-1, Top-5 and
+  balanced Top-1 are identical and mAP@k moves by at most 0.03 points. Extraction is deterministic
+  on one GPU type (bit-identical twins). The cache key omits the device, so a cache can mix GPU
+  types, and run manifests do not record the GPU model, so the paper's numbers depend on which
+  GPU first filled each cache. Fix later: add the device name/compute capability to the Vismatch
+  cache key and the run manifest (this invalidates existing caches), and report the GPU with
+  matcher results.
 
 ## Future-work checklist
 

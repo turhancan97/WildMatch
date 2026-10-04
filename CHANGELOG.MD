@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): Phase 1 parity verified. Parity run 2 (array 524170, fresh cache) and
+  two controls (array 524178: `paper-v1` in `ex-reid` with a fresh cache; array 524179: a branch
+  twin) show the branch is bit-identical to `paper-v1` for all seven Salamander methods when both
+  extract on the same GPU type. Finding (Known issues): Vismatch features depend on the GPU type
+  (H100 vs RTX 4090: pair scores differ up to 0.5, Top-1 photos change for up to 96 of 246
+  queries, headline metrics unchanged), and neither the cache key nor the run manifest records the
+  GPU. Later parity checks pin `rtx4090_batch` and compare against run 2.
 - 2026-10-04 (branch): config-snapshot bug found during refactor parity. The parallel
   launchers passed the frozen submission `probe.yaml` with Hydra's `--config-dir`, which only adds
   a search path; the entry point's own config stayed primary, so array tasks read the live

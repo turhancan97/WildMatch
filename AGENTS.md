@@ -903,7 +903,8 @@ reproduction, and the measured impact so it can be picked up without re-investig
   +0.2, Zindi -0.6 (WildFusion -2.0: queries that flipped were near-ties, median margin 0.08 vs 0.41;
   query and gallery masks unchanged at IoU 0.995; score distributions unchanged; calibration uses
   the same 100 images; the 125-lost vs 62-gained asymmetry is unexplained). User (2026-10-04):
-  differences of this size are acceptable.
+  differences of this size are acceptable. The remaining budgets (k = 10, 50, 100, 500, 1000) run
+  with sweep `wildlife_sam3_grid` (150 tasks, user request 2026-10-04).
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

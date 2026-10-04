@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: sweep spec `wildlife_sam3_grid` (150 tasks): WildFusion and default/fine-tuned LoMa
+  and RDD-LightGlue at k = 10, 50, 100, 500, 1000 on the six paper WildlifeReID-10k datasets with the
+  SAM 3 inputs, completing the grid of `wildlife_sam3` (k = 250, cosine, probe).
 - 2026-10-04: paper checkpoints uploaded to the private Hugging Face repository
   `turhancan97/wildmatch-checkpoints` (18 checkpoints, 4 protocol files, checksums, README) and set
   as the default `repo_id` in `conf/weights.yaml`; a full `wildmatch weights download` into an empty

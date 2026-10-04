@@ -37,15 +37,16 @@ Three repositories implement the pipeline.
 
 ### Evaluation repository map
 
-- `models/`: pretrained backbone factory and ViT CLS adapter.
-- `reid/engine/`: probe dispatch (cosine, WildFusion, Vismatch matchers, linear and
-  efficient probes) and fine-tuning.
-- `reid/methods/`: Vismatch matcher profiles and custom-checkpoint loading.
-- `reid/data/`: dataset views, COCO-RLE masking, split safety checks.
-- `reid/evaluation/metrics.py`: top-k, balanced top-1 and mAP definitions.
-- `reid/reporting/`: run manifests, run index, paper tables and figures.
-- `conf/`: Hydra configuration.
-- `scripts/`: table and figure exporters, dataset tooling, unseen-protocol generator.
+- `src/wildmatch/`: the installable package behind the `wildmatch` command.
+- `src/wildmatch/evaluate/`: probe dispatch (cosine, WildFusion, Vismatch matchers, linear and
+  efficient probes), metrics (top-k, balanced top-1, mAP) and stable ranking.
+- `src/wildmatch/matchers/`: Vismatch matcher profiles and custom-checkpoint loading.
+- `src/wildmatch/data/`: dataset views, COCO-RLE masking, split safety checks and dataset
+  preparation (`wildmatch prepare`).
+- `src/wildmatch/sweep/`: evaluation grids as immutable Slurm or local submissions.
+- `src/wildmatch/reporting/`: run manifests, run index, paper tables and figures.
+- `src/wildmatch/conf/`: Hydra configuration, path profiles and the dataset registry.
+- `paper/`: page exporters and paper figures.
 - `tests/`: dependency-light regression tests.
 
 ### Third-party components

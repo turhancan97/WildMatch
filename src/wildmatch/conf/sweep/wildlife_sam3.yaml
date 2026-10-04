@@ -1,0 +1,16 @@
+# The paper's WildlifeReID-10k datasets on the new SAM 3 inputs (metadata_sam3/, 2026-10-04), at the
+# paper's default candidate budget k=250: the main-table methods, to measure how far the results
+# move from the paper's (which used the team's masked files, registry.paper_inputs). The fine-tuned
+# matchers were trained on the old masked inputs; they are evaluated as published.
+description: Paper WildlifeReID-10k datasets on the SAM 3 inputs (k=250)
+datasets: [hyenaid2022, leopardid2022, nyala, seastarreid2023, whaleshark, zindi]
+candidate_k: [250]
+max_concurrent: 12
+variants:
+  - {method: cosine}
+  - {method: wildfusion}
+  - {method: vismatch, matcher: loma}
+  - {method: vismatch, matcher: loma, checkpoint: custom}
+  - {method: vismatch, matcher: rdd-lightglue}
+  - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}
+  - {method: linear_probe, train_mode: classifier, class_weighting: weighted}

@@ -836,7 +836,13 @@ reproduction, and the measured impact so it can be picked up without re-investig
   and keep the whole image when still nothing is detected (`--empty-policy full_frame`, flagged as
   `sam3_full_frame` in the metadata). `wildmatch prepare retry-empty <key>` writes
   `<animal>_split_empty.csv` and prints the job; `finish` merges `masks_<animal>_retry.csv` over the
-  empty rows.
+  empty rows. Retry (jobs 524363-524371): recovered BelugaID 440 (median IoU 0.991 vs the old masks),
+  WhaleShark 23 (by eye equal or better than the old fragments), SeaStar 2, Nyala 1; whole photos
+  remain for BelugaID 685, SeaStar 40, WhaleShark 16, Leopard 7, GiraffeZebraID 7, ATRW 2, Hyena 1,
+  Zindi 1 (old masks there were mostly specks; BelugaID's were good, so its whole photos are a
+  regression on a non-paper dataset). All twelve `metadata_sam3/` tables were written on
+  2026-10-04; split counts equal the paper's tables and `prepare status` is ready for all entries.
+  Sweep `wildlife_sam3` (42 tasks, k=250) reruns the paper's main-table methods on them.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

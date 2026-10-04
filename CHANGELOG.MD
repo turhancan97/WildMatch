@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): SAM 3 retries done and the twelve WildlifeReID-10k `metadata_sam3/` tables
+  written (whole photos: BelugaID 685, SeaStar 40, WhaleShark 16, 18 elsewhere); new sweep spec
+  `wildlife_sam3` (six paper datasets x seven main methods at k=250).
 - 2026-10-04 (branch): `slurm/sam3_masks.sbatch` calls the SAM 3 Python by full path
   (`SAM3_PYTHON`, default lynx-app): the retry jobs 524354-524362 were submitted from a shell with
   the wildmatch venv active, sbatch exported it, and `python` resolved to the venv (no `iopath`).

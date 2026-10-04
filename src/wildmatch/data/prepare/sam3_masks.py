@@ -77,6 +77,25 @@ SAM3_COLUMNS = {
 }
 
 
+def ensure_directory(path: Path, attempts: int = 5) -> None:
+    """``mkdir -p`` that tolerates other jobs creating the same folders at the same moment.
+
+    On the shared (network) filesystem, ``Path.mkdir(exist_ok=True)`` can still raise
+    ``FileExistsError`` when another job creates a parent folder concurrently and the directory
+    check runs before the change is visible (three of twelve SAM 3 jobs died this way on
+    2026-10-04); retry briefly instead.
+    """
+    for attempt in range(attempts):
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            return
+        except FileExistsError:
+            if path.is_dir():
+                return
+            time.sleep(0.2 * (attempt + 1))
+    path.mkdir(parents=True, exist_ok=True)
+
+
 class MetadataError(ValueError):
     """Raised when pre-masked metadata cannot be built safely."""
 
@@ -256,7 +275,7 @@ def run_segmentation(args: argparse.Namespace) -> None:
         pixels = np.asarray(image).copy()
         pixels[~mask] = 0
         masked_rel = Path(args.masked_dir) / rel
-        (args.out_dir / masked_rel).parent.mkdir(parents=True, exist_ok=True)
+        ensure_directory((args.out_dir / masked_rel).parent)
         Image.fromarray(pixels).save(args.out_dir / masked_rel, quality=95)
         ys, xs = np.nonzero(mask)
         rows.append({

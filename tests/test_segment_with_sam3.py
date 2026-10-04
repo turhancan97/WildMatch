@@ -13,6 +13,7 @@ from wildmatch.data.prepare.sam3_masks import (
     build_masked_metadata,
     decode_mask,
     encode_mask,
+    ensure_directory,
     merge_instances,
     parse_args,
     parse_mapping,
@@ -132,6 +133,29 @@ class MaskedMetadataTests(unittest.TestCase):
             with self.assertRaisesRegex(MetadataError, "duplicate"):
                 build_masked_metadata(pd.concat([source, source.iloc[:1]]), masks, root)
 
+
+
+class EnsureDirectoryTests(unittest.TestCase):
+    def test_retries_a_concurrent_creation(self):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp, "a", "b")
+            real_mkdir = Path.mkdir
+            calls = []
+
+            def flaky(self, *args, **kwargs):
+                calls.append(self)
+                if len(calls) == 1:
+                    raise FileExistsError(str(self))
+                return real_mkdir(self, *args, **kwargs)
+
+            with mock.patch.object(Path, "mkdir", flaky), mock.patch("time.sleep"):
+                ensure_directory(target)
+            self.assertTrue(target.is_dir())
+            self.assertGreaterEqual(len(calls), 2)
 
 if __name__ == "__main__":
     unittest.main()

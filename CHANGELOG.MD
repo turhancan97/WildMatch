@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch): `sam3_masks.py` creates output folders with a retry: three of the twelve
+  WildlifeReID-10k SAM 3 jobs (ATRW, WhaleSharkID, ZindiTurtleRecall; 524321, 524331, 524332)
+  died with `FileExistsError` when several jobs created `masked_images_sam3/` at once on the
+  shared filesystem. They wrote nothing and were resubmitted.
 - 2026-10-04 (branch): `slurm/sam3_masks.sbatch` defaults to `rtx4090_batch` (user request); the
   lynx-app PyTorch (2.13.0+cu130) has sm_86 kernels that RTX 4090s run, only V100s are excluded.
 - 2026-10-04 (branch): new SAM 3 masks adopted for WildlifeReID-10k (user decision). Registry

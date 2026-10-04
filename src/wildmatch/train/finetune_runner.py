@@ -1,7 +1,7 @@
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
-import time
 
 import numpy as np
 import pandas as pd
@@ -17,24 +17,24 @@ from wildlife_tools.features import DeepFeatures
 from wildlife_tools.similarity import CosineSimilarity
 from wildlife_tools.train.trainer import set_seed
 
-from wildmatch.models.model import get_model
-from wildmatch.models.objective import ArcFaceLoss
-from wildmatch.data.safety_checks import run_split_safety_checks
-from wildmatch.train.results import build_final_training_metrics
 from wildmatch.data.dataset_view import BenchmarkDatasetView
+from wildmatch.data.safety_checks import run_split_safety_checks
 from wildmatch.evaluate.metrics import compute_metrics
 from wildmatch.features.containers import FeatureContainer, get_labels_string, normalize_features
+from wildmatch.models.model import get_model
+from wildmatch.models.objective import ArcFaceLoss
+from wildmatch.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
+from wildmatch.reporting.wandb_naming import finetune_wandb_name
+from wildmatch.train.accumulation import (
+    accumulation_group_size,
+    should_step_accumulated_gradients,
+)
 from wildmatch.train.checkpointing import (
     load_full_checkpoint,
     save_full_checkpoint,
     validate_resume_epochs,
 )
-from wildmatch.train.accumulation import (
-    accumulation_group_size,
-    should_step_accumulated_gradients,
-)
-from wildmatch.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
-from wildmatch.reporting.wandb_naming import finetune_wandb_name
+from wildmatch.train.results import build_final_training_metrics
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
 from wildmatch.utils.fingerprints import file_digest_cache
 from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file, update_csv_rows
@@ -310,7 +310,6 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
     best_metric_name = str(cfg.output.best_metric)
     best_metric_value = -float("inf")
     best_epoch = 0
-    best_metrics: Dict[str, float] = {}
     final_epoch_metrics: Dict[str, float] = {}
     metrics: Dict[str, float] = {}
 
@@ -353,7 +352,6 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
         if metric_value > best_metric_value and bool(cfg.output.save_best):
             best_metric_value = metric_value
             best_epoch = epoch + 1
-            best_metrics = dict(metrics)
             torch.save(model.state_dict(), output_folder / "checkpoint-best.pth")
             torch.save(model.state_dict(), output_folder / f"checkpoint-best_{dataset_tag}.pth")
             save_full_checkpoint(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from numbers import Real
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
 import numpy as np
 

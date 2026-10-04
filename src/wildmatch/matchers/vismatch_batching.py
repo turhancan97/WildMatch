@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Callable, Iterable, Iterator, Sequence, TypeVar
 
-
 T = TypeVar("T")
 R = TypeVar("R")
 

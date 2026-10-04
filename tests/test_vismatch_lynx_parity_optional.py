@@ -1,13 +1,12 @@
-import pytest
 import os
 import sys
 import unittest
 from pathlib import Path
 
+import pytest
 import torch
 
 from wildmatch.matchers.vismatch_preprocessing import resize_long_side_div32
-
 
 LYNX_ROOT = Path(
     os.environ.get(

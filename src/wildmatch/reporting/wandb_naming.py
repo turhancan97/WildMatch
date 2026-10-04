@@ -7,7 +7,6 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-
 _SAFE = re.compile(r"[^A-Za-z0-9.-]+")
 _RUN_HASH = re.compile(r"[0-9a-f]{8}")
 _MAX_NAME_LENGTH = 128

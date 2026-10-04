@@ -8,24 +8,23 @@ import numpy as np
 import pandas as pd
 
 from wildmatch.evaluate.metrics import compute_metrics
-
+from wildmatch.matchers.vismatch_profiles import (
+    FEATURE_SCHEMA_VERSION,
+    SUPPORTED_VISMATCH_MATCHERS,
+    FrameFeatures,
+    build_matcher_profile,
+    default_matcher_threshold,
+    normalize_match_confidences,
+    profile_fingerprint,
+    validate_matcher_name,
+)
+from wildmatch.train.accumulation import should_step_accumulated_gradients
 from wildmatch.utils.config_defaults import (
     DEFAULT_MODEL_TYPE,
     SUPPORTED_MODEL_TYPES,
     validate_model_type,
 )
-from wildmatch.train.accumulation import should_step_accumulated_gradients
 from wildmatch.utils.io import append_csv_row, update_csv_rows
-from wildmatch.matchers.vismatch_profiles import FrameFeatures
-from wildmatch.matchers.vismatch_profiles import (
-    FEATURE_SCHEMA_VERSION,
-    SUPPORTED_VISMATCH_MATCHERS,
-    default_matcher_threshold,
-    build_matcher_profile,
-    normalize_match_confidences,
-    profile_fingerprint,
-    validate_matcher_name,
-)
 
 try:
     from wildmatch.data.dataset_view import BenchmarkDatasetView

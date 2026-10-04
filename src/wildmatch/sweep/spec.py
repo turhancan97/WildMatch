@@ -26,10 +26,9 @@ is written.
 
 from __future__ import annotations
 
+from importlib import resources
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional
-
-from importlib import resources
 
 from omegaconf import DictConfig, OmegaConf
 

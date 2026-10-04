@@ -10,6 +10,7 @@ import numpy as np
 
 try:
     import torch
+
     import wildmatch.matchers.vismatch as vismatch_module
     from wildmatch.matchers.vismatch_profiles import FrameFeatures
 

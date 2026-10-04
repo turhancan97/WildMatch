@@ -24,7 +24,6 @@ import csv
 import hashlib
 import json
 import random
-import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -191,8 +190,9 @@ def build_backends(
 def analyze(
     layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int
 ) -> List[Dict[str, Any]]:
-    from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
     import matplotlib
+
+    from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt

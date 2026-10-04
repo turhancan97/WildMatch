@@ -6,6 +6,7 @@ from wildmatch.train.class_weights import compute_identity_class_weights
 
 try:
     import torch
+
     from wildmatch.models.objective import SoftmaxLoss, SoftmaxLossEP
 
     HAS_TORCH_OBJECTIVE = True

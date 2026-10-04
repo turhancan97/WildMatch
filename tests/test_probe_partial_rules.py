@@ -4,8 +4,8 @@ from pathlib import Path
 import torch
 from omegaconf import OmegaConf
 
-from wildmatch.utils.config_defaults import SUPPORTED_MODEL_TYPES
 from wildmatch.evaluate.probe_runner import _set_trainable_params
+from wildmatch.utils.config_defaults import SUPPORTED_MODEL_TYPES
 
 ROOT = Path(__file__).resolve().parents[1]
 DINO_TYPES = [name for name in SUPPORTED_MODEL_TYPES if name.startswith("dino")]

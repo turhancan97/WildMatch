@@ -1,8 +1,9 @@
 """Optional Vismatch smoke tests; enable with RUN_VISMATCH_SMOKE=1."""
 
-import pytest
 import os
 import unittest
+
+import pytest
 
 
 @pytest.mark.gpu

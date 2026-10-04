@@ -1,9 +1,9 @@
-from contextlib import redirect_stderr
 import io
-from pathlib import Path
 import tempfile
 import unittest
 import warnings
+from contextlib import redirect_stderr
+from pathlib import Path
 
 import numpy as np
 import pandas as pd

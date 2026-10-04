@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Any, Dict
 
-
 SUPPORTED_IMAGE_VARIANTS = ("background", "no_background")
 
 

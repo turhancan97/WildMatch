@@ -3,9 +3,9 @@
 import hashlib
 import json
 from dataclasses import asdict, dataclass
+from typing import Iterable
 
 import numpy as np
-from typing import Iterable
 
 VISMATCH_COMMIT = "4a743b75749a3770af59d275483ed341dea51ff0"
 VISMATCH_PREPROCESSING_VERSION = "lynx_finetuning_v1"

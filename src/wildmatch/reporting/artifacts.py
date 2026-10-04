@@ -12,10 +12,9 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Dict, Mapping, Optional
 
 from omegaconf import DictConfig, OmegaConf
-
 
 ARTIFACT_SCHEMA_VERSION = 1
 RUN_INDEX_COLUMNS = [

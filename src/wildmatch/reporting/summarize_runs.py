@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 from wildmatch.reporting.summary import filter_run_rows, format_csv, format_markdown, load_run_rows, sort_run_rows
 
 

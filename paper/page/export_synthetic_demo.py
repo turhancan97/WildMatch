@@ -234,6 +234,7 @@ def load_rows(root: Path, metadata: str, paths: Sequence[str]) -> Dict[str, Dict
 
 def _load_backend(run_dir: Path, checkpoint: Optional[Path], device: str):
     from omegaconf import OmegaConf
+
     from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
     from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
 

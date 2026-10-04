@@ -28,7 +28,6 @@ import pandas as pd
 from PIL import Image, ImageDraw
 from pycocotools import mask as mask_utils
 
-
 from wildmatch.data.dataset_view import BenchmarkDatasetView
 from wildmatch.reporting.paper_datasets import ALL_PROFILES, PaperProfile
 from wildmatch.utils.fingerprints import sha256_file
@@ -375,7 +374,6 @@ def main(argv=None, prog=None) -> None:
         table.insert(2, "identity", frame[profile.identity_col].astype(str).to_numpy()[table["row_index"]])
         table.insert(3, "path", frame["path"].astype(str).to_numpy()[table["row_index"]])
         table = add_flags(table)
-        blur_cut = table.attrs["blur_cut"]
 
         rates, runs = query_top1_rates(profile, frame, args.experiment_root)
         verify_query_order(profile, frame, runs)

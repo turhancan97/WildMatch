@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
 import hashlib
 import json
-from pathlib import Path
 import sys
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
-
 
 SCHEMA_VERSION = 1
 HASH_ALGORITHM = "sha256"

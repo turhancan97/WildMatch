@@ -29,13 +29,14 @@ from wildmatch.utils.fingerprints import file_digest_cache, hash_state_dict, sha
 
 try:
     from omegaconf import OmegaConf
+
     from wildmatch.evaluate.probe_runner import (
-        _classifier_metrics,
-        _cosine_similarity_matrix,
+        _classifier_metrics,  # noqa: F401 (import check for HAS_PROBE_CACHE_DEPS)
+        _cosine_similarity_matrix,  # noqa: F401 (import check for HAS_PROBE_CACHE_DEPS)
         _format_metric_value,
         _label_indices,
         _set_probe_training_mode,
-        classifier_open_set_coverage,
+        classifier_open_set_coverage,  # noqa: F401 (import check for HAS_PROBE_CACHE_DEPS)
         extract_deep_features_with_cache,
         validate_classifier_open_set_labels,
     )
@@ -550,7 +551,7 @@ class ResearchValidityTests(unittest.TestCase):
         dataset.df = pd.DataFrame({"path": ["a", "b"], "label": ["x", "y"]})
 
     def test_calibration_excludes_same_set_diagonal(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory():
             dataset = type("Dataset", (), {})()
             dataset.df = pd.DataFrame({"path": ["a", "b"], "label": ["x", "y"]})
             pipeline = _FakePipeline()
@@ -561,7 +562,6 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies not available")
     def test_classifier_probe_keeps_frozen_backbone_in_eval_mode(self):
-        import torch
         from torch import nn
 
         backbone = nn.Sequential(nn.BatchNorm1d(4), nn.Dropout(p=0.5), nn.Linear(4, 3))

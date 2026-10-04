@@ -1,8 +1,8 @@
-import pytest
 import os
 import unittest
 from pathlib import Path
 
+import pytest
 
 CHECKPOINT_DIR = Path(
     os.environ.get(

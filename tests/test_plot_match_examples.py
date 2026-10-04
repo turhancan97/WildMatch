@@ -1,11 +1,10 @@
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-from wildmatch.reporting.paper_datasets import PAPER_PROFILES
 from paper.figures.plot_match_examples import (
     EXAMPLES,
     PAPER_ORDER,
@@ -13,18 +12,19 @@ from paper.figures.plot_match_examples import (
     Example,
     correct_top1_pairs,
     crop_box_around,
-    dim_background,
-    padding_box,
-    points_outside_boxes,
-    spread_selection,
     dhash,
+    dim_background,
     hamming,
     normalized_to_raw_pixels,
+    padding_box,
     pair_rejection,
+    points_outside_boxes,
     raw_image_path,
     resolve_recorded_checkpoint,
+    spread_selection,
     validate_examples,
 )
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES
 
 PROFILES = {profile.key: profile for profile in PAPER_PROFILES}
 

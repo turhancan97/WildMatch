@@ -14,7 +14,7 @@ import pandas as pd
 import torch
 import torchvision.transforms as T
 from omegaconf import DictConfig, OmegaConf
-from torch.optim import Adam, AdamW, SGD
+from torch.optim import SGD, Adam, AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
@@ -26,16 +26,16 @@ from wildlife_tools.similarity.calibration import IsotonicCalibration
 from wildlife_tools.similarity.pairwise.lightglue import MatchLightGlue
 from wildlife_tools.similarity.wildfusion import SimilarityPipeline, WildFusion
 
-from wildmatch.models.model import get_model
-from wildmatch.models.objective import SoftmaxLoss, SoftmaxLossEP
-from wildmatch.data.safety_checks import run_split_safety_checks
 from wildmatch.data.dataset_view import BenchmarkDatasetView
-from wildmatch.evaluate.candidate_scoring import candidate_recall_metrics, save_score_matrix
+from wildmatch.data.safety_checks import run_split_safety_checks
+from wildmatch.evaluate.candidate_scoring import save_score_matrix
 from wildmatch.evaluate.metrics import compute_identity_metrics, compute_metrics
 from wildmatch.evaluate.ranking import stable_rank_indices
 from wildmatch.features.containers import FeatureContainer, get_labels_string
 from wildmatch.matchers.vismatch import run_vismatch_benchmark
 from wildmatch.matchers.wildfusion_calibration import fit_pipeline_calibration, fit_wildfusion_calibration
+from wildmatch.models.model import get_model
+from wildmatch.models.objective import SoftmaxLoss, SoftmaxLossEP
 from wildmatch.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
 from wildmatch.reporting.timing import set_primary_compute_runtime
 from wildmatch.reporting.visualizations import finalize_visualizations
@@ -2288,7 +2288,6 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
 
     run_dir.mkdir(parents=True, exist_ok=True)
     output_json = run_dir / "result.json"
-    config_snapshot = context.config_snapshot_path
     context.write_config(cfg)
 
     vismatch_checkpoint = method_artifacts.get("vismatch_checkpoint") or {}

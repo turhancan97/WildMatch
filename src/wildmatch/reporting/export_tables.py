@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 from wildmatch.reporting.paper_tables import DEFAULT_ABLATION_BUDGETS, export_tables
 
 

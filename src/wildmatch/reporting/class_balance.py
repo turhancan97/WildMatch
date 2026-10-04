@@ -20,8 +20,8 @@ from typing import Dict, List
 import numpy as np
 import pandas as pd
 
-
-from wildmatch.reporting.paper_datasets import ALL_PROFILES, PaperProfile as Profile
+from wildmatch.reporting.paper_datasets import ALL_PROFILES
+from wildmatch.reporting.paper_datasets import PaperProfile as Profile
 from wildmatch.utils.fingerprints import sha256_file
 
 PROFILES = ALL_PROFILES

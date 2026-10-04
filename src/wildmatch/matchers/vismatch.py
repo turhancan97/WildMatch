@@ -1,7 +1,7 @@
 """Vismatch-backed local matcher benchmark."""
 
-import hashlib
 import gc
+import hashlib
 import json
 import os
 import time
@@ -25,23 +25,6 @@ from wildmatch.evaluate.candidate_scoring import (
     shortlist_pair_counts,
 )
 from wildmatch.evaluate.ranking import stable_rank_1d
-from wildmatch.matchers.vismatch_profiles import (
-    FEATURE_SCHEMA_VERSION,
-    SUPPORTED_VISMATCH_MATCHERS,
-    VISMATCH_COMMIT,
-    FrameFeatures,
-    MatcherProfile,
-    build_matcher_profile,
-    default_matcher_threshold,
-    normalize_match_confidences,
-    profile_fingerprint,
-    validate_matcher_name,
-)
-from wildmatch.matchers.vismatch_preprocessing import (
-    preprocess_vismatch_image,
-    to_rgb_float_tensor,
-    to_uint8_vismatch_image,
-)
 from wildmatch.matchers.vismatch_batching import (
     candidate_pair_count,
     grouped_pair_batches,
@@ -52,10 +35,24 @@ from wildmatch.matchers.vismatch_checkpoints import (
     apply_vismatch_checkpoint,
     resolve_vismatch_checkpoint,
 )
+from wildmatch.matchers.vismatch_preprocessing import (
+    preprocess_vismatch_image,
+    to_rgb_float_tensor,
+    to_uint8_vismatch_image,
+)
+from wildmatch.matchers.vismatch_profiles import (
+    FEATURE_SCHEMA_VERSION,
+    VISMATCH_COMMIT,
+    FrameFeatures,
+    build_matcher_profile,
+    default_matcher_threshold,
+    normalize_match_confidences,
+    profile_fingerprint,
+    validate_matcher_name,
+)
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
 from wildmatch.utils.fingerprints import hash_mapping, model_fingerprint, sha256_file
 from wildmatch.utils.io import ensure_file
-
 
 # Compatibility name for internal callers and saved feature semantics.
 FrameFeat = FrameFeatures

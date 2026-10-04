@@ -1,7 +1,7 @@
 import timm
-from transformers import AutoModel
 import torch
 import torch.nn as nn
+from transformers import AutoModel
 
 from wildmatch.utils.config_defaults import validate_model_type
 

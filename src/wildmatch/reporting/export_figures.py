@@ -5,13 +5,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-
 from wildmatch.reporting.plot_figures import (  # noqa: E402
     DEFAULT_PLOT_BUDGETS,
     DEFAULT_PLOT_METRICS,
     PLOT_METHODS,
-    PLOT_STYLES,
     PLOT_METRICS,
+    PLOT_STYLES,
     plot_metrics,
 )
 

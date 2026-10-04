@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from typing import Any, Mapping, MutableMapping
 
-
 MATCHER_METHODS = frozenset({"vismatch", "wildfusion", "local_lightglue"})
 
 

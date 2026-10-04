@@ -8,8 +8,8 @@ from PIL import Image
 
 from wildmatch.matchers.vismatch_preprocessing import (
     preprocess_vismatch_image,
-    resize_long_side_divisible,
     resize_long_side_div32,
+    resize_long_side_divisible,
     to_rgb_float_tensor,
 )
 from wildmatch.matchers.vismatch_profiles import (

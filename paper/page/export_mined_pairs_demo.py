@@ -40,7 +40,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:  # run as a script: make `paper` importable
     sys.path.insert(0, str(REPO_ROOT))
 from paper.page.export_synthetic_demo import normalized_to_pixels  # noqa: E402
-
 from wildmatch.paths import path as _profile_path  # noqa: E402
 
 _MINING_OUTPUTS = _profile_path("external.mining_outputs")  # rdd-parallel-benchmark outputs; None when unset

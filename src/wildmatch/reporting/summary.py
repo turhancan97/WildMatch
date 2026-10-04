@@ -7,7 +7,6 @@ import math
 from pathlib import Path
 from typing import Any, Iterable, List, Mapping, Optional, Sequence
 
-
 SUMMARY_COLUMNS = [
     "run_id",
     "workflow",
@@ -117,7 +116,6 @@ def format_csv(rows: Sequence[Mapping[str, Any]]) -> str:
         for key in row:
             if key not in columns:
                 columns.append(key)
-    lines = []
     from io import StringIO
 
     buffer = StringIO()

@@ -6,11 +6,12 @@ them with ``docs/data/*.json`` (and, when the paper clone is present, with the p
 ``tab_datasets.tex``), so a stale transcription fails the suite instead of reaching readers.
 """
 
-import pytest
 import json
 import re
 import unittest
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS = REPO_ROOT / "docs"

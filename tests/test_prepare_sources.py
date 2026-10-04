@@ -13,7 +13,8 @@ from omegaconf import OmegaConf
 from PIL import Image
 
 from wildmatch.data import prepare as P
-from wildmatch.data.prepare import sam3_masks, sources as S
+from wildmatch.data.prepare import sam3_masks
+from wildmatch.data.prepare import sources as S
 
 
 def _wildlife_metadata():

@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping, Optional
 
-
 HASH_ALGORITHM = "sha256"
 
 # Split safety checks, dataset digests, and Vismatch cache keys each hash every image

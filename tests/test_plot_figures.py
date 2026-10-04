@@ -9,8 +9,8 @@ from wildmatch.reporting.plot_figures import (
     DEFAULT_PLOT_BUDGETS,
     DEFAULT_PLOT_METRICS,
     PLOT_STYLES,
-    prepare_series_data,
     plot_metrics,
+    prepare_series_data,
     render_metric_figure,
 )
 

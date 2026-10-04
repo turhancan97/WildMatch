@@ -1,8 +1,8 @@
 import csv
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 from wildmatch.data.unseen_split import UnseenSplitError, generate_unseen_split
 

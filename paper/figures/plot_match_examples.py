@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import sys
 from typing import Any, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 import numpy as np
@@ -298,6 +297,7 @@ class DatasetContext:
         self.view = None
         if self.profile.mask_col:
             from audit_image_quality import _FrameAdapter
+
             from wildmatch.data.dataset_view import BenchmarkDatasetView
 
             self.view = BenchmarkDatasetView(
@@ -387,6 +387,7 @@ class Matcher:
 
     def __init__(self, context: DatasetContext, device: str) -> None:
         from omegaconf import OmegaConf
+
         from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
         from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
 
@@ -422,7 +423,7 @@ class Matcher:
         to about 1e-2 (measured 2026-09-30 on V100 and H100), not bit-exactly;
         rank 1 is taken from ``scores.npz``, never from the recompute.
         """
-        from wildmatch.matchers.vismatch import _cache_key, _cache_path, _load_cached_feat, FEATURE_SCHEMA_VERSION
+        from wildmatch.matchers.vismatch import FEATURE_SCHEMA_VERSION, _cache_key, _cache_path, _load_cached_feat
         from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
         from wildmatch.utils.fingerprints import sha256_file
 
@@ -457,8 +458,9 @@ class Embedder:
 
     def __init__(self, device: str) -> None:
         import torch
-        from wildmatch.models.model import get_model
+
         from wildmatch.evaluate.probe_runner import build_transforms
+        from wildmatch.models.model import get_model
 
         self.torch = torch
         self.device = torch.device(
@@ -590,8 +592,9 @@ def draw_pair(
     matched keypoints, so every pair has the same shape; correspondences with an
     endpoint outside a crop are dropped before the strongest are chosen.
     """
-    from matplotlib.collections import LineCollection
     import matplotlib.pyplot as plt
+    from matplotlib.collections import LineCollection
+
     from wildmatch.evaluate.ranking import stable_rank_1d
 
     kq, kg = np.asarray(kq, dtype=np.float64), np.asarray(kg, dtype=np.float64)
@@ -948,6 +951,7 @@ def command_render(args: argparse.Namespace) -> None:
     validate_examples(EXAMPLES)
     _style(paper=True)
     import matplotlib.pyplot as plt
+
     from wildmatch.utils.fingerprints import sha256_file
 
     # Rows of args.columns cells; a short last row is centred. Every cell is two

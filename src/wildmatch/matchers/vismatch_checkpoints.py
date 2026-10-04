@@ -15,7 +15,6 @@ from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 from wildmatch.utils.fingerprints import sha256_file
 
-
 SUPPORTED_CHECKPOINT_SOURCES = {"default", "custom"}
 SUPPORTED_COMPONENT_MODES = {"auto", "matcher_only", "extractor_only", "descriptor_only", "full"}
 SUPPORTED_LOMA_ARCHITECTURES = {"LoMa-B", "LoMa-L", "LoMa-G", "LoMa-B128", "LoMa-R"}

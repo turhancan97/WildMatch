@@ -1,6 +1,5 @@
 """Tests for the CPU-only paper/page/export_masking_demo.py."""
 
-import pytest
 import csv
 import importlib.util
 import io
@@ -13,6 +12,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 from pycocotools import mask as mask_utils
 

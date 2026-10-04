@@ -21,7 +21,9 @@ from unittest import mock
 import yaml
 
 from wildmatch import cli
-from wildmatch.sweep import logs, manifest as M, runner, spec as S
+from wildmatch.sweep import logs, runner
+from wildmatch.sweep import manifest as M
+from wildmatch.sweep import spec as S
 
 ROOT = Path(__file__).resolve().parents[1]
 SBATCH = ROOT / "slurm" / "sweep_task.sbatch"

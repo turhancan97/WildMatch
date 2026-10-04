@@ -1,15 +1,14 @@
 """Tests for wildmatch.data.prepare.jaguar on synthetic RGBA images (CPU only)."""
 
-import pytest
 import csv
 import json
-import sys
 import tempfile
 import unittest
 import warnings
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

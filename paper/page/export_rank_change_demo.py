@@ -101,6 +101,7 @@ def cosine_rankings(cfg_path: Path, device: str):
     """Query/database datasets and the full stable cosine order per query, via the probe's code and cache."""
     import torch
     from omegaconf import OmegaConf
+
     from wildmatch.evaluate import probe_runner as pr
     from wildmatch.utils.fingerprints import file_digest_cache
 

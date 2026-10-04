@@ -41,9 +41,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from export_synthetic_demo import ATTRIBUTION, INDIVIDUALS, decode_rle, identity_of, load_rows  # noqa: E402
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-from reid.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
 
 DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
 DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"

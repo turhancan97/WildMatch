@@ -11,7 +11,7 @@ try:
 except ModuleNotFoundError:
     HAS_TORCH = False
 
-from reid.methods.vismatch_checkpoints import (
+from wildmatch.matchers.vismatch_checkpoints import (
     apply_vismatch_checkpoint,
     resolve_vismatch_checkpoint,
 )

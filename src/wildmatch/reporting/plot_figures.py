@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from reid.reporting.paper_tables import (
+from wildmatch.reporting.paper_tables import (
     discover_animals,
     discover_records,
     discover_splits,

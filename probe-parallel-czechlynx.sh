@@ -61,8 +61,8 @@ SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && p
 cd "${SCRIPT_DIR}"
 mkdir -p "${SCRIPT_DIR}/logs/parallel_run"
 LOG_ROOT="${PROBE_PARALLEL_LOG_ROOT:-${SCRIPT_DIR}/logs/parallel_run}"
-CONFIG_FILE="${PROBE_PARALLEL_CONFIG:-${SCRIPT_DIR}/conf/probe.yaml}"
-[[ -f "${CONFIG_FILE}" ]] || CONFIG_FILE="${SCRIPT_SOURCE_DIR}/conf/probe.yaml"
+CONFIG_FILE="${PROBE_PARALLEL_CONFIG:-${SCRIPT_DIR}/src/wildmatch/conf/probe.yaml}"
+[[ -f "${CONFIG_FILE}" ]] || CONFIG_FILE="${SCRIPT_SOURCE_DIR}/src/wildmatch/conf/probe.yaml"
 MANIFEST_HELPER="${SCRIPT_DIR}/scripts/probe_parallel_manifest.py"
 # LAUNCHER_NAME="$(basename -- "${BASH_SOURCE[0]}")"
 LAUNCHER_NAME="probe-parallel-czechlynx.sh"
@@ -285,6 +285,7 @@ finalize_task() {
 }
 trap finalize_task EXIT
 nvidia-smi -L
-source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
-conda activate ex-reid
+# The wildmatch uv environment (README, "Installation"); override with WILDMATCH_ENV.
+WILDMATCH_ENV="${WILDMATCH_ENV:-${UV_ENV_ROOT:-/shared/results/common/kargin/projects/uv-environment}/wildmatch}"
+source "${WILDMATCH_ENV}/bin/activate"
 python train/probe.py "${PROBE_ARGS[@]}"

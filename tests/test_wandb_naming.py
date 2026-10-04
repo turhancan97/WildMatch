@@ -1,6 +1,6 @@
 import unittest
 
-from reid.reporting.wandb_naming import finetune_wandb_name, probe_wandb_name
+from wildmatch.reporting.wandb_naming import finetune_wandb_name, probe_wandb_name
 
 
 class WandbNamingTests(unittest.TestCase):

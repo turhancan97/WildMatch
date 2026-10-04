@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from reid.reporting.paper_tables import (
+from wildmatch.reporting.paper_tables import (
     DEFAULT_ABLATION_BUDGETS,
     build_ablation_rows,
     build_descriptor_rows,

@@ -4,8 +4,8 @@ from pathlib import Path
 import torch
 from omegaconf import OmegaConf
 
-from reid.config_defaults import SUPPORTED_MODEL_TYPES
-from reid.engine.probe_runner import _set_trainable_params
+from wildmatch.utils.config_defaults import SUPPORTED_MODEL_TYPES
+from wildmatch.evaluate.probe_runner import _set_trainable_params
 
 ROOT = Path(__file__).resolve().parents[1]
 DINO_TYPES = [name for name in SUPPORTED_MODEL_TYPES if name.startswith("dino")]
@@ -38,7 +38,7 @@ class _FakeModel:
 
 
 def _cfg(model_type: str, method_key: str):
-    probe = OmegaConf.load(ROOT / "conf" / "probe.yaml")
+    probe = OmegaConf.load(ROOT / "src" / "wildmatch" / "conf" / "probe.yaml")
     probe.model.type = model_type
     probe.benchmark.methods[method_key].train_mode = "partial"
     return probe
@@ -46,7 +46,7 @@ def _cfg(model_type: str, method_key: str):
 
 class PartialRuleTests(unittest.TestCase):
     def test_every_dino_type_has_explicit_rules(self):
-        probe = OmegaConf.load(ROOT / "conf" / "probe.yaml")
+        probe = OmegaConf.load(ROOT / "src" / "wildmatch" / "conf" / "probe.yaml")
         self.assertEqual(sorted(DINO_TYPES), ["dinov2", "dinov2-l", "dinov3", "dinov3-l"])
         for method_key in ("linear_probe", "efficient_probe"):
             rules = probe.benchmark.methods[method_key].partial_rules

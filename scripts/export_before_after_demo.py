@@ -33,11 +33,11 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-for extra in (REPO_ROOT, REPO_ROOT / "scripts"):
+for extra in (REPO_ROOT / "scripts",):
     if str(extra) not in sys.path:
         sys.path.insert(0, str(extra))
 from export_synthetic_demo import decode_rle, normalized_to_pixels  # noqa: E402
-from reid.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
 
 SIDECAR = REPO_ROOT / "reports" / "figures" / "match_examples.json"
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "before_after"
@@ -120,7 +120,7 @@ def build_payload(pairs: List[Dict[str, Any]], settings: Dict[str, Any]) -> Dict
 
 
 def _backend(device: str, source: str, checkpoint: Optional[Path], settings: Dict[str, Any]):
-    from reid.methods.vismatch import VismatchMatcherBackend, _choose_vismatch_device
+    from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
 
     kwargs = dict(checkpoint_source=source, loma_arch=settings["loma_arch"], resize_max=settings["resize_max"])
     if checkpoint is not None:
@@ -129,8 +129,8 @@ def _backend(device: str, source: str, checkpoint: Optional[Path], settings: Dic
 
 
 def export(out_dir: Path, device: str, sidecar: Path = SIDECAR, only: Optional[Sequence[str]] = None) -> Dict[str, Any]:
-    from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
-    from reid.methods.vismatch_profiles import default_matcher_threshold
+    from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
+    from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
 
     settings = {"loma_arch": "LoMa-B", "resize_max": 512, "top_k": 512, "threshold": default_matcher_threshold("loma"),
                 "checkpoint_components": "matcher_only"}

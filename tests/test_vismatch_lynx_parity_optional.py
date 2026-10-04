@@ -5,7 +5,7 @@ from pathlib import Path
 
 import torch
 
-from reid.methods.vismatch_preprocessing import resize_long_side_div32
+from wildmatch.matchers.vismatch_preprocessing import resize_long_side_div32
 
 
 LYNX_ROOT = Path(

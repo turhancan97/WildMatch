@@ -7,6 +7,27 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04 (branch `refactor/wildmatch-package`): refactor Phase 1, environment and
+  packaging, no behaviour change intended. `reid/`, `models/` and `conf/` moved with `git mv`
+  into the installable `wildmatch` package (`src/wildmatch/`: `data`, `evaluate`, `features`,
+  `matchers`, `models`, `reporting`, `train`, `utils`, `conf`, plus empty `mining` and
+  `matcher_finetune` slots); imports rewritten; repo-root `sys.path` inserts removed. Hydra
+  entry points moved to `wildmatch.entrypoints` (configs as `pkg://wildmatch.conf`, job names
+  pinned so `logs/hydra/probe.log` keeps its name); `train/*.py` are three-line wrappers.
+  `pyproject.toml` (hatchling, Python 3.12, extras `cpu`/`cu126` for torch 2.8.0 from the
+  PyTorch indexes, `matchers`, `wandb`, `mining`; groups `dev`, `docs`) and `uv.lock`;
+  parity-relevant packages constrained to the exact `ex-reid` versions; gluefactory and
+  LightGlue from the git commits `ex-reid` used; both OpenCV wheels pinned to 4.11.0.86 (they
+  overwrite the same `cv2`); vismatch's `uniception` excluded (it ships a top-level `scripts`
+  package that shadowed `scripts/`). `requirements.txt` (stale pins: it named Pillow 9.5.0 and
+  opencv 4.7 while `ex-reid` runs 12.1.0 and 4.11) replaced by `requirements/{cpu,cu126}.txt`
+  exported from the lock; `environment.yml` now builds a `wildmatch` conda env from them.
+  Environment `$UV_ENV_ROOT/wildmatch` created (shared disk). Tests run with pytest (`pythonpath`
+  for `scripts/`); new tests for package-resource configs and for
+  `paper/tools/parity_check.py`, which pairs refactored runs with the `paper-v1` reference runs
+  and checks scores, Top-1 and metrics. Slurm scripts activate the uv environment
+  (`WILDMATCH_ENV` overrides). Work happens in a separate worktree so Slurm jobs from the main
+  checkout keep running the paper code. The approved plan is in `notes/refactor_plan.md`.
 - 2026-10-04: package refactor started (approved plan: `wildmatch` package with uv,
   `pyproject.toml`, `src/` layout, single CLI, dataset registry, portable paths, CPU/CUDA
   extras, Apache-2.0). Phase 0 on `main`: tag `paper-v1` on `4bad498` (the paper code, pushed);

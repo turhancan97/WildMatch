@@ -1,6 +1,6 @@
 import unittest
 
-from reid.reporting.timing import primary_runtime_key, set_primary_compute_runtime
+from wildmatch.reporting.timing import primary_runtime_key, set_primary_compute_runtime
 
 
 class TimingReportingTests(unittest.TestCase):

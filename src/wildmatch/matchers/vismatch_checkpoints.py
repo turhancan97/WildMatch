@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
-from reid.utils.fingerprints import sha256_file
+from wildmatch.utils.fingerprints import sha256_file
 
 
 SUPPORTED_CHECKPOINT_SOURCES = {"default", "custom"}

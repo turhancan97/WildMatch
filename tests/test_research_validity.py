@@ -9,8 +9,8 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from reid.data.safety_checks import run_split_safety_checks
-from reid.evaluation.candidate_scoring import (
+from wildmatch.data.safety_checks import run_split_safety_checks
+from wildmatch.evaluate.candidate_scoring import (
     build_shortlist_score_matrix,
     candidate_recall_metrics,
     load_score_matrix,
@@ -18,17 +18,17 @@ from reid.evaluation.candidate_scoring import (
     save_score_matrix,
     shortlist_pair_counts,
 )
-from reid.evaluation.metrics import _label_retrieval_metrics, _truncated_average_precision
-from reid.evaluation.ranking import stable_rank_indices
-from reid.methods.wildfusion_calibration import fit_pipeline_calibration
-from reid.training.accumulation import accumulation_group_size
-from reid.training.checkpointing import resolve_model_checkpoint, validate_resume_epochs
-from reid.training.results import build_final_training_metrics
-from reid.utils import fingerprints
-from reid.utils.fingerprints import file_digest_cache, hash_state_dict, sha256_file
+from wildmatch.evaluate.metrics import _label_retrieval_metrics, _truncated_average_precision
+from wildmatch.evaluate.ranking import stable_rank_indices
+from wildmatch.matchers.wildfusion_calibration import fit_pipeline_calibration
+from wildmatch.train.accumulation import accumulation_group_size
+from wildmatch.train.checkpointing import resolve_model_checkpoint, validate_resume_epochs
+from wildmatch.train.results import build_final_training_metrics
+from wildmatch.utils import fingerprints
+from wildmatch.utils.fingerprints import file_digest_cache, hash_state_dict, sha256_file
 try:
     from omegaconf import OmegaConf
-    from reid.engine.probe_runner import (
+    from wildmatch.evaluate.probe_runner import (
         _classifier_metrics,
         _cosine_similarity_matrix,
         _format_metric_value,
@@ -94,8 +94,8 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runtime dependencies not available")
     def test_probe_reporting_imports_file_identity(self):
-        from reid.engine import probe_runner
-        from reid.reporting.artifacts import file_identity
+        from wildmatch.evaluate import probe_runner
+        from wildmatch.reporting.artifacts import file_identity
 
         self.assertIs(probe_runner.file_identity, file_identity)
 
@@ -157,7 +157,7 @@ class ResearchValidityTests(unittest.TestCase):
         # Regression: the classifier emits one column per identity, so an identity mask
         # built from database *images* cannot index that axis. Five images over three
         # identities is the shape that used to raise IndexError every epoch.
-        from reid.engine.probe_runner import _probe_retrieval_metrics
+        from wildmatch.evaluate.probe_runner import _probe_retrieval_metrics
 
         cfg = OmegaConf.create(
             {"benchmark": {"top_k": [1, 2], "compute_map": True, "candidate_k": 2}}
@@ -186,7 +186,7 @@ class ResearchValidityTests(unittest.TestCase):
     def test_identity_probe_metrics_score_each_identity_once(self):
         # Every database image of an identity shares that identity's single probability,
         # so duplicating an identity in the gallery must not change identity-level scores.
-        from reid.engine.probe_runner import _probe_retrieval_metrics
+        from wildmatch.evaluate.probe_runner import _probe_retrieval_metrics
 
         cfg = OmegaConf.create(
             {"benchmark": {"top_k": [1], "compute_map": True, "candidate_k": 1}}
@@ -206,7 +206,7 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_identity_probe_metrics_reject_labels_outside_the_classifier_head(self):
-        from reid.engine.probe_runner import _probe_retrieval_metrics
+        from wildmatch.evaluate.probe_runner import _probe_retrieval_metrics
 
         cfg = OmegaConf.create(
             {"benchmark": {"top_k": [1], "compute_map": True, "candidate_k": 1}}
@@ -220,7 +220,7 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_open_world_classifier_metrics_map_unseen_queries_to_zero_credit(self):
-        from reid.engine.probe_runner import _classifier_metrics
+        from wildmatch.evaluate.probe_runner import _classifier_metrics
 
         labels = ["seen_a", "unseen", "seen_b"]
         mapping = {"seen_a": 0, "seen_b": 1}
@@ -246,7 +246,7 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_warn_policy_keeps_legacy_fields_seen_only(self):
-        from reid.engine.probe_runner import _classifier_metrics
+        from wildmatch.evaluate.probe_runner import _classifier_metrics
 
         labels = ["seen", "unseen"]
         mapping = {"seen": 0}
@@ -267,7 +267,7 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_all_unseen_classifier_metrics_are_defined(self):
-        from reid.engine.probe_runner import _classifier_metrics
+        from wildmatch.evaluate.probe_runner import _classifier_metrics
 
         labels = ["unseen_a", "unseen_b"]
         mapping = {"seen": 0}
@@ -281,7 +281,7 @@ class ResearchValidityTests(unittest.TestCase):
 
     @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies are not available")
     def test_embedding_similarity_diagnostic_is_dependency_light(self):
-        from reid.engine.probe_runner import _cosine_similarity_matrix
+        from wildmatch.evaluate.probe_runner import _cosine_similarity_matrix
 
         result = _cosine_similarity_matrix(
             np.asarray([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32),

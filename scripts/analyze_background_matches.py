@@ -32,8 +32,6 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 WILDLIFE_ROOT = Path("/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k")
 FOREGROUND_THRESHOLD = 12
@@ -131,8 +129,8 @@ def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: in
                    joint_checkpoint: Optional[Path] = None):
     """Default LoMa, the matcher-only fine-tuned LoMa and, optionally, the joint
     (descriptor + matcher) checkpoint, which the loader requires to be used as ``full``."""
-    from reid.methods.vismatch import VismatchMatcherBackend, _choose_vismatch_device
-    from reid.methods.vismatch_profiles import default_matcher_threshold
+    from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
+    from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
 
     threshold = default_matcher_threshold("loma")
     dev = _choose_vismatch_device(device)
@@ -151,7 +149,7 @@ def build_backends(device: str, checkpoint: Path, loma_arch: str, resize_max: in
 
 
 def analyze(layout: "Layout", pairs: Sequence[Dict[str, Any]], backends, out_dir: Path, draw_top: int) -> List[Dict[str, Any]]:
-    from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
+    from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt

@@ -26,27 +26,27 @@ from wildlife_tools.similarity.calibration import IsotonicCalibration
 from wildlife_tools.similarity.pairwise.lightglue import MatchLightGlue
 from wildlife_tools.similarity.wildfusion import SimilarityPipeline, WildFusion
 
-from models.model import get_model
-from models.objective import SoftmaxLoss, SoftmaxLossEP
-from reid.data.safety_checks import run_split_safety_checks
-from reid.data.dataset_view import BenchmarkDatasetView
-from reid.evaluation.candidate_scoring import candidate_recall_metrics, save_score_matrix
-from reid.evaluation.metrics import compute_identity_metrics, compute_metrics
-from reid.evaluation.ranking import stable_rank_indices
-from reid.features.containers import FeatureContainer, get_labels_string
-from reid.methods.vismatch import run_vismatch_benchmark
-from reid.methods.wildfusion_calibration import fit_pipeline_calibration, fit_wildfusion_calibration
-from reid.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
-from reid.reporting.timing import set_primary_compute_runtime
-from reid.reporting.visualizations import finalize_visualizations
-from reid.reporting.wandb_naming import probe_wandb_name
-from reid.training.accumulation import accumulation_group_size, should_step_accumulated_gradients
-from reid.training.checkpointing import resolve_configured_model_checkpoint, resolve_model_checkpoint
-from reid.training.class_weights import compute_identity_class_weights
-from reid.utils.cache_identity import build_dataset_cache_identity
-from reid.utils.fingerprints import file_digest_cache, model_fingerprint, sha256_file
-from reid.utils.io import append_csv_row, ensure_dir, ensure_file
-from reid.utils.repro import set_reproducible
+from wildmatch.models.model import get_model
+from wildmatch.models.objective import SoftmaxLoss, SoftmaxLossEP
+from wildmatch.data.safety_checks import run_split_safety_checks
+from wildmatch.data.dataset_view import BenchmarkDatasetView
+from wildmatch.evaluate.candidate_scoring import candidate_recall_metrics, save_score_matrix
+from wildmatch.evaluate.metrics import compute_identity_metrics, compute_metrics
+from wildmatch.evaluate.ranking import stable_rank_indices
+from wildmatch.features.containers import FeatureContainer, get_labels_string
+from wildmatch.matchers.vismatch import run_vismatch_benchmark
+from wildmatch.matchers.wildfusion_calibration import fit_pipeline_calibration, fit_wildfusion_calibration
+from wildmatch.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
+from wildmatch.reporting.timing import set_primary_compute_runtime
+from wildmatch.reporting.visualizations import finalize_visualizations
+from wildmatch.reporting.wandb_naming import probe_wandb_name
+from wildmatch.train.accumulation import accumulation_group_size, should_step_accumulated_gradients
+from wildmatch.train.checkpointing import resolve_configured_model_checkpoint, resolve_model_checkpoint
+from wildmatch.train.class_weights import compute_identity_class_weights
+from wildmatch.utils.cache_identity import build_dataset_cache_identity
+from wildmatch.utils.fingerprints import file_digest_cache, model_fingerprint, sha256_file
+from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file
+from wildmatch.utils.repro import set_reproducible
 
 
 def _format_metric_value(value: Any) -> str:

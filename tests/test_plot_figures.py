@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from reid.reporting.paper_tables import discover_records
-from reid.reporting.plot_figures import (
+from wildmatch.reporting.paper_tables import discover_records
+from wildmatch.reporting.plot_figures import (
     DEFAULT_PLOT_BUDGETS,
     DEFAULT_PLOT_METRICS,
     PLOT_STYLES,

@@ -71,4 +71,6 @@ hydra:
     dir: ${hydra:runtime.cwd}/logs/hydra
   job:
     chdir: false
+    # Pinned: the entry point lives in wildmatch/entrypoints.py, not finetune.py.
+    name: finetune
   output_subdir: null

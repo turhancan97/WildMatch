@@ -175,4 +175,6 @@ hydra:
     dir: ${hydra:runtime.cwd}/logs/hydra
   job:
     chdir: false
+    # Pinned: the entry point lives in wildmatch/entrypoints.py, not probe.py.
+    name: probe
   output_subdir: null

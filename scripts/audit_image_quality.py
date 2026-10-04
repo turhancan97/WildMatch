@@ -31,12 +31,10 @@ from PIL import Image, ImageDraw
 from pycocotools import mask as mask_utils
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
-from reid.data.dataset_view import BenchmarkDatasetView
-from reid.reporting.paper_datasets import ALL_PROFILES, PaperProfile
-from reid.utils.fingerprints import sha256_file
+from wildmatch.data.dataset_view import BenchmarkDatasetView
+from wildmatch.reporting.paper_datasets import ALL_PROFILES, PaperProfile
+from wildmatch.utils.fingerprints import sha256_file
 
 ANALYSIS_LONG_SIDE = 512
 # Pre-masked JPEGs leave near-black compression noise in the background.

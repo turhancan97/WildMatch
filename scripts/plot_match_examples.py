@@ -41,11 +41,11 @@ import pandas as pd
 from PIL import Image
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-for entry in (ROOT_DIR, ROOT_DIR / "scripts"):
+for entry in (ROOT_DIR / "scripts",):
     if str(entry) not in sys.path:
         sys.path.insert(0, str(entry))
 
-from reid.reporting.paper_datasets import PAPER_PROFILES, PaperProfile  # noqa: E402
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES, PaperProfile  # noqa: E402
 
 # Paper order (alphabetical by panel label, user decision 2026-09-30) and labels.
 PAPER_ORDER: Tuple[Tuple[str, str], ...] = (
@@ -265,7 +265,7 @@ class DatasetContext:
         self.view = None
         if self.profile.mask_col:
             from audit_image_quality import _FrameAdapter
-            from reid.data.dataset_view import BenchmarkDatasetView
+            from wildmatch.data.dataset_view import BenchmarkDatasetView
             self.view = BenchmarkDatasetView(_FrameAdapter(self.frame, self.profile.identity_col),
                                              label_col=self.profile.identity_col, no_background=True,
                                              mask_col=self.profile.mask_col)
@@ -291,7 +291,7 @@ class DatasetContext:
     def checkpoint_path(self) -> str:
         """The exact checkpoint file the probe loaded, located by its recorded SHA-256."""
         if getattr(self, "_checkpoint", None) is None:
-            from reid.utils.fingerprints import sha256_file
+            from wildmatch.utils.fingerprints import sha256_file
             components = self.manifest["vismatch_checkpoint"]["components"]
             if len(components) != 1:
                 raise ValueError(f"{self.key}: expected one LoMa checkpoint component, got {len(components)}")
@@ -342,8 +342,8 @@ class Matcher:
 
     def __init__(self, context: DatasetContext, device: str) -> None:
         from omegaconf import OmegaConf
-        from reid.methods.vismatch import VismatchMatcherBackend, _choose_vismatch_device
-        from reid.methods.vismatch_profiles import default_matcher_threshold
+        from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
+        from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
 
         config = OmegaConf.load(context.run_dir / "config.snapshot.yaml").benchmark.methods.vismatch
         threshold = config.get("matcher_threshold")
@@ -373,9 +373,9 @@ class Matcher:
         to about 1e-2 (measured 2026-09-30 on V100 and H100), not bit-exactly;
         rank 1 is taken from ``scores.npz``, never from the recompute.
         """
-        from reid.methods.vismatch import _cache_key, _cache_path, _load_cached_feat, FEATURE_SCHEMA_VERSION
-        from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
-        from reid.utils.fingerprints import sha256_file
+        from wildmatch.matchers.vismatch import _cache_key, _cache_path, _load_cached_feat, FEATURE_SCHEMA_VERSION
+        from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
+        from wildmatch.utils.fingerprints import sha256_file
 
         image_path = str(self.context.frame.iloc[row]["path"])
         if self.cache_dir is not None and self.cfg_tag:
@@ -402,8 +402,8 @@ class Embedder:
 
     def __init__(self, device: str) -> None:
         import torch
-        from models.model import get_model
-        from reid.engine.probe_runner import build_transforms
+        from wildmatch.models.model import get_model
+        from wildmatch.evaluate.probe_runner import build_transforms
 
         self.torch = torch
         self.device = torch.device("cuda" if device == "auto" and torch.cuda.is_available() else
@@ -454,7 +454,7 @@ def spread_selection(p0: np.ndarray, p1: np.ndarray, confidences: np.ndarray, co
     kept only when both its endpoints are far enough from every kept one. The spacing
     halves until ``count`` matches are found or it reaches zero (plain top-``count``).
     """
-    from reid.evaluation.ranking import stable_rank_1d
+    from wildmatch.evaluate.ranking import stable_rank_1d
 
     order = stable_rank_1d(np.asarray(confidences, dtype=np.float64))
     p0, p1 = np.asarray(p0, dtype=np.float64), np.asarray(p1, dtype=np.float64)
@@ -523,7 +523,7 @@ def draw_pair(axis, query: Image.Image, gallery: Image.Image, kq: np.ndarray, kg
     """
     from matplotlib.collections import LineCollection
     import matplotlib.pyplot as plt
-    from reid.evaluation.ranking import stable_rank_1d
+    from wildmatch.evaluate.ranking import stable_rank_1d
 
     kq, kg = np.asarray(kq, dtype=np.float64), np.asarray(kg, dtype=np.float64)
     confidences = np.asarray(confidences, dtype=np.float64)
@@ -786,7 +786,7 @@ def command_render(args: argparse.Namespace) -> None:
     validate_examples(EXAMPLES)
     _style(paper=True)
     import matplotlib.pyplot as plt
-    from reid.utils.fingerprints import sha256_file
+    from wildmatch.utils.fingerprints import sha256_file
 
     # Rows of args.columns cells; a short last row is centred. Every cell is two
     # args.aspect photos plus a gutter, so all cells share one size.

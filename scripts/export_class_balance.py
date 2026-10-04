@@ -23,11 +23,9 @@ import numpy as np
 import pandas as pd
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
-from reid.reporting.paper_datasets import ALL_PROFILES, PaperProfile as Profile
-from reid.utils.fingerprints import sha256_file
+from wildmatch.reporting.paper_datasets import ALL_PROFILES, PaperProfile as Profile
+from wildmatch.utils.fingerprints import sha256_file
 
 PROFILES = ALL_PROFILES
 

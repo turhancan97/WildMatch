@@ -25,10 +25,8 @@ import pandas as pd  # noqa: E402
 from PIL import Image  # noqa: E402
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
-from reid.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES  # noqa: E402
 
 
 class Example(NamedTuple):

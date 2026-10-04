@@ -504,7 +504,7 @@ class ParallelProbeLauncherTests(unittest.TestCase):
         self.assertRegex(outside.stderr, re.compile(rf"outside 0\.\.{task_count - 1}"))
 
     def test_local_lightglue_uses_shared_budget(self):
-        text = (ROOT / "conf/probe.yaml").read_text(encoding="utf-8")
+        text = (ROOT / "src/wildmatch/conf/probe.yaml").read_text(encoding="utf-8")
         self.assertIn("local_lightglue:", text)
         self.assertNotIn("      B:", text)
         result = self.run_script("--list-tasks")

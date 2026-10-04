@@ -41,8 +41,6 @@ from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
 PROBE_JOB_DIR = ROOT_DIR / "logs/parallel_run/CzechLynx_v2/CzechLynx/split-time_closed/job-508523"
 LOMA_TRAIN_LOG = Path("/home/kargin/Projects/repositories/lynx-finetuning/logs/czechlynx-loma-ft/czechlynx-loma-ft-508111.out")
@@ -271,7 +269,7 @@ def probe_series(cost: str = "train", job_dir: Path = PROBE_JOB_DIR, allow_incom
 
 
 def _loma_run_record(run_dir: Path, candidate_k: int) -> Optional[dict]:
-    from reid.utils.fingerprints import sha256_file
+    from wildmatch.utils.fingerprints import sha256_file
 
     manifest = _json(run_dir / "run_manifest.json")
     if manifest.get("status") != "completed":  # still running, or failed

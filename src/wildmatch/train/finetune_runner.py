@@ -17,28 +17,28 @@ from wildlife_tools.features import DeepFeatures
 from wildlife_tools.similarity import CosineSimilarity
 from wildlife_tools.train.trainer import set_seed
 
-from models.model import get_model
-from models.objective import ArcFaceLoss
-from reid.data.safety_checks import run_split_safety_checks
-from reid.training.results import build_final_training_metrics
-from reid.data.dataset_view import BenchmarkDatasetView
-from reid.evaluation.metrics import compute_metrics
-from reid.features.containers import FeatureContainer, get_labels_string, normalize_features
-from reid.training.checkpointing import (
+from wildmatch.models.model import get_model
+from wildmatch.models.objective import ArcFaceLoss
+from wildmatch.data.safety_checks import run_split_safety_checks
+from wildmatch.train.results import build_final_training_metrics
+from wildmatch.data.dataset_view import BenchmarkDatasetView
+from wildmatch.evaluate.metrics import compute_metrics
+from wildmatch.features.containers import FeatureContainer, get_labels_string, normalize_features
+from wildmatch.train.checkpointing import (
     load_full_checkpoint,
     save_full_checkpoint,
     validate_resume_epochs,
 )
-from reid.training.accumulation import (
+from wildmatch.train.accumulation import (
     accumulation_group_size,
     should_step_accumulated_gradients,
 )
-from reid.reporting.artifacts import build_run_context, run_index_row, upsert_run_index
-from reid.reporting.wandb_naming import finetune_wandb_name
-from reid.utils.cache_identity import build_dataset_cache_identity
-from reid.utils.fingerprints import file_digest_cache
-from reid.utils.io import append_csv_row, ensure_dir, ensure_file, update_csv_rows
-from reid.utils.repro import set_reproducible
+from wildmatch.reporting.artifacts import build_run_context, run_index_row, upsert_run_index
+from wildmatch.reporting.wandb_naming import finetune_wandb_name
+from wildmatch.utils.cache_identity import build_dataset_cache_identity
+from wildmatch.utils.fingerprints import file_digest_cache
+from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file, update_csv_rows
+from wildmatch.utils.repro import set_reproducible
 
 
 def _dataset_tag_from_metadata_file(metadata_file: str) -> str:

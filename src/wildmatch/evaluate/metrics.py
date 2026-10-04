@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 
-from reid.evaluation.ranking import stable_rank_indices
+from wildmatch.evaluate.ranking import stable_rank_indices
 
 DEFAULT_MAP_AT_K = 100
 

@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 from PIL import Image
 
-from reid.reporting.paper_datasets import PAPER_PROFILES
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES
 from scripts.plot_match_examples import (
     EXAMPLES,
     PAPER_ORDER,

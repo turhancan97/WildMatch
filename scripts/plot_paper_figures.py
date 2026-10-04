@@ -8,10 +8,8 @@ from pathlib import Path
 import sys
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
-from reid.reporting.plot_figures import (  # noqa: E402
+from wildmatch.reporting.plot_figures import (  # noqa: E402
     DEFAULT_PLOT_BUDGETS,
     DEFAULT_PLOT_METRICS,
     PLOT_METHODS,

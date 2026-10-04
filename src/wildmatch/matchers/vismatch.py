@@ -18,14 +18,14 @@ from PIL import Image
 from pycocotools import mask as mask_utils
 from tqdm import tqdm
 
-from reid.evaluation.candidate_scoring import (
+from wildmatch.evaluate.candidate_scoring import (
     build_shortlist_score_matrix,
     candidate_recall_metrics,
     normalize_shortlist_score,
     shortlist_pair_counts,
 )
-from reid.evaluation.ranking import stable_rank_1d
-from reid.methods.vismatch_profiles import (
+from wildmatch.evaluate.ranking import stable_rank_1d
+from wildmatch.matchers.vismatch_profiles import (
     FEATURE_SCHEMA_VERSION,
     SUPPORTED_VISMATCH_MATCHERS,
     VISMATCH_COMMIT,
@@ -37,24 +37,24 @@ from reid.methods.vismatch_profiles import (
     profile_fingerprint,
     validate_matcher_name,
 )
-from reid.methods.vismatch_preprocessing import (
+from wildmatch.matchers.vismatch_preprocessing import (
     preprocess_vismatch_image,
     to_rgb_float_tensor,
     to_uint8_vismatch_image,
 )
-from reid.methods.vismatch_batching import (
+from wildmatch.matchers.vismatch_batching import (
     candidate_pair_count,
     grouped_pair_batches,
     run_with_batch_backoff,
 )
-from reid.methods.vismatch_checkpoints import (
+from wildmatch.matchers.vismatch_checkpoints import (
     VismatchCheckpointResolution,
     apply_vismatch_checkpoint,
     resolve_vismatch_checkpoint,
 )
-from reid.utils.cache_identity import build_dataset_cache_identity
-from reid.utils.fingerprints import hash_mapping, model_fingerprint, sha256_file
-from reid.utils.io import ensure_file
+from wildmatch.utils.cache_identity import build_dataset_cache_identity
+from wildmatch.utils.fingerprints import hash_mapping, model_fingerprint, sha256_file
+from wildmatch.utils.io import ensure_file
 
 
 # Compatibility name for internal callers and saved feature semantics.

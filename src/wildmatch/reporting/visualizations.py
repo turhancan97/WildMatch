@@ -7,8 +7,8 @@ import re
 from pathlib import Path
 from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-from reid.evaluation.ranking import stable_rank_1d
-from reid.reporting.artifacts import RunContext
+from wildmatch.evaluate.ranking import stable_rank_1d
+from wildmatch.reporting.artifacts import RunContext
 
 
 def _label(dataset: Any, index: int, label_col: str) -> str:

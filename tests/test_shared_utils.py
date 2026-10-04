@@ -7,17 +7,17 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import pandas as pd
 
-from reid.evaluation.metrics import compute_metrics
+from wildmatch.evaluate.metrics import compute_metrics
 
-from reid.config_defaults import (
+from wildmatch.utils.config_defaults import (
     DEFAULT_MODEL_TYPE,
     SUPPORTED_MODEL_TYPES,
     validate_model_type,
 )
-from reid.training.accumulation import should_step_accumulated_gradients
-from reid.utils.io import append_csv_row, update_csv_rows
-from reid.methods.vismatch_profiles import FrameFeatures
-from reid.methods.vismatch_profiles import (
+from wildmatch.train.accumulation import should_step_accumulated_gradients
+from wildmatch.utils.io import append_csv_row, update_csv_rows
+from wildmatch.matchers.vismatch_profiles import FrameFeatures
+from wildmatch.matchers.vismatch_profiles import (
     FEATURE_SCHEMA_VERSION,
     SUPPORTED_VISMATCH_MATCHERS,
     default_matcher_threshold,
@@ -28,14 +28,14 @@ from reid.methods.vismatch_profiles import (
 )
 
 try:
-    from reid.data.dataset_view import BenchmarkDatasetView
-    from reid.features.containers import normalize_features
+    from wildmatch.data.dataset_view import BenchmarkDatasetView
+    from wildmatch.features.containers import normalize_features
     HAS_DATASET_DEPS = True
 except ModuleNotFoundError:
     HAS_DATASET_DEPS = False
 
 try:
-    from reid.training.checkpointing import (
+    from wildmatch.train.checkpointing import (
         resolve_configured_model_checkpoint,
         resolve_model_checkpoint,
     )
@@ -94,8 +94,8 @@ class ConfigurationTests(unittest.TestCase):
     def test_shipped_yaml_model_defaults_are_supported(self):
         root = Path(__file__).resolve().parents[1]
         for relative_path in (
-            "conf/finetune.yaml",
-            "conf/probe.yaml",
+            "src/wildmatch/conf/finetune.yaml",
+            "src/wildmatch/conf/probe.yaml",
         ):
             text = (root / relative_path).read_text(encoding="utf-8")
             match = re.search(r'(?m)^  type:\s*"([^"]+)"', text)
@@ -298,7 +298,7 @@ class VismatchProfileTests(unittest.TestCase):
 
     def test_shipped_configs_use_vismatch_public_method(self):
         root = Path(__file__).resolve().parents[1]
-        probe = (root / "conf/probe.yaml").read_text(encoding="utf-8")
+        probe = (root / "src/wildmatch/conf/probe.yaml").read_text(encoding="utf-8")
         # Keep the user's current Stage-A default intact while validating that
         # Vismatch remains a shipped, independently selectable public method.
         self.assertRegex(probe, r'(?m)^  method: "(?:vismatch|wildfusion)"')
@@ -307,7 +307,7 @@ class VismatchProfileTests(unittest.TestCase):
         self.assertIn('      local_top_k: 512', probe)
         self.assertIn('loma', probe)
     def test_image_variant_cache_identity_is_explicit_and_stable(self):
-        from reid.utils.cache_identity import build_dataset_cache_identity, validate_image_variant
+        from wildmatch.utils.cache_identity import build_dataset_cache_identity, validate_image_variant
 
         base = type("DatasetConfig", (), {
             "root": "/tmp/dataset",

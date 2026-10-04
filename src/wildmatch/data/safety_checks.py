@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from reid.utils.fingerprints import HASH_ALGORITHM, sha256_file
+from wildmatch.utils.fingerprints import HASH_ALGORITHM, sha256_file
 
 
 def _detect_path_col(df: pd.DataFrame, preferred: Optional[str] = None) -> str:

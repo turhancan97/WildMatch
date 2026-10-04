@@ -8,10 +8,8 @@ from pathlib import Path
 import sys
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
 
-from reid.reporting.summary import filter_run_rows, format_csv, format_markdown, load_run_rows, sort_run_rows
+from wildmatch.reporting.summary import filter_run_rows, format_csv, format_markdown, load_run_rows, sort_run_rows
 
 
 def parse_args() -> argparse.Namespace:

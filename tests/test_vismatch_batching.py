@@ -10,13 +10,13 @@ import numpy as np
 
 try:
     import torch
-    import reid.methods.vismatch as vismatch_module
-    from reid.methods.vismatch_profiles import FrameFeatures
+    import wildmatch.matchers.vismatch as vismatch_module
+    from wildmatch.matchers.vismatch_profiles import FrameFeatures
     HAS_VISMATCH_RUNTIME = True
 except ModuleNotFoundError:
     HAS_VISMATCH_RUNTIME = False
 
-from reid.methods.vismatch_batching import (
+from wildmatch.matchers.vismatch_batching import (
     candidate_pair_count,
     grouped_pair_batches,
     run_with_batch_backoff,
@@ -158,7 +158,7 @@ class VismatchBatchingTests(unittest.TestCase):
 
     def test_shipped_config_enables_feature_level_batching(self):
         root = Path(__file__).resolve().parents[1]
-        text = (root / "conf/probe.yaml").read_text(encoding="utf-8")
+        text = (root / "src/wildmatch/conf/probe.yaml").read_text(encoding="utf-8")
         self.assertIn('feature_matching_mode: "feature_level"', text)
         self.assertIn('batch_mode: "batched"', text)
         self.assertIn("match_batch_size: 16", text)

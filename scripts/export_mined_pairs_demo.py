@@ -37,7 +37,7 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-for extra in (REPO_ROOT, REPO_ROOT / "scripts"):
+for extra in (REPO_ROOT / "scripts",):
     if str(extra) not in sys.path:
         sys.path.insert(0, str(extra))
 from export_synthetic_demo import normalized_to_pixels  # noqa: E402
@@ -156,8 +156,8 @@ def export(bench: Path, view_root: Path, raw_root: Path, out_dir: Path, n: int, 
     backend = None
     settings: Dict[str, Any] = {"web_long_side": WEB_LONG_SIDE, "anchors": n, "seed": seed, "matches": compute_matches}
     if compute_matches:
-        from reid.methods.vismatch import VismatchMatcherBackend, _choose_vismatch_device
-        from reid.methods.vismatch_profiles import default_matcher_threshold
+        from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
+        from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
         settings.update({"loma_arch": "LoMa-B", "resize_max": 512, "top_k": 512, "threshold": default_matcher_threshold("loma"),
                          "checkpoint": "default (pretrained)"})
         backend = VismatchMatcherBackend("loma", _choose_vismatch_device(device), 512, settings["threshold"],
@@ -178,7 +178,7 @@ def export(bench: Path, view_root: Path, raw_root: Path, out_dir: Path, n: int, 
                                                                               quality=85, optimize=True, progressive=True)
             images[tag] = {"file": f"{tag}.jpg", "width": size[0], "height": size[1]}
             if backend is not None:
-                from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
+                from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
                 features[tag] = backend.extract_frame(to_rgb_float_tensor(Image.open(raw_root / masked).convert("RGB")))
         return {"tag": tag, "image": images[tag], "source": raw}
 

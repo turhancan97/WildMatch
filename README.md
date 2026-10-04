@@ -12,33 +12,40 @@ The repository supports two workflows:
 - `finetune`: train a backbone with ArcFace loss on a train split and evaluate retrieval on a validation split.
 - `probe`: benchmark retrieval methods (`cosine`, `wildfusion`, `local_lightglue`, `linear_probe`, `efficient_probe`, `vismatch`) with pretrained or finetuned backbones.
 
-The code is organized into reusable modules under `reid/` and thin CLI entrypoints under `train/`.
+The code is the installable `wildmatch` package under `src/wildmatch/`; `train/probe.py` and
+`train/finetune.py` are thin wrappers around its entry points. (The package refactor is in
+progress on this branch; see AGENTS.md, "Package refactor".)
 
 ## Repository Structure
 
 ```text
 .
-├── conf/                 Hydra configs: probe.yaml, finetune.yaml
-├── models/               backbone factory, ViT CLS adapter, training objectives
-├── reid/                 library code
+├── pyproject.toml, uv.lock      package metadata and the locked environment (uv)
+├── requirements/          pinned pip/conda requirements exported from uv.lock
+├── environment.yml        conda route (installs requirements/cu126.txt)
+├── src/wildmatch/         the package
+│   ├── conf/             Hydra configs: probe.yaml, finetune.yaml
+│   ├── entrypoints.py    Hydra entry points for evaluation (probe) and backbone fine-tuning
 │   ├── data/             dataset views, COCO-RLE masking, split safety checks
-│   ├── engine/           finetune and probe runners
-│   ├── evaluation/       metrics, stable ranking, candidate scoring
+│   ├── evaluate/         probe runner, metrics, stable ranking, candidate scoring
 │   ├── features/         feature containers
-│   ├── methods/          Vismatch (profiles, batching, checkpoints), WildFusion calibration
+│   ├── matchers/         Vismatch (profiles, batching, checkpoints), WildFusion calibration
+│   ├── models/           backbone factory, ViT CLS adapter, training objectives
 │   ├── reporting/        manifests, run index, paper tables and figures, W&B names
-│   ├── training/         checkpointing, accumulation, class weights
-│   └── utils/            I/O, fingerprints, cache identities, reproducibility
-├── train/                CLI entrypoints: finetune.py, probe.py
+│   ├── train/            backbone fine-tuning runner, checkpointing, accumulation, class weights
+│   ├── utils/            I/O, fingerprints, cache identities, reproducibility, config defaults
+│   └── mining/, matcher_finetune/   slots for pair mining and matcher fine-tuning (merged in later)
+├── train/                thin wrappers: finetune.py, probe.py
 ├── scripts/              analysis, export and plotting tools (see below)
-├── tests/                dependency-light unit tests
+├── paper/tools/          parity check for the refactor
+├── tests/                unit tests (pytest)
 ├── notebooks/            dataset annotation viewer (outputs stripped)
 ├── probe.sh, finetune.sh      single-job Slurm wrappers
 ├── probe-parallel-czechlynx.sh, probe-parallel-wildlife.sh   Slurm array launchers
 ├── mkdocs.yml, docs/, overrides/   project page (MkDocs Material)
 ├── video/explainer/      explainer video sources (Manim + Kokoro, wm-video env)
 ├── AGENTS.md             operating guide, decisions and open work
-├── notes/history.md      narrative history moved out of AGENTS.md
+├── notes/                narrative history and the refactor's parity reference
 └── CHANGELOG.MD          chronological record of changes
 ```
 
@@ -49,12 +56,38 @@ datasets). `results/`, `cache/` and `visualizations/` appear only when old workf
 
 ## Installation
 
-### Conda (recommended)
+Python 3.12. Pick exactly one torch build: `cu126` (CUDA 12.6) or `cpu`.
+
+### uv (recommended)
 
 ```bash
-conda env create -f environment.yml
-conda activate ex-reid
+uv sync --extra cu126 --extra matchers --group dev   # or --extra cpu
+uv run python train/probe.py --help
 ```
+
+`--extra matchers` adds Vismatch (RDD-LightGlue, LoMa and the other local matchers);
+`--extra wandb` adds Weights & Biases logging. `uv.lock` pins every package, including the
+git dependencies (wildlife-tools, wildlife-datasets, Vismatch, glue-factory, LightGlue).
+uv creates `.venv/` in the repository unless `UV_PROJECT_ENVIRONMENT` points elsewhere,
+for example to keep large environments off a small home directory:
+
+```bash
+export UV_PROJECT_ENVIRONMENT=/path/with/space/wildmatch
+```
+
+### Conda
+
+```bash
+conda env create -f environment.yml                  # Python 3.12 and pip
+conda activate wildmatch
+pip install --no-deps -r requirements/cu126.txt      # or requirements/cpu.txt
+pip install pytest                                   # only to run the tests
+```
+
+The requirement files pin every package; `requirements/export.sh` generates them from
+`uv.lock`, so both routes install the same versions. `--no-deps` is required: a normal pip
+resolve fails because glue-factory asks for an unpinned LightGlue git URL while the lock pins
+a commit. `pip check` then reports only `uniception`, which is excluded on purpose.
 
 ## Supported Models
 
@@ -212,7 +245,7 @@ The Kaggle Jaguar Re-ID training photos run through the shared probe pipeline as
 ## Configuration Guide
 
 Hydra is the primary configuration interface for probe and finetuning. The shipped
-defaults are in `conf/probe.yaml` and `conf/finetune.yaml`; Hydra resolves their
+defaults are in `src/wildmatch/conf/probe.yaml` and `src/wildmatch/conf/finetune.yaml`; Hydra resolves their
 interpolations before the runner starts. Nested overrides use `key=value` dotlist
 syntax and values are type-converted by OmegaConf.
 
@@ -225,7 +258,7 @@ artifact paths. Probe and finetune continue writing their normal run directories
 store a fully resolved `config.snapshot.yaml` in each run. Hydra multirun sweeps are
 not part of the supported experiment workflow.
 
-### `conf/finetune.yaml`
+### `src/wildmatch/conf/finetune.yaml`
 
 Key blocks:
 - `dataset`: root, metadata file, split values, `no_background`, `mask_col`, and `image_variant` (`background` or `no_background`)
@@ -239,7 +272,7 @@ Key blocks:
 - `safety_checks`: pre-run split validation (`enabled`)
 - `wandb`: optional experiment logging
 
-### `conf/probe.yaml`
+### `src/wildmatch/conf/probe.yaml`
 
 Key blocks:
 - `dataset`: root/splits + mask options and explicit `image_variant` (`background` or `no_background`)
@@ -772,16 +805,17 @@ explicit `wandb.name` when a custom name is preferred; it always takes priority.
 
 ## Testing
 
-Run unit tests:
+Run the tests (pytest; the tests are unittest-style classes):
 
 ```bash
-python -m unittest discover -s tests -p 'test_*.py'
+uv run pytest                       # or: python -m pytest, inside the conda env
+uv run pytest -m "not gpu and not data"
 ```
 
 ## Troubleshooting
 
-- `ModuleNotFoundError: reid`
-  - Run from repository root and use `python train/<script>.py`.
+- `ModuleNotFoundError: wildmatch`
+  - Install the package (`uv sync ...` or the conda route); the code no longer patches `sys.path`.
 - mask decoding errors with `no_background: true`
   - Verify metadata has valid `mask` field (JSON string or COCO-RLE dict).
 - CUDA mismatch or availability issues

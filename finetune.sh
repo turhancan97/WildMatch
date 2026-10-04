@@ -12,7 +12,8 @@
 
 nvidia-smi -L
 
-source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
-conda activate ex-reid
+# The wildmatch uv environment (README, "Installation"); override with WILDMATCH_ENV.
+WILDMATCH_ENV="${WILDMATCH_ENV:-${UV_ENV_ROOT:-/shared/results/common/kargin/projects/uv-environment}/wildmatch}"
+source "${WILDMATCH_ENV}/bin/activate"
 
 python train/finetune.py

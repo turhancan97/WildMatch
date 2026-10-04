@@ -11,7 +11,6 @@ except ImportError:  # pragma: no cover - Pillow is part of the shared environme
     Image = None
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
 
 from scripts import build_demo_cards as cards  # noqa: E402
 

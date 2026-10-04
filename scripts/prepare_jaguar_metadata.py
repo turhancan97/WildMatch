@@ -361,10 +361,7 @@ def compute_embeddings(root: Path, rows: Sequence[Mapping[str, str]], workers: i
     import torch
     import torchvision.transforms as T
 
-    repo_root = Path(__file__).resolve().parents[1]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
-    from models.model import get_model
+    from wildmatch.models.model import get_model
 
     model, _, mean, std, img_size, *_ = get_model("dinov2")
     model.eval()

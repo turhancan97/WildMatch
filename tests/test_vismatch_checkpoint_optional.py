@@ -20,7 +20,7 @@ class VismatchCheckpointEnvironmentTests(unittest.TestCase):
     def test_custom_rdd_lightglue_checkpoint_constructs(self):
         import torch
 
-        from reid.methods.vismatch import VismatchMatcherBackend
+        from wildmatch.matchers.vismatch import VismatchMatcherBackend
 
         backend = VismatchMatcherBackend(
             "rdd-lightglue",

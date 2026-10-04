@@ -3,7 +3,7 @@ from transformers import AutoModel
 import torch
 import torch.nn as nn
 
-from reid.config_defaults import validate_model_type
+from wildmatch.utils.config_defaults import validate_model_type
 
 
 class ViTCLSAdapter(nn.Module):

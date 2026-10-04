@@ -40,8 +40,6 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:  # allow running as a plain script
-    sys.path.insert(0, str(REPO_ROOT))
 DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
 DEFAULT_METADATA = "CzechLynxDataset-Metadata-Synthetic.csv"
 DEFAULT_RUN_DIR = (REPO_ROOT / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
@@ -203,8 +201,8 @@ def load_rows(root: Path, metadata: str, paths: Sequence[str]) -> Dict[str, Dict
 
 def _load_backend(run_dir: Path, checkpoint: Optional[Path], device: str):
     from omegaconf import OmegaConf
-    from reid.methods.vismatch import VismatchMatcherBackend, _choose_vismatch_device
-    from reid.methods.vismatch_profiles import default_matcher_threshold
+    from wildmatch.matchers.vismatch import VismatchMatcherBackend, _choose_vismatch_device
+    from wildmatch.matchers.vismatch_profiles import default_matcher_threshold
 
     snapshot = OmegaConf.load(run_dir / "config.snapshot.yaml")
     config = snapshot.benchmark.methods.vismatch
@@ -229,7 +227,7 @@ def _load_backend(run_dir: Path, checkpoint: Optional[Path], device: str):
 
 def export(root: Path, metadata: str, run_dir: Path, out_dir: Path, checkpoint: Optional[Path], device: str,
            individuals: Dict[str, Dict[str, str]] = INDIVIDUALS) -> Dict[str, Any]:
-    from reid.methods.vismatch_preprocessing import to_rgb_float_tensor
+    from wildmatch.matchers.vismatch_preprocessing import to_rgb_float_tensor
 
     paths = [p for sides in individuals.values() for p in sides.values()]
     if len(set(paths)) != len(paths):

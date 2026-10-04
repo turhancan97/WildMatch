@@ -36,8 +36,6 @@ import numpy as np
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 PROBE_ROOT = REPO_ROOT / "experiments/probe/CzechLynx_v2/CzechLynx/split-time_closed/megadescriptor-l"
 RUNS = {
@@ -56,7 +54,7 @@ ATTRIBUTION = "Photographs from CzechLynx (Picek et al.), time-closed split."
 
 def stable_top(scores: np.ndarray, n: int) -> np.ndarray:
     """Indices of the n highest scores, ties broken by lower index (the shared rule)."""
-    from reid.evaluation.ranking import stable_rank_1d
+    from wildmatch.evaluate.ranking import stable_rank_1d
     return stable_rank_1d(scores)[:n]
 
 
@@ -99,8 +97,8 @@ def cosine_rankings(cfg_path: Path, device: str):
     """Query/database datasets and the full stable cosine order per query, via the probe's code and cache."""
     import torch
     from omegaconf import OmegaConf
-    from reid.engine import probe_runner as pr
-    from reid.utils.fingerprints import file_digest_cache
+    from wildmatch.evaluate import probe_runner as pr
+    from wildmatch.utils.fingerprints import file_digest_cache
 
     cfg = OmegaConf.load(cfg_path)
     dataset, dataset_database, dataset_query = pr.load_dataset_splits(cfg)

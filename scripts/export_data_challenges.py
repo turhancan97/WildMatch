@@ -36,10 +36,8 @@ import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
-from reid.reporting.paper_datasets import PAPER_PROFILES, PaperProfile  # noqa: E402
+from wildmatch.reporting.paper_datasets import PAPER_PROFILES, PaperProfile  # noqa: E402
 
 AUDIT_DIR = REPO_ROOT / "experiments" / "image-quality"
 SHEET_DIR = REPO_ROOT / "reports" / "project_page" / "data_challenges"

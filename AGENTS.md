@@ -13,18 +13,29 @@ single-label animal-species classifier: identity labels represent individual ani
 
 ## Repository map
 
-- models/model.py: pretrained backbone factory and ViT CLS adapter.
-- models/objective.py: ArcFace, triplet, softmax, and efficient-probe objectives.
-- reid/engine/finetune_runner.py: ArcFace finetuning and validation retrieval.
-- reid/engine/probe_runner.py: cosine, WildFusion, local LightGlue, linear probe,
+The code is the installable `wildmatch` package (`pyproject.toml`, `src/` layout, environment
+locked in `uv.lock`); see "Package refactor" for the migration in progress.
+
+- src/wildmatch/entrypoints.py: Hydra entry points `probe` and `finetune` (configs resolved as
+  `pkg://wildmatch.conf`; job names pinned in the configs).
+- src/wildmatch/models/model.py: pretrained backbone factory and ViT CLS adapter.
+- src/wildmatch/models/objective.py: ArcFace, triplet, softmax, and efficient-probe objectives.
+- src/wildmatch/train/finetune_runner.py: ArcFace finetuning and validation retrieval.
+- src/wildmatch/evaluate/probe_runner.py: cosine, WildFusion, local LightGlue, linear probe,
   efficient probe, and Vismatch matcher benchmark dispatch.
-- reid/data/: dataset views, COCO-RLE masking, and split safety checks.
-- reid/evaluation/metrics.py: top-k, balanced top-1, and mAP calculations.
-- reid/training/: checkpoint serialization and accumulation helpers.
-- reid/reporting/: run identities, manifests, metrics, visualization indexes, and summaries.
-- conf/: Hydra configuration for probe and finetuning.
-- train/ and scripts/: command-line entrypoints.
-- tests/: dependency-light regression tests.
+- src/wildmatch/data/: dataset views, COCO-RLE masking, and split safety checks.
+- src/wildmatch/evaluate/metrics.py: top-k, balanced top-1, and mAP calculations.
+- src/wildmatch/train/: checkpoint serialization and accumulation helpers.
+- src/wildmatch/reporting/: run identities, manifests, metrics, visualization indexes, and summaries.
+- src/wildmatch/conf/: Hydra configuration for probe and finetuning (package data).
+- src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
+  later from `rdd-parallel-benchmark` and `lynx-finetuning`.
+- train/: thin wrappers (`python train/probe.py` = `wildmatch.entrypoints.probe`) kept for the
+  Slurm launchers; scripts/: analysis, export and plotting tools.
+- paper/tools/parity_check.py: compares refactored runs with the `paper-v1` reference runs.
+- pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
+  pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
+- tests/: dependency-light regression tests (pytest).
 - experiments/, reports/, logs/, benchmark_runs/, and wandb/: generated
   artifacts (ignored); do not edit them manually. results/, cache/, and visualizations/ are
   legacy locations that only old workflows create; none exists at the root today.
@@ -52,8 +63,10 @@ python scripts/summarize_runs.py --format markdown
 python scripts/export_paper_tables.py
 python scripts/export_class_balance.py
 python scripts/audit_image_quality.py --dataset leopard --limit 400  # dev subset
-python -m unittest discover -s tests -p 'test_*.py'
-python -m py_compile models/*.py reid/**/*.py train/*.py scripts/*.py
+python -m pytest                    # tests (unittest-style classes, run by pytest)
+python -m py_compile src/wildmatch/*.py src/wildmatch/*/*.py train/*.py scripts/*.py
+uv lock && requirements/export.sh   # after a dependency change: re-lock and re-export the pins
+python paper/tools/parity_check.py --reference-root <paper-v1>/experiments/probe --candidate-root experiments/probe
 mkdocs build --strict   # project page; needs requirements-docs.txt installed
 ~~~
 
@@ -62,7 +75,7 @@ Do not run full GPU training or Vismatch benchmarks as a default validation step
 ## Hydra configuration
 
 `train/probe.py` and `train/finetune.py` use Hydra 1.3 as their primary single-run
-configuration interface. Defaults live in `conf/probe.yaml` and `conf/finetune.yaml`;
+configuration interface. Defaults live in `src/wildmatch/conf/probe.yaml` and `src/wildmatch/conf/finetune.yaml`;
 use nested dotlist overrides such as `benchmark.method=vismatch` or
 `train.epochs=10`. Hydra/OmegaConf performs type conversion and rejects unknown or
 misspelled configuration paths. The legacy argparse flags and `--config` option are
@@ -257,7 +270,7 @@ family (added 2026-09-30). They load with `checkpoint_components=full` (variant
 `full-fine-tuned`, shown as "joint fine-tuned"), are excluded from the main and
 ablation tables and from the matcher "fine-tuned" plot series, and get their own
 `<animal>_<split>_joint_{rdd,loma}_*` tables and `joint_{rdd,loma}_*` figures
-(`SEPARATE_FAMILIES` in `reid/reporting/paper_tables.py`, `JOINT_PLOT_SERIES` in
+(`SEPARATE_FAMILIES` in `src/wildmatch/reporting/paper_tables.py`, `JOINT_PLOT_SERIES` in
 `plot_figures.py`). They come from the lynx-finetuning `joint` presets: RDD descriptor
 + LightGlue (`--trained_model lg+rdd --rdd_train_component descriptor`, detector frozen)
 saved as an accelerate epoch directory with `model.safetensors` (RDD) and
@@ -288,7 +301,7 @@ directory: one CSV per dataset/split (`nyala`, `beluga`, `hyena`, `leopard`,
 benchmark-only `jaguar`) with exact
 database/query image counts per identity, a `summary.csv` (counts, Gini, singleton
 fraction, top-decile query share), and a `manifest.json` with source metadata
-SHA-256 hashes. Its profiles come from `reid/reporting/paper_datasets.py`
+SHA-256 hashes. Its profiles come from `src/wildmatch/reporting/paper_datasets.py`
 (`ALL_PROFILES` = `PAPER_PROFILES` + `BENCHMARK_ONLY_PROFILES`), which mirrors the
 launcher metadata files, identity columns, split values, roots, and mask handling; keep it
 in sync when a split changes. `PAPER_PROFILES` is exactly the paper's datasets and is what
@@ -399,19 +412,30 @@ for inference.
 
 ## Development Environment
 
-Use the shared conda environment for repository work:
+On this branch the package environment is the uv environment (Python 3.12, created
+2026-10-04 with the user's approval), kept on the shared disk because the home directory is
+small (`UV_ENV_ROOT` is exported in the user's shell):
 
-    /shared/results/common/kargin/tck_miniconda3/envs/ex-reid
+    export UV_PROJECT_ENVIRONMENT=$UV_ENV_ROOT/wildmatch   # /shared/results/common/kargin/projects/uv-environment/wildmatch
+    uv sync --extra cu126 --extra matchers --group dev
+    source $UV_PROJECT_ENVIRONMENT/bin/activate
 
-Typical activation:
-
-    source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
-    conda activate ex-reid
-
-Do not create or switch to another environment unless the user explicitly requests
-it or the shared environment is unavailable.
+The Slurm scripts activate it themselves (`WILDMATCH_ENV` overrides the location). The conda
+route (`environment.yml` creates Python 3.12 + pip as env `wildmatch` in the shared miniconda,
+then `pip install --no-deps -r requirements/cu126.txt`) installs the same pins; verified
+2026-10-04: identical package versions to the uv environment (apart from dev tools) and the
+same 352 passing tests. `--no-deps` is required because pip, unlike uv's override, cannot
+reconcile glue-factory's unpinned LightGlue URL with the pinned commit. `ex-reid` (Python 3.11) stays the environment of `main` and
+`paper-v1` and must not be modified. The environment pins the parity-relevant packages to the
+exact `ex-reid` versions (`[tool.uv] constraint-dependencies`); loosen them only deliberately.
+Two packaging traps: both OpenCV wheels write the same `cv2` folder, so both are pinned to
+4.11.0.86 (the version active in `ex-reid`); vismatch's `uniception` dependency installs a
+top-level `scripts` package that shadows this repository's `scripts/`, so it is excluded with
+an override (no matcher used here needs it; `ex-reid` never had it). gluefactory and LightGlue
+are not on PyPI and come from the git commits `ex-reid` used.
+Do not create or switch to another environment unless the user explicitly requests it.
 The only other repository environment is `wm-video` (explainer video tooling, see
-`video/explainer/ENVIRONMENT.md`); never install video dependencies into `ex-reid`.
+`video/explainer/ENVIRONMENT.md`); never install video dependencies into the package environment.
 
 ## Configuration and data contracts
 
@@ -552,12 +576,15 @@ file to inference code expecting a model-only state dict.
 ## External environment
 
 The code depends on PyTorch/torchvision, timm, Hugging Face Transformers,
-wildlife-datasets, wildlife-tools, pycocotools, OpenCV, and other packages listed
-in requirements.txt. Backbone weights may require network access on first use.
+wildlife-datasets, wildlife-tools, pycocotools, OpenCV, and the other packages declared in
+`pyproject.toml` and locked in `uv.lock`. Backbone weights may require network access on first use.
 Hydra is pinned to `hydra-core==1.3.2`; Vismatch is pinned to commit 4a743b75749a3770af59d275483ed341dea51ff0 and downloads matcher weights on first use.
 wildlife-tools and wildlife-datasets are pinned (2026-10-03) to the git commits installed in
 ex-reid, `e762a6c4` and `fc702c3c` (the latter from the `develop` branch); before that
-requirements.txt listed each twice, from PyPI and from an unpinned git URL. The shared ex-reid environment must have an importable, non-broken Vismatch installation; it must not depend on a missing editable checkout.
+requirements.txt listed each twice, from PyPI and from an unpinned git URL. The package
+environment must have an importable, non-broken Vismatch installation from the pinned commit
+(`[tool.uv.sources]`); vismatch vendors its own LoMa, so the local `lomatch` editable install
+that `ex-reid` carries is not needed.
 Default paths are specific to the original shared compute environment.
 
 ## Package refactor (in progress since 2026-10-04)
@@ -566,13 +593,24 @@ The repository is being turned into the installable `wildmatch` package (uv + `p
 `src/` layout, one `wildmatch` CLI, a dataset registry, portable paths with a `paths=gmum`
 cluster profile, CPU and CUDA extras, a conda route kept) on branch
 `refactor/wildmatch-package`, phase by phase, each phase reviewed by the user. The approved
-plan (32 user decisions) is in the session plan; mining and matcher fine-tuning from the
+plan (32 user decisions) is copied to `notes/refactor_plan.md`; mining and matcher fine-tuning from the
 sibling repositories will be merged in later and get empty `mining/` and `matcher_finetune/`
 slots now. `main` keeps the paper code: tag `paper-v1` (commit `4bad498`) marks the state
 behind the paper's numbers. Every phase that touches execution must reproduce the reference
 runs listed in `notes/parity_reference.md` (cosine, WildFusion and RDD-LightGlue scores within
-1e-4 with identical Top-1, LoMa within 1e-2, the probe within seed noise). Until the branch is
-merged, all other rules in this guide describe `main`.
+1e-4 with identical Top-1, LoMa within 1e-2, the probe within seed noise). On this branch the
+guide describes the branch; `main` keeps its own copy for the paper code.
+The refactor runs in a separate git worktree (`/shared/results/common/kargin/projects/wildmatch-refactor`),
+so Slurm jobs submitted from the main checkout keep running the paper code.
+
+**Phase 1 (environment and packaging), 2026-10-04.** `reid/` and `models/` moved with
+`git mv` into `src/wildmatch/` (`engine/probe_runner` -> `evaluate/`, `engine/finetune_runner` and
+`training/` -> `train/`, `evaluation/` -> `evaluate/`, `methods/` -> `matchers/`,
+`config_defaults` -> `utils/`) and `conf/` into `src/wildmatch/conf/`; imports rewritten;
+the repo-root `sys.path` inserts removed (the remaining ones serve script-to-script imports in
+the paper tooling until Phase 3, the video tooling and the optional lynx parity test). No cache
+or stored artifact depends on module paths (caches hold plain arrays and state dicts), so the
+rename does not invalidate them. Parity of the reference set is pending (run from the worktree).
 
 ## Known issues (open)
 
@@ -603,11 +641,11 @@ reproduction, and the measured impact so it can be picked up without re-investig
 
 - **`_predict_class_probabilities` runs under grad during probe training.**
   The training-loop calls in `run_linear_probe` and `run_efficient_probe`
-  (`reid/engine/probe_runner.py:1235` and `:1502` on 2026-10-03) build a graph for the
+  (`src/wildmatch/evaluate/probe_runner.py:1235` and `:1502` on 2026-10-03) build a graph for the
   softmax and then detach it. Wasteful, not incorrect.
 
 - **`_to_hwc_uint8` would destroy float images.**
-  `reid/data/dataset_view.py:86` clips non-uint8 input to `{0, 1}` before masking. Not
+  `src/wildmatch/data/dataset_view.py:86` clips non-uint8 input to `{0, 1}` before masking. Not
   triggered today because the base dataset yields PIL images, but it would silently blacken
   inputs if a transform were ever applied before the view.
 
@@ -918,7 +956,7 @@ applied at load time.
   stale digest and silently break content-addressed cache identities. Entries are keyed on
   device/inode/size/mtime so the safety-check, dataset-digest, and Vismatch cache-key paths
   share them despite constructing paths differently.
-- Split safety checks are intentionally disabled in the shipped `conf/probe.yaml`
+- Split safety checks are intentionally disabled in the shipped `src/wildmatch/conf/probe.yaml`
   (`safety_checks.enabled: false`), a user decision confirmed on 2026-09-23. Parallel
   launchers inherit it through the copied config, so their runs skip path-overlap and
   SHA-256 duplicate-content checks; `test_hydra_config` pins the `false` default. Do not
@@ -974,7 +1012,7 @@ runs did not persist `scores.npz`.
 
 ## Immutable parallel probe submissions
 
-The selected dataset launcher creates a submission directory under `logs/parallel_run/submissions/<submission_id>/` containing the copied Hydra config (`probe.yaml`), task table (`tasks.tsv`), and JSON manifest (`manifest.json`). The manifest is passed to Slurm with `--export=ALL,PROBE_PARALLEL_MANIFEST=...`; array tasks must read it rather than rereading `conf/probe.yaml`, shell checkpoint variables, or mutable dataset settings.
+The selected dataset launcher creates a submission directory under `logs/parallel_run/submissions/<submission_id>/` containing the copied Hydra config (`probe.yaml`), task table (`tasks.tsv`), and JSON manifest (`manifest.json`). The manifest is passed to Slurm with `--export=ALL,PROBE_PARALLEL_MANIFEST=...`; array tasks must read it rather than rereading `src/wildmatch/conf/probe.yaml`, shell checkpoint variables, or mutable dataset settings.
 
 Dataset profiles explicitly pair dataset/animal settings with expected custom-checkpoint owners. Submission-time SHA-256 hashes and owner declarations are validated before model loading or cache writing. A missing, changed, or mismatched checkpoint/config fails closed and cancels only the current array element. The active benchmark grid and `probe.sh` contract remain unchanged. Use the selected launcher with `--list-tasks` or `--dry-run` for inspection, and never alter submitted manifests, copied configs, or checkpoint inputs.
 Exactly one `DATASET_PROFILES` entry must be active. The wildlife launcher includes
@@ -1083,7 +1121,7 @@ profile expects). The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not
 dataset. The image-quality audit (2026-10-03, RLE mask foreground) flagged 80 of 1,895
 photos by heuristics; none has been checked by eye.
 **Kaggle submission workflow deleted (user decision 2026-10-04).** The former standalone
-pipeline (`reid/engine/kaggle_jaguar_runner.py`, `scripts/kaggle_jaguar_submit.py`,
+pipeline (`src/wildmatch/evaluate/kaggle_jaguar_runner.py`, `scripts/kaggle_jaguar_submit.py`,
 `config/kaggle_jaguar.yaml`, `kaggle_jaguar_submit.sh`: its own random split, ArcFace
 fine-tuning, cosine/WildFusion retrieval with Vismatch score fusion, identity-balanced
 all-vs-all mAP and Kaggle CSV export) was removed together with its outputs

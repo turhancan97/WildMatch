@@ -43,8 +43,9 @@ CACHE_DIR="${LOMA_EPOCH_CURVE_CACHE:-/shared/results/common/kargin/lynx/results/
 [[ -f "${CONFIG_DIR}/probe.yaml" ]] || { echo "missing config copy ${CONFIG_DIR}/probe.yaml" >&2; exit 1; }
 [[ -f "${CHECKPOINT}" ]] || { echo "missing checkpoint ${CHECKPOINT}" >&2; exit 1; }
 
-source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
-conda activate ex-reid
+# The wildmatch uv environment (README, "Installation"); override with WILDMATCH_ENV.
+WILDMATCH_ENV="${WILDMATCH_ENV:-${UV_ENV_ROOT:-/shared/results/common/kargin/projects/uv-environment}/wildmatch}"
+source "${WILDMATCH_ENV}/bin/activate"
 nvidia-smi -L
 echo "[loma-epoch-curve] epoch ${EPOCH} checkpoint ${CHECKPOINT} sha256 $(sha256sum "${CHECKPOINT}" | cut -d' ' -f1)"
 

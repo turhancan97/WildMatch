@@ -48,7 +48,7 @@ conda activate ex-reid
 nvidia-smi -L
 echo "[loma-epoch-curve] epoch ${EPOCH} checkpoint ${CHECKPOINT} sha256 $(sha256sum "${CHECKPOINT}" | cut -d' ' -f1)"
 
-python train/probe.py --config-dir "${CONFIG_DIR}" --config-name probe \
+python train/probe.py --config-path "${CONFIG_DIR}" --config-name probe \
     dataset.name=CzechLynx_v2 dataset.animal=CzechLynx \
     dataset.root=/shared/sets/datasets/vision/czechlynx/CzechLynx_v2 \
     dataset.metadata_file=CzechLynxDataset-Metadata-Real.csv dataset.label_col=unique_name \

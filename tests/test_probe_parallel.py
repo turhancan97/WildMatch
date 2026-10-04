@@ -213,6 +213,12 @@ class ParallelProbeLauncherTests(unittest.TestCase):
         ):
             self.assertIn(override, dry.stdout)
 
+    def test_launchers_pass_the_frozen_config_with_config_path(self):
+        for launcher in (SCRIPT, CZECH_SCRIPT, ROOT / "scripts" / "eval_loma_epoch_curve.sh"):
+            text = launcher.read_text(encoding="utf-8")
+            self.assertIn("--config-path", text, launcher.name)
+            self.assertNotRegex(text, r"python train/probe\.py --config-dir|PROBE_ARGS=\(--config-dir", launcher.name)
+
     def test_czechlynx_joint_rows_use_full_components(self):
         text = CZECH_SCRIPT.read_text(encoding="utf-8")
         for matcher, variable in (("loma", "CZECHLYNX_CLOSED_JOINT_LOMA_CHECKPOINT"),

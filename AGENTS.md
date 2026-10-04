@@ -623,6 +623,17 @@ reproduction, and the measured impact so it can be picked up without re-investig
   path exists but holds the file that overwrote the paper checkpoint on 2026-09-09 (see
   "Paper figures from confirmed examples").
 
+- **Vismatch features depend on the GPU type and the cache key does not record it (found
+  2026-10-04 during the package-refactor parity checks).** On SalamanderID2025 at k=50, features
+  extracted on an H100 (`dgxh100`, cache written by run `20260930T063532Z_9ecdc517`) and on an RTX
+  4090 give pair scores that differ by up to 0.032 (default LoMa), 0.50 (fine-tuned LoMa), 0.0075
+  and 0.015 (default and fine-tuned RDD-LightGlue) and change the Top-1 photo of up to 96 of 246
+  queries, yet Top-1, Top-5 and balanced Top-1 are identical and mAP@k moves by at most 0.03 points.
+  Extraction is deterministic on one GPU type. The cache key omits the device, so a cache can mix
+  GPU types, and run manifests do not record the GPU model; the paper's numbers depend on which GPU
+  first filled each cache. Planned fix before the public release (refactor branch): add the device
+  to the Vismatch cache key and the run manifest (this invalidates existing caches).
+
 ## Future-work checklist
 
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
@@ -975,6 +986,13 @@ runs did not persist `scores.npz`.
 ## Immutable parallel probe submissions
 
 The selected dataset launcher creates a submission directory under `logs/parallel_run/submissions/<submission_id>/` containing the copied Hydra config (`probe.yaml`), task table (`tasks.tsv`), and JSON manifest (`manifest.json`). The manifest is passed to Slurm with `--export=ALL,PROBE_PARALLEL_MANIFEST=...`; array tasks must read it rather than rereading `conf/probe.yaml`, shell checkpoint variables, or mutable dataset settings.
+**Config-snapshot bug (found and fixed 2026-10-04).** Until then the launchers passed the frozen
+`probe.yaml` with Hydra's `--config-dir`, which only adds a search path: `conf/probe.yaml` stayed the
+primary config, so every array task read the live repository file at run time and the snapshot
+was ignored. Results stay truthful, since each run's `config.snapshot.yaml` records the
+configuration it really used; only the isolation from later edits did not hold. The launchers and
+`scripts/eval_loma_epoch_curve.sh` now pass `--config-path`;
+`test_frozen_config_snapshot_wins_with_config_path` pins both behaviours.
 
 Dataset profiles explicitly pair dataset/animal settings with expected custom-checkpoint owners. Submission-time SHA-256 hashes and owner declarations are validated before model loading or cache writing. A missing, changed, or mismatched checkpoint/config fails closed and cancels only the current array element. The active benchmark grid and `probe.sh` contract remain unchanged. Use the selected launcher with `--list-tasks` or `--dry-run` for inspection, and never alter submitted manifests, copied configs, or checkpoint inputs.
 Exactly one `DATASET_PROFILES` entry must be active. The wildlife launcher includes

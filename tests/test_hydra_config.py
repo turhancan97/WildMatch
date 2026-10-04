@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -53,6 +55,24 @@ class HydraConfigurationTests(unittest.TestCase):
         self.assertEqual(finetune.model.type, "megadescriptor-l")
         self.assertEqual(finetune.dataset.image_variant, "background")
         self.assertEqual(finetune.train.epochs, 30)
+
+    def test_frozen_config_snapshot_wins_with_config_path(self):
+        # The launchers pass the submission's frozen probe.yaml with --config-path. With
+        # --config-dir Hydra keeps conf/probe.yaml as primary and ignores the snapshot.
+        with TemporaryDirectory() as tmp:
+            snapshot = (CONF_DIR / "probe.yaml").read_text(encoding="utf-8").replace(
+                "cache/features", "cache/FROM_SNAPSHOT"
+            )
+            Path(tmp, "probe.yaml").write_text(snapshot, encoding="utf-8")
+            outputs = {}
+            for flag in ("--config-path", "--config-dir"):
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / "train" / "probe.py"), flag, tmp, "--config-name", "probe", "--cfg", "job"],
+                    cwd=tmp, capture_output=True, text=True, check=True,
+                )
+                outputs[flag] = result.stdout
+        self.assertIn("cache/FROM_SNAPSHOT", outputs["--config-path"])
+        self.assertNotIn("cache/FROM_SNAPSHOT", outputs["--config-dir"])  # documents the trap
 
     def test_hydra_job_log_stays_out_of_repository_root(self):
         for name in ("probe", "finetune"):

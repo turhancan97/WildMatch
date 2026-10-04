@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-04: launchers pass the frozen submission config with `--config-path` (both parallel
+  launchers and `scripts/eval_loma_epoch_curve.sh`). With `--config-dir`, Hydra had kept
+  `conf/probe.yaml` as the primary config, so array tasks read the live file instead of the
+  snapshot; each run's own `config.snapshot.yaml` remains accurate. Tests pin the behaviour.
+  Recorded as a known issue: Vismatch features depend on the GPU type (H100 vs RTX 4090), and
+  neither the cache key nor the run manifest records it. Both found during the package-refactor
+  parity checks (branch `refactor/wildmatch-package`).
 - 2026-10-04: package refactor started (approved plan: `wildmatch` package with uv,
   `pyproject.toml`, `src/` layout, single CLI, dataset registry, portable paths, CPU/CUDA
   extras, Apache-2.0). Phase 0 on `main`: tag `paper-v1` on `4bad498` (the paper code, pushed);

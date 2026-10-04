@@ -237,7 +237,9 @@ IFS='|' read -r _ _ _ _ _ _ _ _ _ _ _ _ _ METHOD MATCHER CHECKPOINT_LABEL CHECKP
 CURRENT_TASK="${PROFILE_ID}|${DATASET_NAME}|${ANIMAL}|${DATASET_ROOT}|${METADATA_FILE}|${LABEL_COL}|${MASK_COL}|${NO_BACKGROUND}|${IMAGE_VARIANT}|${SPLIT_COL}|${DATABASE_SPLIT_VALUE}|${QUERY_SPLIT_VALUE}|${CALIBRATION_SIZE}|${METHOD}|${MATCHER}|${CHECKPOINT_LABEL}|${CHECKPOINT_PATH}|${CHECKPOINT_OWNER}|${CHECKPOINT_COMPONENTS}|${LOMA_ARCH}|${TRAIN_MODE}|${CLASS_WEIGHTING}|${CANDIDATE_K}|${EVALUATION_ANIMAL:-${ANIMAL}}"
 CHECKPOINT_SOURCE="${CHECKPOINT_SOURCE:-default}"
 
-PROBE_ARGS=(--config-dir "$(dirname -- "${CONFIG_SNAPSHOT_PATH}")" --config-name probe
+# --config-path, not --config-dir: with --config-dir Hydra keeps conf/probe.yaml as the primary
+# config and the frozen snapshot is silently ignored (found 2026-10-04).
+PROBE_ARGS=(--config-path "$(dirname -- "${CONFIG_SNAPSHOT_PATH}")" --config-name probe
     "dataset.name=${DATASET_NAME}" "dataset.animal=${ANIMAL}" "dataset.root=${DATASET_ROOT}" "dataset.metadata_file=${METADATA_FILE}"
     "dataset.label_col=${LABEL_COL}" "dataset.mask_col=${MASK_COL}" "dataset.no_background=${NO_BACKGROUND}" "dataset.image_variant=${IMAGE_VARIANT}"
     "dataset.split_col=${SPLIT_COL}" "dataset.database_split_value=${DATABASE_SPLIT_VALUE}" "dataset.query_split_value=${QUERY_SPLIT_VALUE}" "dataset.calibration_size=${CALIBRATION_SIZE}"

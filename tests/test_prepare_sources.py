@@ -133,6 +133,9 @@ class PrepareStepTests(unittest.TestCase):
         self.assertIn("mask", metadata.columns)
         with self.assertRaises(SystemExit):
             self.run_with_entry(P.finish, "hyena", None, None, False)
+        # With paper_inputs, the comparison reads the paper's table, not the new metadata_file.
+        self.entry.registry.paper_inputs = {"metadata_file": self.entry.metadata_file}
+        self.entry.metadata_file = "metadata_sam3/missing.csv"
         scores = self.run_with_entry(P.compare_masks, "hyena", None, self.root / "wildmatch_prepare" / "masks_HyenaID2022.csv")
         self.assertEqual(len(scores), len(table))
         self.assertTrue((scores.iou == 1.0).all())

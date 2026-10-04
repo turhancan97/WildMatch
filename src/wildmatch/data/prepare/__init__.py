@@ -175,7 +175,11 @@ def compare_masks(key: str, profile: Optional[str], masks_csv: Path, threshold: 
 
     entry = load_dataset(key, profile)
     root = Path(str(entry.root))
-    old = pd.read_csv(_metadata_path(entry))
+    # Compare with the masked files the paper's runs read (registry.paper_inputs), not with the
+    # entry's current metadata, which for WildlifeReID-10k is the SAM 3 table being built.
+    paper = entry.registry.get("paper_inputs")
+    old_table = root / str(paper.metadata_file) if paper is not None else _metadata_path(entry)
+    old = pd.read_csv(old_table)
     prefix = "masked_images/"
     old_by_source = {str(p)[len(prefix):] if str(p).startswith(prefix) else str(p): str(p) for p in old["path"]}
     rows = []

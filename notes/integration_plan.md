@@ -210,7 +210,7 @@ or the paper snapshot. The paper is frozen; nothing here changes it.
 **Phase order (revised).** 0: ~~D2 commit~~ (done, `6958d3d`); Piotr's consent for the few-shot files.
 1: fine-tuning via filter-repo + merge. 2: make it a package module (vendored RDD, pinned LoMa,
 paths, CLI). 3: mining, same route. 4: environment spike (D3). 5: parity L0-L6 and provenance.
-6: few-shot port (Piotr agreed 2026-10-05; done on `integrate/fewshot`).
+6: few-shot port (Piotr agreed 2026-10-05; done on `integrate/fewshot`). Its documentation on the project page is deferred (user, 2026-10-05: not part of the paper; open item in AGENTS.md's publication checklist).
 
 **Progress (branch `integrate/matcher-finetune`, 2026-10-05).** Phase 1 done (filter-repo merge, imports).
 Phase 2 in part: RDD vendored (`src/wildmatch/vendor/rdd/`), `train` extra, branch env

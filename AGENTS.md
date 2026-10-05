@@ -1178,6 +1178,19 @@ backgrounds, not dark-mode art, so both schemes use the two-colour wordmark. Int
 "ours" and the validated gold `#b8860b` as a third hue, always with a second cue (marker
 or line style), because the paper notes found no safe fourth hue.
 
+**Reproduce pages (2026-10-05).** `docs/reproduce/{index,mining,finetuning,probing}.md` describe the
+merged package: one environment (`--extra train` for mining and fine-tuning), `wildmatch mine`,
+`wildmatch finetune-matcher`, locations through the path profile, datasets by registry key. Every
+command shown was dry-run (`wildmatch mine plan`, `finetune-matcher ... dry_run=true`) before it
+was written. `docs/paper.md` names only this repository (user decision: the two former sibling
+repositories are not mentioned or linked anywhere on the page). The pair source of each published
+checkpoint, as recorded in its metadata and protocol files, is the table in `mining.md`: RDD-mined
+for Nyala and Whale shark (both matchers), Salamander RDD and CzechLynx closed RDD, LoMa-mined
+otherwise (the page had said LoMa-mined everywhere except Salamander RDD). Nyala LoMa's recorded
+index is the shared `indices/` file that later moved into `indices/rdd/` (same day, earlier mtime),
+the pattern already documented for Whale shark. The reproducibility paragraph on `finetuning.md`
+states no numbers (user decision); the measurements are in `notes/integration_parity/`.
+
 **Page components.** Each data-driven part of the page has one exporter, a committed
 output, one JavaScript module under `docs/assets/js/` (mounted by `page.js` wherever its
 `#wm-*` element exists) and one test. The exporters live in `paper/page/` (since 2026-10-04;
@@ -1252,6 +1265,9 @@ Binding rules from that history:
   line with the page URL and switch the video from unlisted to public.
 - [x] Page sources on `main` (done 2026-10-03: the user fast-forwarded `project-page` into
   `main` and made the repository private).
+- [ ] Few-shot views (`wildmatch mine --fraction`, `finetune-matcher matcher_finetune.fewshot.*`,
+  `slurm/mining/fewshot/`): left off the reproduce pages on purpose (not part of the paper; user
+  decision 2026-10-05); come back to them and document or drop them.
 - [ ] After the notification date only: make the repository public (or deploy from it),
   run `mkdocs gh-deploy` (user), and verify the social card and favicon on the live URL.
 

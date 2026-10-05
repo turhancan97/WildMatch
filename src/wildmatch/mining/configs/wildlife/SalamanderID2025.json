@@ -1,0 +1,13 @@
+{
+  "dataset_id": "SalamanderID2025",
+  "metadata_csv": "split_time_closed_no_background.csv",
+  "source_root": "/shared/sets/datasets/vision/czechlynx/SalamanderID2025",
+  "image_prefix": "masked_images",
+  "identity_column": "identity",
+  "split_column": "split_train_test",
+  "collection_rule": "identity",
+  "validation_fraction": 0.2,
+  "seed": 0,
+  "excluded_identities": ["", "unknown"],
+  "allowed_splits": ["train", "test"]
+}

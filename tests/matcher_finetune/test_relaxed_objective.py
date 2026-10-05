@@ -48,7 +48,14 @@ from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import (
     valid_pair_mask,
 )
 
-LG_WEIGHTS = Path("rdd/weights/RDD_lg-v2.pth")
+def _lg_weights() -> Path:
+    from wildmatch.paths import path
+
+    folder = path("external.rdd_weights_dir")
+    return Path("/nonexistent") if folder is None else folder / "RDD_lg-v2.pth"
+
+
+LG_WEIGHTS = _lg_weights()
 needs_weights = pytest.mark.skipif(not LG_WEIGHTS.is_file(), reason="pretrained LightGlue weights not available")
 
 

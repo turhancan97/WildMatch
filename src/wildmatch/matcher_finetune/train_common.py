@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 
 from torch.utils.data import Subset
 
-from rdd.RDD.utils import to_pixel_coords
+from wildmatch.vendor.rdd.RDD.utils import to_pixel_coords
 from wildmatch.matcher_finetune.keypoint_cache import is_cached_batch, unpad_cached_features
 from wildmatch.matcher_finetune.loading import (
     PseudoAccuracyDataset,
@@ -33,8 +33,8 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--train_index",   type=Path, required=True, help="JSON triplet index for training")
     p.add_argument("--val_index",     type=Path, required=True, help="JSON triplet index for validation")
     p.add_argument("--data_root",     type=Path, default=None,  help="Root prepended to relative paths in the index")
-    p.add_argument("--rdd_weights",   type=str,  default="rdd/weights/RDD-v2.pth")
-    p.add_argument("--lg_weights",    type=str,  default="rdd/weights/RDD_lg-v2.pth")
+    p.add_argument("--rdd_weights",   type=str,  default=None)
+    p.add_argument("--lg_weights",    type=str,  default=None)
     p.add_argument("--output_dir",    type=Path, default=Path("checkpoints"))
     p.add_argument("--project",       type=str,  default=None,  help="wandb project name")
     p.add_argument("--run_name",      type=str,  default=None)

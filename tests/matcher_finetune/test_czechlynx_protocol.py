@@ -5,8 +5,9 @@ import subprocess
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
-HELPER = ROOT / "slurm_scripts" / "czechlynx_protocol.sh"
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = ROOT / "slurm" / "matcher_finetune"
+HELPER = SCRIPTS / "czechlynx_protocol.sh"
 
 
 def resolve(protocol: str | None, split_column: str | None = None, backend: str | None = None) -> dict[str, str]:
@@ -108,7 +109,7 @@ def test_invalid_protocol_fails():
 
 def test_both_czechlynx_trainers_use_the_shared_resolver():
     for name in ("train_czechlynx_rdd.sh", "train_czechlynx_loma.sh"):
-        script = (ROOT / "slurm_scripts" / name).read_text()
+        script = (SCRIPTS / name).read_text()
         assert "czechlynx_protocol.sh" in script
         assert "czechlynx_resolve_protocol" in script
         assert "CZECHLYNX_RESOLVED_TRAIN_INDEX" in script

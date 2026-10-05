@@ -71,13 +71,14 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 from wildmatch.matcher_finetune.loading import IndexAssignedTripletDataset, get_loader
-from wildmatch.matcher_finetune.models import build_masked_lg
+from wildmatch.matcher_finetune.models import LG_WEIGHTS, RDD_WEIGHTS, build_masked_lg, resolve_rdd_weights
 from wildmatch.matcher_finetune.train_by_lg_matches import lg_confidence_loss
 from wildmatch.matcher_finetune.train_common import (
     _lg_scores, batch_features, extract_train, resize_long_side, seed_all,
 )
-from rdd.RDD.RDD import build as build_rdd_from_conf
-from rdd.RDD.utils import read_config
+from wildmatch.vendor.rdd import CONFIG_PATH as RDD_CONFIG_PATH
+from wildmatch.vendor.rdd.RDD.RDD import build as build_rdd_from_conf
+from wildmatch.vendor.rdd.RDD.utils import read_config
 from wildmatch.matcher_finetune.rdd_patch.lightglue_masked import LightGlueMasked
 
 # A data-driven CLI script (see Usage above), not a pytest module: its test_*
@@ -160,8 +161,8 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--index", type=Path, default=Path("index-rgb-8382/top_k=5_top_m=10_train_combined.json"))
     p.add_argument("--data_root", type=Path, required=True)
-    p.add_argument("--rdd_weights", type=str, default="rdd/weights/RDD-v2.pth")
-    p.add_argument("--lg_weights", type=str, default="rdd/weights/RDD_lg-v2.pth")
+    p.add_argument("--rdd_weights", type=str, default=None)
+    p.add_argument("--lg_weights", type=str, default=None)
     p.add_argument("--batches", type=int, default=100, help="How many dataloader batches to compare")
     p.add_argument("--batch_size", type=int, default=8)
     p.add_argument("--resize", type=int, default=512, help="Must match how the index was built")
@@ -183,17 +184,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--atol", type=float, default=1e-5, help="Absolute tolerance for confidences and loss")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-    return p.parse_args()
+    args = p.parse_args()
+    args.rdd_weights = resolve_rdd_weights(args.rdd_weights, RDD_WEIGHTS)
+    args.lg_weights = resolve_rdd_weights(args.lg_weights, LG_WEIGHTS)
+    return args
 
 
 def build_rdd_on(weights: str, device: torch.device, top_k: int):
     """models.build_rdd, but honouring `device`.
 
-    rdd/configs/default.yaml hardcodes `device: cuda` and RDD.build moves the
+    The vendored RDD configs/default.yaml hardcodes `device: cuda` and RDD.build moves the
     model there before build_rdd gets a chance to override it, so the stock
     helper cannot be run on a CPU-only box. Same model either way.
     """
-    conf = {**read_config("rdd/configs/default.yaml"), "device": str(device)}
+    conf = {**read_config(str(RDD_CONFIG_PATH)), "device": str(device)}
     model = build_rdd_from_conf(conf, weights=str(weights))
     model.top_k = top_k
     model.set_softdetect(top_k=top_k)

@@ -27,7 +27,7 @@ from wildmatch.matcher_finetune.loading import (
     ShapeBucketBatchSampler,
     get_loader,
 )
-from wildmatch.matcher_finetune.models import build_rdd, build_masked_lg
+from wildmatch.matcher_finetune.models import LG_WEIGHTS, RDD_WEIGHTS, build_masked_lg, build_rdd, resolve_rdd_weights
 from wildmatch.matcher_finetune.train_common import (
     TRAINING_SCORE_ID, _flatten_candidates, _lg_relaxed_scores, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
     add_common_args, batch_features, build_pseudo_accuracy_loader, build_wandb_tags,
@@ -772,6 +772,8 @@ def parse_args() -> argparse.Namespace:
              "of training (see compute_distill_ema_decay); set explicitly to override.",
     )
     args = p.parse_args()
+    args.rdd_weights = resolve_rdd_weights(args.rdd_weights, RDD_WEIGHTS)
+    args.lg_weights = resolve_rdd_weights(args.lg_weights, LG_WEIGHTS)
     if args.moving_negative_prob is not None:
         if args.random_negative_prob <= 0:
             p.error("--moving_negative_prob requires --random_negative_prob > 0")

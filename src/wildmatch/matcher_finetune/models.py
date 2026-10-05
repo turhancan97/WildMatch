@@ -3,11 +3,31 @@ from pathlib import Path
 import torch
 
 from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import LightGlueForTraining
-from rdd.RDD.RDD import build
-from rdd.RDD.utils import read_config
+from wildmatch.vendor.rdd import CONFIG_PATH as RDD_CONFIG_PATH
+from wildmatch.vendor.rdd.RDD.RDD import build
+from wildmatch.vendor.rdd.RDD.utils import read_config
+
+RDD_WEIGHTS = "RDD-v2.pth"
+LG_WEIGHTS = "RDD_lg-v2.pth"
+
+
+def resolve_rdd_weights(value, filename: str) -> str:
+    """An explicit weights path, else `filename` in the path profile's `external.rdd_weights_dir`."""
+    if value:
+        return str(value)
+    from wildmatch.paths import path
+
+    folder = path("external.rdd_weights_dir")
+    if folder is None:
+        raise SystemExit(
+            f"no RDD weights given: pass the path explicitly or set external.rdd_weights_dir in the "
+            f"path profile (WILDMATCH_RDD_WEIGHTS_DIR for the default profile) to the folder with {filename}"
+        )
+    return str(folder / filename)
+
 
 def build_rdd(weights: Path, device: torch.device, top_k: int):
-    rdd_conf = read_config("rdd/configs/default.yaml")
+    rdd_conf = read_config(str(RDD_CONFIG_PATH))
     model = build(rdd_conf, weights=str(weights))
     model.top_k = top_k
     model.set_softdetect(top_k=top_k)
@@ -16,7 +36,7 @@ def build_rdd(weights: Path, device: torch.device, top_k: int):
     return model
 
 def build_masked_lg(
-    device: torch.device, weights="rdd/weights/RDD_lg-v2.pth", init_threshold=0.01,
+    device: torch.device, weights=None, init_threshold=0.01,
     detach_descriptors=True,
 ):
     """Builds LightGlueForTraining, not the LightGlueMasked it started out as.
@@ -29,6 +49,7 @@ def build_masked_lg(
     through this builder, training and eval alike, so both sides score pairs the
     exact same way.
     """
+    weights = resolve_rdd_weights(weights, LG_WEIGHTS)
     lg_conf = {
         "name": "lightglue",
         "input_dim": 256,

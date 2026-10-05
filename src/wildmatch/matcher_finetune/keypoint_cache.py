@@ -262,7 +262,8 @@ def open_cache_for_run(
     LightGlue's `input_dim` — 256, see `models.build_masked_lg` — which is what
     the run can actually consume regardless of what is on disk.
     """
-    from rdd.RDD.utils import read_config  # local: pulls in the RDD package
+    from wildmatch.vendor.rdd import CONFIG_PATH as RDD_CONFIG_PATH
+    from wildmatch.vendor.rdd.RDD.utils import read_config  # local: pulls in the RDD package
 
     return KeypointCache(
         root,
@@ -270,7 +271,7 @@ def open_cache_for_run(
             rdd_weights_sha256=weights_fingerprint(rdd_weights),
             resize=resize,
             top_k=top_k,
-            detection_threshold=float(read_config("rdd/configs/default.yaml")["detection_threshold"]),
+            detection_threshold=float(read_config(str(RDD_CONFIG_PATH))["detection_threshold"]),
             descriptor_dim=256,
         ),
     )

@@ -11,7 +11,7 @@ and any `--random_negative_prob`::
     python -m wildmatch.matcher_finetune.build_keypoint_cache \
         --data_root /shared/.../lynx-ds-Jul-20 \
         --cache_root /shared/.../lynx-ds-Jul-20-extracted-rdd \
-        --rdd_weights rdd/weights/RDD-v2.pth --resize 512 --top_k 512
+        --rdd_weights <rdd weights>/RDD-v2.pth --resize 512 --top_k 512
 
 Sizing (measured at --resize 512 / --top_k 512, mean 404 keypoints/frame):
 ~204 KiB per frame, ~90 frames/s on an idle H100 — so the 148k-frame dataset
@@ -41,7 +41,7 @@ from tqdm import tqdm
 from wildmatch.matcher_finetune.keypoint_cache import (
     CacheSpec, KeypointCache, MANIFEST_NAME, weights_fingerprint,
 )
-from wildmatch.matcher_finetune.models import build_rdd
+from wildmatch.matcher_finetune.models import RDD_WEIGHTS, build_rdd, resolve_rdd_weights
 from wildmatch.matcher_finetune.train_common import _unwrap, extract_train, resize_long_side
 
 
@@ -49,7 +49,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--data_root", type=Path, required=True, help="Dataset root (holds train/, test/)")
     p.add_argument("--cache_root", type=Path, required=True, help="Where to write the cache")
-    p.add_argument("--rdd_weights", type=Path, default=Path("rdd/weights/RDD-v2.pth"))
+    p.add_argument("--rdd_weights", type=Path, default=None)
     p.add_argument(
         "--splits", nargs="*", default=["train", "test"],
         help="Split directories under --data_root to cache in full (default: both). "
@@ -76,6 +76,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--verify", action="store_true", help="Only check coverage; run no RDD")
     p.add_argument("--limit", type=int, default=0, help="Cache at most this many frames (smoke tests)")
     args = p.parse_args()
+    args.rdd_weights = Path(resolve_rdd_weights(args.rdd_weights, RDD_WEIGHTS))
     if not (0 <= args.shard < args.num_shards):
         p.error("--shard must be in [0, --num_shards)")
     return args

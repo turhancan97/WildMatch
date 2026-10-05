@@ -144,12 +144,20 @@ CZECHLYNX_SPLIT_PROTOCOL=legacy \
 sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_rdd.sh
 ```
 
-This uses `strong-matches_test_combined.json` as `val_index` and writes to the
-legacy-specific checkpoint directory:
+This uses `strong-matches_test_combined.json` as `val_index` and writes to a
+directory named after the pair source and protocol:
 
 ```text
-/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-finetuned-legacy
+/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-finetuned-loma-mined-legacy
 ```
+
+The RDD wrapper defaults to LoMa-mined pairs (`CZECHLYNX_MINING_BACKEND=loma`),
+the pair source used by every RDD and LoMa run since 2026-09-29; set
+`CZECHLYNX_MINING_BACKEND=rdd` for RDD-mined pairs (`...-rdd-mined-legacy`).
+If the output directory already contains `epoch_*` checkpoints the wrapper
+refuses to start: archive the directory for a fresh run, or continue it with
+`CZECHLYNX_RDD_RESUME=auto` (newest epoch with a `train_state.json`) or an
+explicit epoch directory.
 
 ### Strict RDD training
 
@@ -159,7 +167,7 @@ sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_cz
 ```
 
 This uses `strong-matches_val_combined.json` as `val_index` and writes to
-`rdd-finetuned-strict`.
+`rdd-finetuned-loma-mined-strict`.
 
 ### RDD descriptor-only training
 
@@ -173,14 +181,46 @@ sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_cz
 ```
 
 The job skips the fixed full-feature cache, recomputes RDD features during
-training, and writes to a separate `rdd-descriptor-finetuned-*` directory.
+training, and writes to a separate `rdd-descriptor-finetuned-<backend>-mined-*`
+directory.
 `CZECHLYNX_RDD_TRAIN_COMPONENT=lg` (the default) preserves the existing
 LightGlue-only run; `rdd` trains the full RDD detector and descriptor, while
 `lg+rdd` trains both LightGlue and the full RDD model.
 
-Descriptor mode defaults to one sample per GPU because RDD must retain the
-query, positive, and negative autograd graphs simultaneously. Override this
-with `CZECHLYNX_RDD_BATCH_SIZE` only if the available GPU memory allows it.
+Descriptor mode loads one sample per GPU because RDD must retain the query,
+positive, and negative autograd graphs simultaneously, and accumulates
+gradients over 8 of them per optimizer step (`--grad_accum_steps 8`), so the
+effective batch is 1 x 8 x 4 GPUs = 32 — the same as LightGlue-only mode and as
+LoMa's descriptor mode. Override with `CZECHLYNX_RDD_BATCH_SIZE` /
+`CZECHLYNX_RDD_GRAD_ACCUM_STEPS`. A 300-epoch descriptor run does not fit in
+one 24 h job; resubmit with `CZECHLYNX_RDD_RESUME=auto` to continue it.
+
+### Joint descriptor + matcher training (RDD and LoMa)
+
+`joint` trains the descriptor and the matcher together from the pretrained
+weights, with the keypoint detector frozen, using the shared recipe (relaxed
+pair score over every triplet, AdamW 1e-5, effective batch 32, 300 epochs):
+
+```bash
+# RDD: RDD descriptor + LightGlue (detector frozen), 1 per GPU x 8 accumulated
+CZECHLYNX_SPLIT_COLUMN=split-time_closed CZECHLYNX_RDD_TRAIN_COMPONENT=joint \
+  sbatch slurm_scripts/train_czechlynx_rdd.sh
+# LoMa: DeDoDe + matcher (DaD frozen, keypoint cache reused), 8 per GPU microbatched to 1
+CZECHLYNX_SPLIT_COLUMN=split-time_closed CZECHLYNX_LOMA_TRAIN_COMPONENT=joint \
+  sbatch slurm_scripts/train_czechlynx_loma.sh
+```
+
+Outputs are `rdd-joint-finetuned-loma-mined-legacy/` and
+`loma-b-joint-finetuned-loma-mined-legacy/`. Each RDD epoch directory holds
+`model.safetensors` (RDD detector + descriptor) and `model_1.safetensors`
+(LightGlue); each LoMa epoch bundle holds the complete model, frozen DaD
+included (`metadata.json`: `train_component=joint`, `weights=full`). The protocol
+files record `rdd_train_component`/`loma_train_component` = `joint`, which the
+probe loader requires to be evaluated with `checkpoint_components=full`. Both runs
+need more than one 24 h job: resubmit with `CZECHLYNX_RDD_RESUME=auto` /
+`CZECHLYNX_LOMA_RESUME=auto` (e.g. chained with `--dependency=afterany:<job>`).
+Both wrappers keep every 50th epoch (`RDD_KEEP_EVERY` / `LOMA_KEEP_EVERY`) and
+refuse to overwrite an output directory that already contains epochs.
 
 ### Legacy and strict LoMa training
 
@@ -325,10 +365,8 @@ holdout:
 ```bash
 export CZECHLYNX_SPLIT_COLUMN=split-time_open
 export CZECHLYNX_SPLIT_PROTOCOL=legacy
-export CZECHLYNX_MINING_BACKEND=rdd
-sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_rdd.sh
-
 export CZECHLYNX_MINING_BACKEND=loma
+sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_rdd.sh
 sbatch /home/kargin/Projects/repositories/lynx-finetuning/slurm_scripts/train_czechlynx_loma.sh
 ```
 

@@ -437,6 +437,11 @@ def _extract_chunked(rdd: torch.nn.Module, images: torch.Tensor, chunk_size: int
 def _lg_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
     """Per-pair score = sum(match confidence) / min(valid keypoints in query, in candidate).
 
+    This is the *filtered* score: only mutual, above-threshold matches count,
+    exactly as at inference (Vismatch ranks with the same definition). Since
+    2026-09-29 it is used for evaluation/monitoring only — pseudo-accuracy,
+    index-score dumps, video accuracy. Training uses `_lg_relaxed_scores`.
+
     Normalizing by keypoint coverage instead of averaging confidence over
     however many matches were found keeps a couple of lucky high-confidence
     matches from outscoring a pair that's genuinely well-matched throughout.
@@ -462,6 +467,52 @@ def _lg_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
     return sums / torch.minimum(n_q, n_g)
 
 
+# Identity of the training objective, recorded in protocol JSONs and checked on
+# resume so a run can never silently mix two definitions of the score.
+TRAINING_SCORE_ID = "relaxed_v1"
+
+
+def _lg_relaxed_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
+    """Relaxed per-pair training score, identical in form to LoMa's.
+
+        P = exp(assignment_scores[:, :-1, :-1])          # dustbins dropped
+        s = 1/2 * ( mean_i max_j P_ij  +  mean_j max_i P_ij )
+
+    It is read from the dense log-assignment *before* `filter_matches`, so no
+    mutual check or confidence threshold is applied: every keypoint contributes
+    its best candidate probability. A pair for which nothing survives the
+    filters still has a score and a gradient, which is the point — the filtered
+    `_lg_scores` is exactly 0 with zero gradient for such pairs (about 90% of
+    negatives and a few percent of positives in the pre-2026-09-29 runs).
+    Same formula as contrastive_finetuning.loma_backend.train_pair_score.
+
+    Means and maxima run over real keypoints only (`masks`), each image divided
+    by its own count. LightGlueForTraining already gives padded entries zero
+    probability; the explicit masking here keeps the score correct even if a
+    caller passes an assignment computed without masks.
+
+    Returns (B,). Stays attached to the graph when either side has no keypoints
+    (LightGlueForTraining's anchored zero matrix) so DDP reduction completes.
+    """
+    log_p = pred["assignment_scores"][:, :-1, :-1]
+    v0 = q_data["masks"].reshape(log_p.shape[0], -1).bool()
+    v1 = g_data["masks"].reshape(log_p.shape[0], -1).bool()
+    if log_p.shape[1] == 0 or log_p.shape[2] == 0:
+        return log_p.sum(dim=(1, 2)) * 0.0
+    if v0.shape[1] != log_p.shape[1] or v1.shape[1] != log_p.shape[2]:
+        raise ValueError(
+            f"mask/assignment shape mismatch: masks {tuple(v0.shape)}/{tuple(v1.shape)}, "
+            f"assignment {tuple(log_p.shape)}"
+        )
+    pair = (v0[:, :, None] & v1[:, None, :]).to(log_p.dtype)
+    prob = log_p.exp() * pair
+    row_best = prob.max(dim=2).values * v0.to(prob.dtype)   # (B, M)
+    col_best = prob.max(dim=1).values * v1.to(prob.dtype)   # (B, N)
+    n0 = v0.sum(dim=1).clamp(min=1).to(prob.dtype)
+    n1 = v1.sum(dim=1).clamp(min=1).to(prob.dtype)
+    return 0.5 * (row_best.sum(dim=1) / n0 + col_best.sum(dim=1) / n1)
+
+
 def _pseudo_batch_dims(cand_batch) -> tuple[int, int]:
     """(queries, candidates per query) for a PseudoAccuracyDataset batch."""
     if is_cached_batch(cand_batch):
@@ -480,6 +531,19 @@ def _flatten_candidates(cand_batch):
         return cand_batch
     B, n_cand, C, H, W = cand_batch.shape
     return cand_batch.view(B * n_cand, C, H, W)
+
+
+def _is_live_pseudo_batch(batch) -> bool:
+    """True for a ragged live-image pseudo-eval batch.
+
+    `collate_pseudo_accuracy_images` hands back the raw list of
+    (query, candidates, index) sample tuples. The default collate used for
+    cached features *also* returns a list — [query_batch, cand_batch,
+    idx_batch] — so `isinstance(batch, list)` alone misroutes every cached
+    batch into the live path (the 2026-09-27 regression that crashed cached
+    matcher runs at their first evaluation). Only the live batch holds tuples.
+    """
+    return isinstance(batch, list) and bool(batch) and isinstance(batch[0], tuple)
 
 
 def _score_live_pseudo_batch(
@@ -633,7 +697,7 @@ def eval_pseudo_accuracy(
             group_loader, desc=f"{prefix}[{ds.n_pos}+{ds.n_neg}]", leave=False,
             disable=not accelerator.is_main_process
         ):
-            if isinstance(batch, list):
+            if _is_live_pseudo_batch(batch):
                 # Live descriptor-mode images remain ragged in the DataLoader;
                 # _score_live_pseudo_batch groups them by native shape.
                 scores, idx_batch = _score_live_pseudo_batch(

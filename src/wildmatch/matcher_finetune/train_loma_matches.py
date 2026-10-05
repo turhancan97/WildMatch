@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import shutil
 import time
 from pathlib import Path
 
@@ -34,6 +35,7 @@ from contrastive_finetuning.loading import IndexAssignedTripletDataset
 from contrastive_finetuning.loma_cache import LomaFeatureCache
 from contrastive_finetuning.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
 from contrastive_finetuning.loma_backend import (
+    LOMA_TRAIN_COMPONENTS,
     LoMaDescriptorTrainingModel,
     build_loma,
     configure_loma_trainable_component,
@@ -41,9 +43,11 @@ from contrastive_finetuning.loma_backend import (
     detect_loma_keypoints,
     eval_pair_scores,
     extract_loma_features,
+    full_state_dict,
     set_loma_train_mode,
     train_pair_score_with_matches,
     trainable_state_dict,
+    uses_live_descriptors,
 )
 
 
@@ -62,8 +66,9 @@ def parse_args() -> argparse.Namespace:
                         help="Benchmark-compatible fixed-keypoint cache (matcher-only mode)")
     parser.add_argument("--loma_keypoint_cache", type=Path, default=None,
                         help="Fixed DaD keypoints for descriptor mode; descriptors are recomputed")
-    parser.add_argument("--loma_train_component", choices=["matcher", "descriptor"], default="matcher",
-                        help="Which LoMa component to train; matcher-only remains the default")
+    parser.add_argument("--loma_train_component", choices=list(LOMA_TRAIN_COMPONENTS), default="matcher",
+                        help="Which LoMa component to train: matcher (default), descriptor (DeDoDe "
+                             "only), or joint (DeDoDe and the matcher together); DaD is always frozen")
     parser.add_argument("--descriptor_microbatch_size", type=int, default=1,
                         help="Triplets per descriptor forward/backward microbatch; gradients accumulate")
     parser.add_argument("--loma_variant", choices=["loma-b", "loma-b128", "loma-l", "loma-g", "loma-r"], default="loma-b")
@@ -94,6 +99,9 @@ def parse_args() -> argparse.Namespace:
                         help="Debug limit; 0 evaluates the complete validation index")
     parser.add_argument("--grad_clip", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--keep_every", type=int, default=0,
+                        help="Keep epoch_000, every N-th epoch, the final epoch and the newest one "
+                             "(plus latest); delete other epoch directories this run wrote. 0 keeps all.")
     parser.add_argument("--resume", type=Path, default=None,
                         help="Checkpoint directory containing model.safetensors and optimizer.pt")
     return parser.parse_args()
@@ -153,7 +161,7 @@ def load_features_for_paths(model: torch.nn.Module, paths: list[Path], device: t
     features = []
     for path in paths:
         image = load_image(path, resize)
-        if keypoint_cache is None and component == "descriptor":
+        if keypoint_cache is None and uses_live_descriptors(component):
             keypoints = detect_loma_keypoints(model, [image], num_keypoints)
             with torch.no_grad():
                 descriptors = describe_keypoints_with_grad(model, [image], keypoints)
@@ -290,7 +298,7 @@ def evaluate_mini_index(
             negative_k, negative_d = cached_feature_batch(
                 feature_cache, [path.relative_to(data_root).as_posix() for path in negative_paths], device
             )
-        elif keypoint_cache is not None or component == "descriptor":
+        elif keypoint_cache is not None or uses_live_descriptors(component):
             feature_model = unwrap_model(model, accelerator)
             feature_model = getattr(feature_model, "loma", feature_model)
             query_k, query_d = load_features_for_paths(
@@ -457,13 +465,46 @@ def checkpoint_dir(output_dir: Path, epoch: int) -> Path:
     return output_dir / f"epoch_{epoch:03d}"
 
 
+def is_retained_epoch(epoch: int, keep_every: int, epochs: int) -> bool:
+    """--keep_every: epoch 0, every keep_every-th epoch and the final one stay."""
+    return keep_every <= 0 or epoch == 0 or epoch % keep_every == 0 or epoch == epochs - 1
+
+
+def prune_previous_checkpoint(output_dir: Path, epoch: int, keep_every: int, epochs: int,
+                              train_component: str) -> Path | None:
+    """After epoch `epoch` is saved, delete epoch `epoch - 1` unless it is retained.
+
+    The newest epoch (and ``latest``) always survive for --resume. Only a
+    directory whose metadata.json shows this trainer wrote it for the same
+    component and epoch is deleted; anything else is left alone.
+    """
+    previous = epoch - 1
+    if previous < 0 or is_retained_epoch(previous, keep_every, epochs):
+        return None
+    target = checkpoint_dir(output_dir, previous)
+    try:
+        metadata = json.loads((target / "metadata.json").read_text())
+    except (OSError, ValueError):
+        return None
+    if metadata.get("backend") != "loma" or metadata.get("epoch") != previous \
+            or metadata.get("train_component", "matcher") != train_component:
+        return None
+    shutil.rmtree(target)
+    return target
+
+
 def save_checkpoint(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
                     scheduler: torch.optim.lr_scheduler.LRScheduler, epoch: int,
                     step: int, args: argparse.Namespace, out_dir: Path) -> None:
     from safetensors.torch import save_file
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    save_file(trainable_state_dict(model), str(out_dir / "model.safetensors"))
+    # Joint bundles hold the complete model (frozen DaD and buffers included) so
+    # they load as full LoMa weights downstream; matcher/descriptor bundles keep
+    # only their trained parameters, as before.
+    component = getattr(args, "loma_train_component", "matcher")
+    weights = full_state_dict(model) if component == "joint" else trainable_state_dict(model)
+    save_file(weights, str(out_dir / "model.safetensors"))
     torch.save(
         {
             "optimizer": optimizer.state_dict(),
@@ -478,6 +519,10 @@ def save_checkpoint(model: torch.nn.Module, optimizer: torch.optim.Optimizer,
         "format": f"lynx-loma-{getattr(args, 'loma_train_component', 'matcher')}-v1",
         "backend": "loma",
         "train_component": getattr(args, "loma_train_component", "matcher"),
+        # "full": complete LoMa state dict (joint); "trainable": trained parameters only.
+        "weights": "full" if component == "joint" else "trainable",
+        "frozen": {"matcher": ["_detector", "_descriptor"], "descriptor": ["_detector", "matcher"],
+                   "joint": ["_detector"]}.get(component, []),
         "variant": args.loma_variant,
         "split_protocol": getattr(args, "split_protocol", None),
         "base_weights": str(args.loma_weights) if args.loma_weights else None,
@@ -539,13 +584,13 @@ def main() -> None:
         raise ValueError("This entry point only supports --trained_model loma")
     if args.descriptor_microbatch_size < 1:
         raise ValueError("--descriptor_microbatch_size must be at least 1")
-    if args.loma_train_component == "descriptor" and args.loma_cache is not None:
+    if uses_live_descriptors(args.loma_train_component) and args.loma_cache is not None:
         raise ValueError(
-            "--loma_cache contains fixed descriptors and cannot be used for descriptor training; "
-            "use --loma_keypoint_cache instead"
+            "--loma_cache contains fixed descriptors and cannot be used for "
+            f"{args.loma_train_component} training; use --loma_keypoint_cache instead"
         )
     if args.loma_train_component == "matcher" and args.loma_keypoint_cache is not None:
-        raise ValueError("--loma_keypoint_cache is only valid with --loma_train_component descriptor")
+        raise ValueError("--loma_keypoint_cache is only valid with --loma_train_component descriptor or joint")
     if Accelerator is None:
         raise ImportError("Accelerate is required for LoMa training; install requirements-loma.txt")
     seed_all(args.seed)
@@ -558,7 +603,7 @@ def main() -> None:
     configure_loma_trainable_component(loma_model, args.loma_train_component)
     model = (
         LoMaDescriptorTrainingModel(loma_model)
-        if args.loma_train_component == "descriptor" else loma_model
+        if uses_live_descriptors(args.loma_train_component) else loma_model
     )
     trainable = [parameter for parameter in loma_model.parameters() if parameter.requires_grad]
     if not trainable:
@@ -590,7 +635,7 @@ def main() -> None:
         transform=transforms.ToTensor(),
         random_negative_prob=args.random_negative_prob,
         feature_cache=feature_cache,
-        return_meta=args.loma_train_component == "descriptor",
+        return_meta=uses_live_descriptors(args.loma_train_component),
     )
     loader = DataLoader(
         dataset,
@@ -599,7 +644,7 @@ def main() -> None:
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
         persistent_workers=args.num_workers > 0,
-        collate_fn=collate_triplet_images if args.loma_train_component == "descriptor" else None,
+        collate_fn=collate_triplet_images if uses_live_descriptors(args.loma_train_component) else None,
     )
     train_entries = load_entries(args.train_index)
     val_entries = load_entries(args.val_index)
@@ -702,7 +747,7 @@ def main() -> None:
             if args.max_train_batches and batches >= args.max_train_batches:
                 break
             optimizer.zero_grad(set_to_none=True)
-            if args.loma_train_component == "descriptor":
+            if uses_live_descriptors(args.loma_train_component):
                 query, positive, negative, metadata = batch
                 query = resize_image_list(query, args.resize)
                 positive = resize_image_list(positive, args.resize)
@@ -902,6 +947,10 @@ def main() -> None:
             accelerator.wait_for_everyone()
             accelerator.save_state(str(output / "accelerate_state"))
             accelerator.wait_for_everyone()
+        if accelerator.is_main_process:
+            prune_previous_checkpoint(args.output_dir, epoch, args.keep_every, args.epochs,
+                                      args.loma_train_component)
+        accelerator.wait_for_everyone()
         if wandb_run is not None:
             wandb_run.log(metrics, step=step)
         if accelerator.is_main_process:

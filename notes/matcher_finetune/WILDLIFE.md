@@ -20,6 +20,7 @@ ReunionTurtles
 SeaStarReID2023+
 StripeSpotter+
 ZakynthosTurtles
+SalamanderID2025 (not part of WildlifeReID-10k; see below)
 ```
 
 NDD20 is intentionally not configured: its masked paths and identity labels
@@ -38,6 +39,33 @@ so identity is used as the collection fallback. This limitation is recorded
 by each configuration's `collection_rule: identity` setting and in the
 generated experiment metadata. It should be considered when interpreting
 collection-level metrics.
+
+### SalamanderID2025
+
+SalamanderID2025 (1,384 images, 584 salamanders, a time-closed database/query
+split) is a separate dataset that runs through the same workflow via
+`configs/wildlife/SalamanderID2025.json`. It differs from the WildlifeReID-10k
+configurations in three ways:
+
+- Root and metadata: `/shared/sets/datasets/vision/czechlynx/SalamanderID2025`
+  with `split_time_closed_no_background.csv`. Its images were background-removed
+  with SAM3 (`explainable_individual_reidentification/scripts/segment_with_sam3.py`,
+  prompt "Salamander", all instances merged) into `masked_images/`.
+- Split: the original `split` column holds `database`/`query`. The preparer
+  writes the split value as the view folder name and mining/training expect
+  `train/` and `test/`, so the config reads the added `split_train_test` column
+  (database -> train, query -> test). Use `WILDLIFE_PROTOCOL=legacy`.
+- Pairs: both matchers are mined for, and each matcher is fine-tuned on its own
+  pairs (LoMa on LoMa-mined, RDD on RDD-mined with `WILDLIFE_MINING_BACKEND=rdd`),
+  unlike the other datasets, whose RDD runs use LoMa-mined pairs. Outputs are
+  written to `rdd-finetuned/legacy-rdd-mined` and `loma-finetuned/legacy-loma-mined`
+  (set `WILDLIFE_RDD_OUTPUT` / `WILDLIFE_LOMA_OUTPUT`), which the probe launcher's
+  Salamander profile expects.
+
+Outputs and checkpoints still live under the `wildlife-reid-10k/SalamanderID2025`
+folders because that prefix is fixed in the scripts; the name is only a path.
+372 of the 584 database identities have a single image and contribute no
+positive pairs, so the effective training set is small.
 
 ## 1. Select a dataset and prepare its canonical view
 
@@ -110,9 +138,14 @@ sbatch slurm_scripts/train_wildlife_rdd.sh
 sbatch slurm_scripts/train_wildlife_loma.sh
 ```
 
-The training wrappers select the backend-specific combined index when it is
-present (`indices/rdd/` for RDD and `indices/loma/` for LoMa), while retaining
-the historical shared RDD path as a fallback. Validation is
+The RDD wrapper reads the index of the pair source named by
+`WILDLIFE_MINING_BACKEND` (default `loma`, i.e. `indices/loma/`) and fails if
+it is missing. Until 2026-09-29 it silently fell back to RDD-mined pairs when
+no LoMa index existed, so NyalaData and WhaleSharkID were trained on a
+different pair source than the other datasets; mine LoMa pairs for a dataset
+before training RDD on it. An output directory that already holds `epoch_*`
+checkpoints is refused unless `WILDLIFE_RDD_RESUME=auto` (or an epoch
+directory) continues it. Validation is
 `strong-matches_val_combined.json` in strict mode and
 `strong-matches_test_combined.json` in legacy mode. Checkpoints and W&B runs
 are isolated by dataset, backend, and protocol. Unless overridden with
@@ -140,7 +173,9 @@ This mode computes RDD features online (the fixed feature cache is not valid
 while the descriptor is changing) and saves separately under
 `rdd-descriptor-finetuned/<protocol>/`. Other accepted values are `lg` (the
 existing default), `rdd` (all RDD detector and descriptor weights), and
-`lg+rdd` (LightGlue plus all RDD weights).
+`lg+rdd` (LightGlue plus all RDD weights). Descriptor mode loads one sample
+per GPU and accumulates 8 per optimizer step (effective batch 32, as in the
+other modes); override with `WILDLIFE_BATCH_SIZE` / `WILDLIFE_GRAD_ACCUM_STEPS`.
 
 ### Optional LoMa descriptor experiment
 

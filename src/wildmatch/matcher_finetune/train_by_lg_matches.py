@@ -3,9 +3,12 @@ from __future__ import annotations
 import argparse
 import contextlib
 import copy
+import json
+import shutil
 import math
 import random
 import time
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -26,7 +29,7 @@ from contrastive_finetuning.loading import (
 )
 from contrastive_finetuning.models import build_rdd, build_masked_lg
 from contrastive_finetuning.train_common import (
-    _flatten_candidates, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
+    TRAINING_SCORE_ID, _flatten_candidates, _lg_relaxed_scores, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
     add_common_args, batch_features, build_pseudo_accuracy_loader, build_wandb_tags,
     eval_epoch, eval_pseudo_accuracy, features_from_batch, resolve_trained_models,
     run_lg_partitioned, seed_all,
@@ -230,8 +233,8 @@ Independent, combinable anti-overfitting mechanisms, each off by default:
                                           of waiting for a positive pair to
                                           match nothing at all, it fires as
                                           soon as the student's live
-                                          confidence for that pair (_lg_scores,
-                                          the same number eval ranks on) drops
+                                          training score for that pair
+                                          (_lg_relaxed_scores) drops
                                           below what the PRETRAINED model
                                           scored for that exact (query,
                                           positive) pair. Zero matches is just
@@ -391,6 +394,32 @@ def parse_args() -> argparse.Namespace:
         "--rdd_train_component", choices=["all", "descriptor"], default="all",
         help="When --trained_model includes rdd, train the full RDD detector+descriptor "
              "(default/legacy) or only RDD's descriptor while freezing its detector.",
+    )
+    p.add_argument(
+        "--grad_accum_steps", type=int, default=1,
+        help="Accumulate gradients over this many consecutive --batch_size batches "
+             "before one optimizer step (DDP gradient sync only on the last). The "
+             "effective batch is batch_size * grad_accum_steps * num_processes and the "
+             "loss is the exact mean over it, as the margin loss is a plain per-sample "
+             "mean. Used for RDD descriptor training, whose per-GPU memory only fits "
+             "batch_size 1 (1 x 8 x 4 GPUs = 32, matching LoMa's descriptor runs). "
+             "Rejected together with EMA, distillation and warmup, whose per-step "
+             "updates assume one batch per step.",
+    )
+    p.add_argument(
+        "--keep_every", type=int, default=0,
+        help="Checkpoint retention: keep epoch_00, every N-th epoch and the final "
+             "epoch, plus always the newest one (for --resume); each other epoch "
+             "directory is deleted once the next epoch is saved. 0 (default) keeps "
+             "every epoch. The SLURM wrappers pass 50.",
+    )
+    p.add_argument(
+        "--resume", type=Path, default=None,
+        help="Continue a run from one of its own epoch_NNN checkpoint directories "
+             "(optimizer, LR scheduler, RNG and model state via accelerator.load_state). "
+             "Training restarts at the next epoch. Fails if the directory's "
+             "train_state.json records a different objective, optimizer or batch "
+             "configuration, and with features whose state is not checkpointed.",
     )
     p.add_argument(
         "--eval_only", action="store_true",
@@ -825,7 +854,51 @@ def parse_args() -> argparse.Namespace:
         p.error("--frame_jitter_prob must be in [0, 1]")
     if (args.frame_jitter_query > 0 or args.frame_jitter_db > 0) and args.frame_jitter_prob == 0:
         p.error("--frame_jitter_prob 0 silently disables --frame_jitter_query/--frame_jitter_db")
+    for message in accumulation_and_resume_errors(args):
+        p.error(message)
     return args
+
+
+def accumulation_and_resume_errors(args: argparse.Namespace) -> list[str]:
+    """Fail-closed checks for --grad_accum_steps and --resume.
+
+    Accumulation is exact only for the plain margin loss: EMA and the
+    distillation references update once per *optimizer* step in their current
+    form, 'weights' distillation writes .grad directly, and --warmup_steps
+    counts loop iterations. --resume restores model/optimizer/scheduler/RNG
+    state only, so features that keep mutable per-run state in the dataset or
+    in live Python variables (moving negatives, negative mining, hard-pair
+    sampling, adaptive margin, EMA/distillation references) would silently
+    restart from scratch — rejected instead.
+    """
+    errors: list[str] = []
+    if getattr(args, "keep_every", 0) < 0:
+        errors.append("--keep_every must be >= 0")
+    if args.grad_accum_steps < 1:
+        errors.append("--grad_accum_steps must be >= 1")
+    if args.grad_accum_steps > 1:
+        if args.ema_decay > 0:
+            errors.append("--grad_accum_steps > 1 is not supported with --ema_decay")
+        if args.distill_model != "none":
+            errors.append("--grad_accum_steps > 1 is not supported with --distill_model")
+        if args.warmup_steps > 0:
+            errors.append("--grad_accum_steps > 1 is not supported with --warmup_steps")
+    if args.resume is not None:
+        unsupported = {
+            "--moving_negative_prob": args.moving_negative_prob is not None,
+            "--negative_mining": bool(args.negative_mining),
+            "--hard_positive_sampling": bool(args.hard_positive_sampling),
+            "--hard_negative_sampling": bool(args.hard_negative_sampling),
+            "--adaptive_margin": bool(args.adaptive_margin),
+            "--ema_decay": args.ema_decay > 0,
+            "--distill_model": args.distill_model != "none",
+        }
+        for flag, active in unsupported.items():
+            if active:
+                errors.append(f"--resume is not supported with {flag} (its state is not checkpointed)")
+        if args.eval_only:
+            errors.append("--resume cannot be combined with --eval_only")
+    return errors
 
 
 def set_rdd_training_mode(rdd: torch.nn.Module, training: bool, component: str) -> None:
@@ -870,69 +943,39 @@ def lg_confidence_loss(
     margin_activation: str = "relu", softplus_beta: float = 10.0,
 ) -> tuple[torch.Tensor, dict]:
     """
-    Margin loss on LightGlue's OWN matching confidence:
-      loss = act(margin - pos_conf + neg_conf)
+    Margin loss on LightGlue's relaxed pair score:
+      loss = mean_b act(margin - pos_score_b + neg_score_b)
     where act is relu (default) or a scaled softplus (--margin_activation:
     softplus(beta*z)/beta keeps a small, exponentially-decaying gradient on
-    triplets already past the margin instead of relu's exact zero — the
-    anti-saturation escape hatch for a mostly-solved training set).
+    triplets already past the margin instead of relu's exact zero).
+
+    The score is `_lg_relaxed_scores` (train_common): the mean over each image's
+    real keypoints of its best candidate probability in LightGlue's dense
+    log-assignment, before mutual selection and thresholding, averaged over
+    both directions — the same objective LoMa is trained with
+    (loma_backend.train_pair_score). Every triplet contributes: there is no
+    longer a rule dropping samples whose positive had no surviving match
+    (removed 2026-09-29), and negatives without surviving matches still carry
+    gradient. The loss is therefore a plain mean over the batch, which also
+    makes microbatch accumulation (--microbatch_size) exact.
 
     With num_negatives=K > 1, pred_neg/data_n cover a flat (B*K) batch of
     negative pairs (data_a_neg is the anchor features repeated per negative;
-    defaults to data_a for K == 1) and neg_conf is a smooth max —
-    tau*logsumexp(conf/tau) — over each sample's K negatives, so the margin is
-    enforced against (approximately) the hardest negative sampled this step.
-
-    pos_conf/neg_conf are sum(confidence) / min(valid keypoints on each
-    side) — the same normalization eval_pseudo_accuracy uses (see
-    _lg_scores in train_common.py) — which keeps a couple of lucky
-    high-confidence matches from dominating the loss for an otherwise
-    poorly-matched pair.
-
-    Fully vectorized over the batch, reading LightGlueForTraining's dense
-    `valid0` rather than looping over its ragged `scores` list. Two things that
-    used to be control flow are now arithmetic:
-
-      - A sample whose *positive* pair found no match contributes no loss term.
-        That `continue` is now a 0/1 weight, so such a sample adds exactly 0 to
-        both numerator and denominator. Same value, but it stays in the graph
-        instead of dropping out of it — which is what makes the all-empty batch
-        safe: `w.sum().clamp(min=1)` turns 0/0 into a plain 0.0 that still has a
-        grad_fn. The old code returned a fresh `torch.zeros(requires_grad=True)`
-        there, disconnected from every parameter, so backward fired no gradient
-        hook at all and DDP's reducer never finished the iteration.
-      - A *negative* pair with no match used to take a separate
-        `relu(margin - pos_conf)` branch. An empty negative scores exactly 0, so
-        that is the same expression as the general one; the branch is gone.
-
-    Equivalence with the previous per-sample implementation (confidences, match
-    counts, loss, and every logged stat) is pinned by
-    tests/test_dense_matching.py.
+    defaults to data_a for K == 1) and the negative score is a smooth max —
+    tau*logsumexp(score/tau) — over each sample's K negatives.
 
     weak_mask: optional (B,) bool tensor from --weak_queries — True marks
-    samples whose query is a random frame (not the curated index), paired
-    with an uncurated random same-lynx "positive". We still want neg_conf to
-    train normally for these (broad, unbiased negative signal), but don't
-    trust that random pairing enough to reinforce it as a positive match, so
-    pos_conf is masked to a constant for just those samples: same forward
-    value (loss magnitude/logging unaffected), zero backward gradient — the
-    per-sample torch.where is necessary because a batch mixes weak and
-    index-query samples, so the whole pos_conf_all tensor can't just be
-    .detach()'d.
+    samples whose query is a random frame paired with an uncurated random
+    same-lynx "positive". Their positive score is detached (same forward value,
+    zero gradient), so they train only the negative term.
 
-    A weak sample is also exempt from the pos_empty drop below. Dropping is
-    there to keep a *trusted* positive that found nothing from contributing a
-    meaningless term; a weak sample's positive was never trusted (it is
-    already detached), so the only thing its term carries is neg_conf — which
-    is exactly the signal --weak_queries exists to provide, and which is
-    unaffected by whatever the random same-lynx pairing did. Dropping those
-    samples would silently discard the broad negative signal on precisely the
-    hardest, least index-like queries. Note this raises the reported loss for
-    a --weak_queries run: a pos-empty weak sample contributes
-    relu(margin + neg_conf) >= margin instead of nothing.
+    Diagnostics: `pos_skipped` / `neg_skipped` now mean "no match survives the
+    inference filters" (mutual check + threshold) and feed the skip-rate
+    logging only; they no longer affect the loss. Match counts are those
+    filtered matches.
     """
-    pos_conf_all  = _lg_scores(pred_pos, data_a, data_p)  # (B,)
-    neg_conf_flat = _lg_scores(pred_neg, data_a_neg if data_a_neg is not None else data_a, data_n)  # (B*K,)
+    pos_conf_all  = _lg_relaxed_scores(pred_pos, data_a, data_p)  # (B,)
+    neg_conf_flat = _lg_relaxed_scores(pred_neg, data_a_neg if data_a_neg is not None else data_a, data_n)  # (B*K,)
 
     if weak_mask is not None:
         pos_conf_all = torch.where(weak_mask, pos_conf_all.detach(), pos_conf_all)
@@ -954,36 +997,27 @@ def lg_confidence_loss(
         per_sample = F.softplus(violation * softplus_beta) / softplus_beta
     else:
         per_sample = F.relu(violation)
-    keep_mask = ~pos_empty if weak_mask is None else (~pos_empty | weak_mask)
-    kept = keep_mask.to(per_sample.dtype)
-    loss = (per_sample * kept).sum() / kept.sum().clamp(min=1)
+    loss = per_sample.mean()
 
-    # Under no_grad so the float() conversions below don't drag detach() calls
-    # (or a warning) along; these are diagnostics only. A handful of syncs per
-    # step instead of the ~2*batch_size the per-sample .item() calls used to
-    # cost. The per-sample pos_conf/neg_conf lists exist so the caller can
-    # feed the hard-pair / mining / gap statistics without re-running
-    # _lg_scores on its own.
+    # Diagnostics only, under no_grad. The per-sample pos_conf/neg_conf lists
+    # let the caller feed the hard-pair / mining / gap statistics without
+    # re-scoring.
     with torch.no_grad():
-        # Deliberately ~pos_empty, not keep_mask: these describe pairs that
-        # actually produced matches, so a pos-empty weak sample has no
-        # positive match count / confidence to average in even though its
-        # term now counts towards the loss.
-        keep = ~pos_empty
-        keep_neg = keep.repeat_interleave(num_negatives) if num_negatives > 1 else keep
+        all_pos = torch.ones_like(pos_empty)
+        all_neg = torch.ones_like(neg_empty)
         stats = {
-            "pos_skipped":      pos_empty.tolist(),  # list[bool], length B — caller buckets by source
+            "pos_skipped":      pos_empty.tolist(),  # list[bool], length B — no filtered match
             "neg_skipped":      neg_empty.tolist(),  # list[bool], length B*K, row-major (sample, negative)
             "pos_conf":         pos_conf_all.tolist(),   # list[float], length B
             "neg_conf":         neg_conf_flat.tolist(),  # list[float], length B*K (per negative, pre-smooth-max)
-            "mean_pos_matches": _masked_mean(pos_matches.to(per_sample.dtype), keep),
-            "mean_neg_matches": _masked_mean(neg_matches.to(per_sample.dtype), keep_neg),
-            "mean_pos_conf":    _masked_mean(pos_conf_all, keep),
-            "mean_neg_conf":    _masked_mean(neg_conf_flat, keep_neg & ~neg_empty),
-            # Fraction of loss-contributing samples still inside the margin —
-            # the direct gauge of how saturated the training signal is (relu:
-            # exactly the fraction with nonzero gradient).
-            "active_frac":      _masked_mean((violation > 0).to(per_sample.dtype), keep_mask),
+            "mean_pos_matches": _masked_mean(pos_matches.to(per_sample.dtype), all_pos),
+            "mean_neg_matches": _masked_mean(neg_matches.to(per_sample.dtype), all_neg),
+            "mean_pos_conf":    _masked_mean(pos_conf_all, all_pos),
+            "mean_neg_conf":    _masked_mean(neg_conf_flat, all_neg),
+            # Fraction of samples still inside the margin — the direct gauge of
+            # how saturated the training signal is (relu: exactly the fraction
+            # with nonzero gradient).
+            "active_frac":      _masked_mean((violation > 0).to(per_sample.dtype), all_pos),
         }
     return loss, stats
 
@@ -1143,7 +1177,7 @@ def measure_negative_gap(
             data_a = batch_features(feats_a, H_a, W_a)
             data_n = batch_features(feats_n, H_n, W_n)
             pred_neg = run_lg_partitioned(lg, data_a, data_n, partition=accelerator.num_processes == 1)
-            neg_conf = _lg_scores(pred_neg, data_a, data_n).tolist()
+            neg_conf = _lg_relaxed_scores(pred_neg, data_a, data_n).tolist()
 
             for src, is_weak, conf in zip(neg_meta["neg_source"], neg_meta["is_weak_query"], neg_conf):
                 if is_weak:
@@ -1614,7 +1648,7 @@ def measure_pretrained_positive_scores(
     Scores every (query_frame, positive) pair in the training index with the
     pretrained LightGlue, once, before training — the fixed reference
     --distill_signal_type healing_on_positives gates on. Returns
-    {(query_rel, positive_rel): _lg_scores confidence}.
+    {(query_rel, positive_rel): _lg_relaxed_scores score}.
 
     Precomputed rather than recomputed per step because the same pair comes
     back on the order of epochs/n_positives times over a run (~60 for a
@@ -1629,7 +1663,7 @@ def measure_pretrained_positive_scores(
     chunked-extraction logic; the cost is scoring that pool's negatives too and
     discarding them, a constant factor on a one-time pass.
 
-    Uses the same _lg_scores the margin loss and eval use, on the same clean
+    Uses the same _lg_relaxed_scores the margin loss uses, on the same clean
     (never augmented) eval transform, so the gate compares like with like — see
     the --augment caveat in the module docstring.
 
@@ -1665,7 +1699,7 @@ def measure_pretrained_positive_scores(
             pred = run_lg_partitioned(lg_ref, data_q, data_c, partition=accelerator.num_processes == 1)
             # Candidates are stacked positives-then-negatives (PseudoAccuracyDataset),
             # so the leading n_pos columns are what this table is about.
-            pos_scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)[:, :ds.n_pos]
+            pos_scores = _lg_relaxed_scores(pred, data_q, data_c).view(B, n_cand)[:, :ds.n_pos]
 
             for row, idx in zip(pos_scores.tolist(), idx_batch.tolist()):
                 entry = ds.entries[idx]
@@ -2010,7 +2044,7 @@ def train_epoch_lg(
                 # a merely degrading one is caught too, while the correction is
                 # still small.
                 with torch.no_grad():
-                    live_pos_conf = _lg_scores(pred_pos, data_a, data_p)
+                    live_pos_conf = _lg_relaxed_scores(pred_pos, data_a, data_p)
                 # -inf for a pair the pre-training pass didn't score (e.g. one
                 # a weak triplet happened to draw), so `live < ref` is False
                 # for it and it simply never heals.
@@ -2108,8 +2142,26 @@ def train_epoch_lg(
         if train_rdd:
             trainable_params += [p for p in _unwrap(rdd).parameters() if p.requires_grad]
 
-        optimizer.zero_grad()
-        accelerator.backward(backward_loss)
+        # --grad_accum_steps: consecutive loader batches form one optimizer
+        # step. Each contributes loss/group_size, so the step's gradient is
+        # exactly that of the mean loss over the whole group (the margin loss
+        # is a plain per-sample mean). DDP all-reduce runs only on the group's
+        # last backward. With the default of 1 every branch below reduces to
+        # the original zero_grad -> backward -> clip -> step.
+        accum = args.grad_accum_steps
+        group_start = (step // accum) * accum
+        group_size = min(accum, steps_per_epoch - group_start)
+        is_group_start = step == group_start
+        is_group_end = step == group_start + group_size - 1
+
+        if is_group_start:
+            optimizer.zero_grad()
+        sync_models = [m for m, trained in ((lg, train_lg), (rdd, train_rdd)) if trained]
+        with contextlib.ExitStack() as no_sync_stack:
+            if not is_group_end:
+                for model in sync_models:
+                    no_sync_stack.enter_context(accelerator.no_sync(model))
+            accelerator.backward(backward_loss / group_size if group_size > 1 else backward_loss)
 
         # --distill_signal_type weights: inject its gradient now, straight
         # into .grad, after the margin/activations/correspondence backward()
@@ -2125,11 +2177,14 @@ def train_epoch_lg(
                     rdd, distill_rdd_ref, args.distill_loss, args.distill_model_lambda
                 )
 
-        accelerator.clip_grad_norm_(trainable_params, args.grad_clip)
-        apply_warmup_lr(optimizer, global_step, args)
-        optimizer.step()
+        if is_group_end:
+            accelerator.clip_grad_norm_(trainable_params, args.grad_clip)
+            apply_warmup_lr(optimizer, global_step, args)
+            optimizer.step()
         current_lr = optimizer.param_groups[0]["lr"]
 
+        # EMA / distillation references are rejected with accumulation (see
+        # accumulation_and_resume_errors), so here is_group_end is always True.
         if ema_lg is not None:
             update_ema(ema_lg, lg, args.ema_decay)
         if distill_active and args.distill_model == "ema":
@@ -2201,7 +2256,10 @@ def train_epoch_lg(
                 step=global_step,
             )
 
-        if (step + 1) % 100 == 0:
+        # Every 100 *optimizer* steps (identical to every 100 loop steps when
+        # --grad_accum_steps is 1), so accumulation doesn't multiply the
+        # mini-eval cost per epoch.
+        if is_group_end and (group_start // accum + 1) % 100 == 0:
             t_mini_start = time.perf_counter()
             mini_train_m = eval_epoch(accelerator, rdd, eval_lg, mini_train_loader, args, prefix="mini_train")
             mini_val_m   = eval_epoch(accelerator, rdd, eval_lg, mini_val_loader,   args, prefix="mini_val")
@@ -2269,6 +2327,7 @@ def train_epoch_lg(
             "time/train_step_s": epoch_train_time / max(steps_per_epoch, 1),
             "time/mini_eval_s": mini_eval_time,
             "train/global_batch_size": args.batch_size * accelerator.num_processes,
+            "train/effective_batch_size": args.batch_size * accelerator.num_processes * args.grad_accum_steps,
             "train/local_batch_size": args.batch_size,
             "train/steps_per_epoch": steps_per_epoch,
             "train/pairs_processed": shape_pairs,
@@ -2323,6 +2382,110 @@ def train_epoch_lg(
         "sep_gap": epoch_gap_sum / max(steps_per_epoch, 1),
     }
     return epoch_loss / max(steps_per_epoch, 1), global_step, neg_gap_stats, dead_this_epoch, epoch_extras
+
+
+# ── resume bookkeeping ────────────────────────────────────────────────────────
+TRAIN_STATE_FILE = "train_state.json"
+
+
+def is_retained_epoch(epoch: int, keep_every: int, epochs: int) -> bool:
+    """Whether --keep_every keeps epoch_NN permanently (epoch 0, every
+    keep_every-th epoch, and the final epoch). keep_every <= 0 keeps all."""
+    return keep_every <= 0 or epoch == 0 or epoch % keep_every == 0 or epoch == epochs - 1
+
+
+def prune_previous_checkpoint(output_dir: Path, epoch: int, keep_every: int, epochs: int,
+                              identity: dict) -> Path | None:
+    """After epoch `epoch` is saved, delete epoch `epoch - 1` unless retained.
+
+    The newest epoch is always kept (it is what --resume continues from), so
+    at most one non-milestone checkpoint exists at a time. Deletes only a
+    directory whose train_state.json shows it was written by this trainer with
+    the same configuration; anything else is left alone. Returns the deleted
+    path, if any.
+    """
+    previous = epoch - 1
+    if previous < 0 or is_retained_epoch(previous, keep_every, epochs):
+        return None
+    target = Path(output_dir) / f"epoch_{previous:02d}"
+    state_path = target / TRAIN_STATE_FILE
+    if not state_path.is_file():
+        return None
+    try:
+        state = json.loads(state_path.read_text())
+    except (OSError, ValueError):
+        return None
+    if any(state.get(key) != value for key, value in identity.items()) or state.get("epoch") != previous:
+        return None
+    shutil.rmtree(target)
+    return target
+
+
+def epoch_data_seed(seed: int, epoch: int) -> int:
+    """Seed of the training loader's shuffle generator for one epoch."""
+    return int(seed) * 1_000_003 + int(epoch)
+OPTIMIZER_ID = "adamw"
+
+
+def train_state_identity(args: argparse.Namespace, num_processes: int) -> dict:
+    """Everything a resumed run must share with the run that wrote the checkpoint.
+
+    A mismatch in any of these would splice two different training setups into
+    one set of epochs (e.g. a different objective, optimizer, effective batch
+    or schedule length), so resume refuses it instead.
+    """
+    return {
+        "training_score": TRAINING_SCORE_ID,
+        "optimizer": OPTIMIZER_ID,
+        "trained_model": args.trained_model,
+        "rdd_train_component": args.rdd_train_component,
+        "batch_size": int(args.batch_size),
+        "grad_accum_steps": int(args.grad_accum_steps),
+        "num_processes": int(num_processes),
+        "epochs": int(args.epochs),
+        "lr": float(args.lr),
+        "weight_decay": float(args.weight_decay),
+        "lg_margin": float(args.lg_margin),
+        "train_index": str(args.train_index),
+    }
+
+
+def write_train_state(ckpt_dir: Path, identity: dict, epoch: int, global_step: int,
+                      wandb_run_id: str | None) -> None:
+    state = {**identity, "epoch": int(epoch), "global_step": int(global_step),
+             "wandb_run_id": wandb_run_id}
+    tmp = ckpt_dir / (TRAIN_STATE_FILE + ".tmp")
+    tmp.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+    tmp.replace(ckpt_dir / TRAIN_STATE_FILE)
+
+
+def read_resume_state(resume_dir: Path, identity: dict) -> dict:
+    """Validate a checkpoint directory for --resume; returns its train_state.json.
+
+    Fails closed on a missing state file (e.g. a checkpoint written before
+    resume support existed, or by a different trainer), on any identity
+    mismatch, and when the checkpoint is already the run's final epoch.
+    """
+    resume_dir = Path(resume_dir)
+    state_path = resume_dir / TRAIN_STATE_FILE
+    if not state_path.is_file():
+        raise FileNotFoundError(
+            f"--resume {resume_dir}: no {TRAIN_STATE_FILE}; only checkpoints written by this "
+            "trainer version (relaxed objective, AdamW) can be resumed"
+        )
+    state = json.loads(state_path.read_text())
+    mismatches = {
+        key: (state.get(key), value) for key, value in identity.items() if state.get(key) != value
+    }
+    if mismatches:
+        details = ", ".join(f"{k}: checkpoint={a!r} current={b!r}" for k, (a, b) in sorted(mismatches.items()))
+        raise ValueError(f"--resume {resume_dir}: configuration differs from the checkpoint ({details})")
+    if int(state["epoch"]) + 1 >= int(identity["epochs"]):
+        raise ValueError(
+            f"--resume {resume_dir}: checkpoint is epoch {state['epoch']} of a {identity['epochs']}-epoch "
+            "run, so no epochs are left to train"
+        )
+    return state
 
 
 # ── full training run ─────────────────────────────────────────────────────────
@@ -2453,6 +2616,11 @@ def run_training_lg(args: argparse.Namespace) -> None:
             num_workers=args.num_workers, seed=args.seed,
             persistent_workers=(not dataset_mutates) and args.num_workers > 0,
         )
+    # Reseeded per epoch in the training loop (see epoch_data_seed) so that an
+    # epoch's shuffle depends only on (seed, epoch): a --resume run then
+    # continues with the same data order an uninterrupted run would have used,
+    # instead of replaying epoch 0's permutation.
+    train_generator = getattr(train_loader, "generator", None)
 
     _rng = random.Random(args.seed)
 
@@ -2539,7 +2707,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
     trainable_params = [p for p in lg.parameters() if p.requires_grad]
     if train_rdd:
         trainable_params += [p for p in rdd.parameters() if p.requires_grad]
-    optimizer = torch.optim.Adam(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
+    # AdamW (decoupled weight decay), the same optimizer as the LoMa trainer.
+    # Until 2026-09-29 this was torch.optim.Adam, whose weight_decay is an L2
+    # term added to the gradient before Adam's normalization.
+    optimizer = torch.optim.AdamW(trainable_params, lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     # DDP-wrapping a module with no trainable parameters is not just
@@ -2562,9 +2733,25 @@ def run_training_lg(args: argparse.Namespace) -> None:
             lg, optimizer, train_loader, mini_train_loader, mini_val_loader
         )
     eval_lg = ema_lg if ema_lg is not None else lg
+    # The scheduler is not an accelerate-prepared object, so save_state would
+    # otherwise leave it out and a resumed run would restart the cosine
+    # schedule from lr_max.
+    accelerator.register_for_checkpointing(scheduler)
+    run_identity = train_state_identity(args, accelerator.num_processes)
+    start_epoch = 0
+    resume_state: dict | None = None
+    if args.resume is not None:
+        resume_state = read_resume_state(args.resume, run_identity)
+        accelerator.load_state(str(args.resume))
+        start_epoch = int(resume_state["epoch"]) + 1
+        accelerator.print(
+            f"[resume] loaded {args.resume} (epoch {resume_state['epoch']}); "
+            f"continuing at epoch {start_epoch}/{args.epochs}"
+        )
 
     loader_diagnostics = {
         "train/global_batch_size": global_batch_size,
+        "train/effective_batch_size": global_batch_size * args.grad_accum_steps,
         "train/local_batch_size": args.batch_size,
         "train/steps_per_epoch": len(train_loader),
         "train/shape_groups_per_call": 0.0,
@@ -2574,6 +2761,8 @@ def run_training_lg(args: argparse.Namespace) -> None:
     accelerator.print(
         "[train-loader] "
         f"global_batch_size={global_batch_size} "
+        f"grad_accum_steps={args.grad_accum_steps} "
+        f"effective_batch_size={global_batch_size * args.grad_accum_steps} "
         f"local_batch_size={args.batch_size} "
         f"steps_per_epoch={len(train_loader)} "
         "shape_handling=run_lg_partitioned padded_samples=0"
@@ -2595,8 +2784,19 @@ def run_training_lg(args: argparse.Namespace) -> None:
         accelerator.init_trackers(
             args.project,
             config=vars(args),
-            init_kwargs={"wandb": {"name": args.run_name, "tags": build_wandb_tags(args)}},
+            init_kwargs={"wandb": {
+                "name": args.run_name, "tags": build_wandb_tags(args),
+                # Resumed runs continue the same W&B run instead of opening a new one.
+                **({"id": resume_state["wandb_run_id"], "resume": "allow"}
+                   if resume_state is not None and resume_state.get("wandb_run_id") else {}),
+            }},
         )
+    wandb_run_id = None
+    if args.project and accelerator.is_main_process:
+        try:
+            wandb_run_id = accelerator.get_tracker("wandb", unwrap=True).id
+        except Exception:  # tracker unavailable (e.g. wandb disabled): resume just opens a new run
+            wandb_run_id = None
 
     # ── moving-negative baseline (before any training) ──
     baseline_ratio = None
@@ -2648,18 +2848,22 @@ def run_training_lg(args: argparse.Namespace) -> None:
         )
 
     # ── baseline eval (before any training) ──
-    global_step = 0
+    # Skipped on resume: it describes the untrained model, which a resumed run
+    # already logged in its first job.
+    global_step = 0 if resume_state is None else int(resume_state["global_step"])
     # --eval_only: the train-split pass only exists to track the train/val gap
     # during training, so it's pure overhead here; baseline_train stays {} and
     # drops out of the merged dict below.
     baseline_train = {}
-    if not args.eval_only:
+    baseline_val = {}
+    if resume_state is None and not args.eval_only:
         baseline_train = eval_pseudo_accuracy(accelerator, rdd, eval_lg, eval_train_loader, args, prefix="train_eval")
-    baseline_val = eval_pseudo_accuracy(
-        accelerator, rdd, eval_lg, eval_val_loader, args, prefix="val", verbose=args.eval_only)
+    if resume_state is None:
+        baseline_val = eval_pseudo_accuracy(
+            accelerator, rdd, eval_lg, eval_val_loader, args, prefix="val", verbose=args.eval_only)
     set_rdd_training_mode(rdd, train_rdd, args.rdd_train_component)
     lg.train(train_lg)
-    if accelerator.is_main_process:
+    if accelerator.is_main_process and resume_state is None:
         accelerator.log(
             {
                 **loader_diagnostics,
@@ -2682,7 +2886,9 @@ def run_training_lg(args: argparse.Namespace) -> None:
     # ── loop ──
     prev_dead_pos_index: set[str] | None = None
     live_margin = args.lg_margin
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
+        if train_generator is not None:
+            train_generator.manual_seed(epoch_data_seed(args.seed, epoch))
         if shape_sampler is not None:
             shape_sampler.set_epoch(epoch)
         epoch_loss, global_step, neg_gap_stats, prev_dead_pos_index, epoch_extras = train_epoch_lg(
@@ -2783,6 +2989,10 @@ def run_training_lg(args: argparse.Namespace) -> None:
         accelerator.save_state(str(ckpt_dir))
         if accelerator.is_main_process and ema_lg is not None:
             torch.save(ema_lg.state_dict(), ckpt_dir / "ema_lg.pt")
+        if accelerator.is_main_process:
+            write_train_state(ckpt_dir, run_identity, epoch, global_step, wandb_run_id)
+            prune_previous_checkpoint(args.output_dir, epoch, args.keep_every, args.epochs, run_identity)
+        accelerator.wait_for_everyone()
 
     if args.project:
         accelerator.end_training()

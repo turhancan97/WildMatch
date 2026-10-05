@@ -497,3 +497,107 @@ def test_distributed_index_eval_gathers_one_dict_per_rank(monkeypatch, tmp_path:
     assert isinstance(gathered_payloads[0], list)
     assert isinstance(gathered_payloads[0][0], dict)
     assert metrics["entries"] == 1.0
+
+
+# ── joint descriptor + matcher training (2026-09-30) ──────────────────────────
+def _stub_loma_filter(monkeypatch):
+    package = ModuleType("loma")
+    package.__path__ = []
+    loma_module = ModuleType("loma.loma")
+
+    def fake_filter_matches(scores, threshold):
+        batch, rows, columns = scores.shape
+        counts = torch.zeros(batch, rows - 1, device=scores.device)
+        matches = torch.full((batch, rows - 1), -1, device=scores.device, dtype=torch.long)
+        return matches, matches.clone(), counts, counts.clone()
+
+    loma_module.filter_matches = fake_filter_matches
+    monkeypatch.setitem(sys.modules, "loma", package)
+    monkeypatch.setitem(sys.modules, "loma.loma", loma_module)
+
+
+def test_joint_mode_trains_descriptor_and_matcher_but_not_detector():
+    model = FakeDescriptorLoMa()
+    configure_loma_trainable_component(model, "joint")
+    set_loma_train_mode(model, True, "joint")
+
+    assert all(parameter.requires_grad for parameter in model._descriptor.parameters())
+    assert all(parameter.requires_grad for parameter in model.input_proj.parameters())
+    assert all(not parameter.requires_grad for parameter in model._detector.parameters())
+    assert not model._detector.training
+    assert model._descriptor.training
+    assert model.input_proj.training
+
+
+def test_joint_training_wrapper_updates_descriptor_and_matcher(monkeypatch):
+    _stub_loma_filter(monkeypatch)
+    model = FakeDescriptorLoMa()
+    configure_loma_trainable_component(model, "joint")
+    wrapper = LoMaDescriptorTrainingModel(model)
+    optimizer = torch.optim.SGD([p for p in model.parameters() if p.requires_grad], lr=0.1)
+    detector_before = [p.detach().clone() for p in model._detector.parameters()]
+    matcher_before = [p.detach().clone() for p in model.input_proj.parameters()]
+    descriptor_before = [p.detach().clone() for p in model._descriptor.parameters()]
+
+    images = [[torch.rand(3, 14, 14), torch.rand(3, 14, 14)] for _ in range(3)]
+    keypoints = torch.rand(2, 5, 2) * 2 - 1
+    positive_score, _, negative_score, _ = wrapper(*images, keypoints, keypoints, keypoints)
+    torch.relu(0.5 - positive_score + negative_score).mean().backward()
+    optimizer.step()
+
+    assert all(torch.equal(b, a) for b, a in zip(detector_before, model._detector.parameters()))
+    assert any(not torch.equal(b, a) for b, a in zip(matcher_before, model.input_proj.parameters()))
+    assert any(not torch.equal(b, a) for b, a in zip(descriptor_before, model._descriptor.parameters()))
+
+
+def test_joint_checkpoint_holds_the_complete_model(tmp_path: Path):
+    model = FakeDescriptorLoMa()
+    configure_loma_trainable_component(model, "joint")
+    optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=1e-3)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=2)
+    args = SimpleNamespace(
+        loma_variant="loma-b", loma_weights=Path("pretrained.pt"), loma_train_component="joint",
+        split_protocol="legacy", train_index=Path("train.json"), val_index=Path("val.json"),
+        resize=512, num_keypoints=512,
+    )
+    output = tmp_path / "joint-checkpoint"
+    loma_train.save_checkpoint(model, optimizer, scheduler, 0, 1, args, output)
+
+    from safetensors.torch import load_file
+
+    state = load_file(str(output / "model.safetensors"))
+    assert set(state) == set(model.state_dict())  # frozen DaD included
+    assert any(name.startswith("_detector.") for name in state)
+    metadata = json.loads((output / "metadata.json").read_text())
+    assert (metadata["train_component"], metadata["format"], metadata["weights"]) == (
+        "joint", "lynx-loma-joint-v1", "full")
+    assert metadata["frozen"] == ["_detector"]
+
+    restored = FakeDescriptorLoMa()
+    configure_loma_trainable_component(restored, "joint")
+    restored_optimizer = torch.optim.AdamW([p for p in restored.parameters() if p.requires_grad], lr=1e-3)
+    restored_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(restored_optimizer, T_max=2)
+    assert loma_train.restore_checkpoint(restored, restored_optimizer, restored_scheduler, output, "joint") == (0, 1)
+    with pytest.raises(ValueError, match="cannot resume"):
+        loma_train.restore_checkpoint(restored, restored_optimizer, restored_scheduler, output, "descriptor")
+
+
+def test_unknown_component_is_rejected():
+    with pytest.raises(ValueError, match="unsupported"):
+        configure_loma_trainable_component(FakeDescriptorLoMa(), "detector")
+
+
+def test_loma_keep_every_retains_milestones_and_newest(tmp_path: Path):
+    for epoch in range(7):
+        ckpt = loma_train.checkpoint_dir(tmp_path, epoch)
+        ckpt.mkdir()
+        (ckpt / "metadata.json").write_text(json.dumps({"backend": "loma", "epoch": epoch, "train_component": "joint"}))
+        loma_train.prune_previous_checkpoint(tmp_path, epoch, 3, 7, "joint")
+    # 7 epochs, keep_every=3: epochs 0, 3 and 6 (6 is also the final epoch) remain.
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["epoch_000", "epoch_003", "epoch_006"]
+    # a directory from another component (or without metadata) is never deleted
+    foreign = loma_train.checkpoint_dir(tmp_path, 7)
+    foreign.mkdir()
+    (foreign / "metadata.json").write_text(json.dumps({"backend": "loma", "epoch": 7, "train_component": "matcher"}))
+    assert loma_train.prune_previous_checkpoint(tmp_path, 8, 3, 20, "joint") is None
+    assert foreign.is_dir()

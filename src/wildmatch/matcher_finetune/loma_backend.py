@@ -139,9 +139,27 @@ def build_loma(
     return model
 
 
+LOMA_TRAIN_COMPONENTS = ("matcher", "descriptor", "joint")
+
+
+def uses_live_descriptors(component: str) -> bool:
+    """Components whose DeDoDe descriptors change during training.
+
+    Both recompute descriptors every step through
+    LoMaDescriptorTrainingModel (keypoints may come from the DaD keypoint
+    cache, since DaD stays frozen); only ``matcher`` can use fixed cached
+    descriptors.
+    """
+    return component in {"descriptor", "joint"}
+
+
 def configure_loma_trainable_component(model: nn.Module, component: str) -> None:
-    """Enable gradients for only the requested LoMa component."""
-    if component not in {"matcher", "descriptor"}:
+    """Enable gradients for only the requested LoMa component.
+
+    matcher: everything except DaD and DeDoDe; descriptor: DeDoDe only;
+    joint: DeDoDe and the matcher together, DaD frozen.
+    """
+    if component not in LOMA_TRAIN_COMPONENTS:
         raise ValueError(f"unsupported LoMa training component {component!r}")
     for parameter in model.parameters():
         parameter.requires_grad_(False)
@@ -151,6 +169,10 @@ def configure_loma_trainable_component(model: nn.Module, component: str) -> None
             raise AttributeError("LoMa model has no _descriptor module")
         for parameter in module.parameters():
             parameter.requires_grad_(True)
+    elif component == "joint":
+        for name, parameter in model.named_parameters():
+            if not name.startswith("_detector."):
+                parameter.requires_grad_(True)
     else:
         for name, parameter in model.named_parameters():
             if not name.startswith(("_detector.", "_descriptor.")):
@@ -176,6 +198,10 @@ def set_loma_train_mode(
         for name, module in model.named_children():
             if name not in {"_detector", "_descriptor"}:
                 module.eval()
+    elif component == "joint":
+        # DeDoDe and the matcher both train (model.train above); only DaD stays
+        # frozen in eval, as its keypoints may come from a fixed cache.
+        model._descriptor.train(training)
     else:
         model._descriptor.eval()
 
@@ -340,7 +366,12 @@ def train_pair_score_with_matches(
 
 
 class LoMaDescriptorTrainingModel(nn.Module):
-    """DDP-visible wrapper that trains DeDoDe through LoMa's frozen matcher."""
+    """DDP-visible wrapper that trains DeDoDe through LoMa's matcher.
+
+    Nothing in this forward detaches the matcher, so whether it learns is set
+    only by configure_loma_trainable_component: frozen in ``descriptor`` mode,
+    trained together with DeDoDe in ``joint`` mode.
+    """
 
     def __init__(self, loma_model: nn.Module) -> None:
         super().__init__()
@@ -396,6 +427,16 @@ def eval_pair_scores(model: nn.Module, keypoints0: torch.Tensor, descriptors0: t
     denominator = min(keypoints0.shape[1], keypoints1.shape[1])
     confidence = confidence / max(1, denominator)
     return confidence, (matching_scores0 > 0).sum(dim=-1)
+
+
+def full_state_dict(model: nn.Module) -> dict[str, torch.Tensor]:
+    """Every parameter and buffer, frozen DaD included (joint checkpoints).
+
+    A joint bundle must be loadable as a complete LoMa model
+    (checkpoint_components=full downstream), which needs the untouched
+    detector and the normalization buffers alongside the trained weights.
+    """
+    return {name: tensor.detach().cpu() for name, tensor in model.state_dict().items()}
 
 
 def trainable_state_dict(model: nn.Module) -> dict[str, torch.Tensor]:

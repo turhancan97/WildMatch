@@ -47,6 +47,14 @@ needs: a way to push a *specific* currently-unmatched query point toward a
 pseudo-label) even when every point in the pair currently loses the mutual
 check — i.e. even when matching_scores0/valid0 alone would give zero
 gradient for that pair, full stop.
+
+Padding. Batches pad every image's keypoints to the longest one in the batch
+(`masks` marks the real ones). The transformer layers always honoured the masks,
+but until 2026-09-29 the final assignment did not: padded rows/columns entered
+both softmax normalizations and could even survive `filter_matches`. The
+assignment now receives the masks, and every entry touching a padded keypoint
+is MASKED_LOG_PROB (probability exactly 0). Unpadded batches are bit-identical
+to before; LightGlueMasked (inference) is unchanged.
 """
 
 import warnings
@@ -344,7 +352,35 @@ class TransformerLayer(nn.Module):
         return self.cross_attn(desc0, desc1, mask)
 
 
-def double_softmax(sim: torch.Tensor) -> torch.Tensor:
+# Log-probability written into every assignment entry that involves a padded
+# keypoint. Finite on purpose: exp() of it is exactly 0.0 in fp16/fp32, so it
+# carries no probability mass, but unlike -inf it cannot turn a downstream
+# `target - live` or `x * 0` into inf/NaN. Real log-assignment entries sit many
+# orders of magnitude above it.
+MASKED_LOG_PROB = -1.0e4
+
+
+def valid_pair_mask(
+    sim: torch.Tensor,
+    valid0: Optional[torch.Tensor],
+    valid1: Optional[torch.Tensor],
+) -> Optional[torch.Tensor]:
+    """(B, M, N) bool mask of pairs where both keypoints are real (not padding).
+
+    None when neither side carries a mask, which keeps the unpadded path free of
+    any extra op.
+    """
+    if valid0 is None and valid1 is None:
+        return None
+    b, m, n = sim.shape
+    if valid0 is None:
+        valid0 = torch.ones((b, m), dtype=torch.bool, device=sim.device)
+    if valid1 is None:
+        valid1 = torch.ones((b, n), dtype=torch.bool, device=sim.device)
+    return valid0.bool()[:, :, None] & valid1.bool()[:, None, :]
+
+
+def double_softmax(sim: torch.Tensor, pair_valid: Optional[torch.Tensor] = None) -> torch.Tensor:
     """The pair-specific half of the log assignment: the row- and column-wise
     log-softmax of the descriptor similarity, WITHOUT the matchability
     certainties `sigmoid_log_double_softmax` adds on top.
@@ -358,23 +394,57 @@ def double_softmax(sim: torch.Tensor) -> torch.Tensor:
     train_by_lg_matches.py, which distils this half alone precisely so that the
     distillation cannot buy assignment score by opening that gate — the gate is
     what the margin loss uses to suppress negatives.
+
+    `pair_valid` (B, M, N) excludes padded keypoints from both softmax
+    normalizations: a padded column no longer takes probability mass from the
+    real columns of its row, and vice versa. Excluded entries are returned as
+    MASKED_LOG_PROB. With an all-True mask (or None) the result is bit-identical
+    to the unmasked computation.
     """
-    return (
+    if pair_valid is not None:
+        # finfo.min rather than -inf: a row that is entirely padding then
+        # softmaxes to a finite uniform distribution instead of NaN, and is
+        # overwritten below anyway.
+        sim = sim.masked_fill(~pair_valid, torch.finfo(sim.dtype).min)
+    out = (
         F.log_softmax(sim, 2)
         + F.log_softmax(sim.transpose(-1, -2).contiguous(), 2).transpose(-1, -2)
     )
+    if pair_valid is not None:
+        out = out.masked_fill(~pair_valid, MASKED_LOG_PROB)
+    return out
 
 
 def sigmoid_log_double_softmax(
-    sim: torch.Tensor, z0: torch.Tensor, z1: torch.Tensor
+    sim: torch.Tensor,
+    z0: torch.Tensor,
+    z1: torch.Tensor,
+    valid0: Optional[torch.Tensor] = None,
+    valid1: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
-    """create the log assignment matrix from logits and similarity"""
+    """create the log assignment matrix from logits and similarity
+
+    valid0/valid1 are (B, M)/(B, N) bool masks of real keypoints. Every entry of
+    a padded row or column, dustbins included, becomes MASKED_LOG_PROB, so
+    padding can neither be matched by `filter_matches` nor contribute to a score
+    computed from the dense matrix.
+    """
     b, m, n = sim.shape
+    pair_valid = valid_pair_mask(sim, valid0, valid1)
     certainties = F.logsigmoid(z0) + F.logsigmoid(z1).transpose(1, 2)
     scores = sim.new_full((b, m + 1, n + 1), 0)
-    scores[:, :m, :n] = double_softmax(sim) + certainties
-    scores[:, :-1, -1] = F.logsigmoid(-z0.squeeze(-1))
-    scores[:, -1, :-1] = F.logsigmoid(-z1.squeeze(-1))
+    inner = double_softmax(sim, pair_valid) + certainties
+    if pair_valid is not None:
+        inner = inner.masked_fill(~pair_valid, MASKED_LOG_PROB)
+    scores[:, :m, :n] = inner
+    dust0 = F.logsigmoid(-z0.squeeze(-1))
+    dust1 = F.logsigmoid(-z1.squeeze(-1))
+    if valid0 is not None:
+        dust0 = dust0.masked_fill(~valid0.bool(), MASKED_LOG_PROB)
+    if valid1 is not None:
+        dust1 = dust1.masked_fill(~valid1.bool(), MASKED_LOG_PROB)
+    scores[:, :-1, -1] = dust0
+    scores[:, -1, :-1] = dust1
     return scores
 
 
@@ -385,15 +455,25 @@ class MatchAssignment(nn.Module):
         self.matchability = nn.Linear(dim, 1, bias=True)
         self.final_proj = nn.Linear(dim, dim, bias=True)
 
-    def forward(self, desc0: torch.Tensor, desc1: torch.Tensor):
-        """build assignment matrix from descriptors"""
+    def forward(
+        self,
+        desc0: torch.Tensor,
+        desc1: torch.Tensor,
+        valid0: Optional[torch.Tensor] = None,
+        valid1: Optional[torch.Tensor] = None,
+    ):
+        """build assignment matrix from descriptors
+
+        `sim` is returned unmasked; pass it through double_softmax with the same
+        valid_pair_mask to get the masked gate-free half.
+        """
         mdesc0, mdesc1 = self.final_proj(desc0), self.final_proj(desc1)
         _, _, d = mdesc0.shape
         mdesc0, mdesc1 = mdesc0 / d**0.25, mdesc1 / d**0.25
         sim = torch.einsum("bmd,bnd->bmn", mdesc0, mdesc1)
         z0 = self.matchability(desc0)
         z1 = self.matchability(desc1)
-        scores = sigmoid_log_double_softmax(sim, z0, z1)
+        scores = sigmoid_log_double_softmax(sim, z0, z1, valid0, valid1)
         return scores, sim
 
     def get_matchability(self, desc: torch.Tensor):
@@ -759,8 +839,16 @@ class LightGlueForTraining(nn.Module):
                 "prune1": prune1,
             }
 
-        desc0, desc1 = desc0[..., :m, :], desc1[..., :n, :]  # remove padding
-        scores, sim = self.log_assignment[i](desc0, desc1)
+        desc0, desc1 = desc0[..., :m, :], desc1[..., :n, :]
+        # `m`/`n` are the *batch-padded* lengths, so the slice above removes
+        # nothing: keypoints padded up to the longest image in the batch are
+        # still here. Hand their masks to the assignment so they are excluded
+        # from its softmax normalizations and can never be matched. Padding is
+        # the only thing masked, so an unpadded batch is bit-identical.
+        valid_kp0 = mask0.reshape(b, m).bool()
+        valid_kp1 = mask1.reshape(b, n).bool()
+        scores, sim = self.log_assignment[i](desc0, desc1, valid_kp0, valid_kp1)
+        pair_valid = valid_pair_mask(sim, valid_kp0, valid_kp1)
         m0, m1, mscores0, mscores1, valid0, valid1 = filter_matches(
             scores, self.conf.filter_threshold
         )
@@ -813,7 +901,7 @@ class LightGlueForTraining(nn.Module):
             # Same matrix minus the matchability certainties — the pair-specific
             # half only, (B, M, N) with no dustbin row/column. See
             # double_softmax() and --distill_signal_type assignment_hinge.
-            "assignment_scores_nogate": double_softmax(sim),
+            "assignment_scores_nogate": double_softmax(sim, pair_valid),
             "prune0": prune0,
             "prune1": prune1,
         }

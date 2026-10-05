@@ -29,16 +29,39 @@ if [[ -n "${CZECHLYNX_LOMA_OUTPUT:-}" ]]; then
   output_dir=${CZECHLYNX_LOMA_OUTPUT}
 elif [[ "${train_component}" == descriptor ]]; then
   output_dir=/shared/sets/datasets/vision/czechlynx/checkpoints/${CZECHLYNX_RESOLVED_EXPERIMENT}/loma-b-descriptor-finetuned-${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}
+elif [[ "${train_component}" == joint ]]; then
+  # DeDoDe + matcher trained together (DaD frozen); the name records the pair source.
+  output_dir=/shared/sets/datasets/vision/czechlynx/checkpoints/${CZECHLYNX_RESOLVED_EXPERIMENT}/loma-b-joint-finetuned-${CZECHLYNX_RESOLVED_BACKEND}-mined-${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}
 else
   output_dir=/shared/sets/datasets/vision/czechlynx/checkpoints/${CZECHLYNX_RESOLVED_EXPERIMENT}/loma-b-finetuned-${CZECHLYNX_RESOLVED_OUTPUT_SUFFIX}
 fi
-if [[ "${CZECHLYNX_LOMA_TRAIN_COMPONENT:-matcher}" == descriptor ]]; then
+if [[ "${train_component}" == descriptor ]]; then
   default_run_name=czechlynx-${CZECHLYNX_RESOLVED_EXPERIMENT}-loma-descriptor-${CZECHLYNX_RESOLVED_PROTOCOL}
+elif [[ "${train_component}" == joint ]]; then
+  default_run_name=czechlynx-${CZECHLYNX_RESOLVED_EXPERIMENT}-loma-joint-${CZECHLYNX_RESOLVED_PROTOCOL}
 else
   default_run_name=czechlynx-${CZECHLYNX_RESOLVED_EXPERIMENT}-loma-${CZECHLYNX_RESOLVED_PROTOCOL}
 fi
 run_name=${CZECHLYNX_LOMA_RUN_NAME:-${default_run_name}}
 benchmark_root=/home/kargin/Projects/repositories/rdd-parallel-benchmark
+
+# Resume: CZECHLYNX_LOMA_RESUME=auto picks the newest epoch_* directory with a
+# metadata.json; an explicit epoch directory is used as is. Without it, an
+# output directory that already holds epoch checkpoints is refused rather than
+# silently overwritten (archive it first, or resume).
+resume_dir=${CZECHLYNX_LOMA_RESUME:-}
+if [[ "${resume_dir}" == auto ]]; then
+  resume_dir=$(ls -d "${output_dir}"/epoch_* 2>/dev/null | while read -r d; do
+    [[ -f "${d}/metadata.json" ]] && echo "${d}"; done | sort -V | tail -n 1 || true)
+  if [[ -z "${resume_dir}" ]]; then
+    echo "CZECHLYNX_LOMA_RESUME=auto: no resumable epoch_* directory in ${output_dir}" >&2
+    exit 2
+  fi
+elif [[ -z "${resume_dir}" ]] && compgen -G "${output_dir}/epoch_*" > /dev/null; then
+  echo "${output_dir} already contains epoch checkpoints; set CZECHLYNX_LOMA_RESUME=auto to continue it," >&2
+  echo "or archive the directory before starting a new run." >&2
+  exit 2
+fi
 
 echo "CzechLynx split protocol: ${CZECHLYNX_RESOLVED_PROTOCOL}"
 echo "CzechLynx split column: ${CZECHLYNX_RESOLVED_SPLIT_COLUMN}"
@@ -47,6 +70,7 @@ echo "LoMa training component: ${train_component}"
 echo "training index: ${train_index}"
 echo "validation index: ${val_index}"
 echo "output directory: ${output_dir}"
+echo "resume from: ${resume_dir:-<fresh run>}"
 
 mkdir -p "${output_dir}"
 cat > "${output_dir}/czechlynx_protocol.json" <<EOF
@@ -57,12 +81,28 @@ cat > "${output_dir}/czechlynx_protocol.json" <<EOF
   "train_index": "${train_index}",
   "validation_index": "${val_index}",
   "final_evaluation_split": "test",
-  "loma_train_component": "${train_component}"
+  "loma_train_component": "${train_component}",
+  "training_score": "relaxed_v1",
+  "optimizer": "adamw"
 }
 EOF
 
 mkdir -p logs
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Under sbatch, Slurm runs a copy of this script from its spool directory
+# (e.g. /var/spool/slurmd/job<id>/), so the script's own location is not the
+# repository. Accept only a directory that contains contrastive_finetuning/:
+# the explicit override, the script location, then the submission directory.
+repo_root=""
+for candidate in "${LYNX_FINETUNING_ROOT:-}" "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" "${SLURM_SUBMIT_DIR:-}"; do
+  if [[ -n "${candidate}" && -d "${candidate}/contrastive_finetuning" ]]; then
+    repo_root=${candidate}
+    break
+  fi
+done
+if [[ -z "${repo_root}" ]]; then
+  echo "cannot locate the lynx-finetuning repository; submit from its root or set LYNX_FINETUNING_ROOT" >&2
+  exit 2
+fi
 cd "${repo_root}"
 if [[ "${train_component}" == matcher ]]; then
   if [[ ! -f "${cache_dir}/manifest.json" ]]; then
@@ -72,13 +112,14 @@ if [[ "${train_component}" == matcher ]]; then
       --splits train val test --resize_max 512 --num_keypoints 512 \
       --batch_size "${LOMA_CACHE_BATCH_SIZE:-4}" --num_workers 16 --resume)
   fi
-elif [[ "${train_component}" == descriptor ]]; then
+elif [[ "${train_component}" == descriptor || "${train_component}" == joint ]]; then
+  # DaD is frozen in both modes, so its keypoints can be cached once.
   python -m contrastive_finetuning.build_loma_keypoint_cache \
     --data_root "${dataset_root}" --cache_dir "${keypoint_cache}" \
     --weights "${loma_weights}" --variant loma-b --splits train val test \
     --resize 512 --num_keypoints 512 --batch_size "${LOMA_CACHE_BATCH_SIZE:-4}"
 else
-  echo "CZECHLYNX_LOMA_TRAIN_COMPONENT must be matcher or descriptor, got ${train_component}" >&2
+  echo "CZECHLYNX_LOMA_TRAIN_COMPONENT must be matcher, descriptor, or joint, got ${train_component}" >&2
   exit 2
 fi
 
@@ -93,11 +134,15 @@ args=(
   --weight_decay 1e-4 --margin 0.5 --random_negative_prob 0.3
   --num_workers 10 --eval_every_epochs 10 --seed 0 --resize 512
   --num_keypoints 512 --descriptor_microbatch_size "${CZECHLYNX_LOMA_DESCRIPTOR_MICROBATCH_SIZE:-1}"
+  --keep_every "${LOMA_KEEP_EVERY:-50}"
 )
 if [[ "${train_component}" == matcher ]]; then
   args+=(--loma_cache "${cache_dir}")
 else
   args+=(--loma_keypoint_cache "${keypoint_cache}")
+fi
+if [[ -n "${resume_dir}" ]]; then
+  args+=(--resume "${resume_dir}")
 fi
 
 accelerate launch --num_processes 4 --num_machines 1 \

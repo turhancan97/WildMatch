@@ -20,8 +20,21 @@ starting a new one". `matching_scores0 * valid0` selects exactly the same
 entries but keeps a live graph, because masking with an all-False mask still
 propagates zeros to every parameter.
 
-Two tests fed by a single pass over the dataloader, plus two self-contained
-checks that need no data:
+Since 2026-09-29 two things are intentionally different, so the comparison is
+narrowed accordingly:
+  - LightGlueForTraining masks padded keypoints in its final assignment, while
+    the frozen LightGlueMasked reference does not. The two paths are therefore
+    compared only on *pad-free* pairs (both images at the batch's full keypoint
+    count); padded pairs are counted and reported, not asserted.
+  - The training loss is now the relaxed objective (lg_confidence_loss no
+    longer drops empty positives), so loss equality with the ragged reference
+    is no longer checked. Its behaviour is pinned by
+    tests/test_relaxed_objective.py, which also replaces the two synthetic
+    checks that used to live at the end of this file.
+The filtered `_lg_scores` (still the evaluation score) must keep matching the
+ragged reference exactly on pad-free pairs.
+
+Two tests fed by a single pass over the dataloader:
 
   1. test_positive_pairs — on the index's own positive pairs the two paths must
      produce identical confidences, match counts, loss and logged stats. Also
@@ -66,6 +79,10 @@ from contrastive_finetuning.train_common import (
 from rdd.RDD.RDD import build as build_rdd_from_conf
 from rdd.RDD.utils import read_config
 from rdd_patch.lightglue_masked import LightGlueMasked
+
+# A data-driven CLI script (see Usage above), not a pytest module: its test_*
+# functions take the collected pass as arguments, so pytest must not collect them.
+__test__ = False
 
 
 # ── frozen reference: the ragged implementations the dense path replaced ──────
@@ -238,6 +255,7 @@ def collect(args: argparse.Namespace) -> dict:
         "stats_ref": [], "stats_new": [],
         "neg_source": [],
         "batch_of_sample": [],
+        "pos_pad_free": [], "neg_pad_free": [],
         "n_batches": 0, "n_samples": 0,
     }
 
@@ -276,6 +294,9 @@ def collect(args: argparse.Namespace) -> dict:
         )
 
         B = anchors_r.shape[0]
+        full_a = data_a["masks"].reshape(B, -1).all(dim=1)
+        out["pos_pad_free"].append((full_a & data_p["masks"].reshape(B, -1).all(dim=1)).cpu())
+        out["neg_pad_free"].append((full_a & data_n["masks"].reshape(B, -1).all(dim=1)).cpu())
         out["pos_conf_ref"].append(_lg_scores_ragged(pred_pos_ref, data_a, data_p, device).cpu())
         out["neg_conf_ref"].append(_lg_scores_ragged(pred_neg_ref, data_a, data_n, device).cpu())
         out["pos_conf_new"].append(_lg_scores(pred_pos_new, data_a, data_p).cpu())
@@ -326,32 +347,36 @@ def test_positive_pairs(r: dict, args: argparse.Namespace) -> None:
     print(f"  all {r['n_samples']} positive pairs have >=1 match "
           f"(min {int(r['pos_matches_ref'].min())}, mean {float(r['pos_matches_ref'].float().mean()):.1f})")
 
-    assert torch.equal(r["pos_matches_ref"], r["pos_matches_new"]), (
-        "positive-pair match counts differ: "
-        f"{int((r['pos_matches_ref'] != r['pos_matches_new']).sum())} samples disagree"
-    )
-    print(f"  match counts identical on all {r['n_samples']} pairs")
+    pf = r["pos_pad_free"]
+    nf = r["neg_pad_free"]
+    assert bool(pf.any()), "no pad-free positive pair occurred; lower --batch_size (1 makes every pair pad-free)"
+    print(f"  comparing {int(pf.sum())}/{r['n_samples']} pad-free positive and "
+          f"{int(nf.sum())} pad-free negative pairs (padded pairs are masked only in the training path)")
 
-    d_pos = (r["pos_conf_ref"] - r["pos_conf_new"]).abs()
+    assert torch.equal(r["pos_matches_ref"][pf], r["pos_matches_new"][pf]), (
+        "positive-pair match counts differ on pad-free pairs: "
+        f"{int((r['pos_matches_ref'][pf] != r['pos_matches_new'][pf]).sum())} samples disagree"
+    )
+    print("  match counts identical on every pad-free pair")
+
+    d_pos = (r["pos_conf_ref"][pf] - r["pos_conf_new"][pf]).abs()
     assert float(d_pos.max()) <= args.atol, (
         f"positive-pair confidence differs by up to {float(d_pos.max()):.3e} > atol {args.atol}"
     )
-    print(f"  confidence agrees, max |ref-new| = {float(d_pos.max()):.3e} (atol {args.atol})")
+    print(f"  filtered confidence agrees, max |ref-new| = {float(d_pos.max()):.3e} (atol {args.atol})")
 
-    d_neg = (r["neg_conf_ref"] - r["neg_conf_new"]).abs()
-    assert float(d_neg.max()) <= args.atol, (
-        f"negative-pair confidence differs by up to {float(d_neg.max()):.3e} > atol {args.atol}"
-    )
-    print(f"  negative-pair confidence agrees too, max |ref-new| = {float(d_neg.max()):.3e}")
+    if bool(nf.any()):
+        d_neg = (r["neg_conf_ref"][nf] - r["neg_conf_new"][nf]).abs()
+        assert float(d_neg.max()) <= args.atol, (
+            f"negative-pair confidence differs by up to {float(d_neg.max()):.3e} > atol {args.atol}"
+        )
+        print(f"  negative-pair confidence agrees too, max |ref-new| = {float(d_neg.max()):.3e}")
 
-    d_loss = max(abs(a - b) for a, b in zip(r["loss_ref"], r["loss_new"]))
-    assert d_loss <= args.atol, f"batch loss differs by up to {d_loss:.3e} > atol {args.atol}"
-    print(f"  batch loss agrees over {r['n_batches']} batches, max |ref-new| = {d_loss:.3e}")
-
-    for key in ("mean_pos_matches", "mean_neg_matches", "mean_pos_conf", "mean_neg_conf"):
-        d = max(abs(so[key] - sn[key]) for so, sn in zip(r["stats_ref"], r["stats_new"]))
-        assert d <= args.atol, f"stats[{key}] differs by up to {d:.3e} > atol {args.atol}"
-    print("  logged stats (mean_pos/neg_matches, mean_pos/neg_conf) agree")
+    padded = ~pf
+    if bool(padded.any()):
+        d_pad = (r["pos_conf_ref"][padded] - r["pos_conf_new"][padded]).abs()
+        print(f"  padded positive pairs (not asserted): max |ref-new| = {float(d_pad.max()):.3e} "
+              "- the reference still lets padding into its assignment")
 
 
 def test_empty_matches(r: dict, args: argparse.Namespace) -> None:
@@ -368,15 +393,16 @@ def test_empty_matches(r: dict, args: argparse.Namespace) -> None:
     print(f"  {n_empty}/{r['n_samples']} negative pairs have zero matches "
           f"({src.count('random')} random-drawn, {src.count('index')} index-mined)")
 
-    assert torch.equal(r["neg_empty_ref"], r["neg_empty_new"]), (
+    nf, pf = r["neg_pad_free"], r["pos_pad_free"]
+    assert torch.equal(r["neg_empty_ref"][nf], r["neg_empty_new"][nf]), (
         f"the zero-match negative pairs are not the same set: "
-        f"{int((r['neg_empty_ref'] != r['neg_empty_new']).sum())} samples disagree"
+        f"{int((r['neg_empty_ref'][nf] != r['neg_empty_new'][nf]).sum())} pad-free samples disagree"
     )
-    assert torch.equal(r["pos_empty_ref"], r["pos_empty_new"]), (
+    assert torch.equal(r["pos_empty_ref"][pf], r["pos_empty_new"][pf]), (
         f"the zero-match positive pairs are not the same set: "
-        f"{int((r['pos_empty_ref'] != r['pos_empty_new']).sum())} samples disagree"
+        f"{int((r['pos_empty_ref'][pf] != r['pos_empty_new'][pf]).sum())} pad-free samples disagree"
     )
-    print("  empty(valid0) picks out exactly the pairs the reference path skipped, pos and neg")
+    print("  on pad-free pairs, empty(valid0) picks out exactly the reference's empty pairs, pos and neg")
 
     empty = r["neg_empty_new"]
     assert int(r["neg_matches_new"][empty].sum()) == 0, "an 'empty' pair has a non-empty valid0"
@@ -384,123 +410,7 @@ def test_empty_matches(r: dict, args: argparse.Namespace) -> None:
         f"a zero-match negative scored non-zero confidence "
         f"(max {float(r['neg_conf_new'][empty].abs().max()):.3e})"
     )
-    print("  their valid0 is all-False and their dense confidence is exactly 0.0")
-
-    _test_skipped_samples_excluded(args)
-    _test_empty_batch_keeps_graph(args)
-
-
-def _fake_pred(valid: list[list[bool]], scores: list[list[float]], device) -> dict:
-    """Minimal stand-in for a LightGlueForTraining output.
-
-    lg_confidence_loss only reads `matching_scores0` and `valid0`, so the loss
-    semantics can be pinned against hand-computed numbers with no model and no
-    data — the only way to get a batch that deterministically mixes empty and
-    non-empty pairs.
-    """
-    return {
-        "matching_scores0": torch.tensor(scores, dtype=torch.float32, device=device),
-        "valid0": torch.tensor(valid, dtype=torch.bool, device=device),
-    }
-
-
-def _fake_data(b: int, m: int, device) -> dict:
-    """batch_features-shaped dict with every keypoint valid, so min(n_q, n_g) == m."""
-    return {
-        "keypoints": torch.zeros(b, m, 2, device=device),
-        "masks": torch.ones(b, 1, m, 1, dtype=torch.bool, device=device),
-    }
-
-
-def _test_skipped_samples_excluded(args: argparse.Namespace) -> None:
-    """A sample whose positive pair is empty must not move the loss at all.
-
-    This is the `continue` -> weight-0 replacement. Checked on synthetic
-    predictions because at the production threshold no real positive is ever
-    empty (test_positive_pairs asserts exactly that), so the path would
-    otherwise go unexercised.
-    """
-    device = torch.device(args.device)
-    margin, m = args.lg_margin, 4
-
-    #             sample 0                   sample 1 (pos empty)  sample 2
-    pos_valid = [[True, True, False, False],  [False] * 4, [True, False, False, False]]
-    pos_score = [[0.9, 0.7, 0.5, 0.5],        [0.8] * 4,   [0.6, 0.4, 0.4, 0.4]]
-    neg_valid = [[True, False, False, False], [True] * 4,  [False] * 4]
-    neg_score = [[0.3, 0.2, 0.2, 0.2],        [0.9] * 4,   [0.7, 0.7, 0.7, 0.7]]
-
-    data = _fake_data(3, m, device)
-    loss, stats = lg_confidence_loss(
-        _fake_pred(pos_valid, pos_score, device), _fake_pred(neg_valid, neg_score, device),
-        margin, data_a=data, data_p=data, data_n=data,
-    )
-
-    # By hand: only samples 0 and 2 count, conf = sum(score * valid) / m.
-    s0 = max(0.0, margin - (0.9 + 0.7) / m + 0.3 / m)
-    s2 = max(0.0, margin - 0.6 / m + 0.0 / m)
-    expected = (s0 + s2) / 2
-    assert abs(float(loss) - expected) <= args.atol, (
-        f"loss over a batch containing a pos-empty sample is {float(loss):.6f}, "
-        f"expected {expected:.6f} (mean over the two non-empty samples only)"
-    )
-    assert stats["pos_skipped"] == [False, True, False], f"pos_skipped wrong: {stats['pos_skipped']}"
-    assert stats["neg_skipped"] == [False, False, True], f"neg_skipped wrong: {stats['neg_skipped']}"
-
-    # And the skipped sample must be inert: perturbing only its scores changes nothing.
-    loss2, _ = lg_confidence_loss(
-        _fake_pred(pos_valid, pos_score, device),
-        _fake_pred(neg_valid, [[0.3, 0.2, 0.2, 0.2], [99.0] * 4, [0.7, 0.7, 0.7, 0.7]], device),
-        margin, data_a=data, data_p=data, data_n=data,
-    )
-    assert float(loss) == float(loss2), (
-        f"changing a pos-empty sample's scores moved the loss ({float(loss):.6f} -> "
-        f"{float(loss2):.6f}); it should contribute nothing"
-    )
-    print("  a pos-empty sample contributes exactly nothing to the loss (weight-0 path)")
-
-
-def _test_empty_batch_keeps_graph(args: argparse.Namespace) -> None:
-    """The point of the rewrite: an all-empty batch still reaches the parameters.
-
-    Forced with filter_threshold=1.0 so nothing clears the filter. This is the
-    case where the ragged path returned a detached zero and left DDP's reducer
-    waiting for gradients that never arrived.
-    """
-    device = torch.device(args.device)
-    lg = build_masked_lg(device, weights=args.lg_weights, init_threshold=1.0)
-    lg.train()
-
-    torch.manual_seed(args.seed)
-
-    def feats(n=32):
-        return [{"keypoints": torch.rand(n, 2, device=device) * 400,
-                 "descriptors": F.normalize(torch.randn(n, 256, device=device), dim=-1)}
-                for _ in range(2)]
-
-    with torch.enable_grad():
-        data_a, data_p = batch_features(feats(), 512, 512), batch_features(feats(), 512, 512)
-        data_n = batch_features(feats(), 512, 512)
-        pred_pos = lg({"image0": data_a, "image1": data_p})
-        pred_neg = lg({"image0": data_a, "image1": data_n})
-
-        assert all(s.numel() == 0 for s in pred_pos["scores"]), "expected every pair to be empty"
-        assert not bool(pred_pos["valid0"].any()), "expected valid0 to be all-False"
-
-        loss, _ = lg_confidence_loss(
-            pred_pos, pred_neg, args.lg_margin, data_a=data_a, data_p=data_p, data_n=data_n,
-        )
-        assert float(loss.detach()) == 0.0, f"all-empty batch should score 0.0, got {float(loss.detach())}"
-        assert loss.requires_grad and loss.grad_fn is not None, (
-            "all-empty batch produced a loss with no grad_fn — this is the DDP hang the "
-            "dense path exists to prevent"
-        )
-        lg.zero_grad()
-        loss.backward()
-
-    grads = [p.grad for p in lg.log_assignment[-1].parameters()]
-    assert all(g is not None for g in grads), "backward did not reach log_assignment[-1]"
-    assert all(float(g.abs().max()) == 0.0 for g in grads), "an all-empty batch produced non-zero gradient"
-    print("  all-empty batch: loss 0.0, grad_fn present, backward reaches the weights with zero grads")
+    print("  their valid0 is all-False and their filtered confidence is exactly 0.0")
 
 
 def main() -> None:
@@ -511,7 +421,7 @@ def main() -> None:
     r = collect(args)
     test_positive_pairs(r, args)
     test_empty_matches(r, args)
-    print(f"\nOK — dense path matches the frozen ragged reference over "
+    print(f"\nOK — dense filtered scoring matches the frozen ragged reference on pad-free pairs over "
           f"{r['n_batches']} batches / {r['n_samples']} samples.")
 
 

@@ -72,8 +72,44 @@ expose this as `CZECHLYNX_RDD_TRAIN_COMPONENT=descriptor` and
 `WILDLIFE_RDD_TRAIN_COMPONENT=descriptor`. Those modes bypass the fixed RDD
 feature cache because the descriptor is changing during training.
 
-If you're on the Helios cluster, `helios_scripts/train_lg.sh` is a ready-to-submit SLURM job wrapping
-this same command with cluster-specific paths.
+### Training objective (shared by RDD-LightGlue and LoMa since 2026-09-29)
+
+Both trainers use the same recipe; only the network being adapted differs.
+
+- **Pair score (training):** the *relaxed* score, computed from the matcher's
+  dense assignment probabilities `P` before mutual selection and thresholding,
+  `s = ½ (mean_i max_j P_ij + mean_j max_i P_ij)` over each image's real
+  keypoints (`train_common._lg_relaxed_scores` for RDD,
+  `loma_backend.train_pair_score` for LoMa).
+- **Loss:** `mean_b relu(margin - s(query, positive) + s(query, negative))`,
+  margin 0.5, over *every* triplet. Pairs for which no match survives the
+  inference filters still carry gradient.
+- **Optimizer:** AdamW, lr 1e-5, weight decay 1e-4, cosine schedule over 300
+  epochs; effective batch 32 (descriptor modes load 1 per GPU and accumulate).
+- **Evaluation score:** the pseudo-accuracy validation keeps the *filtered*
+  score (mutual matches above the threshold, `_lg_scores`), which is what
+  inference ranks with.
+- **Padding:** RDD batches pad keypoints to the longest image; padded keypoints
+  are excluded from LightGlue's assignment, so they cannot be matched or add
+  probability mass.
+
+RDD checkpoints trained before 2026-09-29 used the filtered score in the loss
+(dropping triplets whose positive had no surviving match), Adam with L2 weight
+decay, padded keypoints inside the assignment softmax, and an effective
+descriptor batch of 4. They are not reproducible with the current code.
+
+Long runs can be split across Slurm jobs: `--resume <output_dir>/epoch_NNN`
+(or `CZECHLYNX_RDD_RESUME=auto` / `WILDLIFE_RDD_RESUME=auto` in the wrappers)
+restores model, optimizer, LR scheduler and RNG state from the per-epoch
+`accelerator.save_state` directory and its `train_state.json`, and refuses a
+checkpoint whose objective, optimizer or batch configuration differs.
+`--trained_model lg+rdd --rdd_train_component descriptor` (wrapper preset `joint`)
+and `--loma_train_component joint` train the descriptor and the matcher together
+with the detector frozen; see CZECHLYNX.md. LoMa's trainer also accepts
+`--keep_every`.
+The wrappers also pass `--keep_every 50` (override with `RDD_KEEP_EVERY`): each run keeps
+`epoch_00`, every 50th epoch, `epoch_299` and its newest epoch, and deletes other epoch
+directories it wrote itself, which keeps a 300-epoch run at about 1 GB instead of 40 GB.
 
 ## `contrastive_finetuning/` layout
 

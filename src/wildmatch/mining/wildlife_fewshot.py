@@ -158,10 +158,13 @@ def load_czechlynx_records(source_view: Path) -> tuple[dict, list[WildlifeRecord
     manifest = json.loads(manifest_path.read_text())
     records = [
         WildlifeRecord(
-            dataset_id="CzechLynx", identity=item["identity"],
+            dataset_id="CzechLynx",
+            identity=item["identity"],
             collection=f"{item['source']}/{item['encounter']}",
-            original_path=item["original_path"], canonical_path=item["relative_path"],
-            official_split=item["metadata_split"], generated_split=item["split"],
+            original_path=item["original_path"],
+            canonical_path=item["relative_path"],
+            official_split=item["metadata_split"],
+            generated_split=item["split"],
         )
         for item in manifest["records"]
     ]
@@ -194,8 +197,7 @@ def build_subset(
     budget = int(round(fraction * total))
     singletons = sorted(name for name, n in counts.items() if n == 1)
     lifted = sorted(
-        name for name, n in counts.items()
-        if n >= 2 and math.floor(fraction * n) < min(n, min_per_identity)
+        name for name, n in counts.items() if n >= 2 and math.floor(fraction * n) < min(n, min_per_identity)
     )
     summary = {
         "fraction": fraction,
@@ -322,7 +324,10 @@ class _FileLock:
 
 
 def write_metadata_column(
-    metadata_csv: Path, output_csv: Path, column: str, records: list[WildlifeRecord],
+    metadata_csv: Path,
+    output_csv: Path,
+    column: str,
+    records: list[WildlifeRecord],
     split_column_name: str = "split",
 ) -> dict[str, int]:
     """Add/replace ``column`` in a copy of the dataset metadata used by the probe.
@@ -342,7 +347,10 @@ def write_metadata_column(
 
 
 def _write_metadata_column_locked(
-    metadata_csv: Path, output_csv: Path, column: str, records: list[WildlifeRecord],
+    metadata_csv: Path,
+    output_csv: Path,
+    column: str,
+    records: list[WildlifeRecord],
     split_column_name: str = "split",
 ) -> dict[str, int]:
     base = output_csv if output_csv.is_file() else metadata_csv
@@ -434,9 +442,7 @@ def prepare_fewshot(
     (output_root / "manifest.json").write_text(
         json.dumps({**summary, "records": [asdict(record) for record in subset]}, indent=2)
     )
-    (output_root / "records.jsonl").write_text(
-        "".join(json.dumps(asdict(record)) + "\n" for record in subset)
-    )
+    (output_root / "records.jsonl").write_text("".join(json.dumps(asdict(record)) + "\n" for record in subset))
     return summary
 
 
@@ -447,13 +453,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fraction", type=float, required=True, help="share of training frames to keep, in (0, 1]")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--min_per_identity", type=int, default=DEFAULT_MIN_PER_IDENTITY)
-    parser.add_argument("--source_view", type=Path, default=None,
-                        help="full canonical view (default: $WILDLIFE_PROCESSED_ROOT/<dataset>/<protocol>)")
-    parser.add_argument("--output_root", type=Path, default=None,
-                        help="few-shot view (default: $FEWSHOT_ROOT/views/<dataset>/<protocol>/<view>)")
-    parser.add_argument("--metadata_out", type=Path, default=None,
-                        help="probe metadata copy receiving the split column "
-                             "(default: <source_root>/metadata_fewshot/metadata_<dataset>.csv; 'none' disables)")
+    parser.add_argument(
+        "--source_view",
+        type=Path,
+        default=None,
+        help="full canonical view (default: $WILDLIFE_PROCESSED_ROOT/<dataset>/<protocol>)",
+    )
+    parser.add_argument(
+        "--output_root",
+        type=Path,
+        default=None,
+        help="few-shot view (default: $FEWSHOT_ROOT/views/<dataset>/<protocol>/<view>)",
+    )
+    parser.add_argument(
+        "--metadata_out",
+        type=Path,
+        default=None,
+        help="probe metadata copy receiving the split column "
+        "(default: <source_root>/metadata_fewshot/metadata_<dataset>.csv; 'none' disables)",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry_run", action="store_true")
     return parser.parse_args()
@@ -466,7 +484,9 @@ def main() -> None:
     processed_root = Path(os.environ.get("WILDLIFE_PROCESSED_ROOT", data_root / "wildlife_processed"))
     fewshot_root = Path(os.environ.get("FEWSHOT_ROOT", data_root / "fewshot"))
     source_view = args.source_view or processed_root / config.dataset_id / args.protocol
-    output_root = args.output_root or fewshot_root / "views" / config.dataset_id / args.protocol / view_name(args.fraction, args.seed)
+    output_root = args.output_root or fewshot_root / "views" / config.dataset_id / args.protocol / view_name(
+        args.fraction, args.seed
+    )
     if args.metadata_out is None:
         metadata_out: Path | None = config.root / "metadata_fewshot" / f"metadata_{config.dataset_id}.csv"
     elif str(args.metadata_out).lower() == "none":

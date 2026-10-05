@@ -91,10 +91,13 @@ def test_selection_is_deterministic_and_nested():
 
 def _record(split: str, identity: str, index: int) -> WildlifeRecord:
     return WildlifeRecord(
-        dataset_id="Toy", identity=identity, collection=identity,
+        dataset_id="Toy",
+        identity=identity,
+        collection=identity,
         original_path=f"masked_images/Toy/{split}/{identity}_{index}.jpg",
         canonical_path=f"{split}/{identity}/{identity}/frame_{index:06d}.jpg",
-        official_split=split, generated_split=split,
+        official_split=split,
+        generated_split=split,
     )
 
 
@@ -148,7 +151,8 @@ def _write_full_view(root: Path, records: list[WildlifeRecord]) -> Path:
         writer.writeheader()
         writer.writerows(rows)
     manifest = {
-        "dataset_id": "Toy", "protocol": "legacy",
+        "dataset_id": "Toy",
+        "protocol": "legacy",
         "config": {"dataset_id": "Toy", "metadata_csv": str(metadata)},
         "records": [record.__dict__ for record in records],
     }

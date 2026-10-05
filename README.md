@@ -1,6 +1,8 @@
 # Explainable Individual Re-Identification
 
 Modular deep learning codebase for wildlife individual re-identification (ReID), with:
+- pair mining with a pretrained matcher (`wildmatch mine`)
+- matcher fine-tuning on the mined pairs, LoMa and RDD-LightGlue (`wildmatch finetune-matcher`)
 - backbone finetuning (`wildmatch finetune-backbone`)
 - retrieval probing / benchmarking (`wildmatch evaluate`, grids with `wildmatch sweep`)
 - optional mask-based background removal
@@ -13,13 +15,14 @@ The repository supports two workflows:
 - `probe`: benchmark retrieval methods (`cosine`, `wildfusion`, `local_lightglue`, `linear_probe`, `efficient_probe`, `vismatch`) with pretrained or finetuned backbones.
 
 The code is the installable `wildmatch` package under `src/wildmatch/`, run through one
-`wildmatch` command (`wildmatch --help` lists the subcommands). (The package refactor is in
-progress on this branch; see AGENTS.md, "Package refactor".)
+`wildmatch` command (`wildmatch --help` lists the subcommands). The project page's
+"Reproduce" section (`docs/reproduce/`) walks through mining, fine-tuning and evaluation.
 
 ## Quickstart
 
 ```bash
-# 1. Install (Python 3.12; pick one PyTorch build: --extra cpu or --extra cu126)
+# 1. Install (Python 3.12; pick one PyTorch build: --extra cpu or --extra cu126;
+#    add --extra train for mining and matcher fine-tuning)
 uv sync --extra cu126 --extra matchers --group dev
 source .venv/bin/activate                     # or prefix the commands below with `uv run`
 
@@ -72,8 +75,11 @@ data locations, the dataset registry and each workflow in detail.
 │   ├── reporting/        manifests, run index, paper tables and figures, W&B names
 │   ├── train/            backbone fine-tuning runner, checkpointing, accumulation, class weights
 │   ├── utils/            I/O, fingerprints, cache identities, reproducibility, config defaults
-│   └── mining/, matcher_finetune/   slots for pair mining and matcher fine-tuning (merged in later)
-├── slurm/                sweep_task.sbatch, evaluate.sbatch, finetune_backbone.sbatch, eval_loma_epoch_curve.sh
+│   ├── mining/           pair mining (`wildmatch mine`): views, feature caches, strong-match indices
+│   ├── matcher_finetune/ matcher fine-tuning (`wildmatch finetune-matcher`), LoMa and RDD-LightGlue
+│   └── vendor/rdd/       RDD code used by mining and fine-tuning, vendored unchanged
+├── slurm/                sweep_task, evaluate, finetune_backbone, finetune_matcher, mine (.sbatch);
+│                         mining/ and matcher_finetune/ keep the original wrappers as reference
 ├── paper/                page exporters (page/), paper figures and analyses (figures/), tools/ (parity check, SAM 3)
 ├── tests/                unit tests (pytest)
 ├── notebooks/            dataset annotation viewer (outputs stripped)
@@ -101,6 +107,7 @@ uv run wildmatch evaluate --help
 ```
 
 `--extra matchers` adds Vismatch (RDD-LightGlue, LoMa and the other local matchers);
+`--extra train` adds what pair mining and matcher fine-tuning need (accelerate, LoMa, PoseLib);
 `--extra wandb` adds Weights & Biases logging. `uv.lock` pins every package, including the
 git dependencies (wildlife-tools, wildlife-datasets, Vismatch, glue-factory, LightGlue).
 uv creates `.venv/` in the repository unless `UV_PROJECT_ENVIRONMENT` points elsewhere,

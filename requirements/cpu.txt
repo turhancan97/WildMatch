@@ -3,6 +3,8 @@
 -e .
 absl-py==2.5.0
     # via tensorboard
+accelerate==1.14.0
+    # via wildmatch
 aiohappyeyeballs==2.7.1
     # via aiohttp
 aiohttp==3.14.3
@@ -75,10 +77,13 @@ dill==0.4.1
     # via
     #   datasets
     #   multiprocess
+docstring-parser==0.18.0
+    # via tyro
 e2cnn==0.2.3
     # via vismatch
 einops==0.8.2
     # via
+    #   lomatch
     #   uniception
     #   vismatch
 fastjsonschema==2.22.2
@@ -131,6 +136,7 @@ httpx==0.28.1
     #   huggingface-hub
 huggingface-hub==1.33.0
     # via
+    #   accelerate
     #   datasets
     #   timm
     #   tokenizers
@@ -209,6 +215,8 @@ lightning-utilities==0.15.3
     #   torchmetrics
 loguru==0.7.3
     # via vismatch
+lomatch @ git+https://github.com/davnords/LoMa.git@5e541b8e39b5e0b2fd7d6b74ced583061a3e805a
+    # via wildmatch
 markdown==3.11
     # via tensorboard
 markdown-it-py==4.2.0
@@ -256,6 +264,7 @@ networkx==3.7
     #   torch
 numpy==2.4.2
     # via
+    #   accelerate
     #   albucore
     #   albumentations
     #   contourpy
@@ -302,6 +311,7 @@ opencv-python==4.11.0.86
     #   gluefactory
     #   kornia-moons
     #   lightglue
+    #   lomatch
     #   vismatch
     #   wildlife-datasets
     #   wildlife-tools
@@ -311,6 +321,7 @@ opencv-python-headless==4.11.0.86
     #   albumentations
 packaging==24.2
     # via
+    #   accelerate
     #   datasets
     #   huggingface-hub
     #   hydra-core
@@ -337,6 +348,7 @@ pandas==3.0.0
 pillow==12.1.0
     # via
     #   imageio
+    #   lomatch
     #   matplotlib
     #   rerun-sdk
     #   scikit-image
@@ -352,7 +364,9 @@ platformdirs==4.12.3
     #   pyinaturalist
     #   requests-cache
 poselib==2.0.5
-    # via vismatch
+    # via
+    #   vismatch
+    #   wildmatch
 propcache==0.5.4
     # via
     #   aiohttp
@@ -362,8 +376,10 @@ protobuf==6.33.6
     #   kaggle
     #   kagglesdk
     #   tensorboard
-psutil==7.2.2 ; sys_platform == 'never'
-    # via rerun-sdk
+psutil==7.2.2
+    # via
+    #   accelerate
+    #   rerun-sdk
 py3-wget==1.0.13
     # via vismatch
 pyarrow==25.0.1
@@ -413,6 +429,7 @@ pywin32-ctypes==0.2.3 ; sys_platform == 'win32'
     # via keyring
 pyyaml==6.0.3
     # via
+    #   accelerate
     #   albumentations
     #   datasets
     #   huggingface-hub
@@ -457,6 +474,7 @@ rpds-py==2026.6.3
     #   referencing
 safetensors==0.7.0
     # via
+    #   accelerate
     #   timm
     #   transformers
     #   vismatch
@@ -524,12 +542,14 @@ tokenizers==0.22.2
     # via transformers
 torch==2.8.0 ; sys_platform == 'darwin'
     # via
+    #   accelerate
     #   e2cnn
     #   gluefactory
     #   kornia
     #   kornia-moons
     #   lightglue
     #   lightning
+    #   lomatch
     #   pytorch-lightning
     #   pytorch-metric-learning
     #   roma
@@ -541,12 +561,14 @@ torch==2.8.0 ; sys_platform == 'darwin'
     #   wildmatch
 torch==2.8.0+cpu ; sys_platform != 'darwin'
     # via
+    #   accelerate
     #   e2cnn
     #   gluefactory
     #   kornia
     #   kornia-moons
     #   lightglue
     #   lightning
+    #   lomatch
     #   pytorch-lightning
     #   pytorch-metric-learning
     #   roma
@@ -567,6 +589,7 @@ torchvision==0.23.0 ; (platform_machine == 'aarch64' and platform_python_impleme
     # via
     #   gluefactory
     #   lightglue
+    #   lomatch
     #   timm
     #   vismatch
     #   wildmatch
@@ -574,6 +597,7 @@ torchvision==0.23.0+cpu ; (platform_machine != 'aarch64' and sys_platform == 'li
     # via
     #   gluefactory
     #   lightglue
+    #   lomatch
     #   timm
     #   uniception
     #   vismatch
@@ -586,6 +610,7 @@ tqdm==4.67.3
     #   huggingface-hub
     #   kaggle
     #   lightning
+    #   lomatch
     #   py3-wget
     #   pytorch-lightning
     #   pytorch-metric-learning
@@ -606,6 +631,8 @@ transforms3d==0.4.2
     # via vismatch
 trimesh==5.1.1
     # via vismatch
+typeguard==4.6.0
+    # via tyro
 typer==0.27.2
     # via typer-slim
 typer-slim==0.24.0
@@ -628,9 +655,13 @@ typing-extensions==4.16.0
     #   referencing
     #   rerun-sdk
     #   torch
+    #   typeguard
     #   typing-inspection
+    #   tyro
 typing-inspection==0.4.4
     # via pydantic
+tyro==1.0.16
+    # via lomatch
 tzdata==2026.5 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 uniception==0.1.1 ; sys_platform == 'never'

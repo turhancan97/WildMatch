@@ -1,7 +1,7 @@
 # Evaluation
 
-Repository: `explainable_individual_reidentification` (this one), installed as the `wildmatch`
-package with one `wildmatch` command. Evaluation is a Hydra-configured *probe*: for every query it ranks the gallery with one method, stores the
+Command: `wildmatch evaluate`, part of the `wildmatch` package like the mining and fine-tuning
+steps. Evaluation is a Hydra-configured *probe*: for every query it ranks the gallery with one method, stores the
 score matrix, metrics and timings in a self-contained run directory, and appends one row
 to a central run index. Tables and figures are built from those run directories.
 
@@ -11,6 +11,9 @@ to a central run index. Tables and figures are built from those run directories.
 uv sync --extra cu126 --extra matchers --group dev   # or --extra cpu; Python 3.12
 source .venv/bin/activate
 ```
+
+Evaluation needs only these extras; add `--extra train` for [mining](mining.md) and
+[fine-tuning](finetuning.md).
 
 A conda route installs the same pinned versions (`environment.yml`, then
 `pip install --no-deps -r requirements/cu126.txt`).
@@ -73,6 +76,11 @@ joint checkpoints are loaded with `checkpoint_components=descriptor_only` and `f
 loader validates the checkpoint's protocol file and refuses a mismatched component mode.
 Unscored gallery positions are set to minus infinity, so a matcher can never rank an image
 it did not score.
+
+The fine-tuned checkpoints come from one of two places: `wildmatch weights download` fetches the
+published paper checkpoints into the locations the dataset registry names, or
+[`wildmatch finetune-matcher`](finetuning.md) trains new ones on pairs from
+[`wildmatch mine`](mining.md).
 
 ## Benchmark grids
 

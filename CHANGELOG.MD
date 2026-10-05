@@ -7,6 +7,25 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration parity L6 closed (user decision) without the two CzechLynx LoMa checkpoints:
+  their main-vs-integration check ran out of host memory in both environments (64 GB, then 125 GB in
+  rerun 525434), because it extracts the LoMa features of the whole ~27.6k-image gallery from scratch.
+  All other finished checkpoints are bit-identical; `docs/reproduce/finetuning.md` names the exception.
+- 2026-10-05 (branch `docs/reproduce-merged`): reproduce pages and README for the merged package.
+  `docs/reproduce/index.md` lists one command per step and one environment (`--extra train` for
+  mining and fine-tuning), with locations through the path profile; `mining.md` uses
+  `wildmatch mine plan|view|cache|check|submit` and registry keys; `finetuning.md` uses
+  `wildmatch finetune-matcher` / `slurm/finetune_matcher.sbatch`, the ablations as
+  `matcher_finetune.component=descriptor|joint`, records `wildmatch_provenance.json` in the
+  checkpoint layout and adds a short reproducibility paragraph (no numbers, user decision);
+  `probing.md` says where fine-tuned checkpoints come from. `docs/paper.md` no longer names or links
+  the two former sibling repositories (user decision). Correction: the "Pair sources used in the
+  paper" section said every dataset used LoMa-mined pairs except Salamander RDD; the published
+  checkpoints record RDD-mined pairs also for Nyala and Whale shark (both matchers) and CzechLynx
+  closed RDD, now given as a table. README: mining and fine-tuning commands, `--extra train`, the
+  new package folders. `requirements/export.sh` exports the `train` extra too, so the conda route
+  can run mining and fine-tuning (re-exported pins: additions only, plus `psutil` now unconditional
+  because accelerate needs it). Few-shot views stay off the pages (open item in AGENTS.md).
 - 2026-10-05 (branch `feat/integration-followups`): mining datasets come from the dataset registry.
   `wildmatch.mining.wildlife_dataset.config_from_registry` builds the mining config of an entry from its
   root and, by default, its paper input table (`registry.paper_inputs.metadata_file`, the table the

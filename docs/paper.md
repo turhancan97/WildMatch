@@ -23,24 +23,26 @@ linked below.
 
 ## Code
 
-Three repositories implement the pipeline.
+One repository implements the whole pipeline: pair mining, matcher fine-tuning and evaluation.
 
 | Repository | Role | Link |
 |---|---|---|
-| `explainable_individual_reidentification` | Evaluation: probes, candidate lists, metrics, run manifests, paper tables and figures, this page | [GitHub](https://github.com/turhancan97/explainable_individual_reidentification) |
-| `lynx-finetuning` | Matcher fine-tuning (LoMa, RDD-LightGlue): triplet sampling, relaxed score, training recipe, checkpoints | [GitHub](https://github.com/PiotrKubaty/lynx-finetuning) |
-| `rdd-parallel-benchmark` | Pair mining: feature caches, strong-match indices, Slurm orchestration | [GitHub](https://github.com/PiotrKubaty/rdd-parallel-benchmark) |
+| `explainable_individual_reidentification` | Pair mining, matcher fine-tuning (LoMa, RDD-LightGlue), evaluation: probes, candidate lists, metrics, run manifests, paper tables and figures, this page | [GitHub](https://github.com/turhancan97/explainable_individual_reidentification) |
 
 !!! note
-    Repository names and links are provisional; the evaluation repository is to be
-    renamed before the page is published, and the links above will follow.
+    The repository name and link are provisional; the repository is to be renamed before the
+    page is published, and the link above will follow.
 
-### Evaluation repository map
+### Repository map
 
 - `src/wildmatch/`: the installable package behind the `wildmatch` command.
 - `src/wildmatch/evaluate/`: probe dispatch (cosine, WildFusion, Vismatch matchers, linear and
   efficient probes), metrics (top-k, balanced top-1, mAP) and stable ranking.
 - `src/wildmatch/matchers/`: Vismatch matcher profiles and custom-checkpoint loading.
+- `src/wildmatch/mining/`: pair mining (`wildmatch mine`): dataset views, feature caches,
+  strong-match indices.
+- `src/wildmatch/matcher_finetune/`: matcher fine-tuning (`wildmatch finetune-matcher`): triplet
+  sampling, relaxed score, training recipe, checkpoints.
 - `src/wildmatch/data/`: dataset views, COCO-RLE masking, split safety checks and dataset
   preparation (`wildmatch prepare`).
 - `src/wildmatch/sweep/`: evaluation grids as immutable Slurm or local submissions.
@@ -55,8 +57,8 @@ Three repositories implement the pipeline.
 |---|---|---|
 | MegaDescriptor-L | Global embeddings for the candidate list and classifier baselines | wildlife-tools release |
 | DINOv3-L | Cosine-retrieval baseline | `facebook/dinov3-vitl16-pretrain-lvd1689m` (gated) |
-| LoMa | Matcher | via Vismatch, pinned commit |
-| RDD, LightGlue | Matcher | via Vismatch, pinned commit |
+| LoMa | Matcher | via Vismatch, pinned commit (evaluation); `lomatch`, pinned commit (mining, fine-tuning) |
+| RDD, LightGlue | Matcher | via Vismatch, pinned commit (evaluation); RDD code vendored unchanged (mining, fine-tuning) |
 | WildFusion | Baseline | wildlife-tools |
 | SAM 3 | Background removal for SalamanderID2025 | prompt "Salamander" |
 

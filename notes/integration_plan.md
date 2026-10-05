@@ -210,7 +210,7 @@ or the paper snapshot. The paper is frozen; nothing here changes it.
 **Phase order (revised).** 0: ~~D2 commit~~ (done, `6958d3d`); Piotr's consent for the few-shot files.
 1: fine-tuning via filter-repo + merge. 2: make it a package module (vendored RDD, pinned LoMa,
 paths, CLI). 3: mining, same route. 4: environment spike (D3). 5: parity L0-L6 and provenance.
-6: few-shot port (Piotr agreed 2026-10-05; done on `integrate/fewshot`).
+6: few-shot port (Piotr agreed 2026-10-05; done on `integrate/fewshot`). Its documentation on the project page is deferred (user, 2026-10-05: not part of the paper; open item in AGENTS.md's publication checklist).
 
 **Progress (branch `integrate/matcher-finetune`, 2026-10-05).** Phase 1 done (filter-repo merge, imports).
 Phase 2 in part: RDD vendored (`src/wildmatch/vendor/rdd/`), `train` extra, branch env
@@ -218,7 +218,7 @@ Phase 2 in part: RDD vendored (`src/wildmatch/vendor/rdd/`), `train` extra, bran
 top): `wildmatch finetune-matcher` (Hydra, ports the four wrappers, checked against the paper runs'
 recorded arguments and protocol files) and `slurm/finetune_matcher.sbatch` (phase 2 done); mining merged
 with history (phase 3: import, vendored RDD matchers, tests pass). Open in phase 3: `wildmatch mine`
-(port of `slurm/mining/`), L3. (Registry in place of `configs/wildlife/*.json`: done on `feat/integration-followups`.) **L6: 13/18 bit-identical so far** (CzechLynx tasks still running). **L4 holds** (identical mined pairs on 24 Salamander queries, both miners). **L2 holds** (2026-10-05): rebuilt views equal the live ones for all eight paper datasets
+(port of `slurm/mining/`), L3. (Registry in place of `configs/wildlife/*.json`: done on `feat/integration-followups`.) **L6 closed**: every finished checkpoint bit-identical; the two CzechLynx LoMa checks ran out of memory in both environments and were dropped (user decision). **L4 holds** (identical mined pairs on 24 Salamander queries, both miners). **L2 holds** (2026-10-05): rebuilt views equal the live ones for all eight paper datasets
 and CzechLynx open (only `manifest.json`'s `output_root` differs); `tests/mining/test_view_parity.py`.
 D3 spike submitted as job 525263.
 

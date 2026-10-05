@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: `notes/integration_plan.md`, a draft plan (read-only survey, nothing implemented) for
+  merging mining (`rdd-parallel-benchmark`) and matcher fine-tuning (`lynx-finetuning`) into the
+  `mining/` and `matcher_finetune/` slots. User decision: the reference is each repository's
+  `feat/wildlife-reid-pipeline` branch as pushed that day (`4f29292`, `319477e`, which now holds the
+  formerly uncommitted relaxed-objective and joint training code); `piotr-wip` is not included.
 - 2026-10-05: `wildmatch check-index` (`src/wildmatch/reporting/check_index.py`,
   `tests/test_check_index.py`): reports `completed` rows of `reports/runs.csv` whose run directory
   is gone; `--fix` repoints moved runs and marks the rest `missing` (backup first, writers' lock).

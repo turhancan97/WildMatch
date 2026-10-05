@@ -46,7 +46,9 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 - src/wildmatch/paths.py, src/wildmatch/data/registry.py: path profiles and registry entries
   for code outside Hydra (see "Paths and the dataset registry").
 - src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
-  later from `rdd-parallel-benchmark` and `lynx-finetuning`.
+  later from `rdd-parallel-benchmark` and `lynx-finetuning`. Draft integration plan (not started):
+  `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
+  branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`; user decision).
 - slurm/: `sweep_task.sbatch` (one sweep array element), `evaluate.sbatch`,
   `finetune_backbone.sbatch`, and `eval_loma_epoch_curve.sh` (training-cost ablation).
 - paper/: paper and project-page tooling run from a checkout (not part of the package):

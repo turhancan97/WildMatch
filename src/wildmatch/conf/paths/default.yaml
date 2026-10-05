@@ -13,3 +13,5 @@ external:
   sam3_checkpoint: ${oc.env:WILDMATCH_SAM3_CHECKPOINT,null}
   # Folder with the upstream RDD weights RDD-v2.pth and RDD_lg-v2.pth (matcher fine-tuning).
   rdd_weights_dir: ${oc.env:WILDMATCH_RDD_WEIGHTS_DIR,null}
+  # Pretrained LoMa-B checkpoint (loma_B.pt) that matcher fine-tuning starts from.
+  loma_weights: ${oc.env:WILDMATCH_LOMA_WEIGHTS,null}

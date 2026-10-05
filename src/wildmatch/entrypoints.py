@@ -48,6 +48,18 @@ def finetune_main(cfg: DictConfig) -> None:
     run_finetune(cfg)
 
 
+@hydra.main(version_base="1.3", config_path="conf", config_name="finetune_matcher")
+def finetune_matcher_main(cfg: DictConfig) -> None:
+    """Fine-tune LoMa or RDD-LightGlue on a mined index (wildmatch.matcher_finetune.launch)."""
+    OmegaConf.resolve(cfg)
+    OmegaConf.set_struct(cfg, True)
+    from wildmatch.matcher_finetune.launch import run
+
+    code = run(cfg)
+    if code:
+        raise SystemExit(code)
+
+
 def apply_paths_profile(argv: list) -> Optional[str]:
     """Add ``paths=<profile>`` from WILDMATCH_PATHS or wildmatch.local.yaml when not given.
 
@@ -78,3 +90,8 @@ def probe() -> None:
 def finetune() -> None:
     apply_paths_profile(sys.argv)
     finetune_main()
+
+
+def finetune_matcher() -> None:
+    apply_paths_profile(sys.argv)
+    finetune_matcher_main()

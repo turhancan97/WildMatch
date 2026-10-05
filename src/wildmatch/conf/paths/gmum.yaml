@@ -11,3 +11,4 @@ external:
   sam3_repo: /home/kargin/Projects/repositories/lynx_application/external/sam3
   sam3_checkpoint: /shared/sets/datasets/confidential/lynx/checkpoints/sam3-hf/sam3.pt
   rdd_weights_dir: /home/kargin/Projects/repositories/rdd/weights
+  loma_weights: /shared/sets/datasets/confidential/lynx/checkpoints/loma/loma_B.pt

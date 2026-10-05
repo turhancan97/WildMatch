@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration parity L2 holds. Views rebuilt with `wildmatch.mining.wildlife_dataset` /
+  `czechlynx_dataset` from the merged configs equal the views the paper's training read, for all
+  eight paper datasets and CzechLynx open (legacy protocol; about 115,000 symlinks and every
+  directory identical); the manifests differ only in `output_root` and, for the older CzechLynx
+  closed view, an unrecorded `split_column`. `tests/mining/test_view_parity.py` (data marker)
+  repeats it for SalamanderID2025.
 - 2026-10-05 (branch `integrate/finetune-cli`, phase 3 in part): rdd-parallel-benchmark `4f29292`
   merged with its history (filter-repo; 30 commits, 51 files byte-identical to the reference; the
   deleted upstream RDD assets drop out of history, 28 MB -> 324 KB) into `src/wildmatch/mining/`,

@@ -154,7 +154,7 @@ Section 3 gives the order of the phases; this section takes precedence where the
 | D3 | Environment | A spike first (about one day): mining and ~50 training steps in the `wildmatch` uv env (torch 2.8/cu126) against the old conda envs (torch 2.13/cu130) on the same GPU type, measured with parity levels L3-L5. If it fails, a separate, locked training environment. Decided by the measurement. |
 | D4 | Stays behind | The confidential-lynx `lynx_*` pipeline (except the three helpers that are still imported: `FrameFeat`, `load_cached_feat`, `sample_frames`), mining's `*_evaluate.py` (duplicates `wildmatch evaluate`), `helios_scripts/` and `debug/`, and the older training strategies (the pre-relaxed/filtered recipe paths). They stay readable in the sibling repositories' history. |
 | D5 | From `piotr-wip` | **Only the few-shot scripts** (mining `eb04345`: `scripts/wildlife_fewshot.py`, `scripts/czechlynx_fewshot.py`, `slurm_scripts/fewshot/*`, `tests/test_wildlife_fewshot.py`). The env-var path layer, `MIGRATION.md`, the pip freezes and the migration pack scripts are not taken. See the caveats below. |
-| D6 | Licence | (Premise corrected 2026-10-05: Piotr wrote 30 of the 48 fine-tuning commits and ~52 % of its surviving lines, plus 158 of the moved mining lines, so his consent covers the fine-tuning code as a whole.) Apache-2.0, like `wildmatch`, with `NOTICE`/`THIRD_PARTY_LICENSES.md` entries for the vendored RDD (xtcpete/rdd) and `rdd_patch` (modified cvg/LightGlue), both Apache-2.0. Piotr is credited as the owner of the remotes and as co-developer. |
+| D6 | Licence | (Premise corrected 2026-10-05: Piotr wrote 30 of the 48 fine-tuning commits and ~52 % of its surviving lines, plus 1,066 of the 3,330 moved mining lines, so his consent covers the fine-tuning code as a whole.) Apache-2.0, like `wildmatch`, with `NOTICE`/`THIRD_PARTY_LICENSES.md` entries for the vendored RDD (xtcpete/rdd) and `rdd_patch` (modified cvg/LightGlue), both Apache-2.0. Piotr is credited as the owner of the remotes and as co-developer. |
 | D7 | RDD and LoMa | Vendor the RDD checkout that training used (`turhancan97/rdd`, `lynx_analysis`, `86f0e38`, with its two harmless local edits) once inside the package, and check mining's results against it (mining's own `RDD/` copy differs in five files). LoMa becomes a git dependency pinned to the commit that training used. Installed on 2026-10-05: `lomatch @ 5e541b8` in the `loma` env (pip from git), and an editable checkout at `7043bac` in the `rdd` env. The commit is chosen by parity L5, not assumed. |
 | D8 | This plan | Written here, then `main` pushed after the user's review. |
 
@@ -211,8 +211,12 @@ paths, CLI). 3: mining, same route. 4: environment spike (D3). 5: parity L0-L6 a
 
 **Progress (branch `integrate/matcher-finetune`, 2026-10-05).** Phase 1 done (filter-repo merge, imports).
 Phase 2 in part: RDD vendored (`src/wildmatch/vendor/rdd/`), `train` extra, branch env
-`$UV_ENV_ROOT/wildmatch-integration`, lint/format, L0 and L1 pass. Open in phase 2: Hydra groups, the
-`wildmatch finetune-matcher` CLI and the Slurm wrappers.
+`$UV_ENV_ROOT/wildmatch-integration`, lint/format, L0 and L1 pass. Branch `integrate/finetune-cli` (on
+top): `wildmatch finetune-matcher` (Hydra, ports the four wrappers, checked against the paper runs'
+recorded arguments and protocol files) and `slurm/finetune_matcher.sbatch` (phase 2 done); mining merged
+with history (phase 3: import, vendored RDD matchers, tests pass). Open in phase 3: `wildmatch mine`
+(port of `slurm/mining/`), the registry in place of `configs/wildlife/*.json`, L2-L4. D3 spike
+submitted as job 525263.
 
 Effort estimate: phases 1-3 a few days of mostly mechanical work; phases 4-5 dominate (GPU parity
 runs on the cluster). Nothing here affects the submitted paper.

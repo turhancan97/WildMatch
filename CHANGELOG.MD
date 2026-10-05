@@ -7,6 +7,19 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `integrate/finetune-cli`, phase 3 in part): rdd-parallel-benchmark `4f29292`
+  merged with its history (filter-repo; 30 commits, 51 files byte-identical to the reference; the
+  deleted upstream RDD assets drop out of history, 28 MB -> 324 KB) into `src/wildmatch/mining/`,
+  `slurm/mining/`, `tests/mining/`, `notes/mining/`, `notebooks/mining/`. Imports name the package
+  and the vendored RDD, which now also carries `RDD/matchers/` unchanged from `86f0e38`; mining's
+  own RDD copy is a strict subset of it (whitespace aside, its only line not in the vendored copy
+  is a shorter import), so mining numerics do not depend on the switch. `build_models` passes the
+  vendored `configs/default.yaml` (byte-identical to the file `RDD.build` read from the working
+  directory); weight defaults come from `external.rdd_weights_dir` (mining's `weights/` was a
+  symlink to the same checkout folder). The two tests of `czechlynx_evaluate` (not merged, D4)
+  were removed; the 29 remaining pass. Lint fixes and an AST-identical format commit (blame-ignored).
+  Piotr Kubaty wrote 1,066 of the 3,330 moved mining lines (correcting the 158 counted earlier,
+  which left out the `lynx_*` files).
 - 2026-10-05 (branch `integrate/finetune-cli`, on top of `integrate/matcher-finetune`):
   `wildmatch finetune-matcher`, a Hydra command (`conf/finetune_matcher.yaml`, recipes
   `conf/matcher_finetune/{loma,rdd}.yaml`) that ports the four lynx-finetuning Slurm wrappers into

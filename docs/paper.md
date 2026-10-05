@@ -27,11 +27,7 @@ One repository implements the whole pipeline: pair mining, matcher fine-tuning a
 
 | Repository | Role | Link |
 |---|---|---|
-| `explainable_individual_reidentification` | Pair mining, matcher fine-tuning (LoMa, RDD-LightGlue), evaluation: probes, candidate lists, metrics, run manifests, paper tables and figures, this page | [GitHub](https://github.com/turhancan97/explainable_individual_reidentification) |
-
-!!! note
-    The repository name and link are provisional; the repository is to be renamed before the
-    page is published, and the link above will follow.
+| `WildMatch` | Pair mining, matcher fine-tuning (LoMa, RDD-LightGlue), evaluation: probes, candidate lists, metrics, run manifests, paper tables and figures, this page | [GitHub](https://github.com/turhancan97/WildMatch) |
 
 ### Repository map
 

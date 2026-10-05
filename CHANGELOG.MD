@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: the GitHub repository was renamed to `turhancan97/WildMatch` (by the user; still
+  private). `mkdocs.yml` (`site_url` `https://turhancan97.github.io/WildMatch/`, `repo_url`,
+  `repo_name`), the Paper & Code table and link follow it; the provisional-name note is removed
+  (publication checklist item closed). The fewshot module's docstring now says `wildmatch evaluate`
+  instead of the old repository name. Kept as they are: dated history, the reference copies of the
+  original few-shot Slurm scripts and the imported `notes/matcher_finetune/WILDLIFE.md`, and the
+  local checkout's folder name.
 - 2026-10-06: AGENTS.md brought up to date. The matcher fine-tuning entry no longer lists the
   full-RDD outcome check and parity L6 as open. The two Known-issues entries fixed on
   `fix/cache-key-device` (checkpoint fingerprints with absolute paths; GPU type missing from the

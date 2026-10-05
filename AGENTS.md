@@ -1238,8 +1238,12 @@ Binding rules from that history:
 
 - [ ] Settle the two "Draft" admonitions with the authors: the masking sentence on Method
   and the cost-gap explanation on Training cost; then remove the admonitions.
-- [ ] Rename the GitHub repository; update `site_url`, `repo_url`, `repo_name` in
-  `mkdocs.yml`, the links on Paper & Code, and remove the provisional-name note there.
+- [x] Rename the GitHub repository (done 2026-10-06 by the user: `turhancan97/WildMatch`, still
+  private; GitHub redirects the old URL). `mkdocs.yml` (`site_url` `https://turhancan97.github.io/WildMatch/`,
+  `repo_url`, `repo_name`) and Paper & Code follow; the provisional-name note is gone. The local
+  checkout keeps its folder name `explainable_individual_reidentification` on purpose (Claude's
+  project memory and the notes are keyed to that path). The reference copies in
+  `slurm/mining/fewshot/` and `notes/matcher_finetune/` keep their old wording.
 - [ ] Remove the draft banner (`{% block announce %}` in `overrides/main.html`), the
   "Draft page" warning on Home, the `copyright` draft line, and change the status pill
   text when the preprint is online ("available online", venue only after acceptance).

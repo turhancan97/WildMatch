@@ -218,7 +218,7 @@ Phase 2 in part: RDD vendored (`src/wildmatch/vendor/rdd/`), `train` extra, bran
 top): `wildmatch finetune-matcher` (Hydra, ports the four wrappers, checked against the paper runs'
 recorded arguments and protocol files) and `slurm/finetune_matcher.sbatch` (phase 2 done); mining merged
 with history (phase 3: import, vendored RDD matchers, tests pass). Open in phase 3: `wildmatch mine`
-(port of `slurm/mining/`), the registry in place of `configs/wildlife/*.json`, L3. **L6: 13/18 bit-identical so far** (CzechLynx tasks still running). **L4 holds** (identical mined pairs on 24 Salamander queries, both miners). **L2 holds** (2026-10-05): rebuilt views equal the live ones for all eight paper datasets
+(port of `slurm/mining/`), L3. (Registry in place of `configs/wildlife/*.json`: done on `feat/integration-followups`.) **L6: 13/18 bit-identical so far** (CzechLynx tasks still running). **L4 holds** (identical mined pairs on 24 Salamander queries, both miners). **L2 holds** (2026-10-05): rebuilt views equal the live ones for all eight paper datasets
 and CzechLynx open (only `manifest.json`'s `output_root` differs); `tests/mining/test_view_parity.py`.
 D3 spike submitted as job 525263.
 

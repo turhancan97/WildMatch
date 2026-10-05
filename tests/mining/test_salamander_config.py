@@ -13,21 +13,15 @@ from pathlib import Path
 
 import pytest
 
-from wildmatch.mining.wildlife_dataset import load_config, resolve_image
+from wildmatch.mining.wildlife_dataset import config_from_registry, resolve_image
 
-CONFIG = (
-    Path(__file__).resolve().parents[2]
-    / "src"
-    / "wildmatch"
-    / "mining"
-    / "configs"
-    / "wildlife"
-    / "SalamanderID2025.json"
-)
+
+def _config():
+    return config_from_registry("salamander", "gmum")
 
 
 def test_salamander_config_fields():
-    config = load_config(CONFIG)
+    config = _config()
     assert config.dataset_id == "SalamanderID2025"
     assert config.root == Path("/shared/sets/datasets/vision/czechlynx/SalamanderID2025")
     assert config.metadata_path == config.root / "split_time_closed_no_background.csv"
@@ -38,7 +32,7 @@ def test_salamander_config_fields():
 
 
 def test_salamander_metadata_maps_database_query_to_train_test():
-    config = load_config(CONFIG)
+    config = _config()
     if not config.metadata_path.is_file():
         pytest.skip("SalamanderID2025 dataset is not mounted")
     with config.metadata_path.open(newline="") as handle:

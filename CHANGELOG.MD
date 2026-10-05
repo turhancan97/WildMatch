@@ -7,6 +7,30 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `feat/integration-followups`): mining datasets come from the dataset registry.
+  `wildmatch.mining.wildlife_dataset.config_from_registry` builds the mining config of an entry from its
+  root and, by default, its paper input table (`registry.paper_inputs.metadata_file`, the table the
+  existing views, caches and indices were built from; `--inputs current` is refused where it differs,
+  since mining other inputs needs separate folders); `registry.mining` holds per-entry settings
+  (SalamanderID2025: `split_column: split_train_test`). The view, few-shot and shell-helper commands take
+  `--registry <key> [--paths] [--inputs]` (`--config <json>` remains for datasets outside the registry)
+  and `wildmatch mine` passes `--registry`. The 16 `configs/wildlife/*.json` files are removed: the 13
+  with a registry entry are pinned as a literal in `tests/mining/test_registry_configs.py` (the
+  registry reproduces each exactly); the three turtle configs without an entry (Amvrakikos, Reunion,
+  Zakynthos) are dropped. Views rebuilt through the registry equal the live training views.
+- 2026-10-05 (branch `feat/integration-followups`): `wildmatch mine submit` freezes the run into
+  `logs/mining/submissions/<id>/submission.json` (resolved task and aggregation commands, per-split
+  counts, code identity, `code_fingerprint` = hash of the blob ids of `src/`, `pyproject.toml`,
+  `uv.lock` plus any diff, SHA-256 of weights and cache manifest); the array jobs run
+  `wildmatch mine task|aggregate --submission <file>`, execute only the frozen commands and fail
+  closed when the code content or an input changed (a docs-only commit does not count). Before, each
+  task re-planned from the live registry, profile and code. Tests in `tests/mining/test_launch.py`.
+- 2026-10-05 (branch `feat/integration-followups`): `wildmatch finetune-matcher` records each launch in
+  `<output_dir>/wildmatch_provenance.json` (new `wildmatch.utils.provenance`): code commit, dirty state,
+  changed paths and diff hash (diff saved as `code-<n>.diff`), command, seed, SHA-256 of the train and
+  validation indices, pretrained weights and cache manifest, package versions, host, Slurm job.
+  Resumed runs append. Kept out of the protocol JSON, whose contents are part of the checkpoint
+  fingerprint. Integration plan phase 5 item ("every checkpoint records the commit, dirty state and seed").
 - 2026-10-05: `train` extra declares `poselib` (pinned 2.0.5): mining imports the vendored RDD
   `matchers` package, whose `dense_matcher` imports it. CI (`--extra cpu --extra train`, no `matchers`)
   failed at test collection without it; on the cluster it came in through the `matchers` extra.

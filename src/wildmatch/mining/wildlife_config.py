@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import argparse
 import shlex
-from pathlib import Path
 
-from wildmatch.mining.wildlife_dataset import load_config
+from wildmatch.mining.wildlife_dataset import add_config_arguments, config_from_arguments
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, required=True)
+    add_config_arguments(parser)
     parser.add_argument("--shell", action="store_true")
     args = parser.parse_args()
-    config = load_config(args.config)
+    config = config_from_arguments(args)
     values = {
         "WILDLIFE_DATASET_ID": config.dataset_id,
         "WILDLIFE_SOURCE_ROOT": str(config.root),

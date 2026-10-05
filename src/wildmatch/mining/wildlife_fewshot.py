@@ -46,7 +46,12 @@ from collections import Counter, defaultdict
 from dataclasses import asdict
 from pathlib import Path
 
-from wildmatch.mining.wildlife_dataset import WildlifeRecord, load_config
+from wildmatch.mining.wildlife_dataset import (  # noqa: F401 (load_config used by callers and tests)
+    WildlifeRecord,
+    add_config_arguments,
+    config_from_arguments,
+    load_config,
+)
 
 DEFAULT_FRACTIONS = (0.125, 0.25, 0.5, 1.0)
 DEFAULT_MIN_PER_IDENTITY = 2
@@ -448,7 +453,7 @@ def prepare_fewshot(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--config", type=Path, required=True, help="configs/wildlife/<dataset>.json")
+    add_config_arguments(parser)
     parser.add_argument("--protocol", choices=["strict", "legacy"], default="legacy")
     parser.add_argument("--fraction", type=float, required=True, help="share of training frames to keep, in (0, 1]")
     parser.add_argument("--seed", type=int, default=0)
@@ -479,7 +484,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    config = load_config(args.config)
+    config = config_from_arguments(args)
     data_root = Path(os.environ.get("CZECHLYNX_DATA_ROOT", "/shared/sets/datasets/vision/czechlynx"))
     processed_root = Path(os.environ.get("WILDLIFE_PROCESSED_ROOT", data_root / "wildlife_processed"))
     fewshot_root = Path(os.environ.get("FEWSHOT_ROOT", data_root / "fewshot"))

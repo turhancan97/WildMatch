@@ -11,10 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from wildmatch.mining.wildlife_dataset import load_config, prepare
+from wildmatch.mining.wildlife_dataset import config_from_registry, prepare
 
 ROOT = Path(__file__).resolve().parents[2]
-CONFIG = ROOT / "src" / "wildmatch" / "mining" / "configs" / "wildlife" / "SalamanderID2025.json"
 LIVE_VIEW = Path("/shared/sets/datasets/vision/czechlynx/wildlife_processed/SalamanderID2025/legacy")
 
 
@@ -40,7 +39,7 @@ def test_salamander_legacy_view_is_rebuilt_identically(tmp_path):
     if not LIVE_VIEW.is_dir():
         pytest.skip(f"{LIVE_VIEW} not available")
     output = tmp_path / "SalamanderID2025" / "legacy"
-    prepare(load_config(CONFIG), output, "legacy")
+    prepare(config_from_registry("salamander", "gmum"), output, "legacy")
     rebuilt, live = tree(output), tree(LIVE_VIEW)
     assert sorted(set(rebuilt) ^ set(live)) == []
     assert [k for k in live if rebuilt[k] != live[k]] == []

@@ -15,7 +15,10 @@ Steps:
   check      validate the view and the cache before mining (the spawn scripts' check)
   task       mine one query collection (one Slurm array element: --split and --index)
   aggregate  combine the per-query files into strong-matches_<split>_combined.json
-  submit     check, then submit one Slurm array per split and the dependent aggregation job
+  submit     check, freeze the run into logs/mining/submissions/<id>/submission.json, then submit one
+             Slurm array per split and the dependent aggregation; the jobs run `task`/`aggregate
+             --submission <file>`, which execute only the frozen commands and fail closed when the
+             code content (src/, pyproject.toml, uv.lock) or an input (weights, cache manifest) changed
 
 Two layouts exist, as in the wrappers: CzechLynx entries (`dataset.name == "CzechLynx_v2"`) and the
 WildlifeReID-10k/Salamander layout keyed by `dataset.animal`.
@@ -32,7 +35,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Sequence
 
-PACKAGE_CONFIGS = Path(__file__).resolve().parent / "configs" / "wildlife"
 CZECHLYNX_SPLITS = ("split-time_closed", "split-time_open")
 STEPS = ("plan", "view", "cache", "check", "task", "aggregate", "submit")
 
@@ -131,15 +133,16 @@ def plan_mining(
         layout, dataset_id, cache_batch = "czechlynx", experiment, "4"
     else:
         dataset_id = str(entry.animal)
-        config = PACKAGE_CONFIGS / f"{dataset_id}.json"
-        if not config.is_file():
-            raise SystemExit(f"no mining config for {dataset_id} ({config})")
+        from wildmatch.mining.wildlife_dataset import config_from_registry
+
+        config_from_registry(key, profile)  # fails here, not in a job, when the entry cannot be mined
+        source = ["--registry", key, *(["--paths", profile] if profile else [])]
         view = data_root / "wildlife_processed" / dataset_id / protocol
         base = checkpoint_root / "wildlife-reid-10k" / dataset_id
         cache = base / f"{backend}-cache"
         report = mining_outputs / "wildlife-reid-10k" / dataset_id / "indices" / backend / "strong-matches"
         splits = ("train", "val", "test") if protocol == "strict" else ("train", "test")
-        view_command = [py, "-m", "wildmatch.mining.wildlife_dataset", "--config", str(config),
+        view_command = [py, "-m", "wildmatch.mining.wildlife_dataset", *source,
                         "--output_root", str(view), "--protocol", protocol]  # fmt: skip
         aggregate = [py, "-m", "wildmatch.mining.wildlife_aggregate", "--dataset_id", dataset_id,
                      "--protocol", protocol, "--dump_report", str(report), "--dataset_root", str(view),
@@ -167,7 +170,7 @@ def plan_mining(
             view_command = [py, "-m", "wildmatch.mining.czechlynx_fewshot", *common,
                             "--metadata_csv", str(data_root / "CzechLynx_v2" / "CzechLynxDataset-Metadata-Real.csv")]  # fmt: skip
         else:
-            view_command = [py, "-m", "wildmatch.mining.wildlife_fewshot", "--config", str(config), *common]
+            view_command = [py, "-m", "wildmatch.mining.wildlife_fewshot", *source, *common]
         aggregate[aggregate.index("--dump_report") + 1] = str(report)
         aggregate[aggregate.index("--dataset_root") + 1] = str(view)
         cache_view = source_view
@@ -267,40 +270,107 @@ def _submit(plan: MinePlan, args: argparse.Namespace) -> int:
         print("\n".join(problems), file=sys.stderr)
         return 1
     script = Path(args.slurm_script)
-    common = ["--dataset", plan.key, "--backend", plan.backend, "--protocol", plan.protocol]
-    if args.paths:
-        common += ["--paths", args.paths]
-    if args.report is not None:
-        common += ["--report", str(args.report)]
-    if args.fraction is not None:
-        common += ["--fraction", str(args.fraction), "--seed", str(args.seed)]
-    if args.overwrite:
-        common += ["--overwrite"]
     log_root = Path("logs") / "mining" / plan.dataset_id / plan.protocol / plan.backend
     if args.fraction is not None:
         from wildmatch.mining.wildlife_fewshot import view_name
 
         log_root = log_root / view_name(args.fraction, args.seed)
+    counts = {split: count_collections(plan, split) for split in plan.splits}
+    empty = [split for split, count in counts.items() if count < 1]
+    if empty:
+        print(f"no {', '.join(empty)} collections under {plan.view}", file=sys.stderr)
+        return 1
+    submission = freeze_submission(plan, args, counts)
+    print(f"submission: {submission}")
     jobs = []
     for split in plan.splits:
-        count = count_collections(plan, split)
-        if count < 1:
-            print(f"no {split} collections under {plan.view}", file=sys.stderr)
-            return 1
         (log_root / split).mkdir(parents=True, exist_ok=True)
-        command = ["sbatch", "--parsable", f"--array=0-{count - 1}%{args.max_concurrent}",
+        command = ["sbatch", "--parsable", f"--array=0-{counts[split] - 1}%{args.max_concurrent}",
                    f"--output={log_root / split}/%A_%a.out", f"--error={log_root / split}/%A_%a.err",
-                   str(script), "task", *common, "--split", split]  # fmt: skip
+                   str(script), "task", "--submission", str(submission), "--split", split]  # fmt: skip
         print(shlex.join(command))
         if not args.dry_run:
             jobs.append(subprocess.check_output(command, text=True).strip().split(";")[0])
-            print(f"{plan.backend} {split} mining: {jobs[-1]} ({count} collections)")
+            print(f"{plan.backend} {split} mining: {jobs[-1]} ({counts[split]} collections)")
     command = ["sbatch", "--parsable", f"--dependency=afterok:{':'.join(jobs) or '<jobs>'}",
-               f"--output={log_root}/aggregate-%j.out", str(script), "aggregate", *common]  # fmt: skip
+               f"--output={log_root}/aggregate-%j.out", str(script), "aggregate", "--submission", str(submission)]  # fmt: skip
     print(shlex.join(command))
     if not args.dry_run:
         print("aggregation: " + subprocess.check_output(command, text=True).strip())
     return 0
+
+
+SUBMISSIONS = Path("logs") / "mining" / "submissions"
+
+
+def _inputs(plan: MinePlan) -> dict[str, Path]:
+    return {"weights": plan.weights, "rdd_weights": plan.rdd_weights, "cache_manifest": plan.cache / "manifest.json"}
+
+
+def freeze_submission(plan: MinePlan, args: argparse.Namespace, counts: dict[str, int]) -> Path:
+    """Write the resolved mining run (commands, inputs, code) that every array task will execute.
+
+    Tasks read only this file, so later edits to the registry, the path profile or the code cannot
+    change a running submission; a task fails closed when the code content or an input changed.
+    """
+    import datetime as dt
+    import uuid
+
+    from wildmatch.utils.provenance import code_fingerprint, launch_record
+
+    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    folder = SUBMISSIONS / f"{stamp}_{plan.dataset_id}_{plan.backend}_{uuid.uuid4().hex[:6]}"
+    folder.mkdir(parents=True, exist_ok=False)
+    tasks = {split: plan.task_command(split, 0) for split in plan.splits}
+    record = launch_record(
+        list(sys.argv),
+        _inputs(plan),
+        dataset=plan.key, dataset_id=plan.dataset_id, backend=plan.backend, protocol=plan.protocol,
+        fraction=args.fraction, seed=args.seed, overwrite=bool(args.overwrite),
+        view=str(plan.view), cache=str(plan.cache), report=str(plan.report), counts=counts,
+        task_commands=tasks, aggregate_command=plan.aggregate_command, code_fingerprint=code_fingerprint(),
+    )  # fmt: skip
+    path = folder / "submission.json"
+    path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    return path.resolve()
+
+
+def _verify_submission(record: dict) -> list[str]:
+    """Inputs and code must still be what the submission recorded."""
+    from wildmatch.utils.provenance import code_fingerprint, file_sha256
+
+    problems = []
+    for name, frozen in record["inputs"].items():
+        now = file_sha256(Path(frozen["path"])) if frozen else None
+        if frozen and now != frozen:
+            problems.append(f"input {name} changed since submission: {frozen['path']}")
+    if record.get("code_fingerprint") and code_fingerprint() != record["code_fingerprint"]:
+        problems.append("the code (src/, pyproject.toml, uv.lock) changed since submission")
+    return problems
+
+
+def _run_frozen(args: argparse.Namespace) -> int:
+    import os
+
+    record = json.loads(Path(args.submission).read_text(encoding="utf-8"))
+    problems = _verify_submission(record)
+    if problems:
+        print("\n".join(problems), file=sys.stderr)
+        return 1
+    if args.step == "aggregate":
+        return subprocess.call(record["aggregate_command"])
+    if args.split not in record["task_commands"]:
+        raise SystemExit(f"--split must be one of {', '.join(record['task_commands'])}")
+    index = args.index if args.index is not None else int(os.environ["SLURM_ARRAY_TASK_ID"])
+    if not 0 <= index < record["counts"][args.split]:
+        raise SystemExit(f"--index {index} is outside the {record['counts'][args.split]} {args.split} collections")
+    command = list(record["task_commands"][args.split])
+    command[command.index("--query_id") + 1] = str(index)
+    output = Path(f"{record['report']}_{args.split}_{index}.json")
+    if output.exists() and not record.get("overwrite"):
+        print(f"refusing: {output} exists (submit with --overwrite to mine it again)", file=sys.stderr)
+        return 1
+    return subprocess.call(command)
 
 
 def main(argv: Optional[Sequence[str]] = None, prog: str = "wildmatch mine") -> int:
@@ -308,8 +378,9 @@ def main(argv: Optional[Sequence[str]] = None, prog: str = "wildmatch mine") -> 
         prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("step", choices=STEPS)
-    parser.add_argument("--dataset", required=True, help="registry key, e.g. salamander or czechlynx_closed")
-    parser.add_argument("--backend", choices=["loma", "rdd"], required=True)
+    parser.add_argument("--dataset", help="registry key, e.g. salamander or czechlynx_closed")
+    parser.add_argument("--backend", choices=["loma", "rdd"])
+    parser.add_argument("--submission", type=Path, default=None, help="task/aggregate: a frozen submission.json")
     parser.add_argument("--protocol", choices=["legacy", "strict"], default="legacy")
     parser.add_argument("--paths", default=None, help="path profile (default: WILDMATCH_PATHS / wildmatch.local.yaml)")
     parser.add_argument("--split", default=None, help="task: the query split")
@@ -324,6 +395,12 @@ def main(argv: Optional[Sequence[str]] = None, prog: str = "wildmatch mine") -> 
     parser.add_argument("--fraction", type=float, default=None, help="few-shot view keeping this share of training")
     parser.add_argument("--seed", type=int, default=0, help="few-shot selection seed (views of one seed are nested)")
     args = parser.parse_args(argv)
+    if args.submission is not None:
+        if args.step not in ("task", "aggregate"):
+            parser.error("--submission is for the task and aggregate steps")
+        return _run_frozen(args)
+    if not args.dataset or not args.backend:
+        parser.error("--dataset and --backend are required (or --submission for task/aggregate)")
     plan = plan_mining(args.dataset, args.backend, args.protocol, args.paths, args.fraction, args.seed)
     if args.report is not None:
         plan.report = args.report

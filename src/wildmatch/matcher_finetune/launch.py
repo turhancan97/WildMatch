@@ -384,6 +384,45 @@ def check_inputs(plan: Plan) -> list[str]:
     return problems
 
 
+PROVENANCE_FILE = "wildmatch_provenance.json"
+
+
+def _flag(args: list[str], flag: str) -> Optional[Path]:
+    return Path(args[args.index(flag) + 1]) if flag in args else None
+
+
+def record_launch(plan: Plan, cfg: Mapping[str, Any]) -> Path:
+    """Append this launch to `<output_dir>/wildmatch_provenance.json` (code, inputs, seed, packages).
+
+    A separate file: the checkpoint loader reads only the protocol JSON, whose contents are part of
+    the checkpoint fingerprint, so provenance is kept out of it.
+    """
+    from wildmatch.utils.provenance import append_launch, launch_record
+
+    args = plan.trainer_args
+    inputs = {
+        "train_index": plan.train_index,
+        "validation_index": plan.val_index,
+        "pretrained_loma": _flag(args, "--loma_weights"),
+        "pretrained_rdd": _flag(args, "--rdd_weights"),
+        "pretrained_lightglue": _flag(args, "--lg_weights"),
+        "cache_manifest": plan.cache / "manifest.json" if plan.cache is not None else None,
+        "resume_from": plan.resume / "model.safetensors" if plan.resume is not None else None,
+    }
+    mf = cfg["matcher_finetune"]
+    record = launch_record(
+        plan.command,
+        {k: v for k, v in inputs.items() if v is not None},
+        matcher=plan.matcher,
+        component=plan.component,
+        layout=plan.layout,
+        view=str(plan.data_root),
+        seed=int(mf["seed"]),
+        protocol_file=plan.protocol_file.name,
+    )
+    return append_launch(plan.output_dir / PROVENANCE_FILE, record)
+
+
 def run(cfg: Mapping[str, Any]) -> int:
     plan = plan_run(cfg)
     print(f"layout={plan.layout} matcher={plan.matcher} component={plan.component}")
@@ -401,6 +440,7 @@ def run(cfg: Mapping[str, Any]) -> int:
         return 1
     plan.output_dir.mkdir(parents=True, exist_ok=True)
     plan.protocol_file.write_text(plan.protocol_text, encoding="utf-8")
+    record_launch(plan, cfg)
     # The wrappers exported WANDB_MODE; the RDD trainer reads it from the environment.
     env = {**os.environ, "WANDB_MODE": str(cfg["matcher_finetune"]["wandb"]["mode"])}
     return subprocess.call(plan.command, env=env)

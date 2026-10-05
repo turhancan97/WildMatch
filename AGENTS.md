@@ -63,7 +63,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   a port of the four wrappers that builds the unchanged trainer's command line from the registry and
   the path profile (new key `external.loma_weights`): same views, indices, caches, output folders,
   protocol JSON, component names (LoMa `matcher|descriptor|joint`, RDD `lg|descriptor|joint|rdd|lg+rdd`;
-  `joint` CzechLynx only), and it refuses existing epoch folders unless `resume=auto|<dir>`.
+  `joint` CzechLynx only), and it refuses existing epoch folders unless `resume=auto|<dir>`. Every
+  launch is appended to `<output_dir>/wildmatch_provenance.json` (`wildmatch.utils.provenance`: code
+  commit and uncommitted changes, with `code-<n>.diff` when dirty, the command, seed, SHA-256 of the
+  indices, pretrained weights and cache manifest, package versions, host and Slurm job); the protocol
+  JSON, part of the checkpoint fingerprint, is left unchanged.
   `tests/matcher_finetune/test_launch.py` checks it against `czechlynx_protocol.sh` and, on the
   cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
   4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers
@@ -73,13 +77,19 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   user 2026-10-05; the research group shares the copyright, `NOTICE`: "The WildMatch Authors").
 - src/wildmatch/mining/: pair mining merged with history from `rdd-parallel-benchmark` `4f29292`
   (phase 3, 2026-10-05, same branch): wildlife and CzechLynx view builders (`*_dataset.py`), miners
-  (`*_mine.py`), aggregators, `wildlife_config` with the mining dataset configs
-  (`configs/wildlife/*.json`, still absolute source paths, to be replaced by the registry),
+  (`*_mine.py`), aggregators, `wildlife_config`; mining datasets come from the registry
+  (`wildlife_dataset.config_from_registry`, `--registry <key>`; the former `configs/wildlife/*.json`
+  were removed 2026-10-05 and their values pinned in `tests/mining/test_registry_configs.py`; the paper
+  inputs table by default, `registry.mining` for per-entry settings; `--config <json>` stays for
+  datasets outside the registry),
   `batched_processing`, `loma_backend`, `lynx_benchmark` (the RDD feature core despite the name),
   the RDD and LoMa feature-cache builders `lynx_build_cache`/`lynx_build_loma_cache`, `lynx_dataset`
   and `lightglue_masked`; `wildmatch mine <plan|view|cache|check|task|aggregate|submit>` (`launch.py`,
   `slurm/mine.sbatch`) ports the wrappers in `slurm/mining/` (kept as reference) and the cache
-  wrappers; it never overwrites a mined per-query file or combined index without `--overwrite`
+  wrappers; `submit` freezes the resolved run into `logs/mining/submissions/<id>/submission.json`
+  (commands, collection counts, code identity and content fingerprint, SHA-256 of weights and cache
+  manifest) and the array tasks execute only that, failing closed when the code or an input changed;
+  it never overwrites a mined per-query file or combined index without `--overwrite`
   (`--report` mines elsewhere). Few-shot (Piotr Kubaty's `wildlife_fewshot`/`czechlynx_fewshot`, merged
   from `piotr-wip` `eb04345` with his commit, phase 6): `wildmatch mine ... --fraction F [--seed S]` and
   `finetune-matcher matcher_finetune.fewshot.fraction=F` use nested reduced-training views under the new

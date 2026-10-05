@@ -4,9 +4,13 @@
 data_root: /shared/sets/datasets/vision/czechlynx
 cache_root: /shared/results/common/kargin/lynx/results
 checkpoint_root: /shared/sets/datasets/vision/czechlynx/checkpoints
+# Few-shot views, indices, checkpoints and probe metadata (wildmatch mine/finetune-matcher --fraction).
+fewshot_root: ${.data_root}/fewshot
 external:
   paper_repo: /home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper
   mining_outputs: /home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs
   finetuning_repo: /home/kargin/Projects/repositories/lynx-finetuning
   sam3_repo: /home/kargin/Projects/repositories/lynx_application/external/sam3
   sam3_checkpoint: /shared/sets/datasets/confidential/lynx/checkpoints/sam3-hf/sam3.pt
+  rdd_weights_dir: /home/kargin/Projects/repositories/rdd/weights
+  loma_weights: /shared/sets/datasets/confidential/lynx/checkpoints/loma/loma_B.pt

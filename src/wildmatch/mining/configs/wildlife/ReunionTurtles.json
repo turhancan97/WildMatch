@@ -1,0 +1,13 @@
+{
+  "dataset_id": "ReunionTurtles",
+  "metadata_csv": "metadata_mdsplit_no_background/metadata_ReunionTurtles.csv",
+  "source_root": "/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k",
+  "image_prefix": "masked_images",
+  "identity_column": "identity",
+  "split_column": "split",
+  "collection_rule": "identity",
+  "validation_fraction": 0.2,
+  "seed": 0,
+  "excluded_identities": ["", "unknown"],
+  "allowed_splits": ["train", "test"]
+}

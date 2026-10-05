@@ -1,0 +1,19 @@
+# `wildmatch finetune-matcher`: one matcher fine-tuning run (wildmatch.matcher_finetune.launch).
+# Choose the dataset (`dataset=<registry key>`), the matcher recipe (`matcher_finetune=loma|rdd`) and
+# override any field below, e.g. `matcher_finetune.component=descriptor`, `matcher_finetune.dry_run=true`.
+# Defaults are the shared recipe of the paper's checkpoints (4 GPUs x 8 = effective batch 32,
+# 300 epochs, AdamW 1e-5, relaxed score, margin 0.5); views, indices, caches and the output folder
+# follow the original lynx-finetuning wrappers' layout.
+defaults:
+  - paths: default
+  - dataset: czechlynx_closed
+  - matcher_finetune: loma
+  - _self_
+
+hydra:
+  run:
+    dir: ${hydra:runtime.cwd}/logs/hydra
+  job:
+    chdir: false
+    name: finetune_matcher
+  output_subdir: null

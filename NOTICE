@@ -9,3 +9,9 @@ keep their own licences, listed in THIRD_PARTY_LICENSES.md. In particular:
 - The SAM 3 masks used for WildlifeReID-10k inputs were produced with SAM Materials under
   the SAM License, which asks publications using them to acknowledge SAM.
 Datasets are not distributed with this repository; each keeps its own licence.
+
+This product includes code from RDD (https://github.com/xtcpete/rdd, Apache-2.0), vendored in
+src/wildmatch/vendor/rdd/, and modified copies of LightGlue (https://github.com/cvg/LightGlue,
+Apache-2.0) in src/wildmatch/matcher_finetune/rdd_patch/ and src/wildmatch/mining/lightglue_masked.py.
+The matcher fine-tuning and pair-mining code was developed in the research group's lynx-finetuning
+and rdd-parallel-benchmark repositories and merged here with its history.

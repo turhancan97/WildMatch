@@ -7,6 +7,110 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: `train` extra declares `poselib` (pinned 2.0.5): mining imports the vendored RDD
+  `matchers` package, whose `dense_matcher` imports it. CI (`--extra cpu --extra train`, no `matchers`)
+  failed at test collection without it; on the cluster it came in through the `matchers` extra.
+  Rehearsed in a fresh CI-identical CPU environment: lint, format and 600 tests pass.
+- 2026-10-05: integration parity L6 (job 525388): 13 of the 18 published checkpoints evaluated so far give
+  bit-identical score matrices and identical metrics in the main environment and the integration
+  environment (fresh caches each, same GPU), including every LoMa checkpoint finished so far, so the
+  extra top-level `loma` module of the `train` extra does not reach evaluation. The four CzechLynx
+  tasks (about 2 h each) were still running; the user chose to continue without waiting for them.
+- 2026-10-05 (branch `integrate/fewshot`, phase 6): Piotr Kubaty's few-shot views merged with his
+  commit (filter-repo of `piotr-wip` `eb04345` limited to `wildlife_fewshot.py`, `czechlynx_fewshot.py`,
+  their test and `slurm_scripts/fewshot/`, all 21 files byte-identical; the commit's other changes are
+  not taken). The 13 tests pass against the merged mining code. `wildmatch mine --fraction/--seed` and
+  `finetune-matcher matcher_finetune.fewshot.{fraction,seed}` run on few-shot views in the scripts'
+  layout under the new path key `fewshot_root` (`<data_root>/fewshot`), reusing the full view's caches;
+  the probe metadata copy is written there instead of into the dataset folder (the scripts' default);
+  CzechLynx few-shot is refused for the open split (the module is time-closed only and would share its
+  folder). Smoke test on SalamanderID2025: the 1/4 view is nested in the 1/2 view, test unchanged;
+  both keep 796 of 1,138 training frames because the two-frame minimum per identity exceeds the budget
+  (`budget_feasible: false`), as documented. Piotr's few-shot Slurm scripts stay as reference.
+- 2026-10-05: D3 closed (user): one torch-2.8 environment for evaluation, mining and training. The full
+  SalamanderID2025 RDD-LightGlue retrain under torch 2.8 (`wildmatch finetune-matcher`, jobs
+  525382/525383) scores Top-1 27.2 vs the paper checkpoint's 28.0 at k=50 and 39.8 vs 41.9 at k=250
+  (13 flipped queries at k=250, exact McNemar p=0.27); accepted as run-to-run variation without
+  control runs. Bit-for-bit RDD retraining would need the old conda env.
+- 2026-10-05: integration parity L4 holds (job 525384): on 24 seeded-random SalamanderID2025 train
+  queries the merged miners under torch 2.8, reading the paper's feature caches, select exactly the
+  positives and negatives of the old code and of the paper's per-query files, for LoMa and
+  RDD-LightGlue (scores within 3e-8). Scripts in `notes/integration_parity/`.
+- 2026-10-05: Piotr Kubaty agreed to moving the fine-tuning, mining and few-shot code into this
+  repository (relayed by the user; the research group shares the copyright, which `NOTICE` already
+  names as "The WildMatch Authors"). `NOTICE` and `THIRD_PARTY_LICENSES.md` now credit the vendored
+  RDD subset and the modified LightGlue copies (`rdd_patch/`, `mining/lightglue_masked.py`), both
+  Apache-2.0, as plan D6 required. Integration phase 6 (few-shot port) is unblocked.
+- 2026-10-05 (branch `integrate/mine-cli`): `wildmatch mine <plan|view|cache|check|task|aggregate|submit>`
+  (`src/wildmatch/mining/launch.py`, `slurm/mine.sbatch`), a port of the mining wrappers and of the
+  feature-cache wrappers: views, caches and index prefixes from the registry and the path profile, the
+  unchanged mining modules run with the wrappers' arguments, the spawn scripts' cache check, one Slurm
+  array per split plus the dependent aggregation. A task never overwrites a mined per-query file and
+  `submit` never an existing combined index without `--overwrite`; `--report` mines elsewhere.
+  `tests/mining/test_launch.py`: both layouts, the guards, and (data marker) the planned tasks carry
+  the arguments the paper's SalamanderID2025 LoMa and RDD mining recorded.
+- 2026-10-05: integration environment decision D3 (user): one torch-2.8 environment. Spike job 525263
+  (RTX 4090, one epoch of SalamanderID2025): LoMa under torch 2.8 differs from the old env exactly as
+  much as the old env differs from itself (GPU nondeterminism, 34.5 % of the epoch's update), with an
+  identical pretrained baseline; RDD-LightGlue is bit-deterministic in the old env and ends 24.5 % of
+  the update away under torch 2.8. L3 (job 525366): features are deterministic per env; torch 2.8 is as
+  close to the old env as the old env is to the paper's caches (LoMa 96.8 % of keypoints within
+  0.5 px, RDD 99.98 %). RDD is settled by outcome: a full 300-epoch Salamander RDD run in the new env
+  (job 525382) is evaluated against the paper checkpoint. Scripts and numbers in
+  `notes/integration_parity/`.
+- 2026-10-05: integration parity L2 holds. Views rebuilt with `wildmatch.mining.wildlife_dataset` /
+  `czechlynx_dataset` from the merged configs equal the views the paper's training read, for all
+  eight paper datasets and CzechLynx open (legacy protocol; about 115,000 symlinks and every
+  directory identical); the manifests differ only in `output_root` and, for the older CzechLynx
+  closed view, an unrecorded `split_column`. `tests/mining/test_view_parity.py` (data marker)
+  repeats it for SalamanderID2025.
+- 2026-10-05 (branch `integrate/finetune-cli`, phase 3 in part): rdd-parallel-benchmark `4f29292`
+  merged with its history (filter-repo; 30 commits, 51 files byte-identical to the reference; the
+  deleted upstream RDD assets drop out of history, 28 MB -> 324 KB) into `src/wildmatch/mining/`,
+  `slurm/mining/`, `tests/mining/`, `notes/mining/`, `notebooks/mining/`. Imports name the package
+  and the vendored RDD, which now also carries `RDD/matchers/` unchanged from `86f0e38`; mining's
+  own RDD copy is a strict subset of it (whitespace aside, its only line not in the vendored copy
+  is a shorter import), so mining numerics do not depend on the switch. `build_models` passes the
+  vendored `configs/default.yaml` (byte-identical to the file `RDD.build` read from the working
+  directory); weight defaults come from `external.rdd_weights_dir` (mining's `weights/` was a
+  symlink to the same checkout folder). The two tests of `czechlynx_evaluate` (not merged, D4)
+  were removed; the 29 remaining pass. Lint fixes and an AST-identical format commit (blame-ignored).
+  Piotr Kubaty wrote 1,066 of the 3,330 moved mining lines (correcting the 158 counted earlier,
+  which left out the `lynx_*` files).
+- 2026-10-05 (branch `integrate/finetune-cli`, on top of `integrate/matcher-finetune`):
+  `wildmatch finetune-matcher`, a Hydra command (`conf/finetune_matcher.yaml`, recipes
+  `conf/matcher_finetune/{loma,rdd}.yaml`) that ports the four lynx-finetuning Slurm wrappers into
+  `wildmatch.matcher_finetune.launch` and runs the unchanged trainers under `accelerate launch`;
+  `slurm/finetune_matcher.sbatch`; path-profile key `external.loma_weights`. Checked in
+  `tests/matcher_finetune/test_launch.py`: the CzechLynx layout equals `czechlynx_protocol.sh` for all
+  eight split/protocol/miner combinations, planned flags parse with the trainers' own parsers, and on
+  the cluster the plans reproduce the recorded arguments of all eight paper LoMa checkpoints and the
+  protocol files of eleven paper runs (WhaleSharkID's index moved from `indices/` into
+  `indices/rdd/` after its run). The wrappers stay as reference (`slurm/matcher_finetune/README.md`).
+- 2026-10-05 (branch `integrate/matcher-finetune`, phase 1 of the integration plan): lynx-finetuning
+  `6958d3d` merged with its history (`git filter-repo` path rewrite, then an unrelated-histories
+  merge; 48 commits, the 36 kept files byte-identical to the reference). It lands in
+  `src/wildmatch/matcher_finetune/`, `slurm/matcher_finetune/`, `tests/matcher_finetune/` and
+  `notes/matcher_finetune/`. Left out (D4): the confidential-lynx `train_rdd.sh`/`train_loma.sh`,
+  debug and video tools, old training strategies, the requirements files, `.gitignore` and
+  `logs/`. Imports now name `wildmatch.matcher_finetune`. Removed the dead `run_lg_matching_grad`
+  (undefined `accelerator`, no caller; found by the F821 guard). Found while merging: Piotr Kubaty
+  wrote 30 of the 48 commits and about 52 % of the surviving lines, so licensing needs his consent
+  for the fine-tuning code as a whole, not only the few-shot scripts (plan D6 assumed all
+  reference commits were the user's). The existing CPU suite passes on the branch (416 tests); the
+  imported tests need `accelerate`, RDD and LoMa (phase 2).
+- 2026-10-05 (same branch, phase 2 in part): RDD vendored byte for byte from `86f0e38` into
+  `src/wildmatch/vendor/rdd/` (no compiled deformable-attention op: neither old env could import
+  it, so training used the PyTorch fallback); RDD weights from the new profile key
+  `external.rdd_weights_dir`; `train` extra (`accelerate==1.14.0`, `lomatch` at `5e541b8`,
+  installed in the `loma` env on 2026-08-16, before the paper's LoMa checkpoints), opencv held at
+  4.11.0.86 by override, lock adds five packages and moves none; branch env
+  `$UV_ENV_ROOT/wildmatch-integration` (user decision). Ruff lint fixes and an AST-identical
+  `ruff format` of the merged code (listed in `.git-blame-ignore-revs`). Parity L0: 67 moved tests
+  pass on CPU (2 skip without weights under the portable profile). L1:
+  `tests/matcher_finetune/test_resize_parity.py` (always on) shows training and evaluation resize are
+  bit-identical, replacing the optional `test_vismatch_lynx_parity_optional.py`; the RDD trainer's
+  missing lower clamp (zero-size tensor below 32 px) is pinned. CI installs the `train` extra.
 - 2026-10-05: project page phone layout (branch `fix/page-mobile`). Below 600 px the Plotly
   legends move under the plot as a vertical list and the figure grows by the legend's height
   (`isNarrow`, `onNarrowChange`, `phoneLayout` in `docs/assets/js/wm-common.js`); the cost-of-k

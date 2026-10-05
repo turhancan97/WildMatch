@@ -1,0 +1,35 @@
+# RDD-LightGlue fine-tuning, wildmatch.matcher_finetune.train_by_lg_matches.
+matcher: rdd
+component: lg             # lg (matcher) | descriptor | joint (CzechLynx only) | rdd | lg+rdd
+mined_by: loma            # which miner's index: loma | rdd
+protocol: legacy          # legacy: validate on the test index | strict: on the dedicated val index
+num_processes: 4          # GPUs; num_processes x batch_size x grad_accum_steps = 32 is the shared recipe
+batch_size: null          # null: 8, or 1 for descriptor/joint (as in the wrappers)
+grad_accum_steps: null    # null: 1, or 8 for descriptor/joint
+epochs: 300
+lr: 1.0e-5
+weight_decay: 1.0e-4
+margin: 0.5               # --lg_margin
+random_negative_prob: 0.3
+num_workers: 8
+eval_every_epochs: 10     # passed for WildlifeReID-10k only, as in the wrappers
+seed: 0
+resize: 512
+num_keypoints: 512        # --top_k
+keep_every: 50
+rdd_weights: null         # null: <paths.external.rdd_weights_dir>/RDD-v2.pth
+lg_weights: null          # null: <paths.external.rdd_weights_dir>/RDD_lg-v2.pth
+wandb:
+  project: null
+  run_name: null
+  mode: online
+data_root: null
+train_index: null
+val_index: null
+cache: null
+output_dir: null
+fewshot:                  # train on a few-shot view built by `wildmatch mine view --fraction`
+  fraction: null          # null: the full view
+  seed: 0
+resume: null
+dry_run: false

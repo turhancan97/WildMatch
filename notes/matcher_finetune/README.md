@@ -1,0 +1,196 @@
+# lynx-finetuning
+
+Finetuning feature matching modules for better performance on lynx-reidentification.
+
+## Installation
+
+Clone RDD and change commit
+```bash
+git clone --recursive https://github.com/xtcpete/rdd
+cd rdd
+git checkout 539508b270095969f9934c574cf7026bf37c434c
+cd .. # root directory
+```
+Download `RDD-v2.pth` and `RDD_lg-v2.pth` checkpoints to rdd/weights
+
+Install packages
+```bash
+conda create -n lynx-finetuning python=3.12
+conda activate lynx-finetuning
+
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
+pip install -r rdd/requirements.txt
+pip install -r contrastive_finetuning/requirements.txt
+```
+
+## Training
+
+Training is driven by `contrastive_finetuning/train_by_lg_matches.py`, which fine-tunes RDD and/or its
+LightGlue-based matcher (`--trained_model lg|rdd|lg+rdd`) on triplets (anchor / positive / negative) of
+lynx crops.
+
+Besides your image dataset, you need **train/val index files** — JSON files listing, for each anchor
+image, its positive and candidate negative matches (mined with a given `top_k`/`top_m`). These indices
+are **not built by this repo**; build them with
+[rdd-parallel-benchmark](https://github.com/PiotrKubaty/rdd-parallel-benchmark) against your own dataset,
+then point `--train_index` / `--val_index` at the resulting files.
+
+```bash
+python -m contrastive_finetuning.train_by_lg_matches \
+    --train_index /path/to/index_train.json \
+    --val_index /path/to/index_val.json \
+    --data_root /path/to/dataset \
+    --rdd_weights rdd/weights/RDD-v2.pth \
+    --lg_weights rdd/weights/RDD_lg-v2.pth \
+    --output_dir /path/to/output \
+    --trained_model lg \
+    --epochs 300 \
+    --batch_size 32 \
+    --lr 1e-5 \
+    --weight_decay 1e-4 \
+    --num_workers 16 \
+    --lg_margin 0.5 \
+    --random_negative_prob 0.3 \
+    --seed 0
+```
+
+- `--train_index` / `--val_index`: index JSON files built with
+  [rdd-parallel-benchmark](https://github.com/PiotrKubaty/rdd-parallel-benchmark).
+- `--data_root`: root directory prepended to the (relative) image paths stored in the index files.
+- `--output_dir`: where checkpoints (and, with `--project`, W&B logs) are written.
+- `--trained_model`: which model(s) receive gradient — `lg`, `rdd`, or `lg+rdd`.
+- `--rdd_train_component descriptor`: when RDD is enabled, train only its
+  descriptor and keep its detector fixed. The default `all` preserves the
+  older behavior of training the complete RDD detector/descriptor stack.
+
+Run `python -m contrastive_finetuning.train_by_lg_matches --help` for the full list of options
+(augmentation, LoRA, EMA, frozen confidence head, etc.).
+
+The generic trainer accepts `--rdd_train_component descriptor` together with
+`--trained_model rdd` (or `lg+rdd`). The CzechLynx and Wildlife SLURM scripts
+expose this as `CZECHLYNX_RDD_TRAIN_COMPONENT=descriptor` and
+`WILDLIFE_RDD_TRAIN_COMPONENT=descriptor`. Those modes bypass the fixed RDD
+feature cache because the descriptor is changing during training.
+
+### Training objective (shared by RDD-LightGlue and LoMa since 2026-09-29)
+
+Both trainers use the same recipe; only the network being adapted differs.
+
+- **Pair score (training):** the *relaxed* score, computed from the matcher's
+  dense assignment probabilities `P` before mutual selection and thresholding,
+  `s = ½ (mean_i max_j P_ij + mean_j max_i P_ij)` over each image's real
+  keypoints (`train_common._lg_relaxed_scores` for RDD,
+  `loma_backend.train_pair_score` for LoMa).
+- **Loss:** `mean_b relu(margin - s(query, positive) + s(query, negative))`,
+  margin 0.5, over *every* triplet. Pairs for which no match survives the
+  inference filters still carry gradient.
+- **Optimizer:** AdamW, lr 1e-5, weight decay 1e-4, cosine schedule over 300
+  epochs; effective batch 32 (descriptor modes load 1 per GPU and accumulate).
+- **Evaluation score:** the pseudo-accuracy validation keeps the *filtered*
+  score (mutual matches above the threshold, `_lg_scores`), which is what
+  inference ranks with.
+- **Padding:** RDD batches pad keypoints to the longest image; padded keypoints
+  are excluded from LightGlue's assignment, so they cannot be matched or add
+  probability mass.
+
+RDD checkpoints trained before 2026-09-29 used the filtered score in the loss
+(dropping triplets whose positive had no surviving match), Adam with L2 weight
+decay, padded keypoints inside the assignment softmax, and an effective
+descriptor batch of 4. They are not reproducible with the current code.
+
+Long runs can be split across Slurm jobs: `--resume <output_dir>/epoch_NNN`
+(or `CZECHLYNX_RDD_RESUME=auto` / `WILDLIFE_RDD_RESUME=auto` in the wrappers)
+restores model, optimizer, LR scheduler and RNG state from the per-epoch
+`accelerator.save_state` directory and its `train_state.json`, and refuses a
+checkpoint whose objective, optimizer or batch configuration differs.
+`--trained_model lg+rdd --rdd_train_component descriptor` (wrapper preset `joint`)
+and `--loma_train_component joint` train the descriptor and the matcher together
+with the detector frozen; see CZECHLYNX.md. LoMa's trainer also accepts
+`--keep_every`.
+The wrappers also pass `--keep_every 50` (override with `RDD_KEEP_EVERY`): each run keeps
+`epoch_00`, every 50th epoch, `epoch_299` and its newest epoch, and deletes other epoch
+directories it wrote itself, which keeps a 300-epoch run at about 1 GB instead of 40 GB.
+
+## `contrastive_finetuning/` layout
+
+- **`train_by_lg_matches.py`** — main training entrypoint (see above). Trains RDD and/or LightGlue on a
+  margin loss over LightGlue's own match-confidence scores; also wires up the optional augmentation,
+  LoRA, EMA, and frozen-confidence-head mechanisms.
+- **`train_common.py`** — shared building blocks used by the training script: the common CLI arguments
+  (`add_common_args`), RDD feature extraction (`extract_train`), LightGlue matching (`run_lg_matching_grad`,
+  `batch_features`), and the validation routines (`eval_epoch` — mean match counts; `eval_pseudo_accuracy` —
+  frame/video pseudo-accuracy).
+- **`loading.py`** — dataset/dataloader code: `IndexAssignedTripletDataset` reads a JSON index (as built by
+  [rdd-parallel-benchmark](https://github.com/PiotrKubaty/rdd-parallel-benchmark)) and samples
+  query/positive/negative triplets from it; `PseudoAccuracyDataset` returns a query with its *full*
+  candidate pool for accuracy evaluation; `get_loader` builds a `DataLoader` from either.
+- **`models.py`** — factory functions `build_rdd` and `build_masked_lg` that construct the RDD backbone and
+  the (masked) LightGlue matcher from config + checkpoint weights.
+- **`process.py`** — small tensor utilities (`pad_to_length`, `align_tensors_to_max_length`) for stacking
+  variable-length keypoint/descriptor sets into a padded batch.
+- **`eval_video_accuracy.py`** — standalone script to evaluate frame- and video-level pseudo-accuracy of a
+  single checkpoint (no training); prints every misclassified video with its winning score and matched
+  candidate frame.
+- **`requirements.txt`** — Python dependencies for this subpackage.
+## LoMa matcher fine-tuning
+
+LoMa is an additive backend. The first experiment freezes LoMa's DaD detector
+and DeDoDe descriptor and trains only the LoMa-B matcher on the existing lynx
+positive/negative index. Install it in a separate environment because it has a
+different dependency stack from the RDD pipeline:
+
+```bash
+conda create -n loma python=3.12 -y
+conda activate loma
+pip install -r requirements-loma.txt
+```
+
+Run a small local smoke experiment with W&B offline logging:
+
+```bash
+WANDB_MODE=offline python -m contrastive_finetuning.train_loma_matches \
+  --trained_model loma \
+  --train_index /path/to/train_index.json \
+  --val_index /path/to/val_index.json \
+  --data_root /shared/sets/datasets/confidential/lynx/processed_frames/segmented/lynx-ds-Jul-20 \
+  --loma_variant loma-b \
+  --output_dir checkpoints/loma-b-smoke \
+  --project lynx-loma-finetuning \
+  --wandb_mode offline \
+  --epochs 1 \
+  --max_train_batches 2 \
+  --max_val_entries 2
+```
+
+For the cluster run, set `LOMA_WEIGHTS` if using a local pretrained LoMa-B
+checkpoint and submit:
+
+```bash
+sbatch slurm_scripts/train_loma.sh
+```
+
+The output is a LoMa bundle (`model.safetensors`, `metadata.json`, optimizer
+state, and RNG state). The benchmark consumes that bundle through its LoMa
+backend; it must not be passed to the LightGlue loader.
+
+### Optional DeDoDe descriptor fine-tuning
+
+Matcher-only remains the default and is unchanged. To train LoMa's full
+DeDoDe descriptor stack instead, freeze DaD and the matcher and set:
+
+```bash
+export LOMA_TRAIN_COMPONENT=descriptor
+sbatch slurm_scripts/train_loma.sh
+```
+
+This mode uses the same identity-based pair index and margin loss. It does not
+use the full keypoint/descriptor cache: descriptors are recomputed with
+gradients, while a separate, resumable cache stores fixed DaD keypoints only.
+The SLURM job builds or resumes this cache automatically. Descriptor forwards
+use a microbatch size of one by default and accumulate gradients to the regular
+training batch size; adjust `LOMA_DESCRIPTOR_MICROBATCH_SIZE` if GPU memory
+permits. The descriptor checkpoint is written to a separate default output
+directory. For CzechLynx and WildlifeReID, use
+`CZECHLYNX_LOMA_TRAIN_COMPONENT=descriptor` or
+`WILDLIFE_LOMA_TRAIN_COMPONENT=descriptor` with the corresponding training
+script. Existing `matcher` runs remain the default.

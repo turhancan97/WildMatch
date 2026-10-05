@@ -1,0 +1,36 @@
+# LoMa (DaD + DeDoDe + matcher) fine-tuning, wildmatch.matcher_finetune.train_loma_matches.
+matcher: loma
+component: matcher        # matcher | descriptor | joint (joint: CzechLynx only, as in the wrappers)
+mined_by: loma            # which miner's index: loma | rdd
+protocol: legacy          # legacy: validate on the test index | strict: on the dedicated val index
+num_processes: 4          # GPUs; num_processes x batch_size = 32 is the shared recipe
+batch_size: 8             # per GPU
+epochs: 300
+lr: 1.0e-5
+weight_decay: 1.0e-4
+margin: 0.5
+random_negative_prob: 0.3
+num_workers: 10
+eval_every_epochs: 10
+seed: 0
+resize: 512
+num_keypoints: 512
+descriptor_microbatch_size: 1
+keep_every: null          # null: the wrapper default (CzechLynx 50, WildlifeReID-10k not passed)
+variant: loma-b
+weights: ${paths.external.loma_weights}
+wandb:
+  project: null           # null: the wrapper's name
+  run_name: null
+  mode: online            # online | offline | disabled
+# Explicit locations (null: derived from the registry and the path profile).
+data_root: null
+train_index: null
+val_index: null
+cache: null
+output_dir: null
+fewshot:                  # train on a few-shot view built by `wildmatch mine view --fraction`
+  fraction: null          # null: the full view
+  seed: 0
+resume: null              # null | auto | <epoch directory>
+dry_run: false            # print the plan and the command, run nothing

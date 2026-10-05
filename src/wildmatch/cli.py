@@ -27,6 +27,14 @@ COMMANDS: Dict[str, Command] = {
     "finetune-backbone": Command(
         "wildmatch.entrypoints:finetune", "fine-tune the ArcFace backbone (Hydra overrides)", hydra=True
     ),
+    "finetune-matcher": Command(
+        "wildmatch.entrypoints:finetune_matcher",
+        "fine-tune LoMa or RDD-LightGlue on a mined index (Hydra overrides)",
+        hydra=True,
+    ),
+    "mine": Command(
+        "wildmatch.mining.launch:main", "build views and caches, mine pairs, aggregate the index (plan|view|cache|...)"
+    ),
     "sweep": Command(
         "wildmatch.sweep.runner:sweep_main", "build, freeze and run a method x budget grid (Slurm or local)"
     ),

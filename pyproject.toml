@@ -40,6 +40,10 @@ cu126 = ["torch==2.8.0", "torchvision==0.23.0"]
 # Local feature matchers (RDD-LightGlue, ALIKED/SuperPoint-LightGlue, LoMa) through Vismatch.
 matchers = ["vismatch"]
 wandb = ["wandb"]
+# Matcher fine-tuning (wildmatch.matcher_finetune): accelerate and LoMa as the `loma` conda env had
+# them when the paper's LoMa checkpoints were trained (LoMa installed 2026-08-16). RDD is vendored.
+# poselib: the vendored RDD matchers package imports it (dense_matcher), and mining imports that package.
+train = ["accelerate==1.14.0", "lomatch", "poselib"]
 # Slot for pair mining (merged in later from rdd-parallel-benchmark).
 mining = []
 
@@ -55,6 +59,9 @@ override-dependencies = [
     # A vismatch dependency that installs a top-level `scripts` package (shadowing this
     # repository's scripts/); none of the matchers used here needs it, and ex-reid never had it.
     "uniception ; sys_platform == 'never'",
+    # LoMa (lomatch) asks for opencv-python>=4.12; the evaluation pin (see constraint-dependencies)
+    # wins, and the training parity check measures whether that changes training.
+    "opencv-python==4.11.0.86",
 ]
 # Pinned to the versions of the `ex-reid` environment that produced the paper's numbers
 # (tag paper-v1), so the refactor can be checked for identical results. Loosen deliberately.
@@ -96,6 +103,7 @@ wildlife-tools = { git = "https://github.com/WildlifeDatasets/wildlife-tools.git
 wildlife-datasets = { git = "https://github.com/WildlifeDatasets/wildlife-datasets.git", rev = "fc702c3ceb17e68cc1ed822db4c6b9c5e90cca42" }
 gluefactory = { git = "https://github.com/cvg/glue-factory.git", rev = "1f56839db2242929960d70f85bfac6c19ef2821c" }
 vismatch = { git = "https://github.com/gmberton/vismatch.git", rev = "4a743b75749a3770af59d275483ed341dea51ff0" }
+lomatch = { git = "https://github.com/davnords/LoMa.git", rev = "5e541b8e39b5e0b2fd7d6b74ced583061a3e805a" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -125,7 +133,7 @@ markers = [
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-extend-exclude = ["video", "notebooks", "docs", "site", "overrides"]
+extend-exclude = ["video", "notebooks", "docs", "site", "overrides", "src/wildmatch/vendor"]
 
 [tool.ruff.lint]
 # pyflakes (undefined names, unused imports/variables), pycodestyle errors/warnings, import order.

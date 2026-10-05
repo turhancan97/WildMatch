@@ -69,7 +69,8 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
   4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers
   stay in `slurm/matcher_finetune/` as reference (they no longer run). Environment: one torch-2.8
-  env (D3, `notes/integration_parity/`); still to do: the full-RDD outcome check and L6. About half
+  env (D3, `notes/integration_parity/`; the full-RDD outcome check and parity L6 are done: 16/16
+  checked published checkpoints bit-identical, the two CzechLynx LoMa ones unchecked). About half
   of its surviving lines are Piotr Kubaty's (30 of 48 commits); he agreed to the move (relayed by the
   user 2026-10-05; the research group shares the copyright, `NOTICE`: "The WildMatch Authors").
 - src/wildmatch/mining/: pair mining merged with history from `rdd-parallel-benchmark` `4f29292`
@@ -980,9 +981,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
   fingerprint, part of the feature-cache key, includes the requested checkpoint path and the
   protocol file path, so the same weights at another location (a Hub download, a moved folder)
   miss every cache filled from the old location. Results are unaffected; it costs one extraction.
-  Fix on the same branch `fix/cache-key-device`: the fingerprint (version 2) hashes file
-  checksums, component modes and protocol contents only, and the cache tag no longer contains the
-  raw checkpoint path; manifests keep the paths.
+  Fixed on branch `fix/cache-key-device`, merged into `main` on 2026-10-05: the fingerprint
+  (`fingerprint_version: 2`) hashes file checksums, component modes and protocol contents only,
+  and the cache tag no longer contains the raw checkpoint path; manifests keep the paths.
 
 - **New SAM 3 masks for WildlifeReID-10k may differ from the paper's inputs (2026-10-04).**
   The runs read `masked_images/` files made by a teammate (owner `kubaty`, 2026-02 to 2026-08;
@@ -1050,11 +1051,12 @@ reproduction, and the measured impact so it can be picked up without re-investig
   balanced Top-1 are identical and mAP@k moves by at most 0.03 points. Extraction is deterministic
   on one GPU type (bit-identical twins). The cache key omits the device, so a cache can mix GPU
   types, and run manifests do not record the GPU model, so the paper's numbers depend on which
-  GPU first filled each cache. Fix on branch `fix/cache-key-device` (2026-10-04, not merged): the cache tag includes
+  GPU first filled each cache. Fixed on branch `fix/cache-key-device`, merged into `main` on
+  2026-10-05 (earlier than the planned "just before the release"): the cache tag includes
   `device_identity(device)` (`cpu` or `cuda:<GPU model>:sm<cc>`) and runs record it as
   `vismatch_device` in `result.json` and `run_manifest.json`; report the GPU with matcher results.
-  Merging invalidates every existing Vismatch feature cache once (user: just before the release,
-  after all runs).
+  The merge invalidated every existing Vismatch feature cache once; runs since then re-extract on
+  first use and record `vismatch_device`.
 
 ## Future-work checklist
 

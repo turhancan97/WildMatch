@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: AGENTS.md brought up to date. The matcher fine-tuning entry no longer lists the
+  full-RDD outcome check and parity L6 as open. The two Known-issues entries fixed on
+  `fix/cache-key-device` (checkpoint fingerprints with absolute paths; GPU type missing from the
+  Vismatch cache key) now say the branch was merged on 2026-10-05, which was earlier than the
+  planned "just before the release", so existing Vismatch caches were invalidated once then.
 - 2026-10-05 (branch `docs/fewshot-page`): project page `Reproduce › Few-shot views`
   (`docs/reproduce/fewshot.md`, user decisions): an extension not in the paper, how-to only. It
   explains how a view is built (exact budget, proportional, two-image minimum, nested seeds, frame

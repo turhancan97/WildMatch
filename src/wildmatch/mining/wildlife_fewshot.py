@@ -27,7 +27,7 @@ change is the gallery, and with it the mined positives/negatives — mining and
 fine-tuning are re-run per view, into their own index/checkpoint directories.
 
 The same selection is also written into a metadata CSV for the probe benchmark
-(explainable_individual_reidentification): a copy of the dataset metadata with one
+(``wildmatch evaluate``): a copy of the dataset metadata with one
 extra column per view (``split_frac0.125_seed0`` ...) holding ``train`` for the kept
 training rows, ``unused`` for the dropped ones and the original split otherwise.
 """

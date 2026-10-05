@@ -124,3 +124,67 @@ def test_fewshot_czechlynx_is_time_closed_only(tmp_profile):
     assert plan.view_command[2] == "wildmatch.mining.czechlynx_fewshot"
     with pytest.raises(SystemExit, match="split-time_closed only"):
         plan_mining("czechlynx_open", "rdd", "legacy", "default", fraction=0.5)
+
+
+def _fake_inputs(tmp_profile, plan):
+    """A two-identity view, a LoMa cache covering it, and weights: enough for check and submit."""
+    import numpy as np
+
+    for split in plan.splits:
+        for identity in ("a", "b"):
+            frame = plan.view / split / identity / "c0" / "frame_000000.jpg"
+            frame.parent.mkdir(parents=True, exist_ok=True)
+            frame.write_bytes(b"jpg")
+            npz = plan.cache / frame.relative_to(plan.view).with_suffix(".npz")
+            npz.parent.mkdir(parents=True, exist_ok=True)
+            np.savez(npz, keypoints=np.zeros((1, 2)), descriptors=np.zeros((1, 4)), scores=np.zeros(1),
+                     image_size=np.array([4, 4]))  # fmt: skip
+    (plan.cache / "manifest.json").write_text(json.dumps(
+        {"backend": "loma", "variant": "loma-b", "resize": 512, "num_keypoints": 512, "patch_size": 14}))  # fmt: skip
+    plan.weights.write_bytes(b"weights")
+
+
+def test_submit_freezes_the_run_and_tasks_execute_only_the_frozen_command(tmp_profile, monkeypatch, capsys):
+    import wildmatch.mining.launch as launch
+
+    plan = plan_mining("salamander", "loma", "legacy", "default")
+    _fake_inputs(tmp_profile, plan)
+    assert main(["submit", "--dataset", "salamander", "--backend", "loma", "--paths", "default", "--dry-run"]) == 0
+    submission = next((tmp_profile / "logs/mining/submissions").glob("*/submission.json"))
+    record = json.loads(submission.read_text())
+    assert record["counts"] == {"train": 2, "test": 2}
+    assert record["inputs"]["weights"]["sha256"] and record["code"]["commit"]
+    assert f"task --submission {submission} --split train" in capsys.readouterr().out
+
+    calls = []
+    monkeypatch.setattr(launch.subprocess, "call", lambda command: calls.append(command) or 0)
+    # The registry/profile may change after submission; the task still runs the frozen command.
+    monkeypatch.setenv("WILDMATCH_MINING_OUTPUTS", str(tmp_profile / "moved"))
+    assert main(["task", "--submission", str(submission), "--split", "test", "--index", "1"]) == 0
+    assert calls[-1][calls[-1].index("--query_id") + 1] == "1"
+    assert calls[-1][calls[-1].index("--dump_report") + 1] == str(plan.report)
+
+
+def test_frozen_task_fails_closed_when_an_input_changed(tmp_profile, monkeypatch, capsys):
+    import wildmatch.mining.launch as launch
+
+    plan = plan_mining("salamander", "loma", "legacy", "default")
+    _fake_inputs(tmp_profile, plan)
+    main(["submit", "--dataset", "salamander", "--backend", "loma", "--paths", "default", "--dry-run"])
+    submission = next((tmp_profile / "logs/mining/submissions").glob("*/submission.json"))
+    monkeypatch.setattr(launch.subprocess, "call", lambda command: pytest.fail("must not run"))
+    plan.weights.write_bytes(b"other weights")
+    assert main(["task", "--submission", str(submission), "--split", "train", "--index", "0"]) == 1
+    assert "input weights changed since submission" in capsys.readouterr().err
+
+
+def test_frozen_task_rejects_an_index_outside_the_split(tmp_profile, monkeypatch):
+    import wildmatch.mining.launch as launch
+
+    plan = plan_mining("salamander", "loma", "legacy", "default")
+    _fake_inputs(tmp_profile, plan)
+    main(["submit", "--dataset", "salamander", "--backend", "loma", "--paths", "default", "--dry-run"])
+    submission = next((tmp_profile / "logs/mining/submissions").glob("*/submission.json"))
+    monkeypatch.setattr(launch.subprocess, "call", lambda command: pytest.fail("must not run"))
+    with pytest.raises(SystemExit, match="outside the 2 train collections"):
+        main(["task", "--submission", str(submission), "--split", "train", "--index", "2"])

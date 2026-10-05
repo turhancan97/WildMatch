@@ -80,3 +80,23 @@ def append_launch(path: Path, record: Mapping[str, Any]) -> Path:
     tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     tmp.replace(path)
     return path
+
+
+def code_fingerprint() -> Optional[str]:
+    """SHA-256 of the code content: blob hashes of `src/`, `pyproject.toml`, `uv.lock` plus any diff.
+
+    Unlike the commit, it ignores commits that touch only docs or notes, so a frozen submission
+    can check that the code its tasks run is still the code it was submitted with.
+    """
+    import hashlib
+    import subprocess
+
+    from wildmatch.reporting.artifacts import CODE_PATHS, code_identity
+
+    identity = code_identity()
+    if not identity.get("checkout"):
+        return None
+    tree = subprocess.check_output(
+        ["git", "-C", identity["checkout"], "ls-tree", "-r", "HEAD", "--", *CODE_PATHS], text=True
+    )
+    return hashlib.sha256((tree + "\0" + (identity.get("diff") or "")).encode("utf-8")).hexdigest()

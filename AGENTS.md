@@ -83,7 +83,10 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   the RDD and LoMa feature-cache builders `lynx_build_cache`/`lynx_build_loma_cache`, `lynx_dataset`
   and `lightglue_masked`; `wildmatch mine <plan|view|cache|check|task|aggregate|submit>` (`launch.py`,
   `slurm/mine.sbatch`) ports the wrappers in `slurm/mining/` (kept as reference) and the cache
-  wrappers; it never overwrites a mined per-query file or combined index without `--overwrite`
+  wrappers; `submit` freezes the resolved run into `logs/mining/submissions/<id>/submission.json`
+  (commands, collection counts, code identity and content fingerprint, SHA-256 of weights and cache
+  manifest) and the array tasks execute only that, failing closed when the code or an input changed;
+  it never overwrites a mined per-query file or combined index without `--overwrite`
   (`--report` mines elsewhere). Few-shot (Piotr Kubaty's `wildlife_fewshot`/`czechlynx_fewshot`, merged
   from `piotr-wip` `eb04345` with his commit, phase 6): `wildmatch mine ... --fraction F [--seed S]` and
   `finetune-matcher matcher_finetune.fewshot.fraction=F` use nested reduced-training views under the new

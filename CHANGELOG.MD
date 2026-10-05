@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `feat/integration-followups`): `wildmatch mine submit` freezes the run into
+  `logs/mining/submissions/<id>/submission.json` (resolved task and aggregation commands, per-split
+  counts, code identity, `code_fingerprint` = hash of the blob ids of `src/`, `pyproject.toml`,
+  `uv.lock` plus any diff, SHA-256 of weights and cache manifest); the array jobs run
+  `wildmatch mine task|aggregate --submission <file>`, execute only the frozen commands and fail
+  closed when the code content or an input changed (a docs-only commit does not count). Before, each
+  task re-planned from the live registry, profile and code. Tests in `tests/mining/test_launch.py`.
 - 2026-10-05 (branch `feat/integration-followups`): `wildmatch finetune-matcher` records each launch in
   `<output_dir>/wildmatch_provenance.json` (new `wildmatch.utils.provenance`): code commit, dirty state,
   changed paths and diff hash (diff saved as `code-<n>.diff`), command, seed, SHA-256 of the train and

@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration parity L6 final: the CzechLynx closed and open RDD-LightGlue checks (array
+  525388, tasks 15 and 17) finished bit-identical, so all 16 checked published checkpoints give
+  identical score matrices and metrics in the old and the merged environment; only the two CzechLynx
+  LoMa checkpoints are unchecked (out of memory in both environments).
 - 2026-10-05: integration parity L6 closed (user decision) without the two CzechLynx LoMa checkpoints:
   their main-vs-integration check ran out of host memory in both environments (64 GB, then 125 GB in
   rerun 525434), because it extracts the LoMa features of the whole ~27.6k-image gallery from scratch.

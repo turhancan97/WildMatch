@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: D3 closed (user): one torch-2.8 environment for evaluation, mining and training. The full
+  SalamanderID2025 RDD-LightGlue retrain under torch 2.8 (`wildmatch finetune-matcher`, jobs
+  525382/525383) scores Top-1 27.2 vs the paper checkpoint's 28.0 at k=50 and 39.8 vs 41.9 at k=250
+  (13 flipped queries at k=250, exact McNemar p=0.27); accepted as run-to-run variation without
+  control runs. Bit-for-bit RDD retraining would need the old conda env.
 - 2026-10-05: integration parity L4 holds (job 525384): on 24 seeded-random SalamanderID2025 train
   queries the merged miners under torch 2.8, reading the paper's feature caches, select exactly the
   positives and negatives of the old code and of the paper's per-query files, for LoMa and

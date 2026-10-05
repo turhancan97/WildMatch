@@ -1,6 +1,6 @@
 """Few-shot training views for the CzechLynx time-closed workflow.
 
-Same construction as ``scripts.wildlife_fewshot`` (exact global budget, proportional per
+Same construction as ``wildmatch.mining.wildlife_fewshot`` (exact global budget, proportional per
 identity, never below two frames per identity, seeded nested selections, canonical frame
 names preserved so the RDD/LoMa caches of the full view stay valid) applied to the
 CzechLynx canonical view: the training split is subsampled frame-wise per identity, the
@@ -19,7 +19,7 @@ import json
 import os
 from pathlib import Path
 
-from scripts.wildlife_fewshot import (
+from wildmatch.mining.wildlife_fewshot import (
     DEFAULT_MIN_PER_IDENTITY,
     load_czechlynx_records,
     prepare_fewshot,

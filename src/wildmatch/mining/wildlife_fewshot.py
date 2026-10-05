@@ -1,6 +1,6 @@
 """Few-shot training views for the WildlifeReID-10k workflow.
 
-Starting from a canonical view written by ``scripts.wildlife_dataset`` (the full
+Starting from a canonical view written by ``wildmatch.mining.wildlife_dataset`` (the full
 dataset), this builds a second symlink view in which every identity keeps only a
 fraction of its training frames while ``test`` (and ``val``) stay untouched:
 
@@ -46,7 +46,7 @@ from collections import Counter, defaultdict
 from dataclasses import asdict
 from pathlib import Path
 
-from scripts.wildlife_dataset import WildlifeRecord, load_config
+from wildmatch.mining.wildlife_dataset import WildlifeRecord, load_config
 
 DEFAULT_FRACTIONS = (0.125, 0.25, 0.5, 1.0)
 DEFAULT_MIN_PER_IDENTITY = 2
@@ -136,7 +136,7 @@ def select_frames(frames: list[str], keep: int, seed: int, identity: str) -> lis
 
 
 def load_source_records(source_view: Path) -> tuple[dict, list[WildlifeRecord]]:
-    """Records of a WildlifeReID canonical view (scripts.wildlife_dataset)."""
+    """Records of a WildlifeReID canonical view (wildmatch.mining.wildlife_dataset)."""
     manifest_path = source_view / "manifest.json"
     if not manifest_path.is_file():
         raise FileNotFoundError(f"source view has no manifest.json: {source_view}")
@@ -148,7 +148,7 @@ def load_source_records(source_view: Path) -> tuple[dict, list[WildlifeRecord]]:
 
 
 def load_czechlynx_records(source_view: Path) -> tuple[dict, list[WildlifeRecord]]:
-    """Records of a CzechLynx canonical view (scripts.czechlynx_dataset), normalised to the
+    """Records of a CzechLynx canonical view (wildmatch.mining.czechlynx_dataset), normalised to the
     same record type: canonical path = ``relative_path`` (``<split>/<identity>/<source>/
     <encounter>/frame_XXXXXX.jpg``), collection = ``<source>/<encounter>``, original path =
     the metadata ``path`` column, generated split = the view split (train/val/test)."""

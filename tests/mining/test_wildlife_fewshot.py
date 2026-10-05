@@ -9,10 +9,9 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.wildlife_dataset import WildlifeRecord  # noqa: E402
-from scripts.wildlife_fewshot import (  # noqa: E402
+from wildmatch.mining.wildlife_dataset import WildlifeRecord  # noqa: E402
+from wildmatch.mining.wildlife_fewshot import (  # noqa: E402
     UNUSED_SPLIT,
     allocate_budget,
     build_subset,

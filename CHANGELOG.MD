@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration environment decision D3 (user): one torch-2.8 environment. Spike job 525263
+  (RTX 4090, one epoch of SalamanderID2025): LoMa under torch 2.8 differs from the old env exactly as
+  much as the old env differs from itself (GPU nondeterminism, 34.5 % of the epoch's update), with an
+  identical pretrained baseline; RDD-LightGlue is bit-deterministic in the old env and ends 24.5 % of
+  the update away under torch 2.8. L3 (job 525366): features are deterministic per env; torch 2.8 is as
+  close to the old env as the old env is to the paper's caches (LoMa 96.8 % of keypoints within
+  0.5 px, RDD 99.98 %). RDD is settled by outcome: a full 300-epoch Salamander RDD run in the new env
+  (job 525382) is evaluated against the paper checkpoint. Scripts and numbers in
+  `notes/integration_parity/`.
 - 2026-10-05: integration parity L2 holds. Views rebuilt with `wildmatch.mining.wildlife_dataset` /
   `czechlynx_dataset` from the merged configs equal the views the paper's training read, for all
   eight paper datasets and CzechLynx open (legacy protocol; about 115,000 symlinks and every

@@ -1,6 +1,6 @@
 // Training cost against accuracy (CzechLynx closed, k = 250) over docs/data/training_cost.json.
 import {
-  PALETTE, theme, onThemeChange, loadJson, plotly, pct, el, select, baseLayout, PLOT_CONFIG, mountError,
+  PALETTE, theme, onThemeChange, loadJson, plotly, pct, el, select, baseLayout, PLOT_CONFIG, mountError, onNarrowChange, phoneLayout,
 } from "./wm-common.js";
 
 const CLASSIFIER_DASH = { classifier_full: "solid", classifier_partial: "dash", classifier_frozen: "dashdot" };
@@ -20,7 +20,7 @@ export async function mountTrainingCost(root) {
   const controls = el("div", { class: "wm-controls" });
   const plot = el("div", { class: "wm-plot", role: "img", "aria-label": "Accuracy against training cost" });
   const table = el("details", { class: "wm-table-view" }, [el("summary", { text: "Table view of the final points" })]);
-  const tableBody = el("div");
+  const tableBody = el("div", { class: "wm-table-wrap" });
   table.append(tableBody);
   root.append(controls, plot, table);
   controls.append(
@@ -70,7 +70,7 @@ export async function mountTrainingCost(root) {
       yaxis: { ...baseLayout(t).yaxis, title: { text: `${METRICS.find((x) => x[0] === m)[1]} (%)`, font: { color: t.ink } }, rangemode: "tozero" },
       margin: { l: 56, r: 16, t: 64, b: 48 },
     });
-    Plotly.react(plot, traces, layout, PLOT_CONFIG);
+    Plotly.react(plot, traces, phoneLayout(layout, { legendItems: traces.length, top: 16 }), PLOT_CONFIG);
 
     tableBody.textContent = "";
     const rows = [];
@@ -93,4 +93,5 @@ export async function mountTrainingCost(root) {
 
   render();
   onThemeChange(render);
+  onNarrowChange(render);
 }

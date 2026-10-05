@@ -1228,8 +1228,15 @@ Binding rules from that history:
 - [ ] Rerun the exporters after the final paper results snapshot (`export_project_page_data`,
   `export_score_separation`, `export_budget_tradeoff`, `export_frequency_bins`) and the RDD
   retrain, and re-check `tests/test_project_page_numbers.py`.
-- [ ] Check in a browser at phone width: hub cards, data-challenge galleries, the two-panel
-  Plotly views, and dark mode of the PNG figures.
+- [x] Check in a browser at phone width (done 2026-10-05, branch `fix/page-mobile`): all 18 pages
+  at 390 px in light and dark mode with headless Chromium (Playwright in a throwaway `/tmp` env).
+  Fixed: legends covering the plots (now a vertical list under the plot below 600 px,
+  `phoneLayout` in `wm-common.js`), the two-panel cost-of-k and score-separation views (stacked
+  on phones), the explorer and training-cost table views (no scroll wrapper; last column was
+  unreachable), frequency-bin axis labels running off the edge (bin label only on phones), and a
+  23 px sideways scroll on Reproduce > Probing (MathJax assistive MathML, now 1 px wide).
+  Desktop rendering at 1280 px is pixel-identical apart from anti-aliasing. Two console 404/403
+  per page come from the theme's GitHub star widget while the repository is private.
 - [x] Upload the explainer unlisted and put the video ID in `data-youtube` on `docs/index.md`
   (done 2026-10-03, `9i3iE8Bs6n8`). Before publication: replace the description's "to follow"
   line with the page URL and switch the video from unlisted to public.

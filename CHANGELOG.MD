@@ -107,6 +107,14 @@ kept under Unreleased until a project version is assigned.
   `tests/matcher_finetune/test_resize_parity.py` (always on) shows training and evaluation resize are
   bit-identical, replacing the optional `test_vismatch_lynx_parity_optional.py`; the RDD trainer's
   missing lower clamp (zero-size tensor below 32 px) is pinned. CI installs the `train` extra.
+- 2026-10-05: project page phone layout (branch `fix/page-mobile`). Below 600 px the Plotly
+  legends move under the plot as a vertical list and the figure grows by the legend's height
+  (`isNarrow`, `onNarrowChange`, `phoneLayout` in `docs/assets/js/wm-common.js`); the cost-of-k
+  and score-separation panels stack; the explorer and training-cost table views get the
+  `wm-table-wrap` scroll wrapper; frequency-bin ticks drop the query counts on phones;
+  statistics-table cells no longer wrap on phones; MathJax's assistive MathML is 1 px wide so it
+  cannot widen the page. Checked at 390 px (18 pages, light and dark, no overflow) and at 1280 px
+  (pixel-identical to before apart from anti-aliasing).
 - 2026-10-05: integration plan decided (`notes/integration_plan.md` section 5, user decisions
   D1-D8; nothing implemented): `git filter-repo` + `--allow-unrelated-histories` merge in place of
   `git subtree`, so `blame` works on the final paths; the user adds `czechlynx_protocol.sh` to the

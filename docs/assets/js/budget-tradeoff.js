@@ -2,7 +2,7 @@
 // shortlist share, Top-5 of both matchers and the matching time, plus a two-panel chart
 // with the chosen k marked. Data: docs/data/budget_tradeoff.json
 // (scripts/export_budget_tradeoff.py; every value is a measurement, nothing is interpolated).
-import { PALETTE, SERIES_STYLE, theme, onThemeChange, loadJson, plotly, pct, el, select, baseLayout, PLOT_CONFIG, mountError } from "./wm-common.js";
+import { PALETTE, SERIES_STYLE, theme, onThemeChange, loadJson, plotly, pct, el, select, baseLayout, PLOT_CONFIG, mountError, isNarrow, onNarrowChange, phoneLayout } from "./wm-common.js";
 
 function fmtMinutes(value) {
   if (value == null) return "–";
@@ -91,15 +91,29 @@ export async function mountBudgetTradeoff(root) {
         hovertemplate: "k = %{x}<br>%{y:.1f} min per 1,000 queries<br>%{customdata}<extra></extra>" },
     ];
     const base = baseLayout(t);
-    const logAxis = (domain, title) => ({ ...base.xaxis, type: "log", domain, tickvals: ks, ticktext: ks.map(String),
+    // Phones stack the two panels (accuracy above, cost below) instead of placing them side by side.
+    const narrow = isNarrow();
+    const logAxis = (domain, title, anchor) => ({ ...base.xaxis, type: "log", domain, anchor, tickvals: ks, ticktext: ks.map(String),
       title: { text: title, font: { color: t.ink } } });
-    const layout = {
+    const panelTitle = (text, x, y) => ({ text: `<b>${text}</b>`, showarrow: false, xref: "paper", yref: "paper", x, y, xanchor: "left", yanchor: "bottom", font: { color: t.ink, size: 13 } });
+    const layout = narrow ? phoneLayout({
+      ...base,
+      hovermode: "closest",
+      margin: { l: 56, r: 16, t: 28, b: 52 },
+      xaxis: logAxis([0, 1], "candidate budget k", "y"),
+      xaxis2: logAxis([0, 1], "candidate budget k", "y2"),
+      yaxis: { ...base.yaxis, title: { text: "% of queries", font: { color: t.ink } }, range: [0, 102], domain: [0.6, 1], anchor: "x" },
+      yaxis2: { ...base.yaxis, title: { text: "min per 1,000 queries", font: { color: t.ink } }, rangemode: "tozero", domain: [0, 0.36], anchor: "x2" },
+      shapes: [["x", "y"], ["x2", "y2"]].map(([xr, yr]) => ({ type: "line", xref: xr, yref: `${yr} domain`, x0: k, x1: k, y0: 0, y1: 1,
+        line: { color: PALETTE.red, width: 1.5, dash: "dash" } })),
+      annotations: [panelTitle("Accuracy", 0, 1.01), panelTitle("Matching cost", 0, 0.37)],
+    }, { legendItems: traces.length, height: 640 }) : {
       ...base,
       hovermode: "closest",
       margin: { l: 56, r: 16, t: 56, b: 52 },
       legend: { ...base.legend, y: 1.18 },
-      xaxis: logAxis([0, 0.56], "candidate budget k"),
-      xaxis2: logAxis([0.64, 1], "candidate budget k"),
+      xaxis: logAxis([0, 0.56], "candidate budget k", "y"),
+      xaxis2: logAxis([0.64, 1], "candidate budget k", "y2"),
       yaxis: { ...base.yaxis, title: { text: "% of queries", font: { color: t.ink } }, range: [0, 102], anchor: "x" },
       yaxis2: { ...base.yaxis, title: { text: "minutes per 1,000 queries", font: { color: t.ink } }, rangemode: "tozero", anchor: "x2" },
       shapes: [0, 1].map((i) => ({ type: "line", xref: i === 0 ? "x" : "x2", yref: "paper", x0: k, x1: k, y0: 0, y1: 1,
@@ -117,5 +131,6 @@ export async function mountBudgetTradeoff(root) {
   }
 
   onThemeChange(render);
+  onNarrowChange(render);
   render();
 }

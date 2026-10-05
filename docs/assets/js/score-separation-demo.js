@@ -3,7 +3,7 @@
 // per-query margin view and a statistics table. Data:
 // docs/assets/demo/score_separation/score_separation.json
 // (scripts/export_score_separation.py, from the paper's k=250 runs' scores.npz).
-import { PALETTE, theme, onThemeChange, el, assetUrl, select, checkbox, plotly, baseLayout, PLOT_CONFIG } from "./wm-common.js";
+import { PALETTE, theme, onThemeChange, el, assetUrl, select, checkbox, plotly, baseLayout, PLOT_CONFIG, isNarrow, onNarrowChange, phoneLayout } from "./wm-common.js";
 
 const VIEWS = [["pairs", "Pair scores: same vs different individual"], ["margin", "Per-query margin: best same − best different"]];
 const SAME = PALETTE.blue;
@@ -99,7 +99,29 @@ export async function mountScoreSeparation(root) {
     const axisY = (title, anchor) => ({ ...base.yaxis, type: state.log ? "log" : "linear", anchor,
       title: title ? { text: title, font: { color: t.ink } } : undefined, tickformat: state.share && !state.log ? ".0%" : undefined });
     const labels = data.matchers.map((m) => m.label);
-    const layout = {
+    // Phones stack the two matchers' panels; side by side their titles collide at 390 px.
+    const narrow = isNarrow();
+    const xTitle = isMargin ? "best same − best different score" : "image score";
+    const yTitle = state.share ? (isMargin ? "share of queries" : "share of pairs") : (isMargin ? "queries" : "pairs");
+    const layout = narrow ? phoneLayout({
+      ...base,
+      barmode: "overlay",
+      bargap: 0.05,
+      hovermode: "x",
+      margin: { l: 60, r: 16, t: 28, b: 52 },
+      xaxis: { ...axisX(xTitle), domain: [0, 1], anchor: "y" },
+      xaxis2: { ...axisX(xTitle), domain: [0, 1], anchor: "y2" },
+      yaxis: { ...axisY(yTitle, "x"), domain: [0.58, 1] },
+      yaxis2: { ...axisY(yTitle, "x2"), domain: [0, 0.38], matches: "y" },
+      annotations: labels.map((label, i) => ({
+        text: `<b>${label}</b>`, showarrow: false, xref: "paper", yref: "paper", x: 0, xanchor: "left", y: i === 0 ? 1.01 : 0.39, yanchor: "bottom",
+        font: { color: t.ink, size: 13 },
+      })),
+      shapes: isMargin ? [["x", "y"], ["x2", "y2"]].map(([xr, yr]) => ({
+        type: "line", xref: xr, yref: `${yr} domain`, x0: 0, x1: 0, y0: 0, y1: 1,
+        line: { color: t.muted, width: 1, dash: "dot" },
+      })) : [],
+    }, { legendItems: isMargin ? 1 : 2, height: 620 }) : {
       ...base,
       barmode: "overlay",
       bargap: 0.05,
@@ -146,5 +168,6 @@ export async function mountScoreSeparation(root) {
   }
 
   onThemeChange(render);
+  onNarrowChange(render);
   render();
 }

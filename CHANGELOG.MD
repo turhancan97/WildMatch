@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `integrate/mine-cli`): `wildmatch mine <plan|view|cache|check|task|aggregate|submit>`
+  (`src/wildmatch/mining/launch.py`, `slurm/mine.sbatch`), a port of the mining wrappers and of the
+  feature-cache wrappers: views, caches and index prefixes from the registry and the path profile, the
+  unchanged mining modules run with the wrappers' arguments, the spawn scripts' cache check, one Slurm
+  array per split plus the dependent aggregation. A task never overwrites a mined per-query file and
+  `submit` never an existing combined index without `--overwrite`; `--report` mines elsewhere.
+  `tests/mining/test_launch.py`: both layouts, the guards, and (data marker) the planned tasks carry
+  the arguments the paper's SalamanderID2025 LoMa and RDD mining recorded.
 - 2026-10-05: integration environment decision D3 (user): one torch-2.8 environment. Spike job 525263
   (RTX 4090, one epoch of SalamanderID2025): LoMa under torch 2.8 differs from the old env exactly as
   much as the old env differs from itself (GPU nondeterminism, 34.5 % of the epoch's update), with an

@@ -76,7 +76,10 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   (`configs/wildlife/*.json`, still absolute source paths, to be replaced by the registry),
   `batched_processing`, `loma_backend`, `lynx_benchmark` (the RDD feature core despite the name),
   the RDD and LoMa feature-cache builders `lynx_build_cache`/`lynx_build_loma_cache`, `lynx_dataset`
-  and `lightglue_masked`; wrappers in `slurm/mining/` (reference, not yet ported), tests in
+  and `lightglue_masked`; `wildmatch mine <plan|view|cache|check|task|aggregate|submit>` (`launch.py`,
+  `slurm/mine.sbatch`) ports the wrappers in `slurm/mining/` (kept as reference) and the cache
+  wrappers; it never overwrites a mined per-query file or combined index without `--overwrite`
+  (`--report` mines elsewhere); tests in
   `tests/mining/`, notes in `notes/mining/`, notebooks in `notebooks/mining/`. Not merged (D4): the
   confidential-lynx query/two-stage/strong-matches scripts, `*_evaluate.py`, `debug/`,
   `helios_scripts/`, and mining's own `RDD/` (a strict subset of `wildmatch.vendor.rdd`, which now
@@ -122,6 +125,8 @@ wildmatch finetune-backbone
 wildmatch finetune-backbone train.epochs=10
 wildmatch finetune-matcher dataset=salamander matcher_finetune=rdd matcher_finetune.dry_run=true  # plan only
 sbatch slurm/finetune_matcher.sbatch dataset=czechlynx_closed matcher_finetune=loma
+wildmatch mine plan --dataset salamander --backend loma      # view, cache, task and aggregate commands
+wildmatch mine submit --dataset salamander --backend loma --dry-run
 wildmatch evaluate
 wildmatch evaluate dataset=salamander benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
 wildmatch sweep parity --list-tasks          # packaged spec or a YAML path; writes nothing

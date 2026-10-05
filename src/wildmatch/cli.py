@@ -33,6 +33,9 @@ COMMANDS: Dict[str, Command] = {
     "sweep-task": Command("wildmatch.sweep.runner:sweep_task_main", "run one task of a frozen sweep submission"),
     "summarize-runs": Command("wildmatch.reporting.summarize_runs:main", "list completed runs from reports/runs.csv"),
     "summarize-logs": Command("wildmatch.sweep.logs:main", "list sweep task logs; rebuild logs/index.csv"),
+    "check-index": Command(
+        "wildmatch.reporting.check_index:main", "find runs.csv rows whose run directory moved or is gone"
+    ),
     "tables": Command("wildmatch.reporting.export_tables:main", "export LaTeX/CSV result tables from experiments/"),
     "figures": Command("wildmatch.reporting.export_figures:main", "plot accuracy versus candidate budget"),
     "build-unseen-split": Command("wildmatch.data.unseen_split:main", "build the unseen-identity evaluation split"),

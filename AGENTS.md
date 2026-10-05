@@ -250,7 +250,14 @@ notes do not make a run dirty). A dirty run also keeps the diff, untracked files
 a finetune) now includes the file's SHA-256; Vismatch checkpoints already recorded theirs in
 `vismatch_checkpoint`/`checkpoint_provenance`. Older manifests have neither field.
 
-`reports/runs.csv` is the central one-row-per-run index. Parallel sweep tasks update it (and the legacy CSVs) under an
+`reports/runs.csv` is the central one-row-per-run index. `wildmatch check-index` finds
+`completed` rows whose run directory is gone (dry run by default); `--fix` repoints runs that
+moved under `experiments/` (same run id in the manifest) and marks the rest `missing`, under the
+writers' lock and after a backup `runs.csv.bak-<utc>`; `failed` rows and other rows are never
+changed and no row is deleted. Run on 2026-10-05: 7 Salamander parity runs repointed to
+`experiments/parity-reference/`, 23 rows marked `missing` (6 first-split JaguarReID runs deleted
+on 2026-10-04; 11 BelugaID, 6 ZindiTurtleRecall runs of 2026-08-21 to 08-23, deleted without a
+note, all rerun with the same configuration from 2026-08-23 on and none cited by the paper). Parallel sweep tasks update it (and the legacy CSVs) under an
 exclusive lock on `<file>.lock` held across the whole read-modify-write, writing through a unique
 temporary file (`file_lock`, `write_csv_atomically` in `src/wildmatch/utils/io.py`; branch
 `fix/concurrent-writes`, 2026-10-04). Before, every writer used one fixed `<file>.tmp` without a

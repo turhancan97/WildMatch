@@ -70,7 +70,17 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   stay in `slurm/matcher_finetune/` as reference (they no longer run). Still to do: the torch-2.8
   spike (D3, L3-L5) and L6; matcher-only LoMa caches are still built by the mining repository. About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
   Apache-2.0 release needs his consent (asked by the user 2026-10-05).
-- src/wildmatch/mining/: empty slot for the code merged in later from `rdd-parallel-benchmark`. Integration plan (planned, not started):
+- src/wildmatch/mining/: pair mining merged with history from `rdd-parallel-benchmark` `4f29292`
+  (phase 3, 2026-10-05, same branch): wildlife and CzechLynx view builders (`*_dataset.py`), miners
+  (`*_mine.py`), aggregators, `wildlife_config` with the mining dataset configs
+  (`configs/wildlife/*.json`, still absolute source paths, to be replaced by the registry),
+  `batched_processing`, `loma_backend`, `lynx_benchmark` (the RDD feature core despite the name),
+  the RDD and LoMa feature-cache builders `lynx_build_cache`/`lynx_build_loma_cache`, `lynx_dataset`
+  and `lightglue_masked`; wrappers in `slurm/mining/` (reference, not yet ported), tests in
+  `tests/mining/`, notes in `notes/mining/`, notebooks in `notebooks/mining/`. Not merged (D4): the
+  confidential-lynx query/two-stage/strong-matches scripts, `*_evaluate.py`, `debug/`,
+  `helios_scripts/`, and mining's own `RDD/` (a strict subset of `wildmatch.vendor.rdd`, which now
+  also vendors `RDD/matchers/`). Piotr Kubaty wrote 1,066 of the 3,330 moved mining lines. Integration plan (planned, not started):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
   branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`, now `6958d3d` with `czechlynx_protocol.sh` tracked; user decision).
   User decisions D1-D8 (2026-10-05, plan section 5): `git filter-repo` + unrelated-histories merge

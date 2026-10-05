@@ -134,6 +134,35 @@ export function baseLayout(t, overrides = {}) {
 
 export const PLOT_CONFIG = { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"] };
 
+// Phone layout. At this width a horizontal legend in the top margin wraps into several rows
+// and covers the plot, and side-by-side panels get too narrow to read (checked at 390 px).
+const NARROW_QUERY = "(max-width: 600px)";
+
+export function isNarrow() {
+  return window.matchMedia(NARROW_QUERY).matches;
+}
+
+// Re-render when the viewport crosses the phone breakpoint (e.g. a rotated phone).
+export function onNarrowChange(callback) {
+  window.matchMedia(NARROW_QUERY).addEventListener("change", callback);
+}
+
+// On phones: legend as a vertical list under the plot, the figure made taller by exactly the
+// legend's height so the plot area keeps its size. Wide layouts are returned unchanged.
+export function phoneLayout(layout, { legendItems = 0, height = 380, top } = {}) {
+  if (!isNarrow()) return layout;
+  const legendHeight = legendItems ? legendItems * 19 + 12 : 0;
+  const margin = { ...layout.margin };
+  margin.b = (margin.b ?? 48) + legendHeight;
+  if (top != null) margin.t = top;
+  return {
+    ...layout,
+    height: height + legendHeight,
+    margin,
+    legend: { ...layout.legend, orientation: "v", x: 0, xanchor: "left", y: 0, yanchor: "bottom", yref: "container" },
+  };
+}
+
 export function mountError(root, error) {
   root.classList.add("wm-widget--error");
   root.textContent = `This view could not load its data (${error.message}).`;

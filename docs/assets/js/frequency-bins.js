@@ -2,7 +2,7 @@
 // individual, default LoMa beside LoMa + WildMatch, with the shortlist ceiling and a
 // bootstrap interval on the gain. Data: docs/data/frequency_bins.json
 // (scripts/export_frequency_bins.py, from the paper's k=250 runs).
-import { PALETTE, theme, onThemeChange, loadJson, plotly, pct, el, select, baseLayout, PLOT_CONFIG, mountError } from "./wm-common.js";
+import { PALETTE, theme, onThemeChange, loadJson, plotly, pct, el, select, baseLayout, PLOT_CONFIG, mountError, isNarrow, onNarrowChange, phoneLayout } from "./wm-common.js";
 
 const METRICS = [["top_5", "Top-5"], ["top_1", "Top-1"]];
 
@@ -43,7 +43,9 @@ export async function mountFrequencyBins(root) {
     const m = state.metric;
     const metricLabel = METRICS.find((x) => x[0] === m)[1];
     const bins = d.bins;
-    const x = bins.map((b) => `${b.label}\n(${b.n.toLocaleString()} queries)`);
+    // Phones show only the bin label on the axis (the long labels ran off the right edge);
+    // the query counts stay in the table below.
+    const x = bins.map((b) => (isNarrow() ? b.label : `${b.label}\n(${b.n.toLocaleString()} queries)`));
     const small = bins.map((b) => b.small || b.n === 0);
     const val = (b, who) => (b.n ? b[m][who] * 100 : null);
     const traces = [
@@ -69,7 +71,7 @@ export async function mountFrequencyBins(root) {
         font: { color: b[m].gain >= 0 ? PALETTE.blue : PALETTE.red, size: 11 }, yanchor: "bottom",
       } : null)).filter(Boolean),
     });
-    Plotly.react(plot, traces, layout, PLOT_CONFIG);
+    Plotly.react(plot, traces, phoneLayout(layout, { legendItems: traces.length, top: 16 }), PLOT_CONFIG);
 
     const head = ["Gallery images", "Queries", "Individuals", "In shortlist", `${metricLabel} default`, `${metricLabel} fine-tuned`, "Gain (95 % interval)"];
     const table = el("table", { class: "wm-results wm-ss-table" }, [el("thead", {}, el("tr", {}, head.map((h) => el("th", { text: h }))))]);
@@ -93,5 +95,6 @@ export async function mountFrequencyBins(root) {
   }
 
   onThemeChange(render);
+  onNarrowChange(render);
   render();
 }

@@ -35,6 +35,10 @@ registry:
     threshold_override: ["query/images/9d1fc96e28c0058e_1277.jpg=0.1"]
     split_map: "database=train,query=test"
     split_map_column: split_train_test
+  # Mining view settings (wildmatch.mining.wildlife_dataset.config_from_registry): the view folders are
+  # named after this column, so database/query is mapped to train/test.
+  mining:
+    split_column: split_train_test
   # Where the data comes from. raw: the published source; derived: the files this registry entry
   # reads that are made from it; reproducible: whether this repository can rebuild them.
   download:

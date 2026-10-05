@@ -77,8 +77,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   user 2026-10-05; the research group shares the copyright, `NOTICE`: "The WildMatch Authors").
 - src/wildmatch/mining/: pair mining merged with history from `rdd-parallel-benchmark` `4f29292`
   (phase 3, 2026-10-05, same branch): wildlife and CzechLynx view builders (`*_dataset.py`), miners
-  (`*_mine.py`), aggregators, `wildlife_config` with the mining dataset configs
-  (`configs/wildlife/*.json`, still absolute source paths, to be replaced by the registry),
+  (`*_mine.py`), aggregators, `wildlife_config`; mining datasets come from the registry
+  (`wildlife_dataset.config_from_registry`, `--registry <key>`; the former `configs/wildlife/*.json`
+  were removed 2026-10-05 and their values pinned in `tests/mining/test_registry_configs.py`; the paper
+  inputs table by default, `registry.mining` for per-entry settings; `--config <json>` stays for
+  datasets outside the registry),
   `batched_processing`, `loma_backend`, `lynx_benchmark` (the RDD feature core despite the name),
   the RDD and LoMa feature-cache builders `lynx_build_cache`/`lynx_build_loma_cache`, `lynx_dataset`
   and `lightglue_masked`; `wildmatch mine <plan|view|cache|check|task|aggregate|submit>` (`launch.py`,

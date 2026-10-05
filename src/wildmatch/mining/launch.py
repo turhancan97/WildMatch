@@ -35,7 +35,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Sequence
 
-PACKAGE_CONFIGS = Path(__file__).resolve().parent / "configs" / "wildlife"
 CZECHLYNX_SPLITS = ("split-time_closed", "split-time_open")
 STEPS = ("plan", "view", "cache", "check", "task", "aggregate", "submit")
 
@@ -134,15 +133,16 @@ def plan_mining(
         layout, dataset_id, cache_batch = "czechlynx", experiment, "4"
     else:
         dataset_id = str(entry.animal)
-        config = PACKAGE_CONFIGS / f"{dataset_id}.json"
-        if not config.is_file():
-            raise SystemExit(f"no mining config for {dataset_id} ({config})")
+        from wildmatch.mining.wildlife_dataset import config_from_registry
+
+        config_from_registry(key, profile)  # fails here, not in a job, when the entry cannot be mined
+        source = ["--registry", key, *(["--paths", profile] if profile else [])]
         view = data_root / "wildlife_processed" / dataset_id / protocol
         base = checkpoint_root / "wildlife-reid-10k" / dataset_id
         cache = base / f"{backend}-cache"
         report = mining_outputs / "wildlife-reid-10k" / dataset_id / "indices" / backend / "strong-matches"
         splits = ("train", "val", "test") if protocol == "strict" else ("train", "test")
-        view_command = [py, "-m", "wildmatch.mining.wildlife_dataset", "--config", str(config),
+        view_command = [py, "-m", "wildmatch.mining.wildlife_dataset", *source,
                         "--output_root", str(view), "--protocol", protocol]  # fmt: skip
         aggregate = [py, "-m", "wildmatch.mining.wildlife_aggregate", "--dataset_id", dataset_id,
                      "--protocol", protocol, "--dump_report", str(report), "--dataset_root", str(view),
@@ -170,7 +170,7 @@ def plan_mining(
             view_command = [py, "-m", "wildmatch.mining.czechlynx_fewshot", *common,
                             "--metadata_csv", str(data_root / "CzechLynx_v2" / "CzechLynxDataset-Metadata-Real.csv")]  # fmt: skip
         else:
-            view_command = [py, "-m", "wildmatch.mining.wildlife_fewshot", "--config", str(config), *common]
+            view_command = [py, "-m", "wildmatch.mining.wildlife_fewshot", *source, *common]
         aggregate[aggregate.index("--dump_report") + 1] = str(report)
         aggregate[aggregate.index("--dataset_root") + 1] = str(view)
         cache_view = source_view

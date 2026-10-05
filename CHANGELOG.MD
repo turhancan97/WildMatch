@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `feat/integration-followups`): mining datasets come from the dataset registry.
+  `wildmatch.mining.wildlife_dataset.config_from_registry` builds the mining config of an entry from its
+  root and, by default, its paper input table (`registry.paper_inputs.metadata_file`, the table the
+  existing views, caches and indices were built from; `--inputs current` is refused where it differs,
+  since mining other inputs needs separate folders); `registry.mining` holds per-entry settings
+  (SalamanderID2025: `split_column: split_train_test`). The view, few-shot and shell-helper commands take
+  `--registry <key> [--paths] [--inputs]` (`--config <json>` remains for datasets outside the registry)
+  and `wildmatch mine` passes `--registry`. The 16 `configs/wildlife/*.json` files are removed: the 13
+  with a registry entry are pinned as a literal in `tests/mining/test_registry_configs.py` (the
+  registry reproduces each exactly); the three turtle configs without an entry (Amvrakikos, Reunion,
+  Zakynthos) are dropped. Views rebuilt through the registry equal the live training views.
 - 2026-10-05 (branch `feat/integration-followups`): `wildmatch mine submit` freezes the run into
   `logs/mining/submissions/<id>/submission.json` (resolved task and aggregation commands, per-split
   counts, code identity, `code_fingerprint` = hash of the blob ids of `src/`, `pyproject.toml`,

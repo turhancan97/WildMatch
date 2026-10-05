@@ -93,6 +93,64 @@ def load_config(path: Path) -> WildlifeConfig:
     )
 
 
+def config_from_registry(key: str, profile: str | None = None, inputs: str = "paper") -> WildlifeConfig:
+    """The mining config of registry entry `key` (replaces the former configs/wildlife/*.json).
+
+    `inputs="paper"` reads the table the paper's views, caches and indices were built from
+    (`registry.paper_inputs.metadata_file`, the WildlifeReID-10k team masks; the entry's own table
+    when it has no separate paper inputs). Mining on another table needs its own view, cache and
+    index folders (caches are keyed by frame path), so `inputs="current"` is refused where the two
+    tables differ. Optional per-entry settings live in `registry.mining` (e.g. `split_column`).
+    """
+    from wildmatch.data.registry import load_dataset
+
+    entry = load_dataset(key, profile)
+    if entry.name == "CzechLynx_v2":
+        raise ValueError(f"{key} is a CzechLynx entry; its views come from wildmatch.mining.czechlynx_dataset")
+    registry = entry.get("registry") or {}
+    paper = (registry.get("paper_inputs") or {}).get("metadata_file")
+    if inputs == "paper":
+        metadata = paper or entry.metadata_file
+    elif inputs == "current":
+        if paper and paper != entry.metadata_file:
+            raise ValueError(
+                f"{key}: mining on the current inputs ({entry.metadata_file}) is not set up; it needs view, cache "
+                f"and index folders separate from the paper inputs' ({paper})"
+            )
+        metadata = entry.metadata_file
+    else:
+        raise ValueError(f"inputs must be paper or current, got {inputs!r}")
+    mining = registry.get("mining") or {}
+    root = Path(str(entry.root))
+    return WildlifeConfig(
+        dataset_id=str(entry.animal),
+        metadata_csv=str(root / str(metadata)),
+        source_root=str(root),
+        image_prefix=str(mining.get("image_prefix", "masked_images")).strip("/"),
+        identity_column=str(mining.get("identity_column", "identity")),
+        split_column=str(mining.get("split_column", "split")),
+        collection_rule=str(mining.get("collection_rule", "identity")),
+        validation_fraction=float(mining.get("validation_fraction", 0.20)),
+        seed=int(mining.get("seed", 0)),
+        excluded_identities=tuple(str(x) for x in mining.get("excluded_identities", ["", "unknown"])),
+        allowed_splits=tuple(str(x) for x in mining.get("allowed_splits", ["train", "test"])),
+    )
+
+
+def add_config_arguments(parser: argparse.ArgumentParser) -> None:
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--registry", help="dataset registry key, e.g. salamander (the usual source)")
+    group.add_argument("--config", type=Path, help="a JSON mining config, for datasets outside the registry")
+    parser.add_argument("--paths", default=None, help="path profile for --registry")
+    parser.add_argument("--inputs", choices=["paper", "current"], default="paper", help="input table for --registry")
+
+
+def config_from_arguments(args: argparse.Namespace) -> WildlifeConfig:
+    if args.registry:
+        return config_from_registry(args.registry, args.paths, args.inputs)
+    return load_config(args.config)
+
+
 def read_rows(config: WildlifeConfig) -> list[dict[str, str]]:
     with config.metadata_path.open(newline="", encoding="utf-8-sig") as handle:
         rows = list(csv.DictReader(handle))
@@ -314,13 +372,13 @@ def list_collections(root: Path, split: str) -> list[WildlifeCollection]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, required=True)
+    add_config_arguments(parser)
     parser.add_argument("--output_root", type=Path, required=True)
     parser.add_argument("--protocol", choices=["strict", "legacy"], default="strict")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--dry_run", action="store_true")
     args = parser.parse_args()
-    config = load_config(args.config)
+    config = config_from_arguments(args)
     summary = prepare(config, args.output_root, args.protocol, force=args.force, dry_run=args.dry_run)
     print(json.dumps({key: value for key, value in summary.items() if key != "records"}, indent=2))
 

@@ -85,19 +85,20 @@ def build_loma(
     try:
         from loma.loma import LoMa, LoMaB, LoMaB128, LoMaG, LoMaL, LoMaR
     except ImportError as exc:
-        raise ImportError(
-            "LoMa is not installed. Install requirements-loma.txt in the loma environment."
-        ) from exc
+        raise ImportError("LoMa is not installed. Install requirements-loma.txt in the loma environment.") from exc
 
     variant = variant.lower()
     try:
-        config_cls = {name.lower(): value for name, value in {
-            "loma-b": LoMaB,
-            "loma-b128": LoMaB128,
-            "loma-l": LoMaL,
-            "loma-g": LoMaG,
-            "loma-r": LoMaR,
-        }.items()}[variant]
+        config_cls = {
+            name.lower(): value
+            for name, value in {
+                "loma-b": LoMaB,
+                "loma-b128": LoMaB128,
+                "loma-l": LoMaL,
+                "loma-g": LoMaG,
+                "loma-r": LoMaR,
+            }.items()
+        }[variant]
     except KeyError as exc:
         raise ValueError(f"Unsupported LoMa variant {variant!r}; expected {sorted(VARIANT_CONFIGS)}") from exc
 
@@ -185,9 +186,7 @@ def freeze_loma_backbone(model: nn.Module) -> None:
     model._descriptor.eval()
 
 
-def set_loma_train_mode(
-    model: nn.Module, training: bool, component: str = "matcher"
-) -> None:
+def set_loma_train_mode(model: nn.Module, training: bool, component: str = "matcher") -> None:
     model.train(training)
     model._detector.eval()
     if component == "descriptor":
@@ -206,7 +205,9 @@ def set_loma_train_mode(
 
 
 @torch.inference_mode()
-def extract_loma_features(model: nn.Module, images: torch.Tensor, num_keypoints: int) -> tuple[torch.Tensor, torch.Tensor]:
+def extract_loma_features(
+    model: nn.Module, images: torch.Tensor, num_keypoints: int
+) -> tuple[torch.Tensor, torch.Tensor]:
     keypoints, descriptors, _, _ = model.detect_and_describe(images, num_keypoints=num_keypoints)
     return keypoints, descriptors
 
@@ -217,8 +218,10 @@ def _describe_image_group_with_grad(
     """Run DeDoDe directly, bypassing its inference-mode public wrapper."""
     dense = descriptor(images)
     return F.grid_sample(
-        dense.float(), keypoints[:, None].to(dense.device),
-        mode="bilinear", align_corners=False,
+        dense.float(),
+        keypoints[:, None].to(dense.device),
+        mode="bilinear",
+        align_corners=False,
     )[:, :, 0].mT
 
 
@@ -236,24 +239,18 @@ def describe_keypoints_with_grad(
     output: list[torch.Tensor | None] = [None] * len(images)
     device = keypoints.device
     for indices in groups.values():
-        image_batch = torch.stack([images[index] for index in indices]).to(
-            device, non_blocking=True
-        )
+        image_batch = torch.stack([images[index] for index in indices]).to(device, non_blocking=True)
         kp_batch = keypoints[indices]
-        described = _describe_image_group_with_grad(
-            model._descriptor, image_batch, kp_batch
-        )
+        described = _describe_image_group_with_grad(model._descriptor, image_batch, kp_batch)
         for local_index, original_index in enumerate(indices):
-            output[original_index] = described[local_index:local_index + 1]
+            output[original_index] = described[local_index : local_index + 1]
     if any(item is None for item in output):
         raise RuntimeError("failed to describe one or more images")
     return torch.cat([item for item in output if item is not None], dim=0)
 
 
 @torch.no_grad()
-def detect_loma_keypoints(
-    model: nn.Module, images: list[torch.Tensor], num_keypoints: int
-) -> torch.Tensor:
+def detect_loma_keypoints(model: nn.Module, images: list[torch.Tensor], num_keypoints: int) -> torch.Tensor:
     """Detect fixed DaD keypoints for a possibly mixed-shape image list."""
     groups: dict[tuple[int, int], list[int]] = {}
     for index, image in enumerate(images):
@@ -261,19 +258,15 @@ def detect_loma_keypoints(
     output: list[torch.Tensor | None] = [None] * len(images)
     device = next(model.parameters()).device
     for indices in groups.values():
-        image_batch = torch.stack([images[index] for index in indices]).to(
-            device, non_blocking=True
-        )
+        image_batch = torch.stack([images[index] for index in indices]).to(device, non_blocking=True)
         # DaD.detect() moves input to loma.device.device (usually cuda:0),
         # which is wrong for DDP ranks assigned another local GPU. Its forward
         # method does not perform that implicit move, so call it with the
         # already rank-local image batch. The outer no_grad context keeps the
         # frozen detector out of autograd.
-        detected = model._detector(
-            image_batch, num_keypoints=num_keypoints
-        )["keypoints"].clone()
+        detected = model._detector(image_batch, num_keypoints=num_keypoints)["keypoints"].clone()
         for local_index, original_index in enumerate(indices):
-            output[original_index] = detected[local_index:local_index + 1]
+            output[original_index] = detected[local_index : local_index + 1]
     if any(item is None for item in output):
         raise RuntimeError("failed to detect keypoints for one or more images")
     return torch.cat([item for item in output if item is not None], dim=0)
@@ -312,15 +305,18 @@ def matcher_scores_with_descriptor_grad(
         encoding0 = model.posenc(keypoints0)
         encoding1 = model.posenc(keypoints1)
         for index in range(model.cfg.n_layers):
-            desc0, desc1 = model.transformers[index](
-                desc0, desc1, encoding0, encoding1
-            )
+            desc0, desc1 = model.transformers[index](desc0, desc1, encoding0, encoding1)
         scores, _ = model.log_assignment[index](desc0, desc1)
     return scores
 
 
-def train_pair_score(model: nn.Module, keypoints0: torch.Tensor, descriptors0: torch.Tensor,
-                     keypoints1: torch.Tensor, descriptors1: torch.Tensor) -> torch.Tensor:
+def train_pair_score(
+    model: nn.Module,
+    keypoints0: torch.Tensor,
+    descriptors0: torch.Tensor,
+    keypoints1: torch.Tensor,
+    descriptors1: torch.Tensor,
+) -> torch.Tensor:
     """Differentiable confidence used by the lynx positive/negative loss."""
     scores = model(keypoints0, keypoints1, descriptors0, descriptors1)["scores"]
     # In training mode LoMa returns a log assignment matrix with a dustbin.
@@ -348,9 +344,7 @@ def train_pair_score_with_matches(
     from loma.loma import filter_matches
 
     if preserve_descriptor_grad:
-        scores = matcher_scores_with_descriptor_grad(
-            model, keypoints0, keypoints1, descriptors0, descriptors1
-        )
+        scores = matcher_scores_with_descriptor_grad(model, keypoints0, keypoints1, descriptors0, descriptors1)
     else:
         scores = model(keypoints0, keypoints1, descriptors0, descriptors1)["scores"]
     pair_scores = scores[:, :-1, :-1].exp()
@@ -385,15 +379,9 @@ class LoMaDescriptorTrainingModel(nn.Module):
         positive_keypoints: torch.Tensor,
         negative_keypoints: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        query_descriptors = describe_keypoints_with_grad(
-            self.loma, query_images, query_keypoints
-        )
-        positive_descriptors = describe_keypoints_with_grad(
-            self.loma, positive_images, positive_keypoints
-        )
-        negative_descriptors = describe_keypoints_with_grad(
-            self.loma, negative_images, negative_keypoints
-        )
+        query_descriptors = describe_keypoints_with_grad(self.loma, query_images, query_keypoints)
+        positive_descriptors = describe_keypoints_with_grad(self.loma, positive_images, positive_keypoints)
+        negative_descriptors = describe_keypoints_with_grad(self.loma, negative_images, negative_keypoints)
         positive_score, positive_matches = train_pair_score_with_matches(
             self.loma,
             query_keypoints,
@@ -414,8 +402,13 @@ class LoMaDescriptorTrainingModel(nn.Module):
 
 
 @torch.inference_mode()
-def eval_pair_scores(model: nn.Module, keypoints0: torch.Tensor, descriptors0: torch.Tensor,
-                     keypoints1: torch.Tensor, descriptors1: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+def eval_pair_scores(
+    model: nn.Module,
+    keypoints0: torch.Tensor,
+    descriptors0: torch.Tensor,
+    keypoints1: torch.Tensor,
+    descriptors1: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Return normalized mutual-match confidence and match counts."""
     from loma.loma import filter_matches
 
@@ -439,8 +432,4 @@ def full_state_dict(model: nn.Module) -> dict[str, torch.Tensor]:
 
 
 def trainable_state_dict(model: nn.Module) -> dict[str, torch.Tensor]:
-    return {
-        name: parameter.detach().cpu()
-        for name, parameter in model.named_parameters()
-        if parameter.requires_grad
-    }
+    return {name: parameter.detach().cpu() for name, parameter in model.named_parameters() if parameter.requires_grad}

@@ -46,8 +46,7 @@ def list_frames(data_root: Path, splits: list[str]) -> list[Path]:
         if not split_root.is_dir():
             raise FileNotFoundError(f"split directory does not exist: {split_root}")
         frames.extend(
-            path for path in split_root.rglob("*")
-            if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+            path for path in split_root.rglob("*") if path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
         )
     return sorted(frames)
 
@@ -79,10 +78,7 @@ def write_frame(path: Path, keypoints: np.ndarray, image_size: tuple[int, int]) 
 def _existing_record_is_valid(path: Path, num_keypoints: int) -> bool:
     try:
         with np.load(path) as data:
-            return (
-                data["keypoints"].shape == (num_keypoints, 2)
-                and data["image_size"].shape == (2,)
-            )
+            return data["keypoints"].shape == (num_keypoints, 2) and data["image_size"].shape == (2,)
     except (OSError, KeyError, ValueError):
         return False
 
@@ -108,18 +104,11 @@ def build_cache(args: argparse.Namespace) -> None:
     }
     if manifest_path.exists():
         existing = json.loads(manifest_path.read_text())
-        mismatches = {
-            key: (existing.get(key), value)
-            for key, value in expected.items()
-            if existing.get(key) != value
-        }
+        mismatches = {key: (existing.get(key), value) for key, value in expected.items() if existing.get(key) != value}
         if mismatches:
             raise ValueError(
                 "existing LoMa keypoint cache is incompatible; use a separate cache path: "
-                + ", ".join(
-                    f"{key}={actual!r} (wanted {wanted!r})"
-                    for key, (actual, wanted) in mismatches.items()
-                )
+                + ", ".join(f"{key}={actual!r} (wanted {wanted!r})" for key, (actual, wanted) in mismatches.items())
             )
     elif any(args.cache_dir.rglob("*.npz")):
         raise ValueError(
@@ -154,17 +143,13 @@ def build_cache(args: argparse.Namespace) -> None:
     with torch.inference_mode():
         for (height, width), group in sorted(grouped.items()):
             for start in tqdm(range(0, len(group), args.batch_size), desc=f"keypoints {height}x{width}"):
-                paths = group[start:start + args.batch_size]
+                paths = group[start : start + args.batch_size]
                 images = torch.stack([load_image(path, args.resize) for path in paths]).to(device)
                 if images.shape[-2:] != (height, width):
                     raise RuntimeError("keypoint-cache preprocessing shape mismatch")
-                detected = model._detector.detect(
-                    {"image": images}, num_keypoints=args.num_keypoints
-                )["keypoints"]
+                detected = model._detector.detect({"image": images}, num_keypoints=args.num_keypoints)["keypoints"]
                 if detected.shape[1] != args.num_keypoints:
-                    raise ValueError(
-                        f"DaD returned {detected.shape[1]} keypoints, expected {args.num_keypoints}"
-                    )
+                    raise ValueError(f"DaD returned {detected.shape[1]} keypoints, expected {args.num_keypoints}")
                 for index, frame in enumerate(paths):
                     relative = frame.relative_to(args.data_root).as_posix()
                     write_frame(

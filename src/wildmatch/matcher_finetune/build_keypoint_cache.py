@@ -24,6 +24,7 @@ file, without running RDD — worth doing after a sharded build, since a shard
 that died leaves a cache that looks complete until a training step happens to
 draw the missing frame.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -54,23 +55,30 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cache_root", type=Path, required=True, help="Where to write the cache")
     p.add_argument("--rdd_weights", type=Path, default=None)
     p.add_argument(
-        "--splits", nargs="*", default=["train", "test"],
+        "--splits",
+        nargs="*",
+        default=["train", "test"],
         help="Split directories under --data_root to cache in full (default: both). "
-             "The training split alone is what --random_negative_prob draws from; "
-             "the test split adds the val indices' query frames, and caching it "
-             "whole costs ~6.6 GB more but makes the cache index-agnostic.",
+        "The training split alone is what --random_negative_prob draws from; "
+        "the test split adds the val indices' query frames, and caching it "
+        "whole costs ~6.6 GB more but makes the cache index-agnostic.",
     )
     p.add_argument(
-        "--index", type=Path, nargs="*", default=[],
+        "--index",
+        type=Path,
+        nargs="*",
+        default=[],
         help="Optional index JSONs; every frame they reference is added to the "
-             "enumeration even if it lies outside --splits.",
+        "enumeration even if it lies outside --splits.",
     )
     p.add_argument("--resize", type=int, default=512, help="Must match the training run's --resize")
     p.add_argument("--top_k", type=int, default=512, help="Must match the training run's --top_k")
     p.add_argument(
-        "--batch_size", type=int, default=32,
+        "--batch_size",
+        type=int,
+        default=32,
         help="Frames per RDD forward. Deformable attention scales steeply with "
-             "this; 32 saturates an H100 at --resize 512.",
+        "this; 32 saturates an H100 at --resize 512.",
     )
     p.add_argument("--num_workers", type=int, default=16, help="JPEG decode workers")
     p.add_argument("--num_shards", type=int, default=1, help="Split the frame list across N processes")
@@ -138,28 +146,32 @@ def collate_by_shape(items):
 def main() -> None:
     args = parse_args()
     frames = enumerate_frames(args)
-    print(f"enumerated {len(frames):,} frames from {args.data_root} "
-          f"(splits={args.splits}, {len(args.index)} extra index files)")
+    print(
+        f"enumerated {len(frames):,} frames from {args.data_root} "
+        f"(splits={args.splits}, {len(args.index)} extra index files)"
+    )
 
     if args.verify:
         cache = KeypointCache(args.cache_root)
         missing = [f for f in tqdm(frames, desc="verify") if not cache.has(f)]
-        print(f"cache {args.cache_root}: {len(frames) - len(missing):,}/{len(frames):,} present, "
-              f"{len(missing):,} missing")
+        print(
+            f"cache {args.cache_root}: {len(frames) - len(missing):,}/{len(frames):,} present, {len(missing):,} missing"
+        )
         for f in missing[:20]:
             print(f"  missing: {f}")
         raise SystemExit(1 if missing else 0)
 
     total_planned = len(frames)
-    shard = frames[args.shard::args.num_shards]
+    shard = frames[args.shard :: args.num_shards]
     if args.limit:
-        shard = shard[:args.limit]
+        shard = shard[: args.limit]
     print(f"shard {args.shard}/{args.num_shards}: {len(shard):,} frames")
 
     if args.resume:
         before = len(shard)
-        shard = [f for f in tqdm(shard, desc="resume scan")
-                 if not (args.cache_root / Path(f).with_suffix(".npz")).exists()]
+        shard = [
+            f for f in tqdm(shard, desc="resume scan") if not (args.cache_root / Path(f).with_suffix(".npz")).exists()
+        ]
         print(f"resume: {before - len(shard):,} already cached, {len(shard):,} to go")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -195,8 +207,11 @@ def main() -> None:
 
     loader = DataLoader(
         FrameDataset(shard, args.data_root, args.resize),
-        batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
-        collate_fn=collate_by_shape, pin_memory=True,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        collate_fn=collate_by_shape,
+        pin_memory=True,
     )
 
     n_done, n_kpts = 0, 0
@@ -213,8 +228,7 @@ def main() -> None:
                 n_kpts += int(f["keypoints"].shape[0])
             n_done += len(rels)
         if n_done:
-            pbar.set_postfix(fps=f"{n_done / (time.perf_counter() - t0):.1f}",
-                             kpts=f"{n_kpts / max(n_done, 1):.0f}")
+            pbar.set_postfix(fps=f"{n_done / (time.perf_counter() - t0):.1f}", kpts=f"{n_kpts / max(n_done, 1):.0f}")
 
     elapsed = time.perf_counter() - t0
     manifest_extra = {
@@ -227,8 +241,10 @@ def main() -> None:
         manifest_extra["mean_keypoints_last_build"] = n_kpts / n_done
     KeypointCache.write_manifest(args.cache_root, spec, manifest_extra)
     if n_done:
-        print(f"wrote {n_done:,} frames in {elapsed/60:.1f} min "
-              f"({n_done/elapsed:.1f} frames/s, mean {n_kpts/n_done:.0f} keypoints)")
+        print(
+            f"wrote {n_done:,} frames in {elapsed / 60:.1f} min "
+            f"({n_done / elapsed:.1f} frames/s, mean {n_kpts / n_done:.0f} keypoints)"
+        )
     else:
         print("nothing to extract — every frame in this shard was already cached")
     print(f"manifest: {manifest_path}")

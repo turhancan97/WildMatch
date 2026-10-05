@@ -78,8 +78,10 @@ def test_freeze_loma_backbone_and_trainable_score():
 
     score = train_pair_score(
         model,
-        torch.zeros(2, 4, 2), torch.zeros(2, 4, 8),
-        torch.zeros(2, 4, 2), torch.zeros(2, 4, 8),
+        torch.zeros(2, 4, 2),
+        torch.zeros(2, 4, 8),
+        torch.zeros(2, 4, 2),
+        torch.zeros(2, 4, 8),
     ).sum()
     score.backward()
     assert model.matcher_weight.grad is not None
@@ -105,9 +107,7 @@ def test_descriptor_and_frozen_matcher_forward_propagates_gradient_to_descriptor
     desc1 = torch.randn(2, 5, 3, requires_grad=True)
     keypoints = torch.rand(2, 5, 2) * 2 - 1
 
-    scores = matcher_scores_with_descriptor_grad(
-        model, keypoints, keypoints, desc0, desc1
-    )
+    scores = matcher_scores_with_descriptor_grad(model, keypoints, keypoints, desc0, desc1)
     scores[:, :-1, :-1].exp().sum().backward()
 
     assert desc0.grad is not None and desc0.grad.abs().sum() > 0
@@ -161,22 +161,21 @@ def test_descriptor_training_wrapper_updates_only_descriptor(monkeypatch):
     positive = [torch.rand(3, 14, 14), torch.rand(3, 14, 14)]
     negative = [torch.rand(3, 14, 14), torch.rand(3, 14, 14)]
     keypoints = torch.rand(2, 5, 2) * 2 - 1
-    positive_score, _, negative_score, _ = wrapper(
-        query, positive, negative, keypoints, keypoints, keypoints
-    )
+    positive_score, _, negative_score, _ = wrapper(query, positive, negative, keypoints, keypoints, keypoints)
     loss = torch.relu(0.5 - positive_score + negative_score).mean()
     loss.backward()
 
     assert all(parameter.grad is None for parameter in model._detector.parameters())
     assert all(parameter.grad is None for parameter in model.input_proj.parameters())
     assert any(
-        parameter.grad is not None and parameter.grad.abs().sum() > 0
-        for parameter in model._descriptor.parameters()
+        parameter.grad is not None and parameter.grad.abs().sum() > 0 for parameter in model._descriptor.parameters()
     )
     optimizer.step()
     assert all(torch.equal(before, after) for before, after in zip(detector_before, model._detector.parameters()))
     assert all(torch.equal(before, after) for before, after in zip(matcher_before, model.input_proj.parameters()))
-    assert any(not torch.equal(before, after) for before, after in zip(descriptor_before, model._descriptor.parameters()))
+    assert any(
+        not torch.equal(before, after) for before, after in zip(descriptor_before, model._descriptor.parameters())
+    )
 
 
 def test_checkpoint_bundle_resolution(tmp_path: Path):
@@ -223,9 +222,7 @@ def test_loma_checkpoint_restores_scheduler_state(tmp_path: Path):
         lr=1e-3,
     )
     restored_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(restored_optimizer, T_max=10)
-    epoch, step = loma_train.restore_checkpoint(
-        restored_model, restored_optimizer, restored_scheduler, checkpoint
-    )
+    epoch, step = loma_train.restore_checkpoint(restored_model, restored_optimizer, restored_scheduler, checkpoint)
 
     assert (epoch, step) == (2, 17)
     assert restored_scheduler.last_epoch == expected_last_epoch
@@ -235,15 +232,17 @@ def test_loma_checkpoint_restores_scheduler_state(tmp_path: Path):
 def test_descriptor_checkpoint_contains_only_descriptor_weights(tmp_path: Path):
     model = FakeDescriptorLoMa()
     configure_loma_trainable_component(model, "descriptor")
-    optimizer = torch.optim.AdamW(
-        [parameter for parameter in model.parameters() if parameter.requires_grad], lr=1e-3
-    )
+    optimizer = torch.optim.AdamW([parameter for parameter in model.parameters() if parameter.requires_grad], lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=2)
     args = SimpleNamespace(
-        loma_variant="loma-b", loma_weights=Path("pretrained.pt"),
-        loma_train_component="descriptor", split_protocol="strict",
-        train_index=Path("train.json"), val_index=Path("val.json"),
-        resize=512, num_keypoints=512,
+        loma_variant="loma-b",
+        loma_weights=Path("pretrained.pt"),
+        loma_train_component="descriptor",
+        split_protocol="strict",
+        train_index=Path("train.json"),
+        val_index=Path("val.json"),
+        resize=512,
+        num_keypoints=512,
     )
     output = tmp_path / "descriptor-checkpoint"
     loma_train.save_checkpoint(model, optimizer, scheduler, 0, 1, args, output)
@@ -261,19 +260,13 @@ def test_descriptor_checkpoint_contains_only_descriptor_weights(tmp_path: Path):
     restored_optimizer = torch.optim.AdamW(
         [parameter for parameter in restored.parameters() if parameter.requires_grad], lr=1e-3
     )
-    restored_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        restored_optimizer, T_max=2
-    )
-    epoch, step = loma_train.restore_checkpoint(
-        restored, restored_optimizer, restored_scheduler, output, "descriptor"
-    )
+    restored_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(restored_optimizer, T_max=2)
+    epoch, step = loma_train.restore_checkpoint(restored, restored_optimizer, restored_scheduler, output, "descriptor")
     assert (epoch, step) == (0, 1)
     for name, parameter in restored._descriptor.named_parameters():
         assert torch.equal(parameter, dict(model._descriptor.named_parameters())[name])
     with pytest.raises(ValueError, match="cannot resume"):
-        loma_train.restore_checkpoint(
-            restored, restored_optimizer, restored_scheduler, output, "matcher"
-        )
+        loma_train.restore_checkpoint(restored, restored_optimizer, restored_scheduler, output, "matcher")
 
 
 def test_loma_resize_aligns_both_dimensions_to_dinov2_patch_size():
@@ -323,9 +316,7 @@ def test_loma_mini_eval_matches_rdd_protocol(monkeypatch, tmp_path: Path):
         }
         for index in range(3)
     ]
-    metrics = loma_train.evaluate_mini_index(
-        model, entries, tmp_path, torch.device("cpu"), 512, 512, batch_size=2
-    )
+    metrics = loma_train.evaluate_mini_index(model, entries, tmp_path, torch.device("cpu"), 512, 512, batch_size=2)
 
     assert metrics == {"mean_matches_pos": 2.0, "mean_matches_neg": 1.0}
     assert extract_batch_sizes == [2, 2, 2, 1, 1, 1]
@@ -349,12 +340,8 @@ def test_loma_cache_round_trip_and_metadata_validation(tmp_path: Path):
         '"variant":"loma-b","resize":512,"num_keypoints":4,"patch_size":14}'
     )
 
-    cache = LomaFeatureCache(
-        cache_dir, variant="loma-b", resize=512, num_keypoints=4
-    )
-    keypoints, descriptors = cache.load(
-        "train/lynx_a/site/seq/frame_0000.jpg", torch.device("cpu")
-    )
+    cache = LomaFeatureCache(cache_dir, variant="loma-b", resize=512, num_keypoints=4)
+    keypoints, descriptors = cache.load("train/lynx_a/site/seq/frame_0000.jpg", torch.device("cpu"))
     assert keypoints.shape == (1, 4, 2)
     assert descriptors.shape == (1, 4, 8)
 
@@ -372,14 +359,26 @@ def test_loma_keypoint_cache_round_trip_and_detector_validation(tmp_path: Path):
         image_size=np.asarray([504, 504], dtype=np.int32),
     )
     detector_hash = "a" * 64
-    (cache_dir / "manifest.json").write_text(json.dumps({
-        "format": "lynx-loma-keypoints-v1", "backend": "loma",
-        "variant": "loma-b", "resize": 512, "num_keypoints": 4,
-        "patch_size": 14, "detector_sha256": detector_hash, "complete": True,
-    }))
+    (cache_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "format": "lynx-loma-keypoints-v1",
+                "backend": "loma",
+                "variant": "loma-b",
+                "resize": 512,
+                "num_keypoints": 4,
+                "patch_size": 14,
+                "detector_sha256": detector_hash,
+                "complete": True,
+            }
+        )
+    )
 
     cache = LomaKeypointCache(
-        cache_dir, variant="loma-b", resize=512, num_keypoints=4,
+        cache_dir,
+        variant="loma-b",
+        resize=512,
+        num_keypoints=4,
         detector_sha256=detector_hash,
     )
     keypoints, image_size = cache.load("train/lynx_a/frame_0000.jpg", torch.device("cpu"))
@@ -387,7 +386,10 @@ def test_loma_keypoint_cache_round_trip_and_detector_validation(tmp_path: Path):
     assert image_size.tolist() == [504, 504]
     with pytest.raises(ValueError, match="detector_sha256"):
         LomaKeypointCache(
-            cache_dir, variant="loma-b", resize=512, num_keypoints=4,
+            cache_dir,
+            variant="loma-b",
+            resize=512,
+            num_keypoints=4,
             detector_sha256="b" * 64,
         )
     manifest = json.loads((cache_dir / "manifest.json").read_text())
@@ -395,7 +397,10 @@ def test_loma_keypoint_cache_round_trip_and_detector_validation(tmp_path: Path):
     (cache_dir / "manifest.json").write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="incomplete"):
         LomaKeypointCache(
-            cache_dir, variant="loma-b", resize=512, num_keypoints=4,
+            cache_dir,
+            variant="loma-b",
+            resize=512,
+            num_keypoints=4,
             detector_sha256=detector_hash,
         )
 
@@ -417,11 +422,13 @@ def test_cached_triplet_dataset_returns_batched_feature_tensors(tmp_path: Path):
     }
     cache_dir.mkdir()
     (cache_dir / "manifest.json").write_text(json.dumps(manifest))
-    entries = [{
-        "query_frame": "train/lynx_a/video/query.jpg",
-        "positives": ["train/lynx_a/video/positive.jpg"],
-        "negatives": ["train/lynx_b/video/negative.jpg"],
-    }]
+    entries = [
+        {
+            "query_frame": "train/lynx_a/video/query.jpg",
+            "positives": ["train/lynx_a/video/positive.jpg"],
+            "negatives": ["train/lynx_b/video/negative.jpg"],
+        }
+    ]
     index_path = tmp_path / "index.json"
     index_path.write_text(json.dumps(entries))
     for relative in (
@@ -456,14 +463,16 @@ def test_distributed_index_eval_gathers_one_dict_per_rank(monkeypatch, tmp_path:
         loma_train,
         "load_features_for_paths",
         lambda model, paths, device, resize, num_keypoints, **kwargs: (
-            torch.zeros(len(paths), 4, 2), torch.zeros(len(paths), 4, 8)
+            torch.zeros(len(paths), 4, 2),
+            torch.zeros(len(paths), 4, 8),
         ),
     )
     monkeypatch.setattr(
         loma_train,
         "eval_pair_scores",
         lambda model, keypoints0, descriptors0, keypoints1, descriptors1: (
-            torch.ones(keypoints0.shape[0]), torch.ones(keypoints0.shape[0])
+            torch.ones(keypoints0.shape[0]),
+            torch.ones(keypoints0.shape[0]),
         ),
     )
 
@@ -483,13 +492,20 @@ def test_distributed_index_eval_gathers_one_dict_per_rank(monkeypatch, tmp_path:
         return payload
 
     monkeypatch.setattr(loma_train, "gather_object", fake_gather)
-    entries = [{
-        "query_frame": "test/lynx_a/video/query.jpg",
-        "positives": ["train/lynx_a/video/positive.jpg"],
-        "negatives": ["train/lynx_b/video/negative.jpg"],
-    }]
+    entries = [
+        {
+            "query_frame": "test/lynx_a/video/query.jpg",
+            "positives": ["train/lynx_a/video/positive.jpg"],
+            "negatives": ["train/lynx_b/video/negative.jpg"],
+        }
+    ]
     metrics = loma_train.evaluate_index(
-        model, entries, tmp_path, torch.device("cpu"), 512, 4,
+        model,
+        entries,
+        tmp_path,
+        torch.device("cpu"),
+        512,
+        4,
         accelerator=FakeAccelerator(),
     )
 
@@ -555,9 +571,14 @@ def test_joint_checkpoint_holds_the_complete_model(tmp_path: Path):
     optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=2)
     args = SimpleNamespace(
-        loma_variant="loma-b", loma_weights=Path("pretrained.pt"), loma_train_component="joint",
-        split_protocol="legacy", train_index=Path("train.json"), val_index=Path("val.json"),
-        resize=512, num_keypoints=512,
+        loma_variant="loma-b",
+        loma_weights=Path("pretrained.pt"),
+        loma_train_component="joint",
+        split_protocol="legacy",
+        train_index=Path("train.json"),
+        val_index=Path("val.json"),
+        resize=512,
+        num_keypoints=512,
     )
     output = tmp_path / "joint-checkpoint"
     loma_train.save_checkpoint(model, optimizer, scheduler, 0, 1, args, output)
@@ -569,7 +590,10 @@ def test_joint_checkpoint_holds_the_complete_model(tmp_path: Path):
     assert any(name.startswith("_detector.") for name in state)
     metadata = json.loads((output / "metadata.json").read_text())
     assert (metadata["train_component"], metadata["format"], metadata["weights"]) == (
-        "joint", "lynx-loma-joint-v1", "full")
+        "joint",
+        "lynx-loma-joint-v1",
+        "full",
+    )
     assert metadata["frozen"] == ["_detector"]
 
     restored = FakeDescriptorLoMa()

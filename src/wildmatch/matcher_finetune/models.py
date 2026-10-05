@@ -35,8 +35,11 @@ def build_rdd(weights: Path, device: torch.device, top_k: int):
     model.eval()
     return model
 
+
 def build_masked_lg(
-    device: torch.device, weights=None, init_threshold=0.01,
+    device: torch.device,
+    weights=None,
+    init_threshold=0.01,
     detach_descriptors=True,
 ):
     """Builds LightGlueForTraining, not the LightGlueMasked it started out as.

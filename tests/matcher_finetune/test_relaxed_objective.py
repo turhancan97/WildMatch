@@ -12,6 +12,7 @@ Covers the pieces that make RDD-LightGlue train exactly like LoMa:
 
 Tests needing the pretrained LightGlue weights are skipped when they are absent.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -97,8 +98,8 @@ def test_relaxed_score_ignores_padded_rows_and_columns():
     # Append 3 padded rows and 2 padded columns carrying large (bogus) mass.
     padded = torch.zeros(1, 10, 7)
     padded[:, :6, :4] = scores[:, :6, :4]
-    padded[:, 6:9, :] = 0.0          # log p = 0 -> p = 1 in padded rows
-    padded[:, :, 4:6] = 0.0          # and in padded columns
+    padded[:, 6:9, :] = 0.0  # log p = 0 -> p = 1 in padded rows
+    padded[:, :, 4:6] = 0.0  # and in padded columns
     padded[:, :6, -1] = scores[:, :6, -1]
     padded[:, -1, :4] = scores[:, -1, :4]
     got = _lg_relaxed_scores({"assignment_scores": padded}, {"masks": _masks([6], 9)}, {"masks": _masks([4], 6)})
@@ -118,19 +119,30 @@ def test_relaxed_score_is_zero_with_graph_when_a_side_has_no_keypoints():
 # ── padding mask inside the assignment ────────────────────────────────────────
 def test_assignment_mask_is_bit_identical_without_padding():
     g = torch.Generator().manual_seed(2)
-    sim, z0, z1 = torch.randn(2, 5, 6, generator=g), torch.randn(2, 5, 1, generator=g), torch.randn(2, 6, 1, generator=g)
+    sim, z0, z1 = (
+        torch.randn(2, 5, 6, generator=g),
+        torch.randn(2, 5, 1, generator=g),
+        torch.randn(2, 6, 1, generator=g),
+    )
     all_valid0, all_valid1 = torch.ones(2, 5, dtype=torch.bool), torch.ones(2, 6, dtype=torch.bool)
-    assert torch.equal(sigmoid_log_double_softmax(sim, z0, z1),
-                       sigmoid_log_double_softmax(sim, z0, z1, all_valid0, all_valid1))
+    assert torch.equal(
+        sigmoid_log_double_softmax(sim, z0, z1), sigmoid_log_double_softmax(sim, z0, z1, all_valid0, all_valid1)
+    )
     assert torch.equal(double_softmax(sim), double_softmax(sim, valid_pair_mask(sim, all_valid0, all_valid1)))
 
 
 def test_assignment_mask_equals_the_unpadded_computation():
     g = torch.Generator().manual_seed(3)
-    sim, z0, z1 = torch.randn(1, 5, 4, generator=g), torch.randn(1, 5, 1, generator=g), torch.randn(1, 4, 1, generator=g)
+    sim, z0, z1 = (
+        torch.randn(1, 5, 4, generator=g),
+        torch.randn(1, 5, 1, generator=g),
+        torch.randn(1, 4, 1, generator=g),
+    )
     ref = sigmoid_log_double_softmax(sim, z0, z1)
 
-    sim_p = torch.cat([torch.cat([sim, torch.randn(1, 5, 2, generator=g) * 5], 2), torch.randn(1, 3, 6, generator=g) * 5], 1)
+    sim_p = torch.cat(
+        [torch.cat([sim, torch.randn(1, 5, 2, generator=g) * 5], 2), torch.randn(1, 3, 6, generator=g) * 5], 1
+    )
     z0_p = torch.cat([z0, torch.randn(1, 3, 1, generator=g)], 1)
     z1_p = torch.cat([z1, torch.randn(1, 2, 1, generator=g)], 1)
     valid0 = torch.tensor([[True] * 5 + [False] * 3])
@@ -188,8 +200,9 @@ def test_margin_loss_keeps_every_triplet_including_filtered_empty_positives():
     pos = torch.tensor([[[0.9, 0.1], [0.2, 0.7]], [[0.3, 0.3], [0.3, 0.3]], [[0.6, 0.1], [0.1, 0.6]]])
     neg = torch.tensor([[[0.2, 0.1], [0.1, 0.2]], [[0.5, 0.1], [0.1, 0.5]], [[0.1, 0.1], [0.1, 0.1]]])
     valid_pos = torch.tensor([[True, True], [False, False], [True, True]])  # sample 1: nothing survives filters
-    loss, stats = lg_confidence_loss(_pred_from_probs(pos, valid_pos), _pred_from_probs(neg), margin,
-                                     data_a=data, data_p=data, data_n=data)
+    loss, stats = lg_confidence_loss(
+        _pred_from_probs(pos, valid_pos), _pred_from_probs(neg), margin, data_a=data, data_p=data, data_n=data
+    )
 
     def relaxed(p):
         return 0.5 * (p.max(dim=2).values.mean(dim=1) + p.max(dim=1).values.mean(dim=1))
@@ -201,8 +214,9 @@ def test_margin_loss_keeps_every_triplet_including_filtered_empty_positives():
     # The filtered-empty positive now moves the loss.
     pos2 = pos.clone()
     pos2[1] = 0.05
-    loss2, _ = lg_confidence_loss(_pred_from_probs(pos2, valid_pos), _pred_from_probs(neg), margin,
-                                  data_a=data, data_p=data, data_n=data)
+    loss2, _ = lg_confidence_loss(
+        _pred_from_probs(pos2, valid_pos), _pred_from_probs(neg), margin, data_a=data, data_p=data, data_n=data
+    )
     assert float(loss2) > float(loss)
 
 
@@ -215,8 +229,10 @@ def test_pairs_without_surviving_matches_still_train():
     torch.manual_seed(5)
 
     def feats(n=24):
-        return [{"keypoints": torch.rand(n, 2) * 400, "descriptors": F.normalize(torch.randn(n, 256), dim=-1)}
-                for _ in range(2)]
+        return [
+            {"keypoints": torch.rand(n, 2) * 400, "descriptors": F.normalize(torch.randn(n, 256), dim=-1)}
+            for _ in range(2)
+        ]
 
     data_a, data_p, data_n = (batch_features(feats(), 512, 512) for _ in range(3))
     pred_pos = lg({"image0": data_a, "image1": data_p})
@@ -257,11 +273,25 @@ def test_loss_is_a_plain_batch_mean_so_accumulation_is_exact():
 # ── optimizer, accumulation guards, resume ─────────────────────────────────────
 def _args(**overrides) -> argparse.Namespace:
     base = dict(
-        grad_accum_steps=1, ema_decay=0.0, distill_model="none", warmup_steps=0, resume=None,
-        moving_negative_prob=None, negative_mining=False, hard_positive_sampling=False,
-        hard_negative_sampling=False, adaptive_margin=False, eval_only=False,
-        trained_model="lg", rdd_train_component="all", batch_size=8, epochs=300, lr=1e-5,
-        weight_decay=1e-4, lg_margin=0.5, train_index=Path("train.json"),
+        grad_accum_steps=1,
+        ema_decay=0.0,
+        distill_model="none",
+        warmup_steps=0,
+        resume=None,
+        moving_negative_prob=None,
+        negative_mining=False,
+        hard_positive_sampling=False,
+        hard_negative_sampling=False,
+        adaptive_margin=False,
+        eval_only=False,
+        trained_model="lg",
+        rdd_train_component="all",
+        batch_size=8,
+        epochs=300,
+        lr=1e-5,
+        weight_decay=1e-4,
+        lg_margin=0.5,
+        train_index=Path("train.json"),
     )
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -277,9 +307,14 @@ def test_scheduler_is_registered_for_checkpointing():
     assert "register_for_checkpointing(scheduler)" in inspect.getsource(run_training_lg)
 
 
-@pytest.mark.parametrize("override", [
-    {"ema_decay": 0.999}, {"distill_model": "pretrained"}, {"warmup_steps": 10},
-])
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"ema_decay": 0.999},
+        {"distill_model": "pretrained"},
+        {"warmup_steps": 10},
+    ],
+)
 def test_accumulation_rejects_per_step_features(override):
     assert accumulation_and_resume_errors(_args(grad_accum_steps=8, **override))
 
@@ -289,11 +324,19 @@ def test_accumulation_and_resume_allowed_for_plain_margin_loss():
     assert accumulation_and_resume_errors(_args(grad_accum_steps=0))
 
 
-@pytest.mark.parametrize("override", [
-    {"moving_negative_prob": 0.3}, {"negative_mining": True}, {"hard_positive_sampling": True},
-    {"hard_negative_sampling": True}, {"adaptive_margin": True}, {"ema_decay": 0.99},
-    {"distill_model": "ema"}, {"eval_only": True},
-])
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"moving_negative_prob": 0.3},
+        {"negative_mining": True},
+        {"hard_positive_sampling": True},
+        {"hard_negative_sampling": True},
+        {"adaptive_margin": True},
+        {"ema_decay": 0.99},
+        {"distill_model": "ema"},
+        {"eval_only": True},
+    ],
+)
 def test_resume_rejects_uncheckpointed_state(override):
     assert accumulation_and_resume_errors(_args(resume=Path("x"), **override))
 

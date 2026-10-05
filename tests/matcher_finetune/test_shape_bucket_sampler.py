@@ -42,12 +42,11 @@ def test_shape_bucket_sampler_keeps_global_batches_shape_homogeneous(tmp_path: P
         feature_cache=FakeFeatureCache(shapes),
         return_meta=True,
     )
-    sampler = ShapeBucketBatchSampler(
-        dataset, per_gpu_batch_size=2, num_processes=2, seed=7
-    )
+    sampler = ShapeBucketBatchSampler(dataset, per_gpu_batch_size=2, num_processes=2, seed=7)
     sampler.set_epoch(0)
 
     assert len(sampler) == 2
+
     def signature(index):
         query, positive, negatives, _ = dataset._planned_triplets[index]
         return (shapes[query], shapes[positive], (shapes[negatives[0]],))
@@ -77,9 +76,7 @@ def test_accelerate_splits_one_global_batch_per_rank(tmp_path: Path):
 
     index_path = tmp_path / "index.json"
     index_path.write_text(json.dumps(entries))
-    dataset = IndexAssignedTripletDataset(
-        index_path, root=tmp_path, feature_cache=FakeFeatureCache(shapes)
-    )
+    dataset = IndexAssignedTripletDataset(index_path, root=tmp_path, feature_cache=FakeFeatureCache(shapes))
     sampler = ShapeBucketBatchSampler(dataset, 2, 2, seed=3)
     sampler.set_epoch(0)
     global_batch = next(iter(sampler))
@@ -123,9 +120,7 @@ def test_raw_shape_batches_can_be_sharded_as_complete_local_batches(tmp_path: Pa
 
     index_path = tmp_path / "index.json"
     index_path.write_text(json.dumps(entries))
-    dataset = IndexAssignedTripletDataset(
-        index_path, root=tmp_path, feature_cache=FakeFeatureCache(shapes)
-    )
+    dataset = IndexAssignedTripletDataset(index_path, root=tmp_path, feature_cache=FakeFeatureCache(shapes))
     sampler = ShapeBucketBatchSampler(dataset, per_gpu_batch_size=2, num_processes=1, seed=3)
     sampler.set_epoch(0)
     loader = DataLoader(dataset, batch_sampler=sampler, num_workers=0)

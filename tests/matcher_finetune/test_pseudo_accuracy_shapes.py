@@ -17,11 +17,13 @@ def _fake_loader(path):
 
 
 def test_live_pseudo_accuracy_loader_keeps_mixed_candidate_shapes_ragged(tmp_path):
-    entries = [{
-        "query_frame": "query.jpg",
-        "positives": ["positive.jpg"],
-        "negatives": ["negative.jpg"],
-    }]
+    entries = [
+        {
+            "query_frame": "query.jpg",
+            "positives": ["positive.jpg"],
+            "negatives": ["negative.jpg"],
+        }
+    ]
     dataset = PseudoAccuracyDataset(entries, root=tmp_path, loader=_fake_loader)
     loader = get_loader(
         dataset,

@@ -49,9 +49,7 @@ class LomaFeatureCache:
         self.root = Path(root)
         manifest_path = self.root / MANIFEST_NAME
         if not manifest_path.exists():
-            raise FileNotFoundError(
-                f"no {MANIFEST_NAME} in {self.root}; build the full LoMa cache first"
-            )
+            raise FileNotFoundError(f"no {MANIFEST_NAME} in {self.root}; build the full LoMa cache first")
         self.manifest = json.loads(manifest_path.read_text())
         expected = {
             "backend": "loma",
@@ -61,15 +59,10 @@ class LomaFeatureCache:
             "patch_size": 14,
         }
         mismatches = {
-            key: (self.manifest.get(key), value)
-            for key, value in expected.items()
-            if self.manifest.get(key) != value
+            key: (self.manifest.get(key), value) for key, value in expected.items() if self.manifest.get(key) != value
         }
         if mismatches:
-            details = ", ".join(
-                f"{key}={actual!r} (wanted {wanted!r})"
-                for key, (actual, wanted) in mismatches.items()
-            )
+            details = ", ".join(f"{key}={actual!r} (wanted {wanted!r})" for key, (actual, wanted) in mismatches.items())
             raise ValueError(f"incompatible LoMa cache at {self.root}: {details}")
         if weights is not None and self.manifest.get("weights_sha256"):
             wanted_hash = weights_fingerprint(weights)
@@ -94,9 +87,7 @@ class LomaFeatureCache:
                 scores = np.asarray(data["scores"])
                 image_size = np.asarray(data["image_size"])
         except FileNotFoundError:
-            raise KeyError(
-                f"frame {rel!r} is missing from the LoMa cache at {self.root}"
-            ) from None
+            raise KeyError(f"frame {rel!r} is missing from the LoMa cache at {self.root}") from None
 
         if keypoints.ndim != 2 or keypoints.shape[1] != 2:
             raise ValueError(f"{path} has invalid keypoint shape {keypoints.shape}")
@@ -130,10 +121,7 @@ class LomaFeatureCache:
         items = [self._load(rel) for rel in rels]
         if not items:
             raise ValueError("cannot load an empty LoMa feature stack")
-        return {
-            key: torch.stack([item[key] for item in items])
-            for key in items[0]
-        }
+        return {key: torch.stack([item[key] for item in items]) for key in items[0]}
 
     def load(self, rel: str, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
         item = self._load(rel)

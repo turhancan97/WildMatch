@@ -97,18 +97,23 @@ __test__ = False
 # against fixed historical behaviour rather than against themselves.
 def _lg_scores_ragged(pred: dict, q_data: dict, g_data: dict, device: torch.device) -> torch.Tensor:
     B = q_data["keypoints"].shape[0]
-    sums = torch.stack([
-        pred["scores"][i].sum() if pred["scores"][i].numel() > 0 else torch.zeros((), device=device)
-        for i in range(B)
-    ])
+    sums = torch.stack(
+        [pred["scores"][i].sum() if pred["scores"][i].numel() > 0 else torch.zeros((), device=device) for i in range(B)]
+    )
     n_q = q_data["masks"].squeeze(1).squeeze(-1).sum(dim=1).clamp(min=1)
     n_g = g_data["masks"].squeeze(1).squeeze(-1).sum(dim=1).clamp(min=1)
     return sums / torch.minimum(n_q, n_g)
 
 
 def lg_confidence_loss_ragged(
-    pred_pos: dict, pred_neg: dict, margin: float, device: torch.device,
-    data_a: dict, data_p: dict, data_n: dict, weak_mask: torch.Tensor | None = None,
+    pred_pos: dict,
+    pred_neg: dict,
+    margin: float,
+    device: torch.device,
+    data_a: dict,
+    data_p: dict,
+    data_n: dict,
+    weak_mask: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict]:
     pos_conf_all = _lg_scores_ragged(pred_pos, data_a, data_p, device)
     neg_conf_all = _lg_scores_ragged(pred_neg, data_a, data_n, device)
@@ -148,12 +153,12 @@ def lg_confidence_loss_ragged(
         return sum(lst) / len(lst) if lst else 0.0
 
     stats = {
-        "pos_skipped":      pos_skipped,
-        "neg_skipped":      neg_skipped,
+        "pos_skipped": pos_skipped,
+        "neg_skipped": neg_skipped,
         "mean_pos_matches": _mean(pos_match_list),
         "mean_neg_matches": _mean(neg_match_list),
-        "mean_pos_conf":    _mean(pos_conf_list),
-        "mean_neg_conf":    _mean(neg_conf_list),
+        "mean_pos_conf": _mean(pos_conf_list),
+        "mean_neg_conf": _mean(neg_conf_list),
     }
     if not losses:
         return torch.zeros(1, device=device, requires_grad=True).squeeze(), stats
@@ -174,16 +179,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--num_workers", type=int, default=4)
     p.add_argument("--lg_margin", type=float, default=0.5)
     p.add_argument(
-        "--random_negative_prob", type=float, default=0.5,
+        "--random_negative_prob",
+        type=float,
+        default=0.5,
         help="Random (rather than index-mined) negatives are where zero-match pairs "
-             "actually show up, so test_empty_matches needs this above 0",
+        "actually show up, so test_empty_matches needs this above 0",
     )
     p.add_argument(
-        "--filter_threshold", type=float, default=0.01,
+        "--filter_threshold",
+        type=float,
+        default=0.01,
         help="LightGlue match threshold. The default is the production value "
-             "(models.build_masked_lg); raise it to force zero-match pairs so "
-             "test_empty_matches can be exercised on a small sample instead of "
-             "waiting for one to occur naturally",
+        "(models.build_masked_lg); raise it to force zero-match pairs so "
+        "test_empty_matches can be exercised on a small sample instead of "
+        "waiting for one to occur naturally",
     )
     p.add_argument("--atol", type=float, default=1e-5, help="Absolute tolerance for confidences and loss")
     p.add_argument("--seed", type=int, default=0)
@@ -237,12 +246,19 @@ def collect(args: argparse.Namespace) -> dict:
     seed_all(args.seed)
 
     ds = IndexAssignedTripletDataset(
-        args.index, root=args.data_root, transform=transforms.ToTensor(),
-        random_negative_prob=args.random_negative_prob, return_meta=True,
+        args.index,
+        root=args.data_root,
+        transform=transforms.ToTensor(),
+        random_negative_prob=args.random_negative_prob,
+        return_meta=True,
     )
     loader = get_loader(
-        ds, batch_size=args.batch_size, shuffle=True, seed=args.seed,
-        num_workers=args.num_workers, persistent_workers=False,
+        ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        seed=args.seed,
+        num_workers=args.num_workers,
+        persistent_workers=False,
     )
 
     rdd = build_rdd_on(args.rdd_weights, device, args.top_k)
@@ -253,18 +269,28 @@ def collect(args: argparse.Namespace) -> dict:
     lg_new.load_state_dict(lg_ref.state_dict())
 
     out = {
-        "pos_conf_ref": [], "pos_conf_new": [],
-        "neg_conf_ref": [], "neg_conf_new": [],
-        "pos_matches_ref": [], "pos_matches_new": [],
-        "neg_matches_ref": [], "neg_matches_new": [],
-        "pos_empty_ref": [], "pos_empty_new": [],
-        "neg_empty_ref": [], "neg_empty_new": [],
-        "loss_ref": [], "loss_new": [],
-        "stats_ref": [], "stats_new": [],
+        "pos_conf_ref": [],
+        "pos_conf_new": [],
+        "neg_conf_ref": [],
+        "neg_conf_new": [],
+        "pos_matches_ref": [],
+        "pos_matches_new": [],
+        "neg_matches_ref": [],
+        "neg_matches_new": [],
+        "pos_empty_ref": [],
+        "pos_empty_new": [],
+        "neg_empty_ref": [],
+        "neg_empty_new": [],
+        "loss_ref": [],
+        "loss_new": [],
+        "stats_ref": [],
+        "stats_new": [],
         "neg_source": [],
         "batch_of_sample": [],
-        "pos_pad_free": [], "neg_pad_free": [],
-        "n_batches": 0, "n_samples": 0,
+        "pos_pad_free": [],
+        "neg_pad_free": [],
+        "n_batches": 0,
+        "n_samples": 0,
     }
 
     pbar = tqdm(enumerate(loader), total=args.batches, desc="comparing")
@@ -272,7 +298,7 @@ def collect(args: argparse.Namespace) -> dict:
         if step >= args.batches:
             break
 
-        anchors_r   = resize_long_side(anchors,   args.resize).to(device)
+        anchors_r = resize_long_side(anchors, args.resize).to(device)
         positives_r = resize_long_side(positives, args.resize).to(device)
         negatives_r = resize_long_side(negatives, args.resize).to(device)
         H_r, W_r = anchors_r.shape[-2:]
@@ -293,12 +319,21 @@ def collect(args: argparse.Namespace) -> dict:
         pred_neg_new = lg_new({"image0": data_a, "image1": data_n})
 
         loss_ref, stats_ref = lg_confidence_loss_ragged(
-            pred_pos_ref, pred_neg_ref, args.lg_margin, device,
-            data_a=data_a, data_p=data_p, data_n=data_n,
+            pred_pos_ref,
+            pred_neg_ref,
+            args.lg_margin,
+            device,
+            data_a=data_a,
+            data_p=data_p,
+            data_n=data_n,
         )
         loss_new, stats_new = lg_confidence_loss(
-            pred_pos_new, pred_neg_new, args.lg_margin,
-            data_a=data_a, data_p=data_p, data_n=data_n,
+            pred_pos_new,
+            pred_neg_new,
+            args.lg_margin,
+            data_a=data_a,
+            data_p=data_p,
+            data_n=data_n,
         )
 
         B = anchors_r.shape[0]
@@ -352,14 +387,18 @@ def test_positive_pairs(r: dict, args: argparse.Namespace) -> None:
         f"--resize ({args.resize}) / --top_k ({args.top_k}) / --lg_weights / "
         f"--filter_threshold ({args.filter_threshold}) match how index {args.index} was built."
     )
-    print(f"  all {r['n_samples']} positive pairs have >=1 match "
-          f"(min {int(r['pos_matches_ref'].min())}, mean {float(r['pos_matches_ref'].float().mean()):.1f})")
+    print(
+        f"  all {r['n_samples']} positive pairs have >=1 match "
+        f"(min {int(r['pos_matches_ref'].min())}, mean {float(r['pos_matches_ref'].float().mean()):.1f})"
+    )
 
     pf = r["pos_pad_free"]
     nf = r["neg_pad_free"]
     assert bool(pf.any()), "no pad-free positive pair occurred; lower --batch_size (1 makes every pair pad-free)"
-    print(f"  comparing {int(pf.sum())}/{r['n_samples']} pad-free positive and "
-          f"{int(nf.sum())} pad-free negative pairs (padded pairs are masked only in the training path)")
+    print(
+        f"  comparing {int(pf.sum())}/{r['n_samples']} pad-free positive and "
+        f"{int(nf.sum())} pad-free negative pairs (padded pairs are masked only in the training path)"
+    )
 
     assert torch.equal(r["pos_matches_ref"][pf], r["pos_matches_new"][pf]), (
         "positive-pair match counts differ on pad-free pairs: "
@@ -383,8 +422,10 @@ def test_positive_pairs(r: dict, args: argparse.Namespace) -> None:
     padded = ~pf
     if bool(padded.any()):
         d_pad = (r["pos_conf_ref"][padded] - r["pos_conf_new"][padded]).abs()
-        print(f"  padded positive pairs (not asserted): max |ref-new| = {float(d_pad.max()):.3e} "
-              "- the reference still lets padding into its assignment")
+        print(
+            f"  padded positive pairs (not asserted): max |ref-new| = {float(d_pad.max()):.3e} "
+            "- the reference still lets padding into its assignment"
+        )
 
 
 def test_empty_matches(r: dict, args: argparse.Namespace) -> None:
@@ -398,8 +439,10 @@ def test_empty_matches(r: dict, args: argparse.Namespace) -> None:
         f"(now {args.random_negative_prob})."
     )
     src = [s for s, e in zip(r["neg_source"], r["neg_empty_ref"].tolist()) if e]
-    print(f"  {n_empty}/{r['n_samples']} negative pairs have zero matches "
-          f"({src.count('random')} random-drawn, {src.count('index')} index-mined)")
+    print(
+        f"  {n_empty}/{r['n_samples']} negative pairs have zero matches "
+        f"({src.count('random')} random-drawn, {src.count('index')} index-mined)"
+    )
 
     nf, pf = r["neg_pad_free"], r["pos_pad_free"]
     assert torch.equal(r["neg_empty_ref"][nf], r["neg_empty_new"][nf]), (
@@ -415,22 +458,25 @@ def test_empty_matches(r: dict, args: argparse.Namespace) -> None:
     empty = r["neg_empty_new"]
     assert int(r["neg_matches_new"][empty].sum()) == 0, "an 'empty' pair has a non-empty valid0"
     assert float(r["neg_conf_new"][empty].abs().max()) == 0.0, (
-        f"a zero-match negative scored non-zero confidence "
-        f"(max {float(r['neg_conf_new'][empty].abs().max()):.3e})"
+        f"a zero-match negative scored non-zero confidence (max {float(r['neg_conf_new'][empty].abs().max()):.3e})"
     )
     print("  their valid0 is all-False and their filtered confidence is exactly 0.0")
 
 
 def main() -> None:
     args = parse_args()
-    print(f"device={args.device} batches={args.batches} batch_size={args.batch_size} "
-          f"resize={args.resize} top_k={args.top_k} random_negative_prob={args.random_negative_prob} "
-          f"filter_threshold={args.filter_threshold}")
+    print(
+        f"device={args.device} batches={args.batches} batch_size={args.batch_size} "
+        f"resize={args.resize} top_k={args.top_k} random_negative_prob={args.random_negative_prob} "
+        f"filter_threshold={args.filter_threshold}"
+    )
     r = collect(args)
     test_positive_pairs(r, args)
     test_empty_matches(r, args)
-    print(f"\nOK — dense filtered scoring matches the frozen ragged reference on pad-free pairs over "
-          f"{r['n_batches']} batches / {r['n_samples']} samples.")
+    print(
+        f"\nOK — dense filtered scoring matches the frozen ragged reference on pad-free pairs over "
+        f"{r['n_batches']} batches / {r['n_samples']} samples."
+    )
 
 
 if __name__ == "__main__":

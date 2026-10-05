@@ -52,15 +52,10 @@ class LomaKeypointCache:
             "detector_sha256": detector_sha256,
         }
         mismatches = {
-            key: (self.manifest.get(key), value)
-            for key, value in expected.items()
-            if self.manifest.get(key) != value
+            key: (self.manifest.get(key), value) for key, value in expected.items() if self.manifest.get(key) != value
         }
         if mismatches:
-            details = ", ".join(
-                f"{key}={actual!r} (wanted {wanted!r})"
-                for key, (actual, wanted) in mismatches.items()
-            )
+            details = ", ".join(f"{key}={actual!r} (wanted {wanted!r})" for key, (actual, wanted) in mismatches.items())
             raise ValueError(f"incompatible LoMa keypoint cache at {self.root}: {details}")
         if self.manifest.get("complete") is not True:
             raise ValueError(f"LoMa keypoint cache is incomplete: {self.root}")
@@ -78,9 +73,7 @@ class LomaKeypointCache:
                 keypoints = np.asarray(data["keypoints"])
                 image_size = np.asarray(data["image_size"])
         except FileNotFoundError:
-            raise KeyError(
-                f"frame {relative_path!r} is missing from LoMa keypoint cache {self.root}"
-            ) from None
+            raise KeyError(f"frame {relative_path!r} is missing from LoMa keypoint cache {self.root}") from None
         if keypoints.shape != (self.manifest["num_keypoints"], 2):
             raise ValueError(f"{path} has invalid keypoint shape {keypoints.shape}")
         if image_size.shape != (2,):

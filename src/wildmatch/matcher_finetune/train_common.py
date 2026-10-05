@@ -29,59 +29,70 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     Loss-specific hyperparameters (e.g. --lg_margin) are added by each
     script's own parse_args().
     """
-    p.add_argument("--train_index",   type=Path, required=True, help="JSON triplet index for training")
-    p.add_argument("--val_index",     type=Path, required=True, help="JSON triplet index for validation")
-    p.add_argument("--data_root",     type=Path, default=None,  help="Root prepended to relative paths in the index")
-    p.add_argument("--rdd_weights",   type=str,  default=None)
-    p.add_argument("--lg_weights",    type=str,  default=None)
-    p.add_argument("--output_dir",    type=Path, default=Path("checkpoints"))
-    p.add_argument("--project",       type=str,  default=None,  help="wandb project name")
-    p.add_argument("--run_name",      type=str,  default=None)
+    p.add_argument("--train_index", type=Path, required=True, help="JSON triplet index for training")
+    p.add_argument("--val_index", type=Path, required=True, help="JSON triplet index for validation")
+    p.add_argument("--data_root", type=Path, default=None, help="Root prepended to relative paths in the index")
+    p.add_argument("--rdd_weights", type=str, default=None)
+    p.add_argument("--lg_weights", type=str, default=None)
+    p.add_argument("--output_dir", type=Path, default=Path("checkpoints"))
+    p.add_argument("--project", type=str, default=None, help="wandb project name")
+    p.add_argument("--run_name", type=str, default=None)
     p.add_argument(
-        "--split_protocol", choices=["legacy", "strict"], default=None,
+        "--split_protocol",
+        choices=["legacy", "strict"],
+        default=None,
         help="Dataset split protocol recorded in run metadata; used by CzechLynx SLURM entry points.",
     )
-    p.add_argument("--epochs",        type=int,  default=10)
-    p.add_argument("--batch_size",    type=int,  default=8)
-    p.add_argument("--lr",            type=float, default=1e-4)
-    p.add_argument("--weight_decay",  type=float, default=1e-4)
-    p.add_argument("--resize",        type=int,  default=512)
-    p.add_argument("--top_k",         type=int,  default=512)
-    p.add_argument("--grad_clip",     type=float, default=1.0)
-    p.add_argument("--seed",          type=int,  default=0)
-    p.add_argument("--num_workers",   type=int,  default=4)
+    p.add_argument("--epochs", type=int, default=10)
+    p.add_argument("--batch_size", type=int, default=8)
+    p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument("--weight_decay", type=float, default=1e-4)
+    p.add_argument("--resize", type=int, default=512)
+    p.add_argument("--top_k", type=int, default=512)
+    p.add_argument("--grad_clip", type=float, default=1.0)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--num_workers", type=int, default=4)
     p.add_argument("--eval_every_epochs", type=int, default=10)
     p.add_argument(
-        "--eval_batch_size", type=int, default=4,
+        "--eval_batch_size",
+        type=int,
+        default=4,
         help="Queries per DataLoader batch in eval_pseudo_accuracy (controls CPU "
-             "decode/prefetch parallelism). Candidate images (eval_batch_size * "
-             "(n_pos + n_neg) per DataLoader batch) are chunked to --batch_size "
-             "before RDD's deformable attention, since that scales steeply with "
-             "images-per-call and OOMs on larger top_k/top_m indices otherwise",
+        "decode/prefetch parallelism). Candidate images (eval_batch_size * "
+        "(n_pos + n_neg) per DataLoader batch) are chunked to --batch_size "
+        "before RDD's deformable attention, since that scales steeply with "
+        "images-per-call and OOMs on larger top_k/top_m indices otherwise",
     )
     p.add_argument(
-        "--keypoint_cache", type=Path, default=None,
+        "--keypoint_cache",
+        type=Path,
+        default=None,
         help="Directory holding a prebuilt RDD keypoint cache (see "
-             "`python -m wildmatch.matcher_finetune.build_keypoint_cache`). When set, "
-             "every RDD detection — training steps, both eval paths, and the "
-             "pre-training measurement passes — is replaced by a lookup of "
-             "precomputed keypoints/descriptors, and no image is decoded at all. "
-             "Only valid with a FROZEN RDD (--trained_model lg) and a fixed input: "
-             "--augment and --multi_scale_* are rejected, since both change the "
-             "image RDD would have seen. The cache records the RDD weights hash, "
-             "--resize, --top_k and the detection threshold it was built with, and "
-             "refuses to open against a run that disagrees. Measured ~2.6x faster "
-             "training steps and ~5x faster pseudo-accuracy eval.",
+        "`python -m wildmatch.matcher_finetune.build_keypoint_cache`). When set, "
+        "every RDD detection — training steps, both eval paths, and the "
+        "pre-training measurement passes — is replaced by a lookup of "
+        "precomputed keypoints/descriptors, and no image is decoded at all. "
+        "Only valid with a FROZEN RDD (--trained_model lg) and a fixed input: "
+        "--augment and --multi_scale_* are rejected, since both change the "
+        "image RDD would have seen. The cache records the RDD weights hash, "
+        "--resize, --top_k and the detection threshold it was built with, and "
+        "refuses to open against a run that disagrees. Measured ~2.6x faster "
+        "training steps and ~5x faster pseudo-accuracy eval.",
     )
     p.add_argument(
-        "--wandb_tags", type=str, default="",
+        "--wandb_tags",
+        type=str,
+        default="",
         help="Comma-separated wandb tags for this run",
     )
     p.add_argument(
-        "--trained_model", type=str, default="lg", choices=["lg", "rdd", "lg+rdd"],
+        "--trained_model",
+        type=str,
+        default="lg",
+        choices=["lg", "rdd", "lg+rdd"],
         help="Which model(s) are unfrozen and receive gradient: 'lg' (default) "
-             "freezes RDD and trains only LightGlue; 'rdd' freezes LightGlue and "
-             "trains only RDD; 'lg+rdd' trains both.",
+        "freezes RDD and trains only LightGlue; 'rdd' freezes LightGlue and "
+        "trains only RDD; 'lg+rdd' trains both.",
     )
 
 
@@ -128,8 +139,7 @@ def _image_size_rows(image_h, image_w, n: int) -> list[tuple[int, int]]:
         widths = [int(v) for v in image_w]
         if len(heights) != n or len(widths) != n:
             raise ValueError(
-                f"per-frame image sizes have lengths {len(heights)} and {len(widths)} "
-                f"for a feature batch of {n}"
+                f"per-frame image sizes have lengths {len(heights)} and {len(widths)} for a feature batch of {n}"
             )
         return list(zip(heights, widths))
     return [(int(image_h), int(image_w))] * n
@@ -147,22 +157,22 @@ def _repeat_image_sizes(image_h, image_w, repeats: int):
 
 def batch_features(feats: list[dict], image_h, image_w) -> dict:
     """Pack variable-length features with scalar or per-frame image sizes."""
-    ks = [f["keypoints"]   for f in feats]
+    ks = [f["keypoints"] for f in feats]
     ds = [f["descriptors"] for f in feats]
     device = ks[0].device
 
     ks_pad, masks = align_tensors_to_max_length(ks)
-    ds_pad, _     = align_tensors_to_max_length(ds)
+    ds_pad, _ = align_tensors_to_max_length(ds)
     sizes = torch.tensor(
         [[w, h] for h, w in _image_size_rows(image_h, image_w, len(feats))],
         device=device,
     ).contiguous()
 
     return {
-        "keypoints":   ks_pad,
+        "keypoints": ks_pad,
         "descriptors": ds_pad,
-        "image_size":  sizes,
-        "masks":       masks.unsqueeze(1),
+        "image_size": sizes,
+        "masks": masks.unsqueeze(1),
     }
 
 
@@ -192,9 +202,7 @@ def run_lg_partitioned(
     size0 = data0["image_size"]
     size1 = data1["image_size"]
     if size0.shape[0] != size1.shape[0]:
-        raise ValueError(
-            f"LightGlue pair batches have different lengths: {size0.shape[0]} and {size1.shape[0]}"
-        )
+        raise ValueError(f"LightGlue pair batches have different lengths: {size0.shape[0]} and {size1.shape[0]}")
 
     groups: dict[tuple[int, int, int, int], list[int]] = defaultdict(list)
     for row, (s0, s1) in enumerate(zip(size0.tolist(), size1.tolist())):
@@ -215,10 +223,17 @@ def run_lg_partitioned(
     grouped_outputs = []
     for rows in groups.values():
         indices = torch.tensor(rows, dtype=torch.long, device=size0.device)
-        grouped_outputs.append((indices, lg({
-            "image0": _select_batch_rows(data0, indices),
-            "image1": _select_batch_rows(data1, indices),
-        })))
+        grouped_outputs.append(
+            (
+                indices,
+                lg(
+                    {
+                        "image0": _select_batch_rows(data0, indices),
+                        "image1": _select_batch_rows(data1, indices),
+                    }
+                ),
+            )
+        )
 
     batch_size = size0.shape[0]
     merged: dict = {}
@@ -226,8 +241,7 @@ def run_lg_partitioned(
         values = [output[key] for _, output in grouped_outputs]
         if torch.is_tensor(values[0]):
             target_shape = [batch_size] + [
-                max(value.shape[dim] for value in values)
-                for dim in range(1, values[0].dim())
+                max(value.shape[dim] for value in values) for dim in range(1, values[0].dim())
             ]
             fill = -1 if key.startswith("matches") else 0
             result = values[0].new_full(target_shape, fill)
@@ -275,9 +289,9 @@ def extract_train(rdd: torch.nn.Module, images: torch.Tensor) -> list[dict]:
 
     with torch.no_grad():
         kpts, kscores, _ = raw.softdetect(K1)
-        kpts    = torch.vstack([kpts[b].unsqueeze(0)    for b in range(B)])
+        kpts = torch.vstack([kpts[b].unsqueeze(0) for b in range(B)])
         kscores = torch.vstack([kscores[b].unsqueeze(0) for b in range(B)])
-        kpts_px     = to_pixel_coords(kpts, H_p, W_p)
+        kpts_px = to_pixel_coords(kpts, H_p, W_p)
         kpts_scaled = kpts_px * torch.tensor([rw, rh], device=images.device).view(1, -1)
         valid = kscores > raw.detection_threshold
 
@@ -287,7 +301,7 @@ def extract_train(rdd: torch.nn.Module, images: torch.Tensor) -> list[dict]:
 
     return [
         {
-            "keypoints":   kpts_scaled[b][valid[b]].detach(),
+            "keypoints": kpts_scaled[b][valid[b]].detach(),
             "descriptors": descs[b][valid[b]],
         }
         for b in range(B)
@@ -313,10 +327,10 @@ def eval_epoch(
     _unwrap(rdd).eval()
     total_pos = torch.zeros(1, device=device)
     total_neg = torch.zeros(1, device=device)
-    n         = torch.zeros(1, device=device)
+    n = torch.zeros(1, device=device)
 
     for anchors, positives, negatives in loader:
-        feats_a, H_a, W_a = features_from_batch(anchors,   _unwrap(rdd), args.resize, device)
+        feats_a, H_a, W_a = features_from_batch(anchors, _unwrap(rdd), args.resize, device)
         feats_p, H_p, W_p = features_from_batch(positives, _unwrap(rdd), args.resize, device)
         feats_n, H_n, W_n = features_from_batch(negatives, _unwrap(rdd), args.resize, device)
 
@@ -336,7 +350,7 @@ def eval_epoch(
     # Sum counts across all processes before computing means
     total_pos = accelerator.reduce(total_pos, reduction="sum")
     total_neg = accelerator.reduce(total_neg, reduction="sum")
-    n         = accelerator.reduce(n,         reduction="sum")
+    n = accelerator.reduce(n, reduction="sum")
 
     mean_pos = (total_pos / n.clamp(min=1)).item()
     mean_neg = (total_neg / n.clamp(min=1)).item()
@@ -396,7 +410,7 @@ def _extract_chunked(rdd: torch.nn.Module, images: torch.Tensor, chunk_size: int
     """
     feats: list[dict] = []
     for i in range(0, images.shape[0], chunk_size):
-        feats.extend(extract_train(rdd, images[i:i + chunk_size]))
+        feats.extend(extract_train(rdd, images[i : i + chunk_size]))
     return feats
 
 
@@ -472,8 +486,8 @@ def _lg_relaxed_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
         )
     pair = (v0[:, :, None] & v1[:, None, :]).to(log_p.dtype)
     prob = log_p.exp() * pair
-    row_best = prob.max(dim=2).values * v0.to(prob.dtype)   # (B, M)
-    col_best = prob.max(dim=1).values * v1.to(prob.dtype)   # (B, N)
+    row_best = prob.max(dim=2).values * v0.to(prob.dtype)  # (B, M)
+    col_best = prob.max(dim=1).values * v1.to(prob.dtype)  # (B, N)
     n0 = v0.sum(dim=1).clamp(min=1).to(prob.dtype)
     n1 = v1.sum(dim=1).clamp(min=1).to(prob.dtype)
     return 0.5 * (row_best.sum(dim=1) / n0 + col_best.sum(dim=1) / n1)
@@ -526,14 +540,14 @@ def _score_live_pseudo_batch(
     one query.  Grouping individual pairs by their query and candidate shapes
     keeps every RDD forward stackable while preserving candidate order.
     """
-    groups: dict[tuple[tuple[int, int], tuple[int, int]], list[tuple[int, int, torch.Tensor, torch.Tensor]]] = defaultdict(list)
+    groups: dict[tuple[tuple[int, int], tuple[int, int]], list[tuple[int, int, torch.Tensor, torch.Tensor]]] = (
+        defaultdict(list)
+    )
     for row, (query, candidates, _) in enumerate(batch):
         query_shape = tuple(int(v) for v in query.shape[-2:])
         for candidate_row, candidate in enumerate(candidates):
             candidate_shape = tuple(int(v) for v in candidate.shape[-2:])
-            groups[(query_shape, candidate_shape)].append(
-                (row, candidate_row, query, candidate)
-            )
+            groups[(query_shape, candidate_shape)].append((row, candidate_row, query, candidate))
 
     if not groups:
         raise ValueError("pseudo-evaluation batch contains no candidates")
@@ -545,25 +559,23 @@ def _score_live_pseudo_batch(
     for records in groups.values():
         query_images = torch.stack([record[2] for record in records])
         candidate_images = torch.stack([record[3] for record in records])
-        feats_q, h_q, w_q = features_from_batch(
-            query_images, model, args.resize, device, chunk_size=args.batch_size
-        )
+        feats_q, h_q, w_q = features_from_batch(query_images, model, args.resize, device, chunk_size=args.batch_size)
         feats_c, h_c, w_c = features_from_batch(
             candidate_images, model, args.resize, device, chunk_size=args.batch_size
         )
         data_q = batch_features(feats_q, h_q, w_q)
         data_c = batch_features(feats_c, h_c, w_c)
         pred = run_lg_partitioned(
-            lg, data_q, data_c,
+            lg,
+            data_q,
+            data_c,
             partition=accelerator.num_processes == 1,
         )
         group_scores = _lg_scores(pred, data_q, data_c)
         for score, (row, candidate_row, _, _) in zip(group_scores, records):
             scores[row, candidate_row] = score
 
-    indices = torch.tensor(
-        [sample[2] for sample in batch], device=device, dtype=torch.long
-    )
+    indices = torch.tensor([sample[2] for sample in batch], device=device, dtype=torch.long)
     return scores, indices
 
 
@@ -616,19 +628,18 @@ def build_pseudo_accuracy_loader(
             feature_cache=base_ds.feature_cache,
         )
         loader = get_loader(
-            ds, batch_size=eval_batch_size, shuffle=False,
-            num_workers=eval_workers, persistent_workers=eval_workers > 0,
-            collate_fn=(None if base_ds.feature_cache is not None
-                        else collate_pseudo_accuracy_images),
+            ds,
+            batch_size=eval_batch_size,
+            shuffle=False,
+            num_workers=eval_workers,
+            persistent_workers=eval_workers > 0,
+            collate_fn=(None if base_ds.feature_cache is not None else collate_pseudo_accuracy_images),
         )
         prepared.append((accelerator.prepare(loader), ds))
 
     if accelerator.is_main_process and len(prepared) > 1:
         accelerator.print(
-            "pseudo-eval candidate buckets: "
-            + ", ".join(
-                f"{ds.n_pos}+{ds.n_neg}={len(ds)}" for _, ds in prepared
-            )
+            "pseudo-eval candidate buckets: " + ", ".join(f"{ds.n_pos}+{ds.n_neg}={len(ds)}" for _, ds in prepared)
         )
     return prepared
 
@@ -660,15 +671,12 @@ def eval_pseudo_accuracy(
 
     for group_loader, ds in loader:
         for batch in tqdm(
-            group_loader, desc=f"{prefix}[{ds.n_pos}+{ds.n_neg}]", leave=False,
-            disable=not accelerator.is_main_process
+            group_loader, desc=f"{prefix}[{ds.n_pos}+{ds.n_neg}]", leave=False, disable=not accelerator.is_main_process
         ):
             if _is_live_pseudo_batch(batch):
                 # Live descriptor-mode images remain ragged in the DataLoader;
                 # _score_live_pseudo_batch groups them by native shape.
-                scores, idx_batch = _score_live_pseudo_batch(
-                    batch, rdd, lg, accelerator, args, device
-                )
+                scores, idx_batch = _score_live_pseudo_batch(batch, rdd, lg, accelerator, args, device)
             else:
                 # Cached features already have a regular tensor payload and
                 # retain the original vectorized evaluation path.
@@ -678,31 +686,37 @@ def eval_pseudo_accuracy(
                     cand_batch = cand_batch.to(device)
                 B, n_cand = _pseudo_batch_dims(cand_batch)
                 feats_q, H_q, W_q = features_from_batch(
-                    query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size)
+                    query_batch, _unwrap(rdd), args.resize, device, chunk_size=args.batch_size
+                )
                 feats_c, H_c, W_c = features_from_batch(
-                    _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device,
-                    chunk_size=args.batch_size)
+                    _flatten_candidates(cand_batch), _unwrap(rdd), args.resize, device, chunk_size=args.batch_size
+                )
 
                 feats_q_rep = [f for f in feats_q for _ in range(n_cand)]
                 H_q_rep, W_q_rep = _repeat_image_sizes(H_q, W_q, n_cand)
                 data_q = batch_features(feats_q_rep, H_q_rep, W_q_rep)
                 data_c = batch_features(feats_c, H_c, W_c)
                 pred = run_lg_partitioned(
-                    lg, data_q, data_c,
+                    lg,
+                    data_q,
+                    data_c,
                     partition=accelerator.num_processes == 1,
                 )
                 scores = _lg_scores(pred, data_q, data_c).view(B, n_cand)
 
-            score_pos, _ = scores[:, :ds.n_pos].max(dim=1)
-            score_neg, _ = scores[:, ds.n_pos:].max(dim=1)
+            score_pos, _ = scores[:, : ds.n_pos].max(dim=1)
+            score_neg, _ = scores[:, ds.n_pos :].max(dim=1)
             score_best, idx_best = scores.max(dim=1)
             score_pos, score_neg, score_best, idx_best, idx_batch = accelerator.gather_for_metrics(
                 (score_pos, score_neg, score_best, idx_best, idx_batch.to(device))
             )
 
             for sp, sn, sb, ib, idx in zip(
-                score_pos.tolist(), score_neg.tolist(), score_best.tolist(),
-                idx_best.tolist(), idx_batch.tolist(),
+                score_pos.tolist(),
+                score_neg.tolist(),
+                score_best.tolist(),
+                idx_best.tolist(),
+                idx_batch.tolist(),
             ):
                 accuracies.append(1.0 if sp > sn else 0.5 if sp == sn else 0.0)
                 best_pos_scores.append(sp)
@@ -713,11 +727,16 @@ def eval_pseudo_accuracy(
                 true_lynx = _lynx_id(entry["query_frame"])
                 cand_paths = entry["positives"] + entry["negatives"]
                 best_lynx = _lynx_id(cand_paths[ib])
-                rec = videos.setdefault(video_id, {
-                    "true_lynx": true_lynx, "best_score": -float("inf"),
-                    "best_lynx": None, "best_query_frame": None,
-                    "best_cand_path": None,
-                })
+                rec = videos.setdefault(
+                    video_id,
+                    {
+                        "true_lynx": true_lynx,
+                        "best_score": -float("inf"),
+                        "best_lynx": None,
+                        "best_query_frame": None,
+                        "best_cand_path": None,
+                    },
+                )
                 if sb > rec["best_score"]:
                     rec["best_score"] = sb
                     rec["best_lynx"] = best_lynx
@@ -725,10 +744,7 @@ def eval_pseudo_accuracy(
                     rec["best_cand_path"] = cand_paths[ib]
 
     n = len(entries)
-    video_correct = [
-        1.0 if rec["best_lynx"] == rec["true_lynx"] else 0.0
-        for rec in videos.values()
-    ]
+    video_correct = [1.0 if rec["best_lynx"] == rec["true_lynx"] else 0.0 for rec in videos.values()]
 
     if verbose:
         n_wrong = 0

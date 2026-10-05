@@ -45,7 +45,9 @@ def resolve(protocol: str | None, split_column: str | None = None, backend: str 
     )
     if result.returncode:
         raise AssertionError(result.stderr)
-    protocol_value, train_index, val_index, suffix, split_column_value, experiment, backend_value = result.stdout.splitlines()
+    protocol_value, train_index, val_index, suffix, split_column_value, experiment, backend_value = (
+        result.stdout.splitlines()
+    )
     return {
         "protocol": protocol_value,
         "train_index": train_index,
@@ -128,7 +130,11 @@ def test_invalid_split_column_fails():
     env["CZECHLYNX_SPLIT_COLUMN"] = "split-unknown"
     result = subprocess.run(
         ["bash", "-c", f"source {HELPER!s}; czechlynx_resolve_protocol"],
-        cwd=ROOT, env=env, text=True, capture_output=True, check=False,
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
     )
     assert result.returncode != 0
     assert "split-time_open" in result.stderr

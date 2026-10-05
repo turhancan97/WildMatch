@@ -15,6 +15,7 @@ from torchvision.datasets.folder import default_loader
 
 ShapeSignature = tuple[tuple[int, int], tuple[int, int], tuple[tuple[int, int], ...]]
 
+
 class TripletImageFolder(Dataset):
     """ImageFolder wrapper that returns (anchor, positive, negative) triplets.
 
@@ -53,9 +54,7 @@ class TripletImageFolder(Dataset):
         img = self._base.loader(path)
         return img
 
-    def __getitem__(
-        self, index: int
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         anchor_label = self._base.targets[index]
 
         # Positive: different index, same class
@@ -120,8 +119,8 @@ class FixedTripletDataset(Dataset):
         base = self._base
 
         anchor_img = base._load(anchor_idx)
-        pos_img    = base._load(pos_idx)
-        neg_img    = base._load(neg_idx)
+        pos_img = base._load(pos_idx)
+        neg_img = base._load(neg_idx)
 
         if base.anchor_transform is not None:
             anchor_img = base.anchor_transform(anchor_img)
@@ -365,9 +364,7 @@ class IndexAssignedTripletDataset(Dataset):
         self._lynx_ids: list[str] = []
         if random_negative_prob > 0 or weak_queries:
             if self.root is None:
-                raise ValueError(
-                    "random_negative_prob > 0 or weak_queries=True requires `root` to be set"
-                )
+                raise ValueError("random_negative_prob > 0 or weak_queries=True requires `root` to be set")
             self._lynx_pool = self._scan_lynx_pool()
             self._lynx_ids = list(self._lynx_pool)
 
@@ -396,9 +393,7 @@ class IndexAssignedTripletDataset(Dataset):
         }
         out: dict[str, list[str]] = {}
         for video in sorted(videos):
-            frames = sorted(
-                str(p.relative_to(self.root)) for p in (self.root / video).glob("*.jpg")
-            )
+            frames = sorted(str(p.relative_to(self.root)) for p in (self.root / video).glob("*.jpg"))
             if frames:
                 out[video] = frames
         return out
@@ -487,13 +482,13 @@ class IndexAssignedTripletDataset(Dataset):
             key = (query_lynx, neg_lynx)
             prev = self._mining_scores.get(key)
             self._mining_scores[key] = (
-                conf if prev is None
-                else self.negative_mining_decay * prev + (1 - self.negative_mining_decay) * conf
+                conf if prev is None else self.negative_mining_decay * prev + (1 - self.negative_mining_decay) * conf
             )
             frames = self._frame_scores.setdefault(neg_lynx, {})
             prev_f = frames.get(neg_frame)
             frames[neg_frame] = (
-                conf if prev_f is None
+                conf
+                if prev_f is None
                 else self.negative_mining_decay * prev_f + (1 - self.negative_mining_decay) * conf
             )
 
@@ -511,8 +506,7 @@ class IndexAssignedTripletDataset(Dataset):
             key = (q_frame, cand_frame)
             prev = self._pair_scores.get(key)
             self._pair_scores[key] = (
-                conf if prev is None
-                else self.hard_pair_decay * prev + (1 - self.hard_pair_decay) * conf
+                conf if prev is None else self.hard_pair_decay * prev + (1 - self.hard_pair_decay) * conf
             )
 
     def _softmax_choice(self, pool: list[str], scores: list[float]) -> str:
@@ -591,8 +585,10 @@ class IndexAssignedTripletDataset(Dataset):
 
         meta = {
             "neg_source": ["random"] * self.num_negatives,
-            "query_lynx": query_lynx, "neg_lynx": neg_lynxes,
-            "is_weak_query": True, "query_frame": query_rel,
+            "query_lynx": query_lynx,
+            "neg_lynx": neg_lynxes,
+            "is_weak_query": True,
+            "query_frame": query_rel,
         }
         return query_rel, pos_rel, neg_rels, meta
 
@@ -612,14 +608,16 @@ class IndexAssignedTripletDataset(Dataset):
                 srcs.append(m["neg_source"])
                 neg_lynxes.append(m["neg_lynx"])
             meta = {
-                "neg_source": srcs, "query_lynx": self._lynx_id(query_rel),
-                "neg_lynx": neg_lynxes, "is_weak_query": False, "query_frame": query_rel,
+                "neg_source": srcs,
+                "query_lynx": self._lynx_id(query_rel),
+                "neg_lynx": neg_lynxes,
+                "is_weak_query": False,
+                "query_frame": query_rel,
             }
             load_query = self._jitter_frame(query_rel, self.frame_jitter_query)
             load_pos = self._jitter_frame(pos_rel, self.frame_jitter_db)
             load_negs = [
-                self._jitter_frame(r, self.frame_jitter_db) if src == "index" else r
-                for r, src in zip(neg_rels, srcs)
+                self._jitter_frame(r, self.frame_jitter_db) if src == "index" else r for r, src in zip(neg_rels, srcs)
             ]
         meta["pos_frame"] = pos_rel
         meta["neg_frame"] = list(neg_rels)
@@ -684,8 +682,11 @@ class IndexAssignedTripletDataset(Dataset):
                 srcs.append(m["neg_source"])
                 neg_lynxes.append(m["neg_lynx"])
             meta = {
-                "neg_source": srcs, "query_lynx": self._lynx_id(query_rel),
-                "neg_lynx": neg_lynxes, "is_weak_query": False, "query_frame": query_rel,
+                "neg_source": srcs,
+                "query_lynx": self._lynx_id(query_rel),
+                "neg_lynx": neg_lynxes,
+                "is_weak_query": False,
+                "query_frame": query_rel,
             }
             # Temporal jitter, index-drawn frames only — a random-branch
             # negative already comes from the whole pool. What gets LOADED
@@ -693,10 +694,9 @@ class IndexAssignedTripletDataset(Dataset):
             # the pair-level memories keyed on it keep working (see the
             # frame_jitter_* docstring).
             load_query = self._jitter_frame(query_rel, self.frame_jitter_query)
-            load_pos   = self._jitter_frame(pos_rel,   self.frame_jitter_db)
-            load_negs  = [
-                self._jitter_frame(r, self.frame_jitter_db) if src == "index" else r
-                for r, src in zip(neg_rels, srcs)
+            load_pos = self._jitter_frame(pos_rel, self.frame_jitter_db)
+            load_negs = [
+                self._jitter_frame(r, self.frame_jitter_db) if src == "index" else r for r, src in zip(neg_rels, srcs)
             ]
         # Set for both branches: a weak triplet's "positive" is a random
         # same-lynx frame rather than an index candidate, but consumers still
@@ -716,15 +716,16 @@ class IndexAssignedTripletDataset(Dataset):
             # frame_jitter_* is on, and using the wrong one would silently
             # feed the model a neighbour's features.
             query_img = self.feature_cache.load_padded(load_query)
-            pos_img   = self.feature_cache.load_padded(load_pos)
+            pos_img = self.feature_cache.load_padded(load_pos)
             neg_img = (
-                self.feature_cache.load_padded(load_negs[0]) if self.num_negatives == 1
+                self.feature_cache.load_padded(load_negs[0])
+                if self.num_negatives == 1
                 else self.feature_cache.load_padded_stack(load_negs)
             )
         else:
             query_img = self._loader(self._full_path(load_query))
-            pos_img   = self._loader(self._full_path(load_pos))
-            neg_imgs  = [self._loader(self._full_path(r)) for r in load_negs]
+            pos_img = self._loader(self._full_path(load_pos))
+            neg_imgs = [self._loader(self._full_path(r)) for r in load_negs]
 
             if self.query_transform is not None:
                 query_img = self.query_transform(query_img)
@@ -926,10 +927,7 @@ class BalancedBatchSampler(Sampler):
 
         self._classes = list(self._class_to_indices.keys())
         if len(self._classes) < n_classes:
-            raise ValueError(
-                f"Dataset has only {len(self._classes)} classes, "
-                f"but n_classes={n_classes} was requested."
-            )
+            raise ValueError(f"Dataset has only {len(self._classes)} classes, but n_classes={n_classes} was requested.")
 
         # Number of batches: how many times we can cycle through all classes
         self._n_batches = len(labels) // self.batch_size

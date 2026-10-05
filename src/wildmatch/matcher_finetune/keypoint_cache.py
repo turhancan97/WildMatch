@@ -56,6 +56,7 @@ Per-frame files (rather than one packed blob) keep the build resumable and
 trivially shardable across GPUs, and let a partial cache be diagnosed by simply
 listing the tree.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -86,6 +87,7 @@ class CacheSpec:
     features are not the ones this run would have computed, which is a bug, not
     a warning.
     """
+
     rdd_weights_sha256: str
     resize: int
     top_k: int
@@ -101,8 +103,7 @@ class CacheSpec:
         }
         if mismatched:
             lines = "\n".join(
-                f"    {f}: cache has {have!r}, this run wants {want!r}"
-                for f, (have, want) in mismatched.items()
+                f"    {f}: cache has {have!r}, this run wants {want!r}" for f, (have, want) in mismatched.items()
             )
             raise ValueError(
                 f"keypoint cache at {cache_root} was built with different settings:\n"
@@ -163,10 +164,7 @@ class KeypointCache:
             with np.load(path, allow_pickle=False) as z:
                 hw = z["hw"]
         except FileNotFoundError:
-            raise KeyError(
-                f"frame {rel!r} is not in the keypoint cache at {self.root} "
-                f"(expected {path})"
-            ) from None
+            raise KeyError(f"frame {rel!r} is not in the keypoint cache at {self.root} (expected {path})") from None
         if hw.shape != (2,):
             raise ValueError(f"{path} has invalid image size shape {hw.shape}")
         value = (int(hw[0]), int(hw[1]))
@@ -225,8 +223,7 @@ class KeypointCache:
         return {key: torch.stack([it[key] for it in items]) for key in items[0]}
 
     # ── write ────────────────────────────────────────────────────────────────
-    def save(self, rel: str, keypoints: torch.Tensor, descriptors: torch.Tensor,
-             image_hw: tuple[int, int]) -> None:
+    def save(self, rel: str, keypoints: torch.Tensor, descriptors: torch.Tensor, image_hw: tuple[int, int]) -> None:
         path = self.path_for(rel)
         path.parent.mkdir(parents=True, exist_ok=True)
         # Write to a temp name and rename, so an interrupted build never leaves
@@ -253,7 +250,10 @@ class KeypointCache:
 
 
 def open_cache_for_run(
-    root: str | Path, rdd_weights: str | Path, resize: int, top_k: int,
+    root: str | Path,
+    rdd_weights: str | Path,
+    resize: int,
+    top_k: int,
 ) -> KeypointCache:
     """Open a cache, checked against what this run's flags imply RDD would do.
 
@@ -283,7 +283,8 @@ def is_cached_batch(item) -> bool:
 
 
 def unpad_cached_features(
-    batched: dict[str, torch.Tensor], device: torch.device,
+    batched: dict[str, torch.Tensor],
+    device: torch.device,
 ) -> tuple[list[dict], list[int], list[int]]:
     """Collated cache output -> features and per-frame H/W lists.
 
@@ -305,8 +306,5 @@ def unpad_cached_features(
     # Descriptors are stored fp16; LightGlue runs in fp32 like the live path.
     desc = desc.float()
     counts = n.tolist()
-    feats = [
-        {"keypoints": kpts[i, :c], "descriptors": desc[i, :c]}
-        for i, c in enumerate(counts)
-    ]
+    feats = [{"keypoints": kpts[i, :c], "descriptors": desc[i, :c]} for i, c in enumerate(counts)]
     return feats, hw[:, 0].tolist(), hw[:, 1].tolist()

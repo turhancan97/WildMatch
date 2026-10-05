@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import csv
 import json
-import sys
 from pathlib import Path
 
 import pytest
-
 
 from wildmatch.mining.wildlife_dataset import WildlifeRecord  # noqa: E402
 from wildmatch.mining.wildlife_fewshot import (  # noqa: E402

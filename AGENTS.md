@@ -46,18 +46,15 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 - src/wildmatch/paths.py, src/wildmatch/data/registry.py: path profiles and registry entries
   for code outside Hydra (see "Paths and the dataset registry").
 - src/wildmatch/matcher_finetune/: matcher fine-tuning merged with history from `lynx-finetuning`
-  `6958d3d` (branch `integrate/matcher-finetune`, phase 1, 2026-10-05; worktree
-  `/shared/results/common/kargin/projects/wildmatch-integration/wt`): trainers
+  `6958d3d` (pull request #3, merged 2026-10-05): trainers
   `train_by_lg_matches.py` (RDD-LightGlue) and `train_loma_matches.py`, `train_common`, `loading`,
   keypoint/LoMa caches, `rdd_patch/` (modified LightGlue); wrappers in `slurm/matcher_finetune/`,
   tests in `tests/matcher_finetune/`, the repository's docs in `notes/matcher_finetune/`. RDD is
   vendored in `src/wildmatch/vendor/rdd/` (see its `VENDORED.md`: `86f0e38`, PyTorch
   deformable-attention fallback as in training); RDD weights come from
   `paths.external.rdd_weights_dir`. The `train` extra adds `accelerate==1.14.0` and LoMa
-  (`lomatch` at `5e541b8`), with opencv held at the evaluation pin. The branch env is
-  `$UV_ENV_ROOT/wildmatch-integration` (user decision 2026-10-05; `uv sync --extra cu126 --extra
-  matchers --extra train --group dev` with `UV_PROJECT_ENVIRONMENT` set to it); the main env is
-  unchanged. Parity L0 (the moved tests, CPU) and L1 (`tests/matcher_finetune/test_resize_parity.py`,
+  (`lomatch` at `5e541b8`) and `poselib`, with opencv held at the evaluation pin; the main env
+  `$UV_ENV_ROOT/wildmatch` has it since 2026-10-05 (the separate integration env was removed). Parity L0 (the moved tests, CPU) and L1 (`tests/matcher_finetune/test_resize_parity.py`,
   always on) pass. Training runs through `wildmatch finetune-matcher` (`conf/finetune_matcher.yaml`,
   recipes `conf/matcher_finetune/{loma,rdd}.yaml`, `launch.py`; Slurm: `slurm/finetune_matcher.sbatch`),
   a port of the four wrappers that builds the unchanged trainer's command line from the registry and
@@ -102,7 +99,7 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   confidential-lynx query/two-stage/strong-matches scripts, `*_evaluate.py`, `debug/`,
   `helios_scripts/`, and mining's own `RDD/` (a strict subset of `wildmatch.vendor.rdd`, which now
   also vendors `RDD/matchers/`). Piotr Kubaty wrote 1,066 of the 3,330 moved mining lines.
-  Integration plan (in progress on the `integrate/*` branches):
+  Integration plan (done; merged in pull requests #3-#5 on 2026-10-05):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
   branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`, now `6958d3d` with `czechlynx_protocol.sh` tracked; user decision).
   User decisions D1-D8 (2026-10-05, plan section 5): `git filter-repo` + unrelated-histories merge
@@ -592,7 +589,7 @@ On this branch the package environment is the uv environment (Python 3.12, creat
 small (`UV_ENV_ROOT` is exported in the user's shell):
 
     export UV_PROJECT_ENVIRONMENT=$UV_ENV_ROOT/wildmatch   # /shared/results/common/kargin/projects/uv-environment/wildmatch
-    uv sync --extra cu126 --extra matchers --group dev
+    uv sync --extra cu126 --extra matchers --extra train --group dev   # train: mining and matcher fine-tuning
     source $UV_PROJECT_ENVIRONMENT/bin/activate
 
 The Slurm scripts activate it themselves (`WILDMATCH_ENV` overrides the location). The conda

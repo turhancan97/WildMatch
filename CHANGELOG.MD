@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration cleanup (user decision): the seven integration worktrees and their six local
+  branches (all merged in pull requests #3-#5), the integration uv env
+  `$UV_ENV_ROOT/wildmatch-integration`, the filtered history clones and the spike outputs (parity
+  runs and the L6 checks' feature caches; about 300 GB) were removed from
+  `/shared/results/common/kargin/projects/wildmatch-integration/`. Kept: `full_rdd/`, the 300-epoch
+  SalamanderID2025 RDD-LightGlue retrain under torch 2.8 and its two evaluations. Parity scripts and
+  numbers stay in `notes/integration_parity/` (their paths name the removed folders). The main env
+  `$UV_ENV_ROOT/wildmatch` carries the `train` extra.
 - 2026-10-05: integration parity L6 final: the CzechLynx closed and open RDD-LightGlue checks (array
   525388, tasks 15 and 17) finished bit-identical, so all 16 checked published checkpoints give
   identical score matrices and metrics in the old and the merged environment; only the two CzechLynx

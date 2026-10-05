@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: `wildmatch check-index` (`src/wildmatch/reporting/check_index.py`,
+  `tests/test_check_index.py`): reports `completed` rows of `reports/runs.csv` whose run directory
+  is gone; `--fix` repoints moved runs and marks the rest `missing` (backup first, writers' lock).
+  Applied: 7 rows repointed, 23 marked `missing`; every `completed` row now has its metrics.
 - 2026-10-05: sweep `wildlife_sam3_grid` complete: 150 of 150 tasks (127 from array 524499,
   23 rerun as 524682 plus task 134 as 524697; the duplicate 524704_134 has identical metrics and
   is not used). All runs pass a file, shape and index check. `experiments/` and `logs/` moved

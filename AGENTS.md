@@ -50,10 +50,17 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `/shared/results/common/kargin/projects/wildmatch-integration/wt`): trainers
   `train_by_lg_matches.py` (RDD-LightGlue) and `train_loma_matches.py`, `train_common`, `loading`,
   keypoint/LoMa caches, `rdd_patch/` (modified LightGlue); wrappers in `slurm/matcher_finetune/`,
-  tests in `tests/matcher_finetune/`, the repository's docs in `notes/matcher_finetune/`. Not yet
-  runnable: it still imports `rdd.RDD` from the old checkout and needs `accelerate` and LoMa, none
-  in the package environment, and the Slurm wrappers still use the old conda envs and paths
-  (phase 2). About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
+  tests in `tests/matcher_finetune/`, the repository's docs in `notes/matcher_finetune/`. RDD is
+  vendored in `src/wildmatch/vendor/rdd/` (see its `VENDORED.md`: `86f0e38`, PyTorch
+  deformable-attention fallback as in training); RDD weights come from
+  `paths.external.rdd_weights_dir`. The `train` extra adds `accelerate==1.14.0` and LoMa
+  (`lomatch` at `5e541b8`), with opencv held at the evaluation pin. The branch env is
+  `$UV_ENV_ROOT/wildmatch-integration` (user decision 2026-10-05; `uv sync --extra cu126 --extra
+  matchers --extra train --group dev` with `UV_PROJECT_ENVIRONMENT` set to it); the main env is
+  unchanged. Parity L0 (the moved tests, CPU) and L1 (`tests/matcher_finetune/test_resize_parity.py`,
+  always on) pass. Still to do: Hydra config, `wildmatch finetune-matcher`, the Slurm wrappers (they
+  still activate the old conda envs and run `python -m contrastive_finetuning...`), the torch-2.8
+  spike (D3, L3-L5) and L6. About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
   Apache-2.0 release needs his consent (asked by the user 2026-10-05).
 - src/wildmatch/mining/: empty slot for the code merged in later from `rdd-parallel-benchmark`. Integration plan (planned, not started):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`

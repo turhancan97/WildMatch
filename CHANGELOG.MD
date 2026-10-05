@@ -19,6 +19,18 @@ kept under Unreleased until a project version is assigned.
   for the fine-tuning code as a whole, not only the few-shot scripts (plan D6 assumed all
   reference commits were the user's). The existing CPU suite passes on the branch (416 tests); the
   imported tests need `accelerate`, RDD and LoMa (phase 2).
+- 2026-10-05 (same branch, phase 2 in part): RDD vendored byte for byte from `86f0e38` into
+  `src/wildmatch/vendor/rdd/` (no compiled deformable-attention op: neither old env could import
+  it, so training used the PyTorch fallback); RDD weights from the new profile key
+  `external.rdd_weights_dir`; `train` extra (`accelerate==1.14.0`, `lomatch` at `5e541b8`,
+  installed in the `loma` env on 2026-08-16, before the paper's LoMa checkpoints), opencv held at
+  4.11.0.86 by override, lock adds five packages and moves none; branch env
+  `$UV_ENV_ROOT/wildmatch-integration` (user decision). Ruff lint fixes and an AST-identical
+  `ruff format` of the merged code (listed in `.git-blame-ignore-revs`). Parity L0: 67 moved tests
+  pass on CPU (2 skip without weights under the portable profile). L1:
+  `tests/matcher_finetune/test_resize_parity.py` (always on) shows training and evaluation resize are
+  bit-identical, replacing the optional `test_vismatch_lynx_parity_optional.py`; the RDD trainer's
+  missing lower clamp (zero-size tensor below 32 px) is pinned. CI installs the `train` extra.
 - 2026-10-05: integration plan decided (`notes/integration_plan.md` section 5, user decisions
   D1-D8; nothing implemented): `git filter-repo` + `--allow-unrelated-histories` merge in place of
   `git subtree`, so `blame` works on the final paths; the user adds `czechlynx_protocol.sh` to the

@@ -209,5 +209,10 @@ or the paper snapshot. The paper is frozen; nothing here changes it.
 paths, CLI). 3: mining, same route. 4: environment spike (D3). 5: parity L0-L6 and provenance.
 6: few-shot port (if Piotr agrees).
 
+**Progress (branch `integrate/matcher-finetune`, 2026-10-05).** Phase 1 done (filter-repo merge, imports).
+Phase 2 in part: RDD vendored (`src/wildmatch/vendor/rdd/`), `train` extra, branch env
+`$UV_ENV_ROOT/wildmatch-integration`, lint/format, L0 and L1 pass. Open in phase 2: Hydra groups, the
+`wildmatch finetune-matcher` CLI and the Slurm wrappers.
+
 Effort estimate: phases 1-3 a few days of mostly mechanical work; phases 4-5 dominate (GPU parity
 runs on the cluster). Nothing here affects the submitted paper.

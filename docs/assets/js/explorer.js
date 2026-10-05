@@ -1,7 +1,7 @@
 // Accuracy-versus-k explorer: dataset, metric and series toggles over docs/data/curves.json.
 import {
   SERIES_STYLE, FLAT_STYLE, theme, onThemeChange, loadJson, plotly, pct, el, select, checkbox,
-  baseLayout, PLOT_CONFIG, mountError,
+  baseLayout, PLOT_CONFIG, mountError, onNarrowChange, phoneLayout,
 } from "./wm-common.js";
 
 const DEFAULT_SERIES = ["loma_finetuned", "loma_default", "rdd_finetuned", "rdd_default", "wildfusion"];
@@ -28,7 +28,7 @@ export async function mountExplorer(root) {
   const controls = el("div", { class: "wm-controls" });
   const plot = el("div", { class: "wm-plot", role: "img", "aria-label": "Accuracy against candidate budget" });
   const table = el("details", { class: "wm-table-view" }, [el("summary", { text: "Table view of the plotted values" })]);
-  const tableBody = el("div");
+  const tableBody = el("div", { class: "wm-table-wrap" });
   table.append(tableBody);
   root.append(controls, plot, table);
 
@@ -106,7 +106,7 @@ export async function mountExplorer(root) {
       title: { text: ds.label, x: 0, font: { color: t.ink, size: 14 } },
       margin: { l: 56, r: 16, t: 72, b: 48 },
     });
-    Plotly.react(plot, traces, layout, PLOT_CONFIG);
+    Plotly.react(plot, traces, phoneLayout(layout, { legendItems: traces.length, top: 40 }), PLOT_CONFIG);
 
     tableBody.textContent = "";
     const head = el("tr", {}, [el("th", { text: "Method" }), ...ks.map((k) => el("th", { text: `k = ${k}` }))]);
@@ -116,4 +116,5 @@ export async function mountExplorer(root) {
 
   render();
   onThemeChange(render);
+  onNarrowChange(render);
 }

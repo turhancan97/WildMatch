@@ -1234,3 +1234,19 @@
   color: var(--wm-blue);
   font-variant-numeric: tabular-nums;
 }
+
+/* Phones (checked at 390 px, 2026-10-05). Statistics tables scroll inside their wrapper
+   instead of wrapping every cell into tall rows. MathJax's hidden assistive MathML is
+   absolutely positioned and stuck out past the right edge, so the whole page scrolled
+   sideways; it gets the usual screen-reader-only size (still read aloud, never wider). */
+@media screen and (max-width: 600px) {
+  .md-typeset table.wm-ss-table th,
+  .md-typeset table.wm-ss-table td {
+    white-space: nowrap;
+  }
+}
+
+mjx-container mjx-assistive-mml {
+  width: 1px !important;
+  overflow: hidden !important;
+}

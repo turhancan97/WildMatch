@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration parity L6 (job 525388): 13 of the 18 published checkpoints evaluated so far give
+  bit-identical score matrices and identical metrics in the main environment and the integration
+  environment (fresh caches each, same GPU), including every LoMa checkpoint finished so far, so the
+  extra top-level `loma` module of the `train` extra does not reach evaluation. The four CzechLynx
+  tasks (about 2 h each) were still running; the user chose to continue without waiting for them.
 - 2026-10-05 (branch `integrate/fewshot`, phase 6): Piotr Kubaty's few-shot views merged with his
   commit (filter-repo of `piotr-wip` `eb04345` limited to `wildlife_fewshot.py`, `czechlynx_fewshot.py`,
   their test and `slurm_scripts/fewshot/`, all 21 files byte-identical; the commit's other changes are

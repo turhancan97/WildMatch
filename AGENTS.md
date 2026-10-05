@@ -80,7 +80,14 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   and `lightglue_masked`; `wildmatch mine <plan|view|cache|check|task|aggregate|submit>` (`launch.py`,
   `slurm/mine.sbatch`) ports the wrappers in `slurm/mining/` (kept as reference) and the cache
   wrappers; it never overwrites a mined per-query file or combined index without `--overwrite`
-  (`--report` mines elsewhere); tests in
+  (`--report` mines elsewhere). Few-shot (Piotr Kubaty's `wildlife_fewshot`/`czechlynx_fewshot`, merged
+  from `piotr-wip` `eb04345` with his commit, phase 6): `wildmatch mine ... --fraction F [--seed S]` and
+  `finetune-matcher matcher_finetune.fewshot.fraction=F` use nested reduced-training views under the new
+  path key `fewshot_root` (`<data_root>/fewshot`; layout `{views,indices,checkpoints,metadata}/<dataset>/
+  <protocol>/frac<F>-seed<S>/`) that share the full view's feature caches; the probe metadata copy
+  goes there, never into the dataset folder; CzechLynx few-shot is time-closed only. Identities never
+  drop below two frames, so datasets of many tiny identities (SalamanderID2025: effective fraction
+  0.70 for any F <= 0.5) cannot reach small fractions (`fewshot.json`: `budget_feasible`); tests in
   `tests/mining/`, notes in `notes/mining/`, notebooks in `notebooks/mining/`. Not merged (D4): the
   confidential-lynx query/two-stage/strong-matches scripts, `*_evaluate.py`, `debug/`,
   `helios_scripts/`, and mining's own `RDD/` (a strict subset of `wildmatch.vendor.rdd`, which now

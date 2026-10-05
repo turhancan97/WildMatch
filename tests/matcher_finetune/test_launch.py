@@ -198,3 +198,17 @@ def test_plan_reproduces_the_recorded_protocol(key, matcher, folder, miner, gpus
         if str(planned.get(name)) != relocated(value)
     }
     assert differences == {}
+
+
+def test_fewshot_training_reads_the_fewshot_view_and_indices(tmp_path, monkeypatch):
+    plan = plan_for(["dataset=salamander", "matcher_finetune=rdd", "matcher_finetune.mined_by=rdd",
+                     "matcher_finetune.fewshot.fraction=0.125"], tmp_path)  # fmt: skip
+    root = tmp_path / "data" / "fewshot"
+    view = "frac0.125-seed0"
+    assert plan.data_root == root / "views/SalamanderID2025/legacy" / view
+    assert (
+        plan.train_index == root / "indices/SalamanderID2025/legacy" / view / "rdd/strong-matches_train_combined.json"
+    )
+    assert plan.output_dir == root / "checkpoints/SalamanderID2025/legacy" / view / "rdd-finetuned"
+    assert plan.cache == tmp_path / "checkpoints/wildlife-reid-10k/SalamanderID2025/rdd-cache"
+    parse_with_trainer(plan, monkeypatch)

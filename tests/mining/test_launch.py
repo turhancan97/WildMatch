@@ -103,3 +103,24 @@ def test_task_reproduces_the_paper_mining_arguments(backend):
     assert int(value("--top_m")) == recorded["top_m"]
     assert recorded["selected_frames"][0]["query_frame"].startswith(str(plan.view) + "/")
     assert Path(value("--dump_report")).parent == recorded_file.parent
+
+
+def test_fewshot_plan_shares_the_full_view_caches(tmp_profile):
+    full = plan_mining("salamander", "loma", "legacy", "default")
+    few = plan_mining("salamander", "loma", "legacy", "default", fraction=0.25, seed=1)
+    root = tmp_profile / "data" / "fewshot"
+    assert few.view == root / "views/SalamanderID2025/legacy/frac0.25-seed1"
+    assert few.report == root / "indices/SalamanderID2025/legacy/frac0.25-seed1/loma/strong-matches"
+    assert few.cache == full.cache
+    assert few.cache_command[few.cache_command.index("--dataset_root") + 1] == str(full.view)
+    assert few.view_command[2] == "wildmatch.mining.wildlife_fewshot"
+    assert few.view_command[few.view_command.index("--source_view") + 1] == str(full.view)
+    # the probe metadata copy goes to the few-shot root, never into the dataset folder
+    assert few.view_command[few.view_command.index("--metadata_out") + 1].startswith(str(root))
+
+
+def test_fewshot_czechlynx_is_time_closed_only(tmp_profile):
+    plan = plan_mining("czechlynx_closed", "rdd", "legacy", "default", fraction=0.5)
+    assert plan.view_command[2] == "wildmatch.mining.czechlynx_fewshot"
+    with pytest.raises(SystemExit, match="split-time_closed only"):
+        plan_mining("czechlynx_open", "rdd", "legacy", "default", fraction=0.5)

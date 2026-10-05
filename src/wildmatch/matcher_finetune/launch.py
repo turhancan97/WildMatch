@@ -210,6 +210,25 @@ def plan_run(cfg: Mapping[str, Any]) -> Plan:
             keep_every_default = 50
         protocol_name = "wildlife_protocol.json"
 
+    fewshot = mf.get("fewshot") or {}
+    if fewshot.get("fraction") is not None:
+        # Few-shot view (wildmatch.mining.wildlife_fewshot): the full view's caches stay valid, while the
+        # view, its mined indices and the checkpoints live in the few-shot layout.
+        from wildmatch.mining.launch import fewshot_dirs
+        from wildmatch.mining.wildlife_fewshot import view_name
+
+        fraction, seed = float(fewshot["fraction"]), int(fewshot.get("seed") or 0)
+        if layout == "czechlynx" and dataset["split_col"] != "split-time_closed":
+            raise ValueError("few-shot CzechLynx views exist for split-time_closed only")
+        name = "CzechLynx" if layout == "czechlynx" else str(dataset["animal"])
+        dirs = fewshot_dirs(_require(paths.get("fewshot_root"), "paths.fewshot_root"), name, protocol, fraction, seed)
+        view = dirs["views"]
+        train_index = dirs["indices"] / miner / "strong-matches_train_combined.json"
+        val_index = (
+            dirs["indices"] / miner / f"strong-matches_{'test' if protocol == 'legacy' else 'val'}_combined.json"
+        )
+        output = dirs["checkpoints"] / f"{matcher}-finetuned"
+        run_name = f"{name}-{matcher}-{protocol}-{view_name(fraction, seed)}"
     view = Path(str(mf["data_root"])) if mf.get("data_root") else view
     train_index = Path(str(mf["train_index"])) if mf.get("train_index") else train_index
     val_index = Path(str(mf["val_index"])) if mf.get("val_index") else val_index

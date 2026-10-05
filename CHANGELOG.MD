@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `integrate/fewshot`, phase 6): Piotr Kubaty's few-shot views merged with his
+  commit (filter-repo of `piotr-wip` `eb04345` limited to `wildlife_fewshot.py`, `czechlynx_fewshot.py`,
+  their test and `slurm_scripts/fewshot/`, all 21 files byte-identical; the commit's other changes are
+  not taken). The 13 tests pass against the merged mining code. `wildmatch mine --fraction/--seed` and
+  `finetune-matcher matcher_finetune.fewshot.{fraction,seed}` run on few-shot views in the scripts'
+  layout under the new path key `fewshot_root` (`<data_root>/fewshot`), reusing the full view's caches;
+  the probe metadata copy is written there instead of into the dataset folder (the scripts' default);
+  CzechLynx few-shot is refused for the open split (the module is time-closed only and would share its
+  folder). Smoke test on SalamanderID2025: the 1/4 view is nested in the 1/2 view, test unchanged;
+  both keep 796 of 1,138 training frames because the two-frame minimum per identity exceeds the budget
+  (`budget_feasible: false`), as documented. Piotr's few-shot Slurm scripts stay as reference.
 - 2026-10-05: D3 closed (user): one torch-2.8 environment for evaluation, mining and training. The full
   SalamanderID2025 RDD-LightGlue retrain under torch 2.8 (`wildmatch finetune-matcher`, jobs
   525382/525383) scores Top-1 27.2 vs the paper checkpoint's 28.0 at k=50 and 39.8 vs 41.9 at k=250

@@ -4,6 +4,8 @@
 data_root: /shared/sets/datasets/vision/czechlynx
 cache_root: /shared/results/common/kargin/lynx/results
 checkpoint_root: /shared/sets/datasets/vision/czechlynx/checkpoints
+# Few-shot views, indices, checkpoints and probe metadata (wildmatch mine/finetune-matcher --fraction).
+fewshot_root: ${.data_root}/fewshot
 external:
   paper_repo: /home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper
   mining_outputs: /home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs

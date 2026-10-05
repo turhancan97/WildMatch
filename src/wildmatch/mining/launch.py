@@ -9,7 +9,8 @@ modules themselves are unchanged; each step runs one of them as `python -m wildm
 
 Steps:
   plan       print the layout and every command (writes nothing)
-  view       build the symlink view the miner and the trainers read
+  view       build the symlink view the miner and the trainers read (with --fraction: the few-shot
+             view, built from the full view, whose feature caches it shares)
   cache      build the backend's per-frame feature cache (GPU)
   check      validate the view and the cache before mining (the spawn scripts' check)
   task       mine one query collection (one Slurm array element: --split and --index)
@@ -75,7 +76,22 @@ def _required(value, what: str) -> Path:
     return Path(str(value))
 
 
-def plan_mining(key: str, backend: str, protocol: str, profile: Optional[str] = None) -> MinePlan:
+def fewshot_dirs(fewshot_root: Path, name: str, protocol: str, fraction: float, seed: int) -> dict[str, Path]:
+    """Piotr's few-shot layout (slurm/mining/fewshot/fewshot_paths.sh): one folder per view."""
+    from wildmatch.mining.wildlife_fewshot import view_name
+
+    view = view_name(fraction, seed)
+    return {k: fewshot_root / k / name / protocol / view for k in ("views", "indices", "checkpoints", "metadata")}
+
+
+def plan_mining(
+    key: str,
+    backend: str,
+    protocol: str,
+    profile: Optional[str] = None,
+    fraction: Optional[float] = None,
+    seed: int = 0,
+) -> MinePlan:
     from wildmatch.data.registry import load_dataset
     from wildmatch.paths import load_paths
 
@@ -131,13 +147,40 @@ def plan_mining(key: str, backend: str, protocol: str, profile: Optional[str] = 
                      "--cache_dir", str(cache)]  # fmt: skip
         layout, split_column, cache_batch = "wildlife", None, "8"
 
+    if fraction is not None:
+        # A few-shot view keeps a share of each identity's training frames; frame names stay those of
+        # the full view, so the full view's feature caches serve it unchanged.
+        if not 0 < fraction <= 1:
+            raise SystemExit(f"--fraction must be in (0, 1], got {fraction}")
+        if layout == "czechlynx" and split_column != "split-time_closed":
+            raise SystemExit(
+                "few-shot CzechLynx views exist for split-time_closed only (wildmatch.mining.czechlynx_fewshot)"
+            )
+        name = "CzechLynx" if layout == "czechlynx" else dataset_id
+        dirs = fewshot_dirs(_required(paths.get("fewshot_root"), "fewshot_root"), name, protocol, fraction, seed)
+        source_view, view = view, dirs["views"]
+        report = dirs["indices"] / backend / "strong-matches"
+        metadata = dirs["metadata"] / "metadata.csv"
+        common = ["--fraction", str(fraction), "--seed", str(seed), "--protocol", protocol,
+                  "--source_view", str(source_view), "--output_root", str(view), "--metadata_out", str(metadata)]  # fmt: skip
+        if layout == "czechlynx":
+            view_command = [py, "-m", "wildmatch.mining.czechlynx_fewshot", *common,
+                            "--metadata_csv", str(data_root / "CzechLynx_v2" / "CzechLynxDataset-Metadata-Real.csv")]  # fmt: skip
+        else:
+            view_command = [py, "-m", "wildmatch.mining.wildlife_fewshot", "--config", str(config), *common]
+        aggregate[aggregate.index("--dump_report") + 1] = str(report)
+        aggregate[aggregate.index("--dataset_root") + 1] = str(view)
+        cache_view = source_view
+    else:
+        cache_view = view
+
     if backend == "loma":
-        cache_command = [py, "-m", "wildmatch.mining.lynx_build_loma_cache", "--dataset_root", str(view),
+        cache_command = [py, "-m", "wildmatch.mining.lynx_build_loma_cache", "--dataset_root", str(cache_view),
                          "--cache_dir", str(cache), "--weights", str(weights), "--variant", "loma-b",
                          "--all_frames", "--splits", *splits, "--resize_max", "512", "--num_keypoints", "512",
                          "--batch_size", "4", "--num_workers", "16", "--resume"]  # fmt: skip
     else:
-        cache_command = [py, "-m", "wildmatch.matcher_finetune.build_keypoint_cache", "--data_root", str(view),
+        cache_command = [py, "-m", "wildmatch.matcher_finetune.build_keypoint_cache", "--data_root", str(cache_view),
                          "--cache_root", str(cache), "--rdd_weights", str(rdd_weights), "--splits", *splits,
                          "--resize", "512", "--top_k", "512", "--batch_size", cache_batch,
                          "--num_workers", "16", "--resume"]  # fmt: skip
@@ -229,9 +272,15 @@ def _submit(plan: MinePlan, args: argparse.Namespace) -> int:
         common += ["--paths", args.paths]
     if args.report is not None:
         common += ["--report", str(args.report)]
+    if args.fraction is not None:
+        common += ["--fraction", str(args.fraction), "--seed", str(args.seed)]
     if args.overwrite:
         common += ["--overwrite"]
     log_root = Path("logs") / "mining" / plan.dataset_id / plan.protocol / plan.backend
+    if args.fraction is not None:
+        from wildmatch.mining.wildlife_fewshot import view_name
+
+        log_root = log_root / view_name(args.fraction, args.seed)
     jobs = []
     for split in plan.splits:
         count = count_collections(plan, split)
@@ -272,8 +321,10 @@ def main(argv: Optional[Sequence[str]] = None, prog: str = "wildmatch mine") -> 
     parser.add_argument(
         "--report", type=Path, default=None, help="index prefix (default: under external.mining_outputs)"
     )
+    parser.add_argument("--fraction", type=float, default=None, help="few-shot view keeping this share of training")
+    parser.add_argument("--seed", type=int, default=0, help="few-shot selection seed (views of one seed are nested)")
     args = parser.parse_args(argv)
-    plan = plan_mining(args.dataset, args.backend, args.protocol, args.paths)
+    plan = plan_mining(args.dataset, args.backend, args.protocol, args.paths, args.fraction, args.seed)
     if args.report is not None:
         plan.report = args.report
         plan.aggregate_command[plan.aggregate_command.index("--dump_report") + 1] = str(args.report)

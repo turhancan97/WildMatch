@@ -29,5 +29,8 @@ train_index: null
 val_index: null
 cache: null
 output_dir: null
+fewshot:                  # train on a few-shot view built by `wildmatch mine view --fraction`
+  fraction: null          # null: the full view
+  seed: 0
 resume: null              # null | auto | <epoch directory>
 dry_run: false            # print the plan and the command, run nothing

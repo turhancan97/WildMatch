@@ -18,7 +18,7 @@ locked in `uv.lock`), run through the `wildmatch` command; "Package refactor" re
 was built from the paper code (`paper-v1`) and how parity was verified.
 
 - src/wildmatch/cli.py: the `wildmatch` command (`[project.scripts]`; `python -m wildmatch` is the
-  same). Subcommands: `evaluate`, `finetune-backbone`, `finetune-matcher`, `sweep`, `sweep-task`, `summarize-runs`,
+  same). Subcommands: `evaluate`, `finetune-backbone`, `finetune-matcher`, `mine`, `sweep`, `sweep-task`, `summarize-runs`,
   `summarize-logs`, `tables`, `figures`, `build-unseen-split`, `class-balance`, `audit`.
 - src/wildmatch/entrypoints.py: Hydra entry points behind `evaluate` and `finetune-backbone`
   (configs resolved as `pkg://wildmatch.conf`; job names pinned in the configs).

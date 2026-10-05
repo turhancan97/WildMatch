@@ -45,8 +45,17 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   packaged sweep specs `sweep/<name>.yaml`.
 - src/wildmatch/paths.py, src/wildmatch/data/registry.py: path profiles and registry entries
   for code outside Hydra (see "Paths and the dataset registry").
-- src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
-  later from `rdd-parallel-benchmark` and `lynx-finetuning`. Integration plan (planned, not started):
+- src/wildmatch/matcher_finetune/: matcher fine-tuning merged with history from `lynx-finetuning`
+  `6958d3d` (branch `integrate/matcher-finetune`, phase 1, 2026-10-05; worktree
+  `/shared/results/common/kargin/projects/wildmatch-integration/wt`): trainers
+  `train_by_lg_matches.py` (RDD-LightGlue) and `train_loma_matches.py`, `train_common`, `loading`,
+  keypoint/LoMa caches, `rdd_patch/` (modified LightGlue); wrappers in `slurm/matcher_finetune/`,
+  tests in `tests/matcher_finetune/`, the repository's docs in `notes/matcher_finetune/`. Not yet
+  runnable: it still imports `rdd.RDD` from the old checkout and needs `accelerate` and LoMa, none
+  in the package environment, and the Slurm wrappers still use the old conda envs and paths
+  (phase 2). About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
+  Apache-2.0 release needs his consent (asked by the user 2026-10-05).
+- src/wildmatch/mining/: empty slot for the code merged in later from `rdd-parallel-benchmark`. Integration plan (planned, not started):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
   branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`, now `6958d3d` with `czechlynx_protocol.sh` tracked; user decision).
   User decisions D1-D8 (2026-10-05, plan section 5): `git filter-repo` + unrelated-histories merge

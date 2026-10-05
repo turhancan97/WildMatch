@@ -7,6 +7,18 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `integrate/matcher-finetune`, phase 1 of the integration plan): lynx-finetuning
+  `6958d3d` merged with its history (`git filter-repo` path rewrite, then an unrelated-histories
+  merge; 48 commits, the 36 kept files byte-identical to the reference). It lands in
+  `src/wildmatch/matcher_finetune/`, `slurm/matcher_finetune/`, `tests/matcher_finetune/` and
+  `notes/matcher_finetune/`. Left out (D4): the confidential-lynx `train_rdd.sh`/`train_loma.sh`,
+  debug and video tools, old training strategies, the requirements files, `.gitignore` and
+  `logs/`. Imports now name `wildmatch.matcher_finetune`. Removed the dead `run_lg_matching_grad`
+  (undefined `accelerator`, no caller; found by the F821 guard). Found while merging: Piotr Kubaty
+  wrote 30 of the 48 commits and about 52 % of the surviving lines, so licensing needs his consent
+  for the fine-tuning code as a whole, not only the few-shot scripts (plan D6 assumed all
+  reference commits were the user's). The existing CPU suite passes on the branch (416 tests); the
+  imported tests need `accelerate`, RDD and LoMa (phase 2).
 - 2026-10-05: integration plan decided (`notes/integration_plan.md` section 5, user decisions
   D1-D8; nothing implemented): `git filter-repo` + `--allow-unrelated-histories` merge in place of
   `git subtree`, so `blame` works on the final paths; the user adds `czechlynx_protocol.sh` to the

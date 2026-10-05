@@ -1,3 +1,5 @@
 # Formatting-only commits (git config blame.ignoreRevsFile .git-blame-ignore-revs)
 # ruff format of the merged matcher fine-tuning code, AST-identical
 5c237bfb3bb500396e8fe56e1bc1912d276b4b5b
+# ruff format of the merged mining code, AST-identical
+9a12d82f57443d19c064810c1db2354265d0dd2a

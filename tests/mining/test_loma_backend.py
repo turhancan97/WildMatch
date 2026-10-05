@@ -3,9 +3,8 @@ from pathlib import Path
 
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.loma_backend import resize_image
+from wildmatch.mining.loma_backend import resize_image
 
 
 def test_loma_resize_aligns_both_dimensions_to_dinov2_patch_size():

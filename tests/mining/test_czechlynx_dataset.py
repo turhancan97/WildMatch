@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from scripts.czechlynx_dataset import (
+from wildmatch.mining.czechlynx_dataset import (
     assign_splits,
     build_records,
     masked_relative_path,

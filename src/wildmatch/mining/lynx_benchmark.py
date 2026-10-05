@@ -31,9 +31,10 @@ from PIL import Image
 import torch
 from tqdm import tqdm
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from RDD.RDD import build as build_rdd
-from RDD.matchers import LightGlue
+from wildmatch.vendor.rdd import CONFIG_PATH, LG_WEIGHTS, RDD_WEIGHTS, resolve_weights
+from wildmatch.vendor.rdd.RDD.RDD import build as build_rdd
+from wildmatch.vendor.rdd.RDD.utils import read_config
+from wildmatch.vendor.rdd.RDD.matchers import LightGlue
 
 
 @dataclass
@@ -71,8 +72,8 @@ def parse_args() -> argparse.Namespace:
         default=Path("./outputs/lynx_cache"),
         help="Where to store per-frame feature npz files.",
     )
-    parser.add_argument("--config_path", type=Path, default=Path("./configs/default.yaml"), help="RDD config path.")
-    parser.add_argument("--weights", type=Path, default=Path("./weights/RDD-v2.pth"), help="RDD weights path.")
+    parser.add_argument("--config_path", type=Path, default=CONFIG_PATH, help="RDD config path (unused).")
+    parser.add_argument("--weights", type=Path, default=None, help="RDD weights path.")
     parser.add_argument("--frames_per_seq", type=int, default=10, help="Max frames sampled per sequence.")
     parser.add_argument(
         "--resize_max",
@@ -374,8 +375,9 @@ def plot_per_lynx_metrics(per_lynx_id: Dict[str, Dict[str, float]], out_path: Pa
 
 
 def build_models(config_path: Path, weights: Path, device: torch.device, top_k: int):
-    rdd_conf = None
-    model = build_rdd(rdd_conf, weights=str(weights))
+    # The vendored configs/default.yaml is the file RDD.build read from the working directory before.
+    rdd_conf = read_config(str(CONFIG_PATH))
+    model = build_rdd(rdd_conf, weights=resolve_weights(weights, RDD_WEIGHTS))
     model.to(device)
     model.eval()
     model.top_k = top_k
@@ -393,7 +395,7 @@ def build_models(config_path: Path, weights: Path, device: torch.device, top_k: 
         "filter_threshold": 0.01,
         "depth_confidence": -1,
         "width_confidence": -1,
-        "weights": "./weights/RDD_lg-v2.pth",
+        "weights": resolve_weights(None, LG_WEIGHTS),
     }
     lg = LightGlue("rdd", **lg_conf).to(device).eval()
     return model, lg

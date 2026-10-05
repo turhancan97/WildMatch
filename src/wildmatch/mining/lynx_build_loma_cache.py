@@ -16,9 +16,9 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from tqdm import tqdm
 
-from scripts.lynx_dataset import list_sequences, sample_frames
-from scripts.wildlife_dataset import list_collections
-from scripts.loma_backend import (
+from wildmatch.mining.lynx_dataset import list_sequences, sample_frames
+from wildmatch.mining.wildlife_dataset import list_collections
+from wildmatch.mining.loma_backend import (
     LOMA_PATCH_SIZE,
     build_loma,
     extract_batch,
@@ -118,7 +118,7 @@ class FrameDataset(Dataset):
         return len(self.frames)
 
     def __getitem__(self, index: int):
-        from scripts.loma_backend import resize_image
+        from wildmatch.mining.loma_backend import resize_image
 
         rel = self.frames[index]
         image = self.to_tensor(Image.open(self.root / rel).convert("RGB"))

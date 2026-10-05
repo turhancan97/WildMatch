@@ -6,7 +6,7 @@ import argparse
 import shlex
 from pathlib import Path
 
-from scripts.wildlife_dataset import load_config
+from wildmatch.mining.wildlife_dataset import load_config
 
 
 def main() -> None:

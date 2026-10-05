@@ -1,7 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from scripts.lynx_build_loma_cache import enumerate_frames
+from wildmatch.mining.lynx_build_loma_cache import enumerate_frames
 
 
 def test_loma_cache_enumerates_wildlife_layout(tmp_path: Path):

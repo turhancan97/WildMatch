@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from scripts.wildlife_dataset import load_config, resolve_image
+from wildmatch.mining.wildlife_dataset import load_config, resolve_image
 
-CONFIG = Path(__file__).resolve().parents[1] / "configs" / "wildlife" / "SalamanderID2025.json"
+CONFIG = Path(__file__).resolve().parents[2] / "src" / "wildmatch" / "mining" / "configs" / "wildlife" / "SalamanderID2025.json"
 
 
 def test_salamander_config_fields():

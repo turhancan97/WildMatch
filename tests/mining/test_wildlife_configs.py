@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.wildlife_dataset import load_config
+from wildmatch.mining.wildlife_dataset import load_config
 
 
 NEW_DATASETS = {
@@ -25,7 +25,7 @@ NEW_DATASETS = {
 
 @pytest.mark.parametrize("dataset_id", sorted(NEW_DATASETS))
 def test_new_wildlife_config_matches_shared_metadata_contract(dataset_id: str):
-    config_path = Path(__file__).parents[1] / "configs" / "wildlife" / f"{dataset_id}.json"
+    config_path = Path(__file__).resolve().parents[2] / "src" / "wildmatch" / "mining" / "configs" / "wildlife" / f"{dataset_id}.json"
     raw = json.loads(config_path.read_text())
     config = load_config(config_path)
 
@@ -44,6 +44,6 @@ def test_new_wildlife_config_matches_shared_metadata_contract(dataset_id: str):
 
 
 def test_all_new_wildlife_configs_are_present():
-    config_dir = Path(__file__).parents[1] / "configs" / "wildlife"
+    config_dir = Path(__file__).resolve().parents[2] / "src" / "wildmatch" / "mining" / "configs" / "wildlife"
     present = {path.stem for path in config_dir.glob("*.json")}
     assert NEW_DATASETS <= present

@@ -30,8 +30,8 @@ from tqdm import tqdm
 import sys
 from PIL import Image
  
-from scripts.lynx_benchmark import build_models, ensure_cache, extract_frame, list_sequences, sample_frames
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from wildmatch.vendor.rdd import CONFIG_PATH
+from wildmatch.mining.lynx_benchmark import build_models, ensure_cache, extract_frame, list_sequences, sample_frames
 import warnings
 
 
@@ -49,8 +49,8 @@ def parse_args() -> argparse.Namespace:
         default=Path("./outputs/lynx_cache"),
         help="Where to store per-frame feature npz files.",
     )
-    parser.add_argument("--config_path", type=Path, default=Path("./configs/default.yaml"), help="RDD config path.")
-    parser.add_argument("--weights", type=Path, default=Path("./weights/RDD-v2.pth"), help="RDD weights path.")
+    parser.add_argument("--config_path", type=Path, default=CONFIG_PATH, help="RDD config path (unused).")
+    parser.add_argument("--weights", type=Path, default=None, help="RDD weights path.")
     parser.add_argument("--frames_per_seq", type=int, default=10, help="Max frames sampled per sequence.")
     parser.add_argument(
         "--resize_max",

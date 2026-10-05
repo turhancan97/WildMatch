@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.wildlife_dataset import (
+from wildmatch.mining.wildlife_dataset import (
     assign_generated_splits,
     build_records,
     list_collections,

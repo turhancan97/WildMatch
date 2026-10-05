@@ -2,8 +2,8 @@ from typing import Dict, List, Tuple
 
 import torch
 
-from RDD.matchers.lightglue_masked import LightGlueMasked, pad_to_length
-from scripts.lynx_benchmark import FrameFeat
+from wildmatch.mining.lightglue_masked import LightGlueMasked, pad_to_length
+from wildmatch.mining.lynx_benchmark import FrameFeat
 
 
 def get_query_data(

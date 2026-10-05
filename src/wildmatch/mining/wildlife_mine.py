@@ -13,12 +13,11 @@ from time import time
 
 import torch
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from RDD.matchers.lightglue_masked import LightGlueMasked
-from scripts.batched_processing import sequence_score_per_video_and_per_frame
-from scripts.lynx_benchmark import load_cached_feat, sample_frames
-from scripts.wildlife_dataset import list_collections
+from wildmatch.mining.lightglue_masked import LightGlueMasked
+from wildmatch.mining.batched_processing import sequence_score_per_video_and_per_frame
+from wildmatch.mining.lynx_benchmark import load_cached_feat, sample_frames
+from wildmatch.mining.wildlife_dataset import list_collections
 
 
 def weights_fingerprint(path: Path) -> str:
@@ -77,7 +76,7 @@ def build_backend_model(backend: str, device: torch.device, weights: Path, varia
     if backend == "rdd":
         return build_model(device, weights)
     if backend == "loma":
-        from scripts.loma_backend import build_loma
+        from wildmatch.mining.loma_backend import build_loma
 
         return build_loma(device, weights, variant)
     raise ValueError(f"unsupported mining backend {backend!r}; expected rdd or loma")
@@ -181,7 +180,7 @@ def main() -> None:
     for start in range(0, len(gallery_features), 32):
         gallery_chunk = gallery_features[start:start + 32]
         if args.backend == "loma":
-            from scripts.loma_backend import score_all_loma
+            from wildmatch.mining.loma_backend import score_all_loma
 
             chunk = score_all_loma(model, query_features, gallery_chunk, device, batch_size=32)
         else:

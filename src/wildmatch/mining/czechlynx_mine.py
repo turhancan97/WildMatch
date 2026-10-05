@@ -12,12 +12,11 @@ from time import time
 
 import torch
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from RDD.matchers.lightglue_masked import LightGlueMasked
-from scripts.batched_processing import sequence_score_per_video_and_per_frame
-from scripts.czechlynx_dataset import CzechLynxCollection
-from scripts.lynx_benchmark import FrameFeat, load_cached_feat, sample_frames
+from wildmatch.mining.lightglue_masked import LightGlueMasked
+from wildmatch.mining.batched_processing import sequence_score_per_video_and_per_frame
+from wildmatch.mining.czechlynx_dataset import CzechLynxCollection
+from wildmatch.mining.lynx_benchmark import FrameFeat, load_cached_feat, sample_frames
 
 
 def list_collections(root: Path, split: str) -> list[CzechLynxCollection]:
@@ -124,7 +123,7 @@ def main() -> None:
         loma_weights = args.weights or args.lg_weights
         if loma_weights is None:
             raise ValueError("LoMa mining requires --weights or --lg_weights")
-        from scripts.loma_backend import build_loma, score_all_loma
+        from wildmatch.mining.loma_backend import build_loma, score_all_loma
 
         model = build_loma(device, loma_weights, args.variant)
 

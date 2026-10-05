@@ -4,26 +4,11 @@ import torch
 
 from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import LightGlueForTraining
 from wildmatch.vendor.rdd import CONFIG_PATH as RDD_CONFIG_PATH
+from wildmatch.vendor.rdd import LG_WEIGHTS, RDD_WEIGHTS, resolve_weights  # noqa: F401 (re-exported)
 from wildmatch.vendor.rdd.RDD.RDD import build
 from wildmatch.vendor.rdd.RDD.utils import read_config
 
-RDD_WEIGHTS = "RDD-v2.pth"
-LG_WEIGHTS = "RDD_lg-v2.pth"
-
-
-def resolve_rdd_weights(value, filename: str) -> str:
-    """An explicit weights path, else `filename` in the path profile's `external.rdd_weights_dir`."""
-    if value:
-        return str(value)
-    from wildmatch.paths import path
-
-    folder = path("external.rdd_weights_dir")
-    if folder is None:
-        raise SystemExit(
-            f"no RDD weights given: pass the path explicitly or set external.rdd_weights_dir in the "
-            f"path profile (WILDMATCH_RDD_WEIGHTS_DIR for the default profile) to the folder with {filename}"
-        )
-    return str(folder / filename)
+resolve_rdd_weights = resolve_weights
 
 
 def build_rdd(weights: Path, device: torch.device, top_k: int):

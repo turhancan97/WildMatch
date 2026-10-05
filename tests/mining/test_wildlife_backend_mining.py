@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from scripts.wildlife_aggregate import main as aggregate_main
-from scripts.wildlife_mine import validate_loma_cache
+from wildmatch.mining.wildlife_aggregate import main as aggregate_main
+from wildmatch.mining.wildlife_mine import validate_loma_cache
 
 
 def _hash(path: Path) -> str:

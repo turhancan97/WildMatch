@@ -10,7 +10,8 @@ licences. Checked on 2026-10-04 from the installed packages' metadata, the upstr
 | --- | --- | --- |
 | Vismatch (matcher wrappers) | BSD-3-Clause | `LICENSE` of gmberton/vismatch; wrapped matchers keep their own licences |
 | LoMa (code) | MIT, except the matcher, which inherits Apache-2.0 from LightGlue | `LICENSE` and README of davnords/LoMa |
-| RDD (code) | Apache-2.0 | `LICENSE` of xtcpete/rdd (fork turhancan97/rdd) |
+| RDD (code) | Apache-2.0 | `LICENSE` of xtcpete/rdd (fork turhancan97/rdd); a subset is vendored unchanged in `src/wildmatch/vendor/rdd/` with its `LICENSE` (see `VENDORED.md`) |
+| LightGlue, modified copies | Apache-2.0 | `src/wildmatch/matcher_finetune/rdd_patch/` and `src/wildmatch/mining/lightglue_masked.py` are modified from cvg/LightGlue (via RDD), as their headers state |
 | LightGlue, gluefactory | Apache-2.0 | package metadata |
 | wildlife-tools, wildlife-datasets | MIT | package metadata |
 | PyTorch, torchvision, PoseLib | BSD-3-Clause | package metadata |

@@ -63,7 +63,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   a port of the four wrappers that builds the unchanged trainer's command line from the registry and
   the path profile (new key `external.loma_weights`): same views, indices, caches, output folders,
   protocol JSON, component names (LoMa `matcher|descriptor|joint`, RDD `lg|descriptor|joint|rdd|lg+rdd`;
-  `joint` CzechLynx only), and it refuses existing epoch folders unless `resume=auto|<dir>`.
+  `joint` CzechLynx only), and it refuses existing epoch folders unless `resume=auto|<dir>`. Every
+  launch is appended to `<output_dir>/wildmatch_provenance.json` (`wildmatch.utils.provenance`: code
+  commit and uncommitted changes, with `code-<n>.diff` when dirty, the command, seed, SHA-256 of the
+  indices, pretrained weights and cache manifest, package versions, host and Slurm job); the protocol
+  JSON, part of the checkpoint fingerprint, is left unchanged.
   `tests/matcher_finetune/test_launch.py` checks it against `czechlynx_protocol.sh` and, on the
   cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
   4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers

@@ -212,3 +212,31 @@ def test_fewshot_training_reads_the_fewshot_view_and_indices(tmp_path, monkeypat
     assert plan.output_dir == root / "checkpoints/SalamanderID2025/legacy" / view / "rdd-finetuned"
     assert plan.cache == tmp_path / "checkpoints/wildlife-reid-10k/SalamanderID2025/rdd-cache"
     parse_with_trainer(plan, monkeypatch)
+
+
+def test_launch_provenance_is_appended_per_launch(tmp_path):
+    from wildmatch.matcher_finetune.launch import PROVENANCE_FILE, record_launch
+
+    overrides = ["dataset=salamander", "matcher_finetune=rdd", "matcher_finetune.seed=3"]
+    with initialize_config_dir(version_base="1.3", config_dir=str(CONF_DIR)):
+        cfg = compose(config_name="finetune_matcher", overrides=["paths=default", *overrides])
+    cfg.paths.data_root = str(tmp_path / "data")
+    cfg.paths.checkpoint_root = str(tmp_path / "checkpoints")
+    cfg.paths.external.mining_outputs = str(tmp_path / "mining")
+    cfg.paths.external.rdd_weights_dir = str(tmp_path / "rdd")
+    cfg = OmegaConf.to_container(cfg, resolve=True)
+    plan = plan_run(cfg)
+    plan.train_index.parent.mkdir(parents=True)
+    plan.train_index.write_text("[]")
+    record_launch(plan, cfg)
+    record_launch(plan, cfg)
+    data = json.loads((plan.output_dir / PROVENANCE_FILE).read_text())
+    assert len(data["launches"]) == 2
+    launch = data["launches"][0]
+    assert launch["seed"] == 3 and launch["matcher"] == "rdd" and launch["command"] == plan.command
+    assert launch["inputs"]["train_index"]["sha256"] == (
+        "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"  # sha256("[]")
+    )
+    assert launch["inputs"]["pretrained_rdd"]["exists"] is False
+    assert launch["code"]["commit"]
+    assert "diff" not in launch["code"]

@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `feat/integration-followups`): `wildmatch finetune-matcher` records each launch in
+  `<output_dir>/wildmatch_provenance.json` (new `wildmatch.utils.provenance`): code commit, dirty state,
+  changed paths and diff hash (diff saved as `code-<n>.diff`), command, seed, SHA-256 of the train and
+  validation indices, pretrained weights and cache manifest, package versions, host, Slurm job.
+  Resumed runs append. Kept out of the protocol JSON, whose contents are part of the checkpoint
+  fingerprint. Integration plan phase 5 item ("every checkpoint records the commit, dirty state and seed").
 - 2026-10-05: `train` extra declares `poselib` (pinned 2.0.5): mining imports the vendored RDD
   `matchers` package, whose `dense_matcher` imports it. CI (`--extra cpu --extra train`, no `matchers`)
   failed at test collection without it; on the cluster it came in through the `matchers` extra.

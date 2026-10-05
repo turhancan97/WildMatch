@@ -958,6 +958,13 @@ reproduction, and the measured impact so it can be picked up without re-investig
   +0.2, Zindi -0.6 (WildFusion -2.0: queries that flipped were near-ties, median margin 0.08 vs 0.41;
   query and gallery masks unchanged at IoU 0.995; score distributions unchanged; calibration uses
   the same 100 images; the 125-lost vs 62-gained asymmetry is unexplained). User (2026-10-04):
+  **Sea star explained (2026-10-05, grid sweep `wildlife_sam3_grid`, all 25 configurations, k=10 to
+  1000, mean +2.34 points).** Only 64 of 2,187 sea star masks changed (IoU < 0.9 or whole photo),
+  and every one is an old mask that kept under 1 % of the image (0.1-0.3 %, a speck); 40 of them are
+  now whole photos (`sam3_full_frame`). 12 are test queries (`reports/seastar_blank_mask_queries.csv`).
+  The paper's runs got 0-2 of those 12 right, the new runs 10-12, which is +2.36 points: the whole
+  gain. On the other 416 queries the change is -0.02 points on average (-0.96 to +0.72). So the
+  paper's sea star numbers are lowered by 12 practically blank query images, not by a weaker method.
   differences of this size are acceptable. The remaining budgets (k = 10, 50, 100, 500, 1000) run
   with sweep `wildlife_sam3_grid` (150 tasks, user request 2026-10-04).
 

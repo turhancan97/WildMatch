@@ -18,7 +18,7 @@ locked in `uv.lock`), run through the `wildmatch` command; "Package refactor" re
 was built from the paper code (`paper-v1`) and how parity was verified.
 
 - src/wildmatch/cli.py: the `wildmatch` command (`[project.scripts]`; `python -m wildmatch` is the
-  same). Subcommands: `evaluate`, `finetune-backbone`, `sweep`, `sweep-task`, `summarize-runs`,
+  same). Subcommands: `evaluate`, `finetune-backbone`, `finetune-matcher`, `sweep`, `sweep-task`, `summarize-runs`,
   `summarize-logs`, `tables`, `figures`, `build-unseen-split`, `class-balance`, `audit`.
 - src/wildmatch/entrypoints.py: Hydra entry points behind `evaluate` and `finetune-backbone`
   (configs resolved as `pkg://wildmatch.conf`; job names pinned in the configs).
@@ -58,9 +58,17 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `$UV_ENV_ROOT/wildmatch-integration` (user decision 2026-10-05; `uv sync --extra cu126 --extra
   matchers --extra train --group dev` with `UV_PROJECT_ENVIRONMENT` set to it); the main env is
   unchanged. Parity L0 (the moved tests, CPU) and L1 (`tests/matcher_finetune/test_resize_parity.py`,
-  always on) pass. Still to do: Hydra config, `wildmatch finetune-matcher`, the Slurm wrappers (they
-  still activate the old conda envs and run `python -m contrastive_finetuning...`), the torch-2.8
-  spike (D3, L3-L5) and L6. About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
+  always on) pass. Training runs through `wildmatch finetune-matcher` (`conf/finetune_matcher.yaml`,
+  recipes `conf/matcher_finetune/{loma,rdd}.yaml`, `launch.py`; Slurm: `slurm/finetune_matcher.sbatch`),
+  a port of the four wrappers that builds the unchanged trainer's command line from the registry and
+  the path profile (new key `external.loma_weights`): same views, indices, caches, output folders,
+  protocol JSON, component names (LoMa `matcher|descriptor|joint`, RDD `lg|descriptor|joint|rdd|lg+rdd`;
+  `joint` CzechLynx only), and it refuses existing epoch folders unless `resume=auto|<dir>`.
+  `tests/matcher_finetune/test_launch.py` checks it against `czechlynx_protocol.sh` and, on the
+  cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
+  4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers
+  stay in `slurm/matcher_finetune/` as reference (they no longer run). Still to do: the torch-2.8
+  spike (D3, L3-L5) and L6; matcher-only LoMa caches are still built by the mining repository. About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
   Apache-2.0 release needs his consent (asked by the user 2026-10-05).
 - src/wildmatch/mining/: empty slot for the code merged in later from `rdd-parallel-benchmark`. Integration plan (planned, not started):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
@@ -102,6 +110,8 @@ Run from the repository root:
 ~~~bash
 wildmatch finetune-backbone
 wildmatch finetune-backbone train.epochs=10
+wildmatch finetune-matcher dataset=salamander matcher_finetune=rdd matcher_finetune.dry_run=true  # plan only
+sbatch slurm/finetune_matcher.sbatch dataset=czechlynx_closed matcher_finetune=loma
 wildmatch evaluate
 wildmatch evaluate dataset=salamander benchmark.method=vismatch benchmark.methods.vismatch.matcher=loma
 wildmatch sweep parity --list-tasks          # packaged spec or a YAML path; writes nothing

@@ -7,6 +7,16 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `integrate/finetune-cli`, on top of `integrate/matcher-finetune`):
+  `wildmatch finetune-matcher`, a Hydra command (`conf/finetune_matcher.yaml`, recipes
+  `conf/matcher_finetune/{loma,rdd}.yaml`) that ports the four lynx-finetuning Slurm wrappers into
+  `wildmatch.matcher_finetune.launch` and runs the unchanged trainers under `accelerate launch`;
+  `slurm/finetune_matcher.sbatch`; path-profile key `external.loma_weights`. Checked in
+  `tests/matcher_finetune/test_launch.py`: the CzechLynx layout equals `czechlynx_protocol.sh` for all
+  eight split/protocol/miner combinations, planned flags parse with the trainers' own parsers, and on
+  the cluster the plans reproduce the recorded arguments of all eight paper LoMa checkpoints and the
+  protocol files of eleven paper runs (WhaleSharkID's index moved from `indices/` into
+  `indices/rdd/` after its run). The wrappers stay as reference (`slurm/matcher_finetune/README.md`).
 - 2026-10-05 (branch `integrate/matcher-finetune`, phase 1 of the integration plan): lynx-finetuning
   `6958d3d` merged with its history (`git filter-repo` path rewrite, then an unrelated-histories
   merge; 48 commits, the 36 kept files byte-identical to the reference). It lands in

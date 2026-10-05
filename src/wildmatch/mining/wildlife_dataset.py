@@ -17,7 +17,6 @@ from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-
 DEFAULT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/WildlifeReID-10k")
 
 

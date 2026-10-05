@@ -5,12 +5,10 @@ from __future__ import annotations
 import json
 from dataclasses import fields, replace
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import torch
 from PIL import Image
-
 
 LOMA_PATCH_SIZE = 14
 

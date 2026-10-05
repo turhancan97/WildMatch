@@ -23,10 +23,9 @@ import math
 import os
 import random
 from collections import Counter, defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
-
 
 DEFAULT_SOURCE_ROOT = Path(
     "/shared/sets/datasets/vision/czechlynx/CzechLynx_v2"

@@ -7,7 +7,6 @@ import pytest
 
 from wildmatch.mining.wildlife_dataset import load_config
 
-
 NEW_DATASETS = {
     "AmvrakikosTurtles",
     "ATRW",

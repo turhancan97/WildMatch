@@ -19,22 +19,20 @@ Dependencies: torch, numpy, PIL, tqdm. Uses RDD+LightGlue from this repo.
 """
 import argparse
 import json
-import math
-import os
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 import numpy as np
-from PIL import Image
 import torch
+from PIL import Image
 from tqdm import tqdm
-import sys
+
 from wildmatch.vendor.rdd import CONFIG_PATH, LG_WEIGHTS, RDD_WEIGHTS, resolve_weights
+from wildmatch.vendor.rdd.RDD.matchers import LightGlue
 from wildmatch.vendor.rdd.RDD.RDD import build as build_rdd
 from wildmatch.vendor.rdd.RDD.utils import read_config
-from wildmatch.vendor.rdd.RDD.matchers import LightGlue
 
 
 @dataclass

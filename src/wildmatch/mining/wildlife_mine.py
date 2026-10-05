@@ -5,17 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
-import sys
 from collections import defaultdict
 from pathlib import Path
 from time import time
 
 import torch
 
-
-from wildmatch.mining.lightglue_masked import LightGlueMasked
 from wildmatch.mining.batched_processing import sequence_score_per_video_and_per_frame
+from wildmatch.mining.lightglue_masked import LightGlueMasked
 from wildmatch.mining.lynx_benchmark import load_cached_feat, sample_frames
 from wildmatch.mining.wildlife_dataset import list_collections
 

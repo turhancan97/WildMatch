@@ -102,7 +102,7 @@ def score_batch_lightglue(
         )
 
         scores_out[i] = sum_conf / norm
-        
+
         matches_out[i] = (conf > 0).sum()
 
     return scores_out, matches_out

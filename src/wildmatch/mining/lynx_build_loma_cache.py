@@ -16,14 +16,13 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from tqdm import tqdm
 
-from wildmatch.mining.lynx_dataset import list_sequences, sample_frames
-from wildmatch.mining.wildlife_dataset import list_collections
 from wildmatch.mining.loma_backend import (
     LOMA_PATCH_SIZE,
     build_loma,
     extract_batch,
 )
-
+from wildmatch.mining.lynx_dataset import list_sequences, sample_frames
+from wildmatch.mining.wildlife_dataset import list_collections
 
 MANIFEST_NAME = "manifest.json"
 

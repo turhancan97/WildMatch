@@ -18,7 +18,7 @@ The script:
 Dependencies: torch, numpy, PIL, tqdm. Uses RDD+LightGlue from this repo.
 """
 import argparse
-import os
+import warnings
 from pathlib import Path
 
 import cv2
@@ -26,13 +26,11 @@ import kornia
 import numpy as np
 import torch
 import torch.nn.functional as F
-from tqdm import tqdm
-import sys
 from PIL import Image
- 
-from wildmatch.vendor.rdd import CONFIG_PATH
+from tqdm import tqdm
+
 from wildmatch.mining.lynx_benchmark import build_models, ensure_cache, extract_frame, list_sequences, sample_frames
-import warnings
+from wildmatch.vendor.rdd import CONFIG_PATH
 
 
 def parse_args() -> argparse.Namespace:
@@ -76,16 +74,16 @@ def get_new_image_size(h, w, resize=1600):
 def parse_input(x_path, resize, device):
     x = cv2.imread(x_path)
     x = cv2.cvtColor(x, cv2.COLOR_BGR2RGB)
-    
+
     if len(x.shape) == 3:
         x = x[None, ...]
 
     if isinstance(x, np.ndarray):
         x = torch.tensor(x).permute(0,3,1,2)/255
-    
+
     h, w = x.shape[-2:]
     size = h, w
-    
+
     if resize is not None:
         size = get_new_image_size(h, w, resize)
         x = kornia.geometry.transform.resize(
@@ -98,7 +96,7 @@ def parse_input(x_path, resize, device):
         )
     scale = torch.Tensor([x.shape[-1] / w, x.shape[-2] / h]).to(device)
     x = torch.tensor(x).to(device)
-    
+
     return x, scale
 
 def _load_image_exreid(
@@ -107,7 +105,7 @@ def _load_image_exreid(
     device,
 ) -> Image.Image:
     img = Image.open(image_path).convert("RGB")
-    
+
     if resize_max and resize_max > 0:
         w, h = img.size
         scale = float(resize_max) / float(max(w, h))

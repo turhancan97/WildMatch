@@ -1,8 +1,5 @@
-import sys
-from pathlib import Path
 
 import torch
-
 
 from wildmatch.mining.loma_backend import resize_image
 

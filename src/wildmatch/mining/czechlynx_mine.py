@@ -4,19 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
 from collections import defaultdict
 from pathlib import Path
 from time import time
 
 import torch
 
-
-from wildmatch.mining.lightglue_masked import LightGlueMasked
 from wildmatch.mining.batched_processing import sequence_score_per_video_and_per_frame
 from wildmatch.mining.czechlynx_dataset import CzechLynxCollection
-from wildmatch.mining.lynx_benchmark import FrameFeat, load_cached_feat, sample_frames
+from wildmatch.mining.lightglue_masked import LightGlueMasked
+from wildmatch.mining.lynx_benchmark import load_cached_feat, sample_frames
 
 
 def list_collections(root: Path, split: str) -> list[CzechLynxCollection]:

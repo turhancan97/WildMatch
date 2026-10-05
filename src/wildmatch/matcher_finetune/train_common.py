@@ -295,39 +295,6 @@ def extract_train(rdd: torch.nn.Module, images: torch.Tensor) -> list[dict]:
     ]
 
 
-# ── LG matching ────────────────────────────────────────────────────────────────
-def run_lg_matching_grad(
-    lg: torch.nn.Module,
-    feats_a: list[dict],
-    feats_p: list[dict],
-    feats_n: list[dict],
-    image_h: int,
-    image_w: int,
-) -> tuple[dict, dict, dict, dict, dict]:
-    """
-    Run LightGlue WITHOUT a no_grad wrapper, so LG's own parameters receive
-    gradient from any loss computed on the returned `scores` /
-    `matching_scores0`. Returns the full prediction dicts (not just match
-    indices) — used by train_by_lg_matches.py.
-
-    Also returns the batch_features dicts (data_a/data_p/data_n): callers
-    that want keypoint-coverage-normalized scores (see _lg_scores) need
-    their `masks`.
-
-    Note LightGlueForTraining detaches its descriptor *inputs* by default (see
-    `detach_descriptors` in rdd_patch/lightglue_masked_training.py), so gradient
-    normally only reaches LG's own weights. train_by_lg_matches.py builds LG
-    with `detach_descriptors=False` when `--trained_model` includes 'rdd', so
-    gradient can also flow back into the network that produced feats_*.
-    """
-    data_a = batch_features(feats_a, image_h, image_w)
-    data_p = batch_features(feats_p, image_h, image_w)
-    data_n = batch_features(feats_n, image_h, image_w)
-    pred_pos = run_lg_partitioned(lg, data_a, data_p, partition=accelerator.num_processes == 1)
-    pred_neg = run_lg_partitioned(lg, data_a, data_n, partition=accelerator.num_processes == 1)
-    return pred_pos, pred_neg, data_a, data_p, data_n
-
-
 # ── validation epoch ──────────────────────────────────────────────────────────
 @torch.no_grad()
 def eval_epoch(

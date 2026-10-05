@@ -3594,6 +3594,7 @@ matchers = [
 train = [
     { name = "accelerate" },
     { name = "lomatch" },
+    { name = "poselib" },
 ]
 wandb = [
     { name = "wandb" },
@@ -3621,6 +3622,7 @@ requires-dist = [
     { name = "omegaconf" },
     { name = "pandas" },
     { name = "pillow" },
+    { name = "poselib", marker = "extra == 'train'" },
     { name = "pycocotools" },
     { name = "pytorch-metric-learning" },
     { name = "pyyaml" },

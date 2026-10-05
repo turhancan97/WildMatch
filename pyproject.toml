@@ -42,7 +42,8 @@ matchers = ["vismatch"]
 wandb = ["wandb"]
 # Matcher fine-tuning (wildmatch.matcher_finetune): accelerate and LoMa as the `loma` conda env had
 # them when the paper's LoMa checkpoints were trained (LoMa installed 2026-08-16). RDD is vendored.
-train = ["accelerate==1.14.0", "lomatch"]
+# poselib: the vendored RDD matchers package imports it (dense_matcher), and mining imports that package.
+train = ["accelerate==1.14.0", "lomatch", "poselib"]
 # Slot for pair mining (merged in later from rdd-parallel-benchmark).
 mining = []
 

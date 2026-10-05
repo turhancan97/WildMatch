@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: `train` extra declares `poselib` (pinned 2.0.5): mining imports the vendored RDD
+  `matchers` package, whose `dense_matcher` imports it. CI (`--extra cpu --extra train`, no `matchers`)
+  failed at test collection without it; on the cluster it came in through the `matchers` extra.
+  Rehearsed in a fresh CI-identical CPU environment: lint, format and 600 tests pass.
 - 2026-10-05: integration parity L6 (job 525388): 13 of the 18 published checkpoints evaluated so far give
   bit-identical score matrices and identical metrics in the main environment and the integration
   environment (fresh caches each, same GPU), including every LoMa checkpoint finished so far, so the

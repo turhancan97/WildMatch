@@ -6,9 +6,7 @@ from wildmatch.mining.lightglue_masked import LightGlueMasked, pad_to_length
 from wildmatch.mining.lynx_benchmark import FrameFeat
 
 
-def get_query_data(
-    feat: FrameFeat, device, repeats: int = 1
-) -> Dict[str, torch.Tensor]:
+def get_query_data(feat: FrameFeat, device, repeats: int = 1) -> Dict[str, torch.Tensor]:
     ks, ds, sizes = [], [], []
 
     k = torch.from_numpy(feat.keypoints).to(device)
@@ -132,6 +130,7 @@ def sequence_score_per_video_and_per_frame(
     scores_matrix = torch.stack(all_scores, dim=0)
 
     return scores_matrix
+
 
 def sequence_metrics_from_scores(
     scores_matrix: torch.Tensor,

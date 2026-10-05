@@ -181,8 +181,10 @@ def assign_generated_splits(
 
 
 def build_records(
-    rows: list[dict[str, str]], config: WildlifeConfig,
-    assignments: dict[int, str], exclusions: list[dict[str, str]],
+    rows: list[dict[str, str]],
+    config: WildlifeConfig,
+    assignments: dict[int, str],
+    exclusions: list[dict[str, str]],
 ) -> list[WildlifeRecord]:
     records: list[WildlifeRecord] = []
     by_group: dict[tuple[str, str, str], list[tuple[int, dict[str, str]]]] = defaultdict(list)
@@ -194,15 +196,17 @@ def build_records(
     for (split, identity, collection), group in sorted(by_group.items()):
         group.sort(key=lambda item: item[1]["path"])
         for frame_index, (index, row) in enumerate(group):
-            records.append(WildlifeRecord(
-                dataset_id=config.dataset_id,
-                identity=identity,
-                collection=collection,
-                original_path=row["path"],
-                canonical_path=f"{split}/{identity}/{collection}/frame_{frame_index:06d}.jpg",
-                official_split=str(row[config.split_column]).strip().lower(),
-                generated_split=split,
-            ))
+            records.append(
+                WildlifeRecord(
+                    dataset_id=config.dataset_id,
+                    identity=identity,
+                    collection=collection,
+                    original_path=row["path"],
+                    canonical_path=f"{split}/{identity}/{collection}/frame_{frame_index:06d}.jpg",
+                    official_split=str(row[config.split_column]).strip().lower(),
+                    generated_split=split,
+                )
+            )
     return records
 
 
@@ -255,7 +259,9 @@ def validate_records(records: list[WildlifeRecord], config: WildlifeConfig, outp
     }
 
 
-def prepare(config: WildlifeConfig, output_root: Path, protocol: str, force: bool = False, dry_run: bool = False) -> dict[str, object]:
+def prepare(
+    config: WildlifeConfig, output_root: Path, protocol: str, force: bool = False, dry_run: bool = False
+) -> dict[str, object]:
     rows = read_rows(config)
     assignments, exclusions = assign_generated_splits(rows, config, protocol)
     records = build_records(rows, config, assignments, exclusions)
@@ -289,9 +295,7 @@ def prepare(config: WildlifeConfig, output_root: Path, protocol: str, force: boo
     }
     if not dry_run:
         (output_root / "manifest.json").write_text(json.dumps(summary, indent=2))
-        (output_root / "records.jsonl").write_text(
-            "".join(json.dumps(asdict(record)) + "\n" for record in records)
-        )
+        (output_root / "records.jsonl").write_text("".join(json.dumps(asdict(record)) + "\n" for record in records))
     return summary
 
 

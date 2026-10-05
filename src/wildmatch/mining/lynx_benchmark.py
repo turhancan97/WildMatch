@@ -17,6 +17,7 @@ The script:
 
 Dependencies: torch, numpy, PIL, tqdm. Uses RDD+LightGlue from this repo.
 """
+
 import argparse
 import json
 import time
@@ -82,9 +83,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top_k", type=int, default=2048, help="Top-K keypoints for RDD soft detection.")
     parser.add_argument("--device", type=str, default="cuda", help="Device for model/matcher.")
     parser.add_argument("--top_m_pool", type=int, default=5, help="Top-M frame scores used for sequence pooling.")
-    parser.add_argument("--matcher_threshold", type=float, default=0.0, help="LightGlue conf threshold for counting matches.")
-    parser.add_argument("--dump_report", type=Path, default=Path("./outputs/lynx_report"), help="Where to save metrics.")
-    parser.add_argument("--metrics_plot", type=Path, default=Path("./outputs/lynx_metrics.png"), help="Where to save the per-lynx_id metrics plot.")
+    parser.add_argument(
+        "--matcher_threshold", type=float, default=0.0, help="LightGlue conf threshold for counting matches."
+    )
+    parser.add_argument(
+        "--dump_report", type=Path, default=Path("./outputs/lynx_report"), help="Where to save metrics."
+    )
+    parser.add_argument(
+        "--metrics_plot",
+        type=Path,
+        default=Path("./outputs/lynx_metrics.png"),
+        help="Where to save the per-lynx_id metrics plot.",
+    )
     parser.add_argument("--limit_seqs", type=int, default=0, help="Debug: limit number of query sequences.")
     return parser.parse_args()
 
@@ -248,6 +258,7 @@ def aggregate_sequence_score(
     avg_matches = float(sum(per_q_matches) / len(per_q_matches))
     return {"score": seq_score, "avg_matches": avg_matches}
 
+
 def aggregate_sequence_score_v2(
     lg,
     q_frames: List[FrameFeat],
@@ -286,11 +297,7 @@ def aggregate_sequence_score_v2(
     scores_matrix = torch.tensor(scores_matrix)
 
     if not per_q_best:
-        return {
-            "score": 0.0,
-            "avg_matches": 0.0,
-            "frame_scores": []
-        }
+        return {"score": 0.0, "avg_matches": 0.0, "frame_scores": []}
 
     top_vals = sorted(per_q_best, reverse=True)[:top_m]
     seq_score = float(sum(top_vals) / len(top_vals))
@@ -303,6 +310,7 @@ def aggregate_sequence_score_v2(
         "scores_matrix": scores_matrix,
     }
 
+
 def compute_average_precision(relevance: List[bool]) -> float:
     num_rel = sum(relevance)
     if num_rel == 0:
@@ -314,6 +322,7 @@ def compute_average_precision(relevance: List[bool]) -> float:
             hit += 1
             precisions.append(hit / idx)
     return float(sum(precisions) / num_rel)
+
 
 def compute_retrieval_metrics(
     query_records: List[Dict[str, object]],
@@ -342,6 +351,7 @@ def compute_retrieval_metrics(
         "n_queries": len(query_records),
         "n_gallery": n_gallery,
     }
+
 
 def plot_per_lynx_metrics(per_lynx_id: Dict[str, Dict[str, float]], out_path: Path) -> None:
     import matplotlib.pyplot as plt
@@ -493,7 +503,7 @@ def main():
         per_lynx_id_thresholded[lynx_id] = split_thr
 
     args.dump_report.parent.mkdir(parents=True, exist_ok=True)
-    with open(f'{args.dump_report}_{time.strftime("%Y_%m_%d-%H_%M_%S")}.json', "w") as f:
+    with open(f"{args.dump_report}_{time.strftime('%Y_%m_%d-%H_%M_%S')}.json", "w") as f:
         json.dump(
             {
                 "metrics": metrics,

@@ -54,13 +54,14 @@ def parse_args():
     parser.add_argument("--cache_dir", type=Path, required=True)
     parser.add_argument("--weights", type=Path, required=False)
     parser.add_argument("--variant", default="loma-b")
-    parser.add_argument("--frames_per_seq", type=int, default=20,
-                        help="Frames per sequence in the legacy sampled mode.")
-    parser.add_argument("--all_frames", action="store_true",
-                        help="Cache every frame under the selected splits.")
+    parser.add_argument(
+        "--frames_per_seq", type=int, default=20, help="Frames per sequence in the legacy sampled mode."
+    )
+    parser.add_argument("--all_frames", action="store_true", help="Cache every frame under the selected splits.")
     parser.add_argument("--splits", nargs="*", default=["train", "test"])
-    parser.add_argument("--index", type=Path, nargs="*", default=[],
-                        help="Index files whose referenced frames must be included.")
+    parser.add_argument(
+        "--index", type=Path, nargs="*", default=[], help="Index files whose referenced frames must be included."
+    )
     parser.add_argument("--resize_max", type=int, default=512)
     parser.add_argument("--num_keypoints", type=int, default=512)
     parser.add_argument("--batch_size", type=int, default=4)
@@ -70,8 +71,7 @@ def parse_args():
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--verify", action="store_true",
-                        help="Check cache coverage without loading LoMa.")
+    parser.add_argument("--verify", action="store_true", help="Check cache coverage without loading LoMa.")
     return parser.parse_args()
 
 
@@ -93,9 +93,7 @@ def enumerate_frames(args) -> list[str]:
     frames: set[str] = set()
     for split in args.splits:
         for frame_paths in frame_groups(args.dataset_root, split):
-            selected = frame_paths if args.all_frames else sample_frames(
-                frame_paths, args.frames_per_seq
-            )
+            selected = frame_paths if args.all_frames else sample_frames(frame_paths, args.frames_per_seq)
             frames.update(str(path.relative_to(args.dataset_root)) for path in selected)
     for index_path in args.index:
         with index_path.open() as handle:
@@ -129,10 +127,7 @@ def collate_by_shape(items):
     groups: dict[tuple[int, ...], list[tuple[torch.Tensor, str]]] = defaultdict(list)
     for image, rel in items:
         groups[tuple(image.shape)].append((image, rel))
-    return [
-        (torch.stack([image for image, _ in group]), [rel for _, rel in group])
-        for group in groups.values()
-    ]
+    return [(torch.stack([image for image, _ in group]), [rel for _, rel in group]) for group in groups.values()]
 
 
 def verify_cache(args, frames: list[str]) -> None:
@@ -148,25 +143,17 @@ def verify_cache(args, frames: list[str]) -> None:
         "num_keypoints": args.num_keypoints,
         "patch_size": LOMA_PATCH_SIZE,
     }
-    mismatches = {
-        key: (manifest.get(key), wanted)
-        for key, wanted in expected.items()
-        if manifest.get(key) != wanted
-    }
+    mismatches = {key: (manifest.get(key), wanted) for key, wanted in expected.items() if manifest.get(key) != wanted}
     if args.weights is not None and manifest.get("weights_sha256"):
         wanted_hash = weights_fingerprint(args.weights)
         if manifest["weights_sha256"] != wanted_hash:
             mismatches["weights_sha256"] = (manifest["weights_sha256"], wanted_hash)
     if mismatches:
-        details = ", ".join(
-            f"{key}={actual!r} (wanted {wanted!r})"
-            for key, (actual, wanted) in mismatches.items()
-        )
+        details = ", ".join(f"{key}={actual!r} (wanted {wanted!r})" for key, (actual, wanted) in mismatches.items())
         print(f"incompatible LoMa cache metadata: {details}")
         raise SystemExit(2)
     missing = [
-        rel for rel in tqdm(frames, desc="verify")
-        if not (args.cache_dir / Path(rel).with_suffix(".npz")).exists()
+        rel for rel in tqdm(frames, desc="verify") if not (args.cache_dir / Path(rel).with_suffix(".npz")).exists()
     ]
     print(f"cache {args.cache_dir}: {len(frames) - len(missing):,}/{len(frames):,} present")
     if missing:
@@ -211,17 +198,12 @@ def main():
     if args.weights is None:
         raise ValueError("--weights is required when building a cache")
 
-    shard_frames = frames[args.shard::args.num_shards]
+    shard_frames = frames[args.shard :: args.num_shards]
     if args.resume and not args.overwrite:
-        shard_frames = [
-            rel for rel in shard_frames
-            if not (args.cache_dir / Path(rel).with_suffix(".npz")).exists()
-        ]
+        shard_frames = [rel for rel in shard_frames if not (args.cache_dir / Path(rel).with_suffix(".npz")).exists()]
     print(f"shard {args.shard}/{args.num_shards}: {len(shard_frames):,} frames to extract")
 
-    device = torch.device(
-        args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu"
-    )
+    device = torch.device(args.device if torch.cuda.is_available() or args.device == "cpu" else "cpu")
     model = build_loma(device, args.weights, args.variant)
     loader = DataLoader(
         FrameDataset(shard_frames, args.dataset_root, args.resize_max),

@@ -13,11 +13,7 @@ def relative(path: str, root: Path) -> str:
 
 
 def aggregate(prefix: Path, split: str, root: Path) -> list[dict]:
-    reports = [
-        Path(path)
-        for path in sorted(glob(f"{prefix}_{split}_*.json"))
-        if not path.endswith("_combined.json")
-    ]
+    reports = [Path(path) for path in sorted(glob(f"{prefix}_{split}_*.json")) if not path.endswith("_combined.json")]
     entries: list[dict] = []
     skipped = 0
     for report_path in reports:

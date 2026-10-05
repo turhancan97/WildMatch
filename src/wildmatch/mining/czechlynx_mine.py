@@ -47,10 +47,18 @@ def validate_lightglue_weights(weights: Path) -> None:
 def build_masked_lg(device: torch.device, weights: Path):
     validate_lightglue_weights(weights)
     config = {
-        "name": "lightglue", "input_dim": 256, "descriptor_dim": 256,
-        "add_scale_ori": False, "n_layers": 9, "num_heads": 4,
-        "flash": True, "mp": False, "filter_threshold": 0.01,
-        "depth_confidence": -1, "width_confidence": -1, "weights": str(weights),
+        "name": "lightglue",
+        "input_dim": 256,
+        "descriptor_dim": 256,
+        "add_scale_ori": False,
+        "n_layers": 9,
+        "num_heads": 4,
+        "flash": True,
+        "mp": False,
+        "filter_threshold": 0.01,
+        "depth_confidence": -1,
+        "width_confidence": -1,
+        "weights": str(weights),
     }
     return LightGlueMasked("rdd", **config).to(device).eval()
 
@@ -110,7 +118,7 @@ def main() -> None:
     if not gallery:
         raise RuntimeError("no training gallery collections found")
     if not 0 <= args.query_id < len(queries):
-        raise ValueError(f"query_id={args.query_id} out of range 0..{len(queries)-1}")
+        raise ValueError(f"query_id={args.query_id} out of range 0..{len(queries) - 1}")
     if args.backend == "rdd":
         lg_weights = args.lg_weights or args.weights
         if lg_weights is None:
@@ -150,17 +158,21 @@ def main() -> None:
     else:
         chunks = []
         for start in range(0, len(gallery_features), 32):
-            chunks.append(sequence_score_per_video_and_per_frame(
-                model, query_features, gallery_features[start:start + 32], device
-            ))
+            chunks.append(
+                sequence_score_per_video_and_per_frame(
+                    model, query_features, gallery_features[start : start + 32], device
+                )
+            )
         scores = torch.cat(chunks, dim=1)
     frames = []
     for query_index, query_path in enumerate(query_paths):
         positives, negatives = [], []
         for column, score in enumerate(scores[query_index].tolist()):
             candidate = {
-                "score": float(score), "frame": str(gallery_paths[column]),
-                "identity": gallery_ids[column], "collection": gallery_names[column],
+                "score": float(score),
+                "frame": str(gallery_paths[column]),
+                "identity": gallery_ids[column],
+                "collection": gallery_names[column],
             }
             # Keep the query collection in the train gallery so its other
             # frames remain valid positives; exclude only this exact query
@@ -171,21 +183,34 @@ def main() -> None:
         selected_pos = select_diverse_topk(positives, args.top_k_frames)
         selected_neg = select_diverse_topk(negatives, args.top_k_frames)
         values = [item["score"] for item in selected_pos + selected_neg]
-        frames.append({
-            "query_frame": str(query_path), "query_frame_index": query_index,
-            "selection_score": max(values) if values else 0.0,
-            "positives": selected_pos, "negatives": selected_neg,
-        })
-    selected = sorted(frames, key=lambda item: item["selection_score"], reverse=True)[:args.top_m]
+        frames.append(
+            {
+                "query_frame": str(query_path),
+                "query_frame_index": query_index,
+                "selection_score": max(values) if values else 0.0,
+                "positives": selected_pos,
+                "negatives": selected_neg,
+            }
+        )
+    selected = sorted(frames, key=lambda item: item["selection_score"], reverse=True)[: args.top_m]
     selected.sort(key=lambda item: item["query_frame_index"])
     output = {
-        "dataset": "CzechLynx", "query": query.name, "query_identity": query.identity,
-        "query_source": query.source, "query_split": args.split, "query_id": args.query_id,
-        "backend": args.backend, "variant": args.variant if args.backend == "loma" else None,
+        "dataset": "CzechLynx",
+        "query": query.name,
+        "query_identity": query.identity,
+        "query_source": query.source,
+        "query_split": args.split,
+        "query_id": args.query_id,
+        "backend": args.backend,
+        "variant": args.variant if args.backend == "loma" else None,
         "weights": str((args.weights or args.lg_weights or args.rdd_weights).resolve()),
-        "frames_per_collection": args.frames_per_collection, "top_k_frames": args.top_k_frames,
-        "top_m": args.top_m, "gallery_collections": len(gallery),
-        "selected_frames": selected, "all_frames": frames, "elapsed_s": time() - started,
+        "frames_per_collection": args.frames_per_collection,
+        "top_k_frames": args.top_k_frames,
+        "top_m": args.top_m,
+        "gallery_collections": len(gallery),
+        "selected_frames": selected,
+        "all_frames": frames,
+        "elapsed_s": time() - started,
     }
     args.dump_report.parent.mkdir(parents=True, exist_ok=True)
     output_path = Path(f"{args.dump_report}_{args.split}_{args.query_id}.json")

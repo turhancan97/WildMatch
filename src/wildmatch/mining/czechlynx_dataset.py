@@ -27,12 +27,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 
-DEFAULT_SOURCE_ROOT = Path(
-    "/shared/sets/datasets/vision/czechlynx/CzechLynx_v2"
-)
-DEFAULT_OUTPUT_ROOT = Path(
-    "/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed"
-)
+DEFAULT_SOURCE_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_v2")
+DEFAULT_OUTPUT_ROOT = Path("/shared/sets/datasets/vision/czechlynx/CzechLynx_processed_time_closed")
 SUPPORTED_SPLIT_COLUMNS = ("split-time_closed", "split-time_open")
 DEFAULT_SPLIT_COLUMN = "split-time_closed"
 
@@ -74,7 +70,7 @@ def masked_relative_path(original_path: str) -> str:
     prefix = "CzechLynx/"
     if not original_path.startswith(prefix):
         raise ValueError(f"unexpected CzechLynx metadata path: {original_path}")
-    return "CzechLynx_masked/" + original_path[len(prefix):]
+    return "CzechLynx_masked/" + original_path[len(prefix) :]
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -105,15 +101,12 @@ def load_metadata(
             raise ValueError(f"full metadata path has no masked row: {masked_path}")
         if masked.get("unique_name") != row["unique_name"]:
             raise ValueError(
-                f"identity mismatch for {masked_path}: "
-                f"{row['unique_name']} != {masked.get('unique_name')}"
+                f"identity mismatch for {masked_path}: {row['unique_name']} != {masked.get('unique_name')}"
             )
         merged.append({**row, "masked_path": masked_path})
 
     if len(merged) != len(masked_rows):
-        raise ValueError(
-            f"metadata row mismatch: full={len(merged)} masked={len(masked_rows)}"
-        )
+        raise ValueError(f"metadata row mismatch: full={len(merged)} masked={len(masked_rows)}")
     return merged
 
 
@@ -134,18 +127,13 @@ def assign_splits(
     if not 0.0 <= validation_fraction < 1.0:
         raise ValueError("validation_fraction must be in [0, 1)")
     if split_column not in SUPPORTED_SPLIT_COLUMNS:
-        raise ValueError(
-            f"split_column must be one of {SUPPORTED_SPLIT_COLUMNS}, got {split_column!r}"
-        )
+        raise ValueError(f"split_column must be one of {SUPPORTED_SPLIT_COLUMNS}, got {split_column!r}")
 
     groups: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
     for row in rows:
         label = row.get(split_column, "")
         if label not in {"train", "test"}:
-            raise ValueError(
-                f"{split_column} must be train/test, got {label!r} "
-                f"for {row['path']}"
-            )
+            raise ValueError(f"{split_column} must be train/test, got {label!r} for {row['path']}")
         groups[(row["source"], row["encounter"])].append(row)
 
     assignments: dict[tuple[str, str], str] = {}
@@ -190,9 +178,7 @@ def build_records(
     for (split, identity, source, encounter), group in sorted(grouped.items()):
         group.sort(key=lambda row: row["path"])
         for index, row in enumerate(group):
-            relative_path = (
-                f"{split}/{identity}/{source}/{encounter}/frame_{index:06d}.jpg"
-            )
+            relative_path = f"{split}/{identity}/{source}/{encounter}/frame_{index:06d}.jpg"
             records.append(
                 CzechLynxRecord(
                     split=split,
@@ -249,9 +235,7 @@ def validate_records(
             split: len({record.identity for record in records if record.split == split})
             for split in sorted(split_groups)
         },
-        "encounters_by_split": {
-            split: len(groups) for split, groups in sorted(split_groups.items())
-        },
+        "encounters_by_split": {split: len(groups) for split, groups in sorted(split_groups.items())},
         "collections_by_split": {
             split: len({record.collection for record in records if record.split == split})
             for split in sorted(split_groups)
@@ -277,9 +261,7 @@ def write_view(
             if not force:
                 if link.is_symlink() and link.resolve() == target:
                     continue
-                raise FileExistsError(
-                    f"refusing to replace existing path {link}; use --force"
-                )
+                raise FileExistsError(f"refusing to replace existing path {link}; use --force")
             link.unlink()
         os.symlink(target, link)
 

@@ -24,7 +24,15 @@ NEW_DATASETS = {
 
 @pytest.mark.parametrize("dataset_id", sorted(NEW_DATASETS))
 def test_new_wildlife_config_matches_shared_metadata_contract(dataset_id: str):
-    config_path = Path(__file__).resolve().parents[2] / "src" / "wildmatch" / "mining" / "configs" / "wildlife" / f"{dataset_id}.json"
+    config_path = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "wildmatch"
+        / "mining"
+        / "configs"
+        / "wildlife"
+        / f"{dataset_id}.json"
+    )
     raw = json.loads(config_path.read_text())
     config = load_config(config_path)
 

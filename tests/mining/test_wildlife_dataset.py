@@ -37,14 +37,18 @@ def make_fixture(tmp_path: Path) -> Path:
         writer.writeheader()
         writer.writerows(rows)
     config_path = tmp_path / "config.json"
-    config_path.write_text(json.dumps({
-        "dataset_id": "fixture",
-        "source_root": str(root),
-        "metadata_csv": "metadata.csv",
-        "collection_rule": "identity",
-        "validation_fraction": 0.2,
-        "seed": 7,
-    }))
+    config_path.write_text(
+        json.dumps(
+            {
+                "dataset_id": "fixture",
+                "source_root": str(root),
+                "metadata_csv": "metadata.csv",
+                "collection_rule": "identity",
+                "validation_fraction": 0.2,
+                "seed": 7,
+            }
+        )
+    )
     return config_path
 
 

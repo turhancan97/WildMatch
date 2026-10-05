@@ -30,7 +30,14 @@ def weights_fingerprint(path: Path) -> str:
             if base_path.is_file():
                 path = base_path
         else:
-            path = next((path / name for name in ("model.safetensors", "matcher.safetensors", "weights.pth") if (path / name).is_file()), path)
+            path = next(
+                (
+                    path / name
+                    for name in ("model.safetensors", "matcher.safetensors", "weights.pth")
+                    if (path / name).is_file()
+                ),
+                path,
+            )
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
@@ -50,21 +57,14 @@ def validate_loma_cache(cache_dir: Path, variant: str, weights: Path) -> dict:
         "num_keypoints": 512,
         "patch_size": 14,
     }
-    mismatches = {
-        key: (manifest.get(key), value)
-        for key, value in expected.items()
-        if manifest.get(key) != value
-    }
+    mismatches = {key: (manifest.get(key), value) for key, value in expected.items() if manifest.get(key) != value}
     cached_hash = manifest.get("weights_sha256")
     if cached_hash:
         actual_hash = weights_fingerprint(weights)
         if cached_hash != actual_hash:
             mismatches["weights_sha256"] = (cached_hash, actual_hash)
     if mismatches:
-        details = ", ".join(
-            f"{key}={actual!r} (wanted {wanted!r})"
-            for key, (actual, wanted) in mismatches.items()
-        )
+        details = ", ".join(f"{key}={actual!r} (wanted {wanted!r})" for key, (actual, wanted) in mismatches.items())
         raise ValueError(f"incompatible LoMa cache at {cache_dir}: {details}")
     return manifest
 
@@ -93,10 +93,18 @@ def validate_lightglue_weights(weights: Path) -> None:
 def build_model(device: torch.device, weights: Path):
     validate_lightglue_weights(weights)
     config = {
-        "name": "lightglue", "input_dim": 256, "descriptor_dim": 256,
-        "add_scale_ori": False, "n_layers": 9, "num_heads": 4,
-        "flash": True, "mp": False, "filter_threshold": 0.01,
-        "depth_confidence": -1, "width_confidence": -1, "weights": str(weights),
+        "name": "lightglue",
+        "input_dim": 256,
+        "descriptor_dim": 256,
+        "add_scale_ori": False,
+        "n_layers": 9,
+        "num_heads": 4,
+        "flash": True,
+        "mp": False,
+        "filter_threshold": 0.01,
+        "depth_confidence": -1,
+        "width_confidence": -1,
+        "weights": str(weights),
     }
     return LightGlueMasked("rdd", **config).to(device).eval()
 
@@ -175,15 +183,13 @@ def main() -> None:
             gallery_ids.append(collection.identity)
     chunks = []
     for start in range(0, len(gallery_features), 32):
-        gallery_chunk = gallery_features[start:start + 32]
+        gallery_chunk = gallery_features[start : start + 32]
         if args.backend == "loma":
             from wildmatch.mining.loma_backend import score_all_loma
 
             chunk = score_all_loma(model, query_features, gallery_chunk, device, batch_size=32)
         else:
-            chunk = sequence_score_per_video_and_per_frame(
-                model, query_features, gallery_chunk, device
-            )
+            chunk = sequence_score_per_video_and_per_frame(model, query_features, gallery_chunk, device)
         chunks.append(chunk)
     scores = torch.cat(chunks, dim=1)
     frames = []
@@ -193,31 +199,43 @@ def main() -> None:
             if gallery_paths[column] == query_path:
                 continue
             candidate = {
-                "score": float(score), "frame": str(gallery_paths[column]),
-                "identity": gallery_ids[column], "collection": gallery_names[column],
+                "score": float(score),
+                "frame": str(gallery_paths[column]),
+                "identity": gallery_ids[column],
+                "collection": gallery_names[column],
             }
             (positives if candidate["identity"] == query.identity else negatives).append(candidate)
         selected_pos = select_diverse_topk(positives, args.top_k_frames)
         selected_neg = select_diverse_topk(negatives, args.top_k_frames)
         values = [item["score"] for item in selected_pos + selected_neg]
-        frames.append({
-            "query_frame": str(query_path), "query_frame_index": query_index,
-            "selection_score": max(values) if values else 0.0,
-            "positives": selected_pos, "negatives": selected_neg,
-        })
-    selected = sorted(frames, key=lambda item: item["selection_score"], reverse=True)[:args.top_m]
+        frames.append(
+            {
+                "query_frame": str(query_path),
+                "query_frame_index": query_index,
+                "selection_score": max(values) if values else 0.0,
+                "positives": selected_pos,
+                "negatives": selected_neg,
+            }
+        )
+    selected = sorted(frames, key=lambda item: item["selection_score"], reverse=True)[: args.top_m]
     selected.sort(key=lambda item: item["query_frame_index"])
     output = {
-        "dataset": args.dataset_id, "query": query.name, "query_identity": query.identity,
-        "query_split": args.split, "query_id": args.query_id,
+        "dataset": args.dataset_id,
+        "query": query.name,
+        "query_identity": query.identity,
+        "query_split": args.split,
+        "query_id": args.query_id,
         "backend": args.backend,
         "variant": args.variant if args.backend == "loma" else None,
         "weights": str(args.lg_weights.resolve()),
         "cache_dir": str(args.cache_dir.resolve()),
         "frames_per_collection": args.frames_per_collection,
-        "top_k_frames": args.top_k_frames, "top_m": args.top_m,
-        "gallery_collections": len(gallery), "selected_frames": selected,
-        "all_frames": frames, "elapsed_s": time() - started,
+        "top_k_frames": args.top_k_frames,
+        "top_m": args.top_m,
+        "gallery_collections": len(gallery),
+        "selected_frames": selected,
+        "all_frames": frames,
+        "elapsed_s": time() - started,
     }
     args.dump_report.parent.mkdir(parents=True, exist_ok=True)
     output_path = Path(f"{args.dump_report}_{args.split}_{args.query_id}.json")

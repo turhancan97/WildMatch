@@ -17,6 +17,7 @@ The script:
 
 Dependencies: torch, numpy, PIL, tqdm. Uses RDD+LightGlue from this repo.
 """
+
 import argparse
 import warnings
 from pathlib import Path
@@ -61,6 +62,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit_seqs", type=int, default=0, help="Debug: limit number of query sequences.")
     return parser.parse_args()
 
+
 def get_new_image_size(h, w, resize=1600):
     aspect_ratio = w / h
     if h > w:
@@ -68,8 +70,9 @@ def get_new_image_size(h, w, resize=1600):
     else:
         size = (int(resize / aspect_ratio), resize)
 
-    size = list(map(lambda x: int(x // 32 * 32), size)) # make sure size is divisible by 32
+    size = list(map(lambda x: int(x // 32 * 32), size))  # make sure size is divisible by 32
     return size
+
 
 def parse_input(x_path, resize, device):
     x = cv2.imread(x_path)
@@ -79,7 +82,7 @@ def parse_input(x_path, resize, device):
         x = x[None, ...]
 
     if isinstance(x, np.ndarray):
-        x = torch.tensor(x).permute(0,3,1,2)/255
+        x = torch.tensor(x).permute(0, 3, 1, 2) / 255
 
     h, w = x.shape[-2:]
     size = h, w
@@ -89,15 +92,16 @@ def parse_input(x_path, resize, device):
         x = kornia.geometry.transform.resize(
             x,
             size,
-            side='long',
+            side="long",
             antialias=True,
             align_corners=None,
-            interpolation='bilinear',
+            interpolation="bilinear",
         )
     scale = torch.Tensor([x.shape[-1] / w, x.shape[-2] / h]).to(device)
     x = torch.tensor(x).to(device)
 
     return x, scale
+
 
 def _load_image_exreid(
     image_path,
@@ -171,6 +175,7 @@ def main():
             img_torch = _load_train_approach(fp, resize_max=args.resize_max, device=device)
             feat = extract_frame(rdd_model, img_torch, device, args.top_k)
             ensure_cache(cp, feat)
+
 
 if __name__ == "__main__":
     main()

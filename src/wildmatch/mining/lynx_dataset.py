@@ -63,4 +63,3 @@ def load_cached_feat(path: Path) -> FrameFeat:
         scores=data["scores"],
         image_size=data["image_size"],
     )
-

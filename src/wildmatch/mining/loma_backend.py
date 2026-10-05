@@ -112,9 +112,7 @@ def extract_frame(model, path: Path, device: torch.device, num_keypoints: int, r
 @torch.inference_mode()
 def extract_batch(model, images: torch.Tensor, num_keypoints: int):
     """Extract benchmark-format features for a same-shaped image batch."""
-    keypoints, descriptors, _, _ = model.detect_and_describe(
-        images, num_keypoints=num_keypoints
-    )
+    keypoints, descriptors, _, _ = model.detect_and_describe(images, num_keypoints=num_keypoints)
     image_size = np.asarray(images.shape[-2:], dtype=np.int32)
     return [
         {
@@ -159,7 +157,9 @@ def score_all_loma(model, query_features, gallery_features, device, batch_size: 
     # LoMa uses a fixed keypoint count, so gallery batches are safe to stack.
     chunks = []
     for start in range(0, len(gallery_features), batch_size):
-        chunks.append(score_batch_loma(model, query_features, gallery_features[start:start + batch_size], device).cpu())
+        chunks.append(
+            score_batch_loma(model, query_features, gallery_features[start : start + batch_size], device).cpu()
+        )
     return torch.cat(chunks, dim=-1)
 
 
@@ -168,7 +168,9 @@ def score_pairs_loma(model, query_features, gallery_features, pairs, device, bat
     output = torch.zeros(len(query_features), n_cols)
     for query_index, columns in pairs.items():
         for start in range(0, len(columns), batch_size):
-            selected = columns[start:start + batch_size]
-            row = score_batch_loma(model, [query_features[query_index]], [gallery_features[index] for index in selected], device)
+            selected = columns[start : start + batch_size]
+            row = score_batch_loma(
+                model, [query_features[query_index]], [gallery_features[index] for index in selected], device
+            )
             output[query_index, torch.tensor(selected)] = row[0].cpu()
     return output

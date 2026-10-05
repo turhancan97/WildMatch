@@ -14,6 +14,7 @@ from wildmatch.mining.wildlife_mine import validate_loma_cache
 def _hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
+
 def _write_feature(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
@@ -24,15 +25,24 @@ def _write_feature(path: Path) -> None:
         image_size=np.array([512, 512], dtype=np.int32),
     )
 
+
 def test_loma_cache_metadata_and_checkpoint_are_validated(tmp_path: Path):
     weights = tmp_path / "loma_B.pt"
     weights.write_bytes(b"checkpoint")
     cache = tmp_path / "cache"
     cache.mkdir()
-    (cache / "manifest.json").write_text(json.dumps({
-        "backend": "loma", "variant": "loma-b", "resize": 512,
-        "num_keypoints": 512, "patch_size": 14, "weights_sha256": _hash(weights),
-    }))
+    (cache / "manifest.json").write_text(
+        json.dumps(
+            {
+                "backend": "loma",
+                "variant": "loma-b",
+                "resize": 512,
+                "num_keypoints": 512,
+                "patch_size": 14,
+                "weights_sha256": _hash(weights),
+            }
+        )
+    )
     root = tmp_path / "view"
     frame = root / "train" / "id" / "collection" / "frame_000000.jpg"
     frame.parent.mkdir(parents=True)
@@ -46,28 +56,43 @@ def test_loma_cache_metadata_and_checkpoint_are_validated(tmp_path: Path):
     with pytest.raises(ValueError, match="weights_sha256"):
         validate_loma_cache(cache, "loma-b", weights)
 
+
 def test_aggregate_writes_backend_metadata_without_reading_sidecars(tmp_path: Path, monkeypatch):
     prefix = tmp_path / "indices" / "strong-matches"
     prefix.parent.mkdir()
     root = tmp_path / "view"
     report = {
         "backend": "loma",
-        "selected_frames": [{
-            "query_frame": "train/id/collection/frame_000000.jpg",
-            "positives": [{"frame": "train/id/collection/frame_000001.jpg"}],
-            "negatives": [{"frame": "train/other/collection/frame_000000.jpg"}],
-        }],
+        "selected_frames": [
+            {
+                "query_frame": "train/id/collection/frame_000000.jpg",
+                "positives": [{"frame": "train/id/collection/frame_000001.jpg"}],
+                "negatives": [{"frame": "train/other/collection/frame_000000.jpg"}],
+            }
+        ],
     }
     (Path(f"{prefix}_train_0.json")).write_text(json.dumps(report))
     (Path(f"{prefix}_train_0.metadata.json")).write_text(json.dumps({"backend": "loma"}))
     monkeypatch.setattr(
         "sys.argv",
         [
-            "wildlife_aggregate", "--dump_report", str(prefix),
-            "--dataset_root", str(root), "--dataset_id", "BelugaID",
-            "--protocol", "strict", "--backend", "loma",
-            "--weights", "/tmp/loma_B.pt", "--cache_dir", "/tmp/loma-cache",
-            "--splits", "train",
+            "wildlife_aggregate",
+            "--dump_report",
+            str(prefix),
+            "--dataset_root",
+            str(root),
+            "--dataset_id",
+            "BelugaID",
+            "--protocol",
+            "strict",
+            "--backend",
+            "loma",
+            "--weights",
+            "/tmp/loma_B.pt",
+            "--cache_dir",
+            "/tmp/loma-cache",
+            "--splits",
+            "train",
         ],
     )
     aggregate_main()

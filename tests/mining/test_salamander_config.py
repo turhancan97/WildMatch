@@ -5,6 +5,7 @@ Its metadata keeps the original database/query ``split`` column and adds
 split value as the view folder name and mining/training expect train/ and test/.
 The file-backed checks skip when the shared dataset is not mounted.
 """
+
 from __future__ import annotations
 
 import csv
@@ -14,7 +15,15 @@ import pytest
 
 from wildmatch.mining.wildlife_dataset import load_config, resolve_image
 
-CONFIG = Path(__file__).resolve().parents[2] / "src" / "wildmatch" / "mining" / "configs" / "wildlife" / "SalamanderID2025.json"
+CONFIG = (
+    Path(__file__).resolve().parents[2]
+    / "src"
+    / "wildmatch"
+    / "mining"
+    / "configs"
+    / "wildlife"
+    / "SalamanderID2025.json"
+)
 
 
 def test_salamander_config_fields():

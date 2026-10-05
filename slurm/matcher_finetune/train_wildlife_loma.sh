@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=wildlife-loma-ft
+#SBATCH --partition=rtx4090_batch
+#SBATCH --qos=batch
+#SBATCH --gres=gpu:4
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=125G
+#SBATCH --time=23:59:00
+#SBATCH --exclude=c11,c15,c22
+#SBATCH --output=logs/wildlife-loma-ft/wildlife-loma-ft-%j.out
+#SBATCH --error=logs/wildlife-loma-ft/wildlife-loma-ft-%j.err
+
+set -euo pipefail
+source /shared/results/common/kargin/tck_miniconda3/etc/profile.d/conda.sh
+conda activate loma
+export WANDB_MODE=online
+
+benchmark_root=${WILDLIFE_BENCHMARK_ROOT:-/home/kargin/Projects/repositories/rdd-parallel-benchmark}
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "${repo_root}"
+config=${WILDLIFE_CONFIG:-${benchmark_root}/configs/wildlife/BelugaID.json}
+protocol=${WILDLIFE_PROTOCOL:-strict}
+eval "$(cd "${benchmark_root}" && python -m scripts.wildlife_config --config "${config}" --shell)"
+dataset_root=${WILDLIFE_VIEW_ROOT:-/shared/sets/datasets/vision/czechlynx/wildlife_processed/${WILDLIFE_DATASET_ID}/${protocol}}
+index_base=${WILDLIFE_INDEX_ROOT:-${benchmark_root}/outputs/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/indices}
+if [[ -n "${WILDLIFE_INDEX_ROOT:-}" ]]; then
+  index_root=${index_base}
+elif [[ -f "${index_base}/loma/strong-matches_train_combined.json" ]]; then
+  index_root="${index_base}/loma"
+else
+  # Fall back to the original shared path for existing experiments.
+  index_root=${index_base}
+fi
+train_index=${WILDLIFE_TRAIN_INDEX:-${index_root}/strong-matches_train_combined.json}
+if [[ "${protocol}" == legacy ]]; then default_val_index=${index_root}/strong-matches_test_combined.json; else default_val_index=${index_root}/strong-matches_val_combined.json; fi
+val_index=${WILDLIFE_VAL_INDEX:-${default_val_index}}
+loma_weights=${LOMA_WEIGHTS:-/shared/sets/datasets/confidential/lynx/checkpoints/loma/loma_B.pt}
+cache_dir=${WILDLIFE_LOMA_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/loma-cache}
+train_component=${WILDLIFE_LOMA_TRAIN_COMPONENT:-matcher}
+keypoint_cache=${WILDLIFE_LOMA_KEYPOINT_CACHE:-/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/loma-keypoint-cache}
+if [[ -n "${WILDLIFE_LOMA_OUTPUT:-}" ]]; then
+  output_dir=${WILDLIFE_LOMA_OUTPUT}
+elif [[ "${train_component}" == descriptor ]]; then
+  output_dir=/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/loma-descriptor-finetuned/${protocol}
+else
+  output_dir=/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/${WILDLIFE_DATASET_ID}/loma-finetuned/${protocol}
+fi
+if [[ "${train_component}" == descriptor ]]; then
+  default_run_name=${WILDLIFE_DATASET_ID}-loma-descriptor-${protocol}-finetuned
+else
+  default_run_name=${WILDLIFE_DATASET_ID}-loma-${protocol}-finetuned
+fi
+run_name=${WILDLIFE_LOMA_RUN_NAME:-${default_run_name}}
+wandb_project=${WILDLIFE_WANDB_PROJECT:-wildlife-reid-loma-${WILDLIFE_DATASET_ID}-${protocol}}
+resume_args=()
+if [[ -n "${WILDLIFE_RESUME:-}" ]]; then
+  resume_args+=(--resume "${WILDLIFE_RESUME}")
+fi
+
+echo "dataset=${WILDLIFE_DATASET_ID} protocol=${protocol}"
+echo "training index=${train_index}"
+echo "validation index=${val_index}"
+echo "output directory=${output_dir}"
+[[ -f "${train_index}" && -f "${val_index}" ]] || { echo "missing training or validation index" >&2; exit 1; }
+if [[ "${train_component}" == matcher ]]; then
+  [[ -f "${cache_dir}/manifest.json" ]] || bash "${repo_root}/slurm_scripts/build_wildlife_loma_cache.sh"
+elif [[ "${train_component}" == descriptor ]]; then
+  python -m contrastive_finetuning.build_loma_keypoint_cache \
+    --data_root "${dataset_root}" --cache_dir "${keypoint_cache}" \
+    --weights "${loma_weights}" --variant "${WILDLIFE_LOMA_VARIANT:-loma-b}" \
+    --splits train val test --resize 512 --num_keypoints 512 \
+    --batch_size "${LOMA_CACHE_BATCH_SIZE:-4}"
+else
+  echo "WILDLIFE_LOMA_TRAIN_COMPONENT must be matcher or descriptor, got ${train_component}" >&2
+  exit 2
+fi
+
+mkdir -p "${output_dir}"
+cat > "${output_dir}/wildlife_protocol.json" <<EOF
+{"dataset": "${WILDLIFE_DATASET_ID}", "protocol": "${protocol}", "train_component": "${train_component}", "train_index": "${train_index}", "validation_index": "${val_index}", "final_evaluation_split": "test"}
+EOF
+
+args=(
+  --trained_model loma --loma_train_component "${train_component}"
+  --train_index "${train_index}" --val_index "${val_index}"
+  --data_root "${dataset_root}" --loma_weights "${loma_weights}"
+  --output_dir "${output_dir}" --project "${wandb_project}"
+  --run_name "${run_name}" --split_protocol "${protocol}" --wandb_mode online
+  --loma_variant "${WILDLIFE_LOMA_VARIANT:-loma-b}" --epochs "${WILDLIFE_EPOCHS:-300}"
+  --batch_size "${WILDLIFE_BATCH_SIZE:-8}" --lr 1e-5 --weight_decay 1e-4
+  --margin 0.5 --random_negative_prob 0.3 --num_workers "${WILDLIFE_NUM_WORKERS:-10}"
+  --eval_every_epochs 10 --seed 0 --resize 512 --num_keypoints 512
+  --descriptor_microbatch_size "${WILDLIFE_LOMA_DESCRIPTOR_MICROBATCH_SIZE:-1}"
+)
+if [[ "${train_component}" == matcher ]]; then
+  args+=(--loma_cache "${cache_dir}")
+else
+  args+=(--loma_keypoint_cache "${keypoint_cache}")
+fi
+
+accelerate launch --num_processes "${WILDLIFE_NUM_PROCESSES:-4}" --num_machines 1 \
+  --mixed_precision no --dynamo_backend no \
+  -m contrastive_finetuning.train_loma_matches \
+  "${args[@]}" "${resume_args[@]}"

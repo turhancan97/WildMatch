@@ -1,6 +1,6 @@
 import torch
 
-from contrastive_finetuning.train_common import batch_features, run_lg_partitioned
+from wildmatch.matcher_finetune.train_common import batch_features, run_lg_partitioned
 
 
 class RecordingMatcher:

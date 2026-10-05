@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from contrastive_finetuning.train_by_lg_matches import (
+from wildmatch.matcher_finetune.train_by_lg_matches import (
     configure_rdd_trainable_component,
     set_rdd_training_mode,
 )

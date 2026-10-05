@@ -107,7 +107,7 @@ class CacheSpec:
             raise ValueError(
                 f"keypoint cache at {cache_root} was built with different settings:\n"
                 f"{lines}\n"
-                "  Rebuild it (contrastive_finetuning.build_keypoint_cache) or fix the flags."
+                "  Rebuild it (wildmatch.matcher_finetune.build_keypoint_cache) or fix the flags."
             )
 
 
@@ -136,7 +136,7 @@ class KeypointCache:
         if not manifest_path.exists():
             raise FileNotFoundError(
                 f"no {MANIFEST_NAME} in {self.root} — not a keypoint cache "
-                "(build one with `python -m contrastive_finetuning.build_keypoint_cache`)"
+                "(build one with `python -m wildmatch.matcher_finetune.build_keypoint_cache`)"
             )
         with open(manifest_path) as f:
             self.manifest = json.load(f)

@@ -70,15 +70,15 @@ import torch.nn.functional as F
 from torchvision import transforms
 from tqdm.auto import tqdm
 
-from contrastive_finetuning.loading import IndexAssignedTripletDataset, get_loader
-from contrastive_finetuning.models import build_masked_lg
-from contrastive_finetuning.train_by_lg_matches import lg_confidence_loss
-from contrastive_finetuning.train_common import (
+from wildmatch.matcher_finetune.loading import IndexAssignedTripletDataset, get_loader
+from wildmatch.matcher_finetune.models import build_masked_lg
+from wildmatch.matcher_finetune.train_by_lg_matches import lg_confidence_loss
+from wildmatch.matcher_finetune.train_common import (
     _lg_scores, batch_features, extract_train, resize_long_side, seed_all,
 )
 from rdd.RDD.RDD import build as build_rdd_from_conf
 from rdd.RDD.utils import read_config
-from rdd_patch.lightglue_masked import LightGlueMasked
+from wildmatch.matcher_finetune.rdd_patch.lightglue_masked import LightGlueMasked
 
 # A data-driven CLI script (see Usage above), not a pytest module: its test_*
 # functions take the collected pass as arguments, so pytest must not collect them.

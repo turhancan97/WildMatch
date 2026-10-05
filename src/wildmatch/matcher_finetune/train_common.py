@@ -14,13 +14,13 @@ from tqdm.auto import tqdm
 from torch.utils.data import Subset
 
 from rdd.RDD.utils import to_pixel_coords
-from contrastive_finetuning.keypoint_cache import is_cached_batch, unpad_cached_features
-from contrastive_finetuning.loading import (
+from wildmatch.matcher_finetune.keypoint_cache import is_cached_batch, unpad_cached_features
+from wildmatch.matcher_finetune.loading import (
     PseudoAccuracyDataset,
     collate_pseudo_accuracy_images,
     get_loader,
 )
-from contrastive_finetuning.process import align_tensors_to_max_length
+from wildmatch.matcher_finetune.process import align_tensors_to_max_length
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ def add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--keypoint_cache", type=Path, default=None,
         help="Directory holding a prebuilt RDD keypoint cache (see "
-             "`python -m contrastive_finetuning.build_keypoint_cache`). When set, "
+             "`python -m wildmatch.matcher_finetune.build_keypoint_cache`). When set, "
              "every RDD detection — training steps, both eval paths, and the "
              "pre-training measurement passes — is replaced by a lookup of "
              "precomputed keypoints/descriptors, and no image is decoded at all. "
@@ -484,7 +484,7 @@ def _lg_relaxed_scores(pred: dict, q_data: dict, g_data: dict) -> torch.Tensor:
     filters still has a score and a gradient, which is the point — the filtered
     `_lg_scores` is exactly 0 with zero gradient for such pairs (about 90% of
     negatives and a few percent of positives in the pre-2026-09-29 runs).
-    Same formula as contrastive_finetuning.loma_backend.train_pair_score.
+    Same formula as wildmatch.matcher_finetune.loma_backend.train_pair_score.
 
     Means and maxima run over real keypoints only (`masks`), each image divided
     by its own count. LightGlueForTraining already gives padded entries zero

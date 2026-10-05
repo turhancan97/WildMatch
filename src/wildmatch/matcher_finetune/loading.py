@@ -274,7 +274,7 @@ class IndexAssignedTripletDataset(Dataset):
             RDD's precomputed keypoints/descriptors for each frame instead of
             the decoded image, so a frozen-RDD run skips both the JPEG decode
             and the detection forward (see
-            contrastive_finetuning/keypoint_cache.py). The lookup uses the
+            matcher_finetune/keypoint_cache.py). The lookup uses the
             frame that is actually LOADED — i.e. the temporally jittered one
             when frame_jitter_* is on, not the index frame `meta` reports —
             so the features always describe the image the model would have

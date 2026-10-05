@@ -2,13 +2,13 @@
 Precompute RDD keypoints/descriptors for every frame, once, into a
 `KeypointCache` a frozen-RDD run can read instead of re-running detection.
 
-See contrastive_finetuning/keypoint_cache.py for what is stored and why it is
+See matcher_finetune/keypoint_cache.py for what is stored and why it is
 sound only while RDD is frozen.
 
 Typical use — cache the whole dataset (train + test), which covers any index
 and any `--random_negative_prob`::
 
-    python -m contrastive_finetuning.build_keypoint_cache \
+    python -m wildmatch.matcher_finetune.build_keypoint_cache \
         --data_root /shared/.../lynx-ds-Jul-20 \
         --cache_root /shared/.../lynx-ds-Jul-20-extracted-rdd \
         --rdd_weights rdd/weights/RDD-v2.pth --resize 512 --top_k 512
@@ -38,11 +38,11 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from tqdm import tqdm
 
-from contrastive_finetuning.keypoint_cache import (
+from wildmatch.matcher_finetune.keypoint_cache import (
     CacheSpec, KeypointCache, MANIFEST_NAME, weights_fingerprint,
 )
-from contrastive_finetuning.models import build_rdd
-from contrastive_finetuning.train_common import _unwrap, extract_train, resize_long_side
+from wildmatch.matcher_finetune.models import build_rdd
+from wildmatch.matcher_finetune.train_common import _unwrap, extract_train, resize_long_side
 
 
 def parse_args() -> argparse.Namespace:

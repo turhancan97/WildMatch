@@ -21,14 +21,14 @@ from torchvision import transforms
 
 from torch.utils.data import Subset
 
-from contrastive_finetuning.keypoint_cache import is_cached_batch, open_cache_for_run
-from contrastive_finetuning.loading import (
+from wildmatch.matcher_finetune.keypoint_cache import is_cached_batch, open_cache_for_run
+from wildmatch.matcher_finetune.loading import (
     IndexAssignedTripletDataset,
     ShapeBucketBatchSampler,
     get_loader,
 )
-from contrastive_finetuning.models import build_rdd, build_masked_lg
-from contrastive_finetuning.train_common import (
+from wildmatch.matcher_finetune.models import build_rdd, build_masked_lg
+from wildmatch.matcher_finetune.train_common import (
     TRAINING_SCORE_ID, _flatten_candidates, _lg_relaxed_scores, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
     add_common_args, batch_features, build_pseudo_accuracy_loader, build_wandb_tags,
     eval_epoch, eval_pseudo_accuracy, features_from_batch, resolve_trained_models,
@@ -428,7 +428,7 @@ def parse_args() -> argparse.Namespace:
              "candidate pool being chunked to --batch_size (see --eval_batch_size in "
              "add_common_args) — against --lg_weights, print per-video mismatches, and exit "
              "before the training loop starts: no optimizer step, no checkpoint written. "
-             "Unlike contrastive_finetuning.eval_video_accuracy's standalone "
+             "Unlike wildmatch.matcher_finetune.eval_video_accuracy's standalone "
              "reimplementation, this reuses train_by_lg_matches' own code path end to end, so "
              "it reproduces a training run's logged val/video_accuracy exactly instead of "
              "approximating it. --train_index is still required (the model/optimizer are "

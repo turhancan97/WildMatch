@@ -10,7 +10,7 @@ import torch
 from safetensors.torch import save_file
 from torch import nn
 
-from contrastive_finetuning.loma_backend import (
+from wildmatch.matcher_finetune.loma_backend import (
     checkpoint_files,
     configure_loma_trainable_component,
     describe_keypoints_with_grad,
@@ -20,10 +20,10 @@ from contrastive_finetuning.loma_backend import (
     set_loma_train_mode,
     train_pair_score,
 )
-from contrastive_finetuning.loma_cache import LomaFeatureCache
-from contrastive_finetuning.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
-import contrastive_finetuning.train_loma_matches as loma_train
-from contrastive_finetuning.train_loma_matches import resize_long_side
+from wildmatch.matcher_finetune.loma_cache import LomaFeatureCache
+from wildmatch.matcher_finetune.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
+import wildmatch.matcher_finetune.train_loma_matches as loma_train
+from wildmatch.matcher_finetune.train_loma_matches import resize_long_side
 
 
 class FakeLoMa(nn.Module):

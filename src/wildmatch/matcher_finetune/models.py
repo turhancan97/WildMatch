@@ -2,7 +2,7 @@ from pathlib import Path
 
 import torch
 
-from rdd_patch.lightglue_masked_training import LightGlueForTraining
+from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import LightGlueForTraining
 from rdd.RDD.RDD import build
 from rdd.RDD.utils import read_config
 

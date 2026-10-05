@@ -9,7 +9,7 @@ adds one thing: a match score that is always differentiable.
 LightGlueMasked reports its matches as `matches`/`scores` — ragged, per-batch-item
 lists holding only the entries that cleared `filter_threshold`. A pair with no
 surviving match yields an *empty* tensor, and callers that fall back to a
-literal zero for it (see _lg_scores in contrastive_finetuning/train_common.py)
+literal zero for it (see _lg_scores in matcher_finetune/train_common.py)
 end up with a loss term that has no grad_fn. Backward then fires no gradient
 hook at all, so under DDP the reducer never finishes the iteration and the next
 step aborts with "Expected to have finished reduction in the prior iteration
@@ -41,7 +41,7 @@ aggregate (the all-False mask still has a grad_fn); a single entry that fails
 matter what consumes it downstream. `assignment_scores[b, i, j]` isn't
 gated by that check at all — indexing a specific (i, j) is a plain read of an
 already-differentiable tensor. That's what
-contrastive_finetuning/train_by_lg_matches.py's `distill_correspondence_loss`
+matcher_finetune/train_by_lg_matches.py's `distill_correspondence_loss`
 needs: a way to push a *specific* currently-unmatched query point toward a
 *specific* candidate (from a frozen reference model's own matches, used as a
 pseudo-label) even when every point in the pair currently loses the mutual

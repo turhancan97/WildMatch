@@ -1,4 +1,4 @@
-from contrastive_finetuning.train_common import group_pseudo_accuracy_entries
+from wildmatch.matcher_finetune.train_common import group_pseudo_accuracy_entries
 
 
 def entry(n_pos, n_neg=5, index=0):

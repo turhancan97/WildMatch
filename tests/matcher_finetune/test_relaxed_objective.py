@@ -24,8 +24,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from contrastive_finetuning.loma_backend import train_pair_score
-from contrastive_finetuning.train_by_lg_matches import (
+from wildmatch.matcher_finetune.loma_backend import train_pair_score
+from wildmatch.matcher_finetune.train_by_lg_matches import (
     OPTIMIZER_ID,
     TRAIN_STATE_FILE,
     accumulation_and_resume_errors,
@@ -35,13 +35,13 @@ from contrastive_finetuning.train_by_lg_matches import (
     train_state_identity,
     write_train_state,
 )
-from contrastive_finetuning.train_common import (
+from wildmatch.matcher_finetune.train_common import (
     TRAINING_SCORE_ID,
     _lg_relaxed_scores,
     _lg_scores,
     batch_features,
 )
-from rdd_patch.lightglue_masked_training import (
+from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import (
     MASKED_LOG_PROB,
     double_softmax,
     sigmoid_log_double_softmax,
@@ -141,7 +141,7 @@ def test_assignment_mask_equals_the_unpadded_computation():
 
 @needs_weights
 def test_lightglue_never_matches_padding_and_scores_padded_pairs_like_unpadded():
-    from contrastive_finetuning.models import build_masked_lg
+    from wildmatch.matcher_finetune.models import build_masked_lg
 
     lg = build_masked_lg(torch.device("cpu"), weights=str(LG_WEIGHTS))
     g = torch.Generator().manual_seed(4)
@@ -200,7 +200,7 @@ def test_margin_loss_keeps_every_triplet_including_filtered_empty_positives():
 
 @needs_weights
 def test_pairs_without_surviving_matches_still_train():
-    from contrastive_finetuning.models import build_masked_lg
+    from wildmatch.matcher_finetune.models import build_masked_lg
 
     lg = build_masked_lg(torch.device("cpu"), weights=str(LG_WEIGHTS), init_threshold=1.0)  # nothing survives
     lg.train()
@@ -350,8 +350,8 @@ def test_accelerate_checkpoint_restores_optimizer_and_scheduler(tmp_path):
 def test_pseudo_eval_routes_cached_batches_to_the_vectorized_path():
     from torch.utils.data import default_collate
 
-    from contrastive_finetuning.loading import collate_pseudo_accuracy_images
-    from contrastive_finetuning.train_common import _is_live_pseudo_batch
+    from wildmatch.matcher_finetune.loading import collate_pseudo_accuracy_images
+    from wildmatch.matcher_finetune.train_common import _is_live_pseudo_batch
 
     cached_sample = ({"keypoints": torch.zeros(4, 2)}, {"keypoints": torch.zeros(6, 4, 2)}, 0)
     live_sample = (torch.zeros(3, 8, 8), [torch.zeros(3, 8, 10), torch.zeros(3, 12, 8)], 0)
@@ -365,7 +365,7 @@ def test_pseudo_eval_routes_cached_batches_to_the_vectorized_path():
 
 # ── checkpoint retention (--keep_every) ───────────────────────────────────────
 def test_keep_every_retains_milestones_final_and_newest(tmp_path):
-    from contrastive_finetuning.train_by_lg_matches import is_retained_epoch, prune_previous_checkpoint
+    from wildmatch.matcher_finetune.train_by_lg_matches import is_retained_epoch, prune_previous_checkpoint
 
     identity = train_state_identity(_args(epochs=12), num_processes=4)
     for epoch in range(12):
@@ -380,7 +380,7 @@ def test_keep_every_retains_milestones_final_and_newest(tmp_path):
 
 
 def test_keep_every_never_deletes_foreign_or_mismatched_directories(tmp_path):
-    from contrastive_finetuning.train_by_lg_matches import prune_previous_checkpoint
+    from wildmatch.matcher_finetune.train_by_lg_matches import prune_previous_checkpoint
 
     identity = train_state_identity(_args(epochs=300), num_processes=4)
     (tmp_path / "epoch_06").mkdir()  # no train_state.json, e.g. an archived pre-2026-09-29 checkpoint

@@ -5,7 +5,7 @@ import torch
 from accelerate.data_loader import prepare_data_loader
 from torch.utils.data import DataLoader
 
-from contrastive_finetuning.loading import (
+from wildmatch.matcher_finetune.loading import (
     IndexAssignedTripletDataset,
     ShapeBucketBatchSampler,
 )

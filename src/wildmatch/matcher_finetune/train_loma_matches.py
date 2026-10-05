@@ -31,10 +31,10 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm.auto import tqdm
 
-from contrastive_finetuning.loading import IndexAssignedTripletDataset
-from contrastive_finetuning.loma_cache import LomaFeatureCache
-from contrastive_finetuning.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
-from contrastive_finetuning.loma_backend import (
+from wildmatch.matcher_finetune.loading import IndexAssignedTripletDataset
+from wildmatch.matcher_finetune.loma_cache import LomaFeatureCache
+from wildmatch.matcher_finetune.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
+from wildmatch.matcher_finetune.loma_backend import (
     LOMA_TRAIN_COMPONENTS,
     LoMaDescriptorTrainingModel,
     build_loma,

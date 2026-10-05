@@ -14,14 +14,14 @@ import torch
 from PIL import Image
 from tqdm.auto import tqdm
 
-from contrastive_finetuning.loma_backend import build_loma
-from contrastive_finetuning.loma_keypoint_cache import (
+from wildmatch.matcher_finetune.loma_backend import build_loma
+from wildmatch.matcher_finetune.loma_keypoint_cache import (
     CACHE_FORMAT,
     MANIFEST_NAME,
     LomaKeypointCache,
     module_fingerprint,
 )
-from contrastive_finetuning.train_loma_matches import load_image
+from wildmatch.matcher_finetune.train_loma_matches import load_image
 
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}

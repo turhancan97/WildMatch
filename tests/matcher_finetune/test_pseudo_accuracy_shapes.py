@@ -1,6 +1,6 @@
 import torch
 
-from contrastive_finetuning.loading import (
+from wildmatch.matcher_finetune.loading import (
     PseudoAccuracyDataset,
     collate_pseudo_accuracy_images,
     get_loader,

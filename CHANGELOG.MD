@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration plan decided (`notes/integration_plan.md` section 5, user decisions
+  D1-D8; nothing implemented): `git filter-repo` + `--allow-unrelated-histories` merge in place of
+  `git subtree`, so `blame` works on the final paths; the user adds `czechlynx_protocol.sh` to the
+  fine-tuning reference branch; a torch-2.8 spike in the `wildmatch` env decides whether a separate
+  training env is needed; the confidential-lynx pipeline, mining's `*_evaluate.py`,
+  `helios_scripts/`/`debug/` and old training strategies are not merged; from `piotr-wip` only the
+  few-shot scripts, which are Piotr's (`eb04345`), mixed with shared-file changes and branched before
+  the reference, so they are a later hand port that needs his consent to relicense; Apache-2.0
+  with NOTICE entries; RDD vendored from the checkout training used (`86f0e38`) and LoMa pinned
+  (installed: `5e541b8` in env `loma`, `7043bac` in env `rdd`; chosen by parity); parity ladder
+  L0-L6 on the same GPU type.
 - 2026-10-05: `notes/integration_plan.md`, a draft plan (read-only survey, nothing implemented) for
   merging mining (`rdd-parallel-benchmark`) and matcher fine-tuning (`lynx-finetuning`) into the
   `mining/` and `matcher_finetune/` slots. User decision: the reference is each repository's

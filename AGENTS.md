@@ -46,9 +46,17 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 - src/wildmatch/paths.py, src/wildmatch/data/registry.py: path profiles and registry entries
   for code outside Hydra (see "Paths and the dataset registry").
 - src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
-  later from `rdd-parallel-benchmark` and `lynx-finetuning`. Draft integration plan (not started):
+  later from `rdd-parallel-benchmark` and `lynx-finetuning`. Integration plan (planned, not started):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
   branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`; user decision).
+  User decisions D1-D8 (2026-10-05, plan section 5): `git filter-repo` + unrelated-histories merge
+  instead of subtree; the user commits `czechlynx_protocol.sh` to the fine-tuning reference; a
+  torch-2.8 environment spike before any separate training env; the confidential-lynx pipeline,
+  mining's `*_evaluate.py`, `helios_scripts/`/`debug/` and old training strategies stay behind;
+  from `piotr-wip` only the few-shot scripts (Piotr's commit `eb04345`: a hand port, and his consent
+  is needed for relicensing); Apache-2.0 with NOTICE entries for RDD and `rdd_patch`; RDD vendored
+  from `86f0e38`, LoMa pinned as a git dependency (`5e541b8` or `7043bac`, chosen by parity);
+  parity ladder L0-L6, L6 (every `weights.yaml` checkpoint evaluates unchanged) mandatory.
 - slurm/: `sweep_task.sbatch` (one sweep array element), `evaluate.sbatch`,
   `finetune_backbone.sbatch`, and `eval_loma_epoch_curve.sh` (training-cost ablation).
 - paper/: paper and project-page tooling run from a checkout (not part of the package):

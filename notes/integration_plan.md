@@ -1,7 +1,7 @@
-# Integration plan (draft): mining and matcher fine-tuning into `wildmatch`
+# Integration plan: mining and matcher fine-tuning into `wildmatch`
 
-Status: **draft, not started** (survey 2026-10-05, read-only; nothing in either sibling repository
-was changed by the survey). **Reference (user decision 2026-10-05): the `feat/wildlife-reid-pipeline`
+Status: **planned, not started**; decisions D1-D8 in section 5 (user, 2026-10-05). The survey
+(2026-10-05) was read-only: nothing in either sibling repository was changed. **Reference (user decision 2026-10-05): the `feat/wildlife-reid-pipeline`
 branch of both repositories, as pushed by the user that day** (mining `4f29292`, fine-tuning
 `319477e`); the adaptation starts from those commits. Piotr's `piotr-wip` branches (and mining's
 `piotr/czechlynx`) are not part of the reference. Fills the slots agreed in the refactor plan
@@ -137,6 +137,77 @@ Decide by a parity test, not by preference.
    `checkpoint_root`), or move under the `wildmatch` path layout?
 8. Which commit produced the ~2026-09-05 wildlife checkpoints and Nyala's
    `model__actual_nyala.safetensors`?
+
+Questions 1-5 were answered on 2026-10-05 (section 5). Still open: 6-8, and whether `319477e` is
+exactly the code of the relaxed and joint runs (checked by parity level L5, not by asking).
+
+## 5. Decisions and design (user, 2026-10-05)
+
+Section 3 gives the order of the phases; this section takes precedence where they differ.
+
+**Decisions.**
+
+| # | Question | Decision |
+| --- | --- | --- |
+| D1 | Merge mechanics | `git filter-repo` on a throwaway clone of each reference branch: move paths to their final place (`src/wildmatch/{mining,matcher_finetune}/`, `slurm/`, `tests/`, `notes/`), remove the paths that stay behind and the ~30 MB of deleted RDD assets from history, then `git merge --allow-unrelated-histories` into a phase branch. This replaces `git subtree` + staging prefix (same goal: history preserved, and `git blame`/`log` work on the new paths). The sibling repositories and their remotes are not touched. |
+| D2 | `czechlynx_protocol.sh` | The user commits it to lynx-finetuning `feat/wildlife-reid-pipeline` (`git add -f`). The fine-tuning reference then becomes that new commit (still to be recorded here); `319477e` stays the reference for everything else in it. |
+| D3 | Environment | A spike first (about one day): mining and ~50 training steps in the `wildmatch` uv env (torch 2.8/cu126) against the old conda envs (torch 2.13/cu130) on the same GPU type, measured with parity levels L3-L5. If it fails, a separate, locked training environment. Decided by the measurement. |
+| D4 | Stays behind | The confidential-lynx `lynx_*` pipeline (except the three helpers that are still imported: `FrameFeat`, `load_cached_feat`, `sample_frames`), mining's `*_evaluate.py` (duplicates `wildmatch evaluate`), `helios_scripts/` and `debug/`, and the older training strategies (the pre-relaxed/filtered recipe paths). They stay readable in the sibling repositories' history. |
+| D5 | From `piotr-wip` | **Only the few-shot scripts** (mining `eb04345`: `scripts/wildlife_fewshot.py`, `scripts/czechlynx_fewshot.py`, `slurm_scripts/fewshot/*`, `tests/test_wildlife_fewshot.py`). The env-var path layer, `MIGRATION.md`, the pip freezes and the migration pack scripts are not taken. See the caveats below. |
+| D6 | Licence | Apache-2.0, like `wildmatch`, with `NOTICE`/`THIRD_PARTY_LICENSES.md` entries for the vendored RDD (xtcpete/rdd) and `rdd_patch` (modified cvg/LightGlue), both Apache-2.0. Piotr is credited as the owner of the remotes and as co-developer. |
+| D7 | RDD and LoMa | Vendor the RDD checkout that training used (`turhancan97/rdd`, `lynx_analysis`, `86f0e38`, with its two harmless local edits) once inside the package, and check mining's results against it (mining's own `RDD/` copy differs in five files). LoMa becomes a git dependency pinned to the commit that training used. Installed on 2026-10-05: `lomatch @ 5e541b8` in the `loma` env (pip from git), and an editable checkout at `7043bac` in the `rdd` env. The commit is chosen by parity L5, not assumed. |
+| D8 | This plan | Written here, then `main` pushed after the user's review. |
+
+**Caveats found while recording D5 and D6.** The few-shot code sits in one commit by Piotr Kubaty
+(`eb04345 migrate`, 2026-09-22, 79 files) and is not the user's. (1) It is mixed with changes to
+shared files (`wildlife_mine.py`, `czechlynx_mine.py`, chunked mining, `.gitignore`, the Slurm
+wrappers), and it branched from `1afcb73` (2026-09-08), before the reference `4f29292`. So the
+few-shot files have to be ported onto the reference by hand and may depend on its mining changes.
+This is a port, not a cherry-pick, and comes in a phase of its own after mining. (2) Under D6 the
+reference code is all the user's, but these files are Piotr's. Before they are relicensed as
+Apache-2.0 Piotr has to agree (or the few-shot part is left out).
+
+**Design.**
+- **Scope moved:** fine-tuning trainers (`train_by_lg_matches.py`, `train_loma_matches.py`),
+  `train_common`, `loma_backend`, loading, caches, `rdd_patch/`, tests, the WILDLIFE/CZECHLYNX docs;
+  mining's dataset view, cache, mine and aggregate scripts plus the three `lynx_benchmark.py` helpers.
+- **Formats stay byte-compatible:** the mining view layout and the index JSON
+  (`strong-matches_<split>_combined.json`, with view-relative paths that the paper checkpoints were
+  trained on), the checkpoint folder layout under `checkpoint_root`, and the protocol-JSON keys read
+  by `src/wildmatch/matchers/vismatch_checkpoints.py`. Provenance fields (commit, dirty, seed) are
+  only added, after checking that the loader accepts extra protocol keys. Existing indices and
+  checkpoints stay where they are.
+- **Configuration and CLI:** Hydra groups `conf/matcher_finetune/{rdd,loma}.yaml` (presets
+  `matcher`, `descriptor`, `joint`; relaxed objective by default) and `conf/mining/{rdd,loma}.yaml`;
+  `wildmatch mine <view|cache|run|aggregate>` and `wildmatch finetune-matcher`; Slurm scripts in
+  `slurm/`, with mining arrays using the sweep's frozen-submission pattern. Datasets come from the
+  registry. Generated views are tested against the existing ones before the mining JSON configs are
+  removed.
+- **Resize helpers** import `wildmatch.matchers.vismatch_preprocessing`, with a bit-identity test
+  that always runs.
+
+**Parity ladder** (old code in the old env vs new code, on the **same GPU type**; Vismatch features
+differ between H100 and RTX 4090, see AGENTS.md "Known issues"):
+
+| Level | Check |
+| --- | --- |
+| L0 | The sibling repositories' tests pass inside `wildmatch` on CPU. |
+| L1 | Training resize == `resize_long_side_divisible`, bit for bit (always run). |
+| L2 | Registry-built views == the existing views for the eight paper datasets. |
+| L3 | Extracted mining features == the old caches. |
+| L4 | SalamanderID2025 LoMa mining gives an identical `strong-matches_*_combined.json`. RDD mining only matters for Salamander, WhaleShark and Nyala (the rest are LoMa-mined). |
+| L5 | ~50 training steps at seed 0 give the same loss trace, and tensors within tolerance (this also pins the LoMa commit, D7). |
+| L6 | **Mandatory:** every checkpoint in `conf/weights.yaml` evaluates unchanged (existing sweep machinery, tolerances in `notes/parity_reference.md`). |
+
+**Process.** One branch per phase, in a worktree on `/shared` (home has a 61,440 MB quota; keep
+about 1 GB free). Never edit the main checkout while Slurm sweeps run from it. Training outputs,
+caches and W&B stay off home. Never touch the Hub checkpoints (`turhancan97/wildmatch-checkpoints`)
+or the paper snapshot. The paper is frozen; nothing here changes it.
+
+**Phase order (revised).** 0: D2 commit by the user; Piotr's consent for the few-shot files.
+1: fine-tuning via filter-repo + merge. 2: make it a package module (vendored RDD, pinned LoMa,
+paths, CLI). 3: mining, same route. 4: environment spike (D3). 5: parity L0-L6 and provenance.
+6: few-shot port (if Piotr agrees).
 
 Effort estimate: phases 1-3 a few days of mostly mechanical work; phases 4-5 dominate (GPU parity
 runs on the cluster). Nothing here affects the submitted paper.

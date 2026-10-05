@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration parity L4 holds (job 525384): on 24 seeded-random SalamanderID2025 train
+  queries the merged miners under torch 2.8, reading the paper's feature caches, select exactly the
+  positives and negatives of the old code and of the paper's per-query files, for LoMa and
+  RDD-LightGlue (scores within 3e-8). Scripts in `notes/integration_parity/`.
 - 2026-10-05: Piotr Kubaty agreed to moving the fine-tuning, mining and few-shot code into this
   repository (relayed by the user; the research group shares the copyright, which `NOTICE` already
   names as "The WildMatch Authors"). `NOTICE` and `THIRD_PARTY_LICENSES.md` now credit the vendored

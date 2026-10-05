@@ -67,9 +67,10 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `tests/matcher_finetune/test_launch.py` checks it against `czechlynx_protocol.sh` and, on the
   cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
   4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers
-  stay in `slurm/matcher_finetune/` as reference (they no longer run). Still to do: the torch-2.8
-  spike (D3, L3-L5) and L6; matcher-only LoMa caches are still built by the mining repository. About half of its surviving lines are Piotr Kubaty's (30 of 48 commits), so the
-  Apache-2.0 release needs his consent (asked by the user 2026-10-05).
+  stay in `slurm/matcher_finetune/` as reference (they no longer run). Environment: one torch-2.8
+  env (D3, `notes/integration_parity/`); still to do: the full-RDD outcome check and L6. About half
+  of its surviving lines are Piotr Kubaty's (30 of 48 commits); he agreed to the move (relayed by the
+  user 2026-10-05; the research group shares the copyright, `NOTICE`: "The WildMatch Authors").
 - src/wildmatch/mining/: pair mining merged with history from `rdd-parallel-benchmark` `4f29292`
   (phase 3, 2026-10-05, same branch): wildlife and CzechLynx view builders (`*_dataset.py`), miners
   (`*_mine.py`), aggregators, `wildlife_config` with the mining dataset configs
@@ -83,15 +84,16 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `tests/mining/`, notes in `notes/mining/`, notebooks in `notebooks/mining/`. Not merged (D4): the
   confidential-lynx query/two-stage/strong-matches scripts, `*_evaluate.py`, `debug/`,
   `helios_scripts/`, and mining's own `RDD/` (a strict subset of `wildmatch.vendor.rdd`, which now
-  also vendors `RDD/matchers/`). Piotr Kubaty wrote 1,066 of the 3,330 moved mining lines. Integration plan (planned, not started):
+  also vendors `RDD/matchers/`). Piotr Kubaty wrote 1,066 of the 3,330 moved mining lines.
+  Integration plan (in progress on the `integrate/*` branches):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
   branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`, now `6958d3d` with `czechlynx_protocol.sh` tracked; user decision).
   User decisions D1-D8 (2026-10-05, plan section 5): `git filter-repo` + unrelated-histories merge
   instead of subtree; the user commits `czechlynx_protocol.sh` to the fine-tuning reference; a
   torch-2.8 environment spike before any separate training env; the confidential-lynx pipeline,
   mining's `*_evaluate.py`, `helios_scripts/`/`debug/` and old training strategies stay behind;
-  from `piotr-wip` only the few-shot scripts (Piotr's commit `eb04345`: a hand port, and his consent
-  is needed for relicensing); Apache-2.0 with NOTICE entries for RDD and `rdd_patch`; RDD vendored
+  from `piotr-wip` only the few-shot scripts (Piotr's commit `eb04345`: a hand port; he agreed
+  2026-10-05); Apache-2.0 with NOTICE entries for RDD and `rdd_patch`; RDD vendored
   from `86f0e38`, LoMa pinned as a git dependency (`5e541b8` or `7043bac`, chosen by parity);
   parity ladder L0-L6, L6 (every `weights.yaml` checkpoint evaluates unchanged) mandatory.
 - slurm/: `sweep_task.sbatch` (one sweep array element), `evaluate.sbatch`,

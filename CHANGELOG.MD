@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: Piotr Kubaty agreed to moving the fine-tuning, mining and few-shot code into this
+  repository (relayed by the user; the research group shares the copyright, which `NOTICE` already
+  names as "The WildMatch Authors"). `NOTICE` and `THIRD_PARTY_LICENSES.md` now credit the vendored
+  RDD subset and the modified LightGlue copies (`rdd_patch/`, `mining/lightglue_masked.py`), both
+  Apache-2.0, as plan D6 required. Integration phase 6 (few-shot port) is unblocked.
 - 2026-10-05 (branch `integrate/mine-cli`): `wildmatch mine <plan|view|cache|check|task|aggregate|submit>`
   (`src/wildmatch/mining/launch.py`, `slurm/mine.sbatch`), a port of the mining wrappers and of the
   feature-cache wrappers: views, caches and index prefixes from the registry and the path profile, the

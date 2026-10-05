@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05 (branch `docs/fewshot-page`): project page `Reproduce › Few-shot views`
+  (`docs/reproduce/fewshot.md`, user decisions): an extension not in the paper, how-to only. It
+  explains how a view is built (exact budget, proportional, two-image minimum, nested seeds, frame
+  names shared with the full view's caches, the minimum's effect on small datasets), and the commands
+  `wildmatch mine --fraction/--seed`, `finetune-matcher matcher_finetune.fewshot.*` and
+  `wildmatch evaluate` on the metadata copy's `split_frac<F>_seed<S>` column, which shrinks the
+  gallery to the kept training images. Every command was dry-run; the evaluate command's splits were
+  loaded (HyenaID2022 at 1/4: 625 gallery images, 630 queries). Piotr's existing few-shot results are
+  not shown (unmerged collection-level evaluation, older recipe). Linked from the Reproduce overview.
 - 2026-10-05: integration cleanup (user decision): the seven integration worktrees and their six local
   branches (all merged in pull requests #3-#5), the integration uv env
   `$UV_ENV_ROOT/wildmatch-integration`, the filtered history clones and the spike outputs (parity

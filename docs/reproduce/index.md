@@ -15,6 +15,9 @@ reads the previous step's outputs from the storage layout set by the path profil
     scripts in `slurm/` target one specific cluster; adjust partitions and the environment
     location for yours.
 
+[Few-shot views](fewshot.md) run the same three steps on a reduced training split; they are an
+extension and not part of the paper.
+
 ## Environment
 
 One environment with pinned dependencies (Python 3.12) runs all three steps:

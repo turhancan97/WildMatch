@@ -108,4 +108,5 @@ nav:
       - Pair mining: reproduce/mining.md
       - Matcher fine-tuning: reproduce/finetuning.md
       - Evaluation: reproduce/probing.md
+      - Few-shot views: reproduce/fewshot.md
   - Paper & Code: paper.md

@@ -48,7 +48,7 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 - src/wildmatch/mining/, src/wildmatch/matcher_finetune/: empty slots for the code merged in
   later from `rdd-parallel-benchmark` and `lynx-finetuning`. Integration plan (planned, not started):
   `notes/integration_plan.md`; reference = both repositories' `feat/wildlife-reid-pipeline`
-  branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`; user decision).
+  branch as pushed on 2026-10-05 (mining `4f29292`, fine-tuning `319477e`, now `6958d3d` with `czechlynx_protocol.sh` tracked; user decision).
   User decisions D1-D8 (2026-10-05, plan section 5): `git filter-repo` + unrelated-histories merge
   instead of subtree; the user commits `czechlynx_protocol.sh` to the fine-tuning reference; a
   torch-2.8 environment spike before any separate training env; the confidential-lynx pipeline,

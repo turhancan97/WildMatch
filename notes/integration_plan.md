@@ -84,8 +84,8 @@ plus `czechlynx_protocol.json` / `wildlife_protocol.json`, under
 ## 3. Proposed phases (each reviewed before the next, like the refactor)
 
 **Phase 0 - preserve and decide (no code moves).**
-- ~~Commit the uncommitted lynx-finetuning work~~ done 2026-10-05 (`319477e`). Still to do: commit
-  `czechlynx_protocol.sh` to the reference branch.
+- ~~Commit the uncommitted lynx-finetuning work~~ done 2026-10-05 (`319477e`); ~~commit
+  `czechlynx_protocol.sh`~~ done 2026-10-05 (`6958d3d`).
 - Licence for both repos (Apache-2.0 to match `wildmatch`?); attribution (Piotr's commits on other
   branches, the remote's owner).
 - Decide the open questions in section 4.
@@ -150,7 +150,7 @@ Section 3 gives the order of the phases; this section takes precedence where the
 | # | Question | Decision |
 | --- | --- | --- |
 | D1 | Merge mechanics | `git filter-repo` on a throwaway clone of each reference branch: move paths to their final place (`src/wildmatch/{mining,matcher_finetune}/`, `slurm/`, `tests/`, `notes/`), remove the paths that stay behind and the ~30 MB of deleted RDD assets from history, then `git merge --allow-unrelated-histories` into a phase branch. This replaces `git subtree` + staging prefix (same goal: history preserved, and `git blame`/`log` work on the new paths). The sibling repositories and their remotes are not touched. |
-| D2 | `czechlynx_protocol.sh` | The user commits it to lynx-finetuning `feat/wildlife-reid-pipeline` (`git add -f`). The fine-tuning reference then becomes that new commit (still to be recorded here); `319477e` stays the reference for everything else in it. |
+| D2 | `czechlynx_protocol.sh` | The user commits it to lynx-finetuning `feat/wildlife-reid-pipeline` (`git add -f`). Done 2026-10-05: `6958d3d` (on top of `319477e`; file SHA-256 `1d047ac9...`, the on-disk version the training scripts source, not piotr-wip's older one; its 7 tests pass). **The fine-tuning reference is now `6958d3d`.** |
 | D3 | Environment | A spike first (about one day): mining and ~50 training steps in the `wildmatch` uv env (torch 2.8/cu126) against the old conda envs (torch 2.13/cu130) on the same GPU type, measured with parity levels L3-L5. If it fails, a separate, locked training environment. Decided by the measurement. |
 | D4 | Stays behind | The confidential-lynx `lynx_*` pipeline (except the three helpers that are still imported: `FrameFeat`, `load_cached_feat`, `sample_frames`), mining's `*_evaluate.py` (duplicates `wildmatch evaluate`), `helios_scripts/` and `debug/`, and the older training strategies (the pre-relaxed/filtered recipe paths). They stay readable in the sibling repositories' history. |
 | D5 | From `piotr-wip` | **Only the few-shot scripts** (mining `eb04345`: `scripts/wildlife_fewshot.py`, `scripts/czechlynx_fewshot.py`, `slurm_scripts/fewshot/*`, `tests/test_wildlife_fewshot.py`). The env-var path layer, `MIGRATION.md`, the pip freezes and the migration pack scripts are not taken. See the caveats below. |
@@ -204,7 +204,7 @@ about 1 GB free). Never edit the main checkout while Slurm sweeps run from it. T
 caches and W&B stay off home. Never touch the Hub checkpoints (`turhancan97/wildmatch-checkpoints`)
 or the paper snapshot. The paper is frozen; nothing here changes it.
 
-**Phase order (revised).** 0: D2 commit by the user; Piotr's consent for the few-shot files.
+**Phase order (revised).** 0: ~~D2 commit~~ (done, `6958d3d`); Piotr's consent for the few-shot files.
 1: fine-tuning via filter-repo + merge. 2: make it a package module (vendored RDD, pinned LoMa,
 paths, CLI). 3: mining, same route. 4: environment spike (D3). 5: parity L0-L6 and provenance.
 6: few-shot port (if Piotr agrees).

@@ -17,7 +17,8 @@ kept under Unreleased until a project version is assigned.
   the reference, so they are a later hand port that needs his consent to relicense; Apache-2.0
   with NOTICE entries; RDD vendored from the checkout training used (`86f0e38`) and LoMa pinned
   (installed: `5e541b8` in env `loma`, `7043bac` in env `rdd`; chosen by parity); parity ladder
-  L0-L6 on the same GPU type.
+  L0-L6 on the same GPU type. `czechlynx_protocol.sh` committed to lynx-finetuning as `6958d3d`,
+  the new fine-tuning reference.
 - 2026-10-05: `notes/integration_plan.md`, a draft plan (read-only survey, nothing implemented) for
   merging mining (`rdd-parallel-benchmark`) and matcher fine-tuning (`lynx-finetuning`) into the
   `mining/` and `matcher_finetune/` slots. User decision: the reference is each repository's

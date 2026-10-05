@@ -1262,9 +1262,13 @@ Binding rules from that history:
   line with the page URL and switch the video from unlisted to public.
 - [x] Page sources on `main` (done 2026-10-03: the user fast-forwarded `project-page` into
   `main` and made the repository private).
-- [ ] Few-shot views (`wildmatch mine --fraction`, `finetune-matcher matcher_finetune.fewshot.*`,
-  `slurm/mining/fewshot/`): left off the reproduce pages on purpose (not part of the paper; user
-  decision 2026-10-05); come back to them and document or drop them.
+- [x] Few-shot views documented (2026-10-05, `docs/reproduce/fewshot.md`, user decisions): own page
+  under Reproduce, marked as an extension not in the paper, how-to only (no results: Piotr's
+  September few-shot runs used mining's unmerged collection-level evaluation and the older recipe,
+  so their numbers are not comparable), evaluation on the shrunk gallery the metadata copy encodes
+  (`split_frac<F>_seed<S>`: kept training images `train`, dropped `unused`, test unchanged). The
+  evaluate command was checked by loading its splits (HyenaID2022, 1/4: 625 gallery, 630 queries).
+  `slurm/mining/fewshot/` stays reference only.
 - [ ] After the notification date only: make the repository public (or deploy from it),
   run `mkdocs gh-deploy` (user), and verify the social card and favicon on the live URL.
 

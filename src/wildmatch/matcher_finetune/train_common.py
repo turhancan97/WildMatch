@@ -9,11 +9,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from accelerate import Accelerator
+from torch.utils.data import Subset
 from tqdm.auto import tqdm
 
-from torch.utils.data import Subset
-
-from wildmatch.vendor.rdd.RDD.utils import to_pixel_coords
 from wildmatch.matcher_finetune.keypoint_cache import is_cached_batch, unpad_cached_features
 from wildmatch.matcher_finetune.loading import (
     PseudoAccuracyDataset,
@@ -21,6 +19,7 @@ from wildmatch.matcher_finetune.loading import (
     get_loader,
 )
 from wildmatch.matcher_finetune.process import align_tensors_to_max_length
+from wildmatch.vendor.rdd.RDD.utils import to_pixel_coords
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────

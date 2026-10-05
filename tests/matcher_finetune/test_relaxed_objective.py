@@ -25,6 +25,12 @@ import torch.nn.functional as F
 from torch import nn
 
 from wildmatch.matcher_finetune.loma_backend import train_pair_score
+from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import (
+    MASKED_LOG_PROB,
+    double_softmax,
+    sigmoid_log_double_softmax,
+    valid_pair_mask,
+)
 from wildmatch.matcher_finetune.train_by_lg_matches import (
     OPTIMIZER_ID,
     TRAIN_STATE_FILE,
@@ -41,12 +47,7 @@ from wildmatch.matcher_finetune.train_common import (
     _lg_scores,
     batch_features,
 )
-from wildmatch.matcher_finetune.rdd_patch.lightglue_masked_training import (
-    MASKED_LOG_PROB,
-    double_softmax,
-    sigmoid_log_double_softmax,
-    valid_pair_mask,
-)
+
 
 def _lg_weights() -> Path:
     from wildmatch.paths import path

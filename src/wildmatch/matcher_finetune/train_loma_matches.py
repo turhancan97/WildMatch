@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F
+
 try:
     from accelerate import Accelerator, DistributedDataParallelKwargs
     from accelerate.utils import gather_object
@@ -32,8 +33,6 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 from wildmatch.matcher_finetune.loading import IndexAssignedTripletDataset
-from wildmatch.matcher_finetune.loma_cache import LomaFeatureCache
-from wildmatch.matcher_finetune.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
 from wildmatch.matcher_finetune.loma_backend import (
     LOMA_TRAIN_COMPONENTS,
     LoMaDescriptorTrainingModel,
@@ -49,7 +48,8 @@ from wildmatch.matcher_finetune.loma_backend import (
     trainable_state_dict,
     uses_live_descriptors,
 )
-
+from wildmatch.matcher_finetune.loma_cache import LomaFeatureCache
+from wildmatch.matcher_finetune.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
 
 LOMA_PATCH_SIZE = 14
 
@@ -363,8 +363,6 @@ def evaluate_index(model: torch.nn.Module, entries: list[dict], data_root: Path,
     videos: dict[str, dict[str, object]] = {}
     score_pos_sum = 0.0
     score_neg_sum = 0.0
-    match_pos_sum = 0.0
-    match_neg_sum = 0.0
     n_pos_total = 0
     n_neg_total = 0
     evaluated = 0
@@ -781,7 +779,6 @@ def main() -> None:
                         per_pair_loss = F.relu(args.margin - pos_score + neg_score)
                         loss = per_pair_loss.mean()
                         accelerator.backward(loss * ((stop - start) / local_count))
-                    weight = stop - start
                     stat_sums += torch.stack([
                         per_pair_loss.detach().sum(),
                         pos_score.detach().sum(),

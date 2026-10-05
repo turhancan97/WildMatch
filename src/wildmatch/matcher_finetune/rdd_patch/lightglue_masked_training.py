@@ -704,7 +704,7 @@ class LightGlueForTraining(nn.Module):
             assert key in data, f"Missing key {key} in data"
         data0, data1 = data["image0"], data["image1"]
         kpts0, kpts1 = data0["keypoints"], data1["keypoints"]
-        
+
         mask0, mask1 = data0["masks"], data1["masks"]
 
         if kpts0.dim() == mask0.dim():

@@ -4,7 +4,6 @@ import os
 import subprocess
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "slurm" / "matcher_finetune"
 HELPER = SCRIPTS / "czechlynx_protocol.sh"

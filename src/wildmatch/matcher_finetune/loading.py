@@ -8,12 +8,10 @@ from collections import defaultdict
 from pathlib import Path
 
 import torch
-from torch.utils.data import Dataset, DataLoader, Sampler
+from torch.utils.data import DataLoader, Dataset, Sampler
+from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torchvision.datasets.folder import default_loader
-from torchvision import transforms
-from tqdm import tqdm
-
 
 ShapeSignature = tuple[tuple[int, int], tuple[int, int], tuple[tuple[int, int], ...]]
 

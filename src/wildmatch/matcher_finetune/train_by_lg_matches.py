@@ -4,9 +4,9 @@ import argparse
 import contextlib
 import copy
 import json
-import shutil
 import math
 import random
+import shutil
 import time
 from pathlib import Path
 
@@ -16,10 +16,9 @@ from accelerate import Accelerator, DistributedDataParallelKwargs
 from accelerate.data_loader import prepare_data_loader
 from accelerate.utils import gather_object
 from torch import nn
-from tqdm.auto import tqdm
-from torchvision import transforms
-
 from torch.utils.data import Subset
+from torchvision import transforms
+from tqdm.auto import tqdm
 
 from wildmatch.matcher_finetune.keypoint_cache import is_cached_batch, open_cache_for_run
 from wildmatch.matcher_finetune.loading import (
@@ -29,10 +28,22 @@ from wildmatch.matcher_finetune.loading import (
 )
 from wildmatch.matcher_finetune.models import LG_WEIGHTS, RDD_WEIGHTS, build_masked_lg, build_rdd, resolve_rdd_weights
 from wildmatch.matcher_finetune.train_common import (
-    TRAINING_SCORE_ID, _flatten_candidates, _lg_relaxed_scores, _lg_scores, _pseudo_batch_dims, _repeat_image_sizes, _unwrap,
-    add_common_args, batch_features, build_pseudo_accuracy_loader, build_wandb_tags,
-    eval_epoch, eval_pseudo_accuracy, features_from_batch, resolve_trained_models,
-    run_lg_partitioned, seed_all,
+    TRAINING_SCORE_ID,
+    _flatten_candidates,
+    _lg_relaxed_scores,
+    _pseudo_batch_dims,
+    _repeat_image_sizes,
+    _unwrap,
+    add_common_args,
+    batch_features,
+    build_pseudo_accuracy_loader,
+    build_wandb_tags,
+    eval_epoch,
+    eval_pseudo_accuracy,
+    features_from_batch,
+    resolve_trained_models,
+    run_lg_partitioned,
+    seed_all,
 )
 
 """

@@ -1,8 +1,7 @@
-from pathlib import Path
 import json
 import sys
-from types import ModuleType
-from types import SimpleNamespace
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
 
 import numpy as np
 import pytest
@@ -10,19 +9,19 @@ import torch
 from safetensors.torch import save_file
 from torch import nn
 
+import wildmatch.matcher_finetune.train_loma_matches as loma_train
 from wildmatch.matcher_finetune.loma_backend import (
+    LoMaDescriptorTrainingModel,
     checkpoint_files,
     configure_loma_trainable_component,
     describe_keypoints_with_grad,
     freeze_loma_backbone,
-    LoMaDescriptorTrainingModel,
     matcher_scores_with_descriptor_grad,
     set_loma_train_mode,
     train_pair_score,
 )
 from wildmatch.matcher_finetune.loma_cache import LomaFeatureCache
 from wildmatch.matcher_finetune.loma_keypoint_cache import LomaKeypointCache, module_fingerprint
-import wildmatch.matcher_finetune.train_loma_matches as loma_train
 from wildmatch.matcher_finetune.train_loma_matches import resize_long_side
 
 

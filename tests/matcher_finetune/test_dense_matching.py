@@ -72,14 +72,18 @@ from tqdm.auto import tqdm
 
 from wildmatch.matcher_finetune.loading import IndexAssignedTripletDataset, get_loader
 from wildmatch.matcher_finetune.models import LG_WEIGHTS, RDD_WEIGHTS, build_masked_lg, resolve_rdd_weights
+from wildmatch.matcher_finetune.rdd_patch.lightglue_masked import LightGlueMasked
 from wildmatch.matcher_finetune.train_by_lg_matches import lg_confidence_loss
 from wildmatch.matcher_finetune.train_common import (
-    _lg_scores, batch_features, extract_train, resize_long_side, seed_all,
+    _lg_scores,
+    batch_features,
+    extract_train,
+    resize_long_side,
+    seed_all,
 )
 from wildmatch.vendor.rdd import CONFIG_PATH as RDD_CONFIG_PATH
 from wildmatch.vendor.rdd.RDD.RDD import build as build_rdd_from_conf
 from wildmatch.vendor.rdd.RDD.utils import read_config
-from wildmatch.matcher_finetune.rdd_patch.lightglue_masked import LightGlueMasked
 
 # A data-driven CLI script (see Usage above), not a pytest module: its test_*
 # functions take the collected pass as arguments, so pytest must not collect them.

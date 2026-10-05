@@ -16,7 +16,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-
 VARIANT_CONFIGS = {
     "loma-b": "LoMaB",
     "loma-b128": "LoMaB128",

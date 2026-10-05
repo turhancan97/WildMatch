@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 import torch
 
-
 MANIFEST_NAME = "manifest.json"
 CACHE_FORMAT = "lynx-loma-keypoints-v1"
 

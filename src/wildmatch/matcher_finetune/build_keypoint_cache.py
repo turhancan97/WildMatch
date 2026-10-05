@@ -39,7 +39,10 @@ from torchvision import transforms
 from tqdm import tqdm
 
 from wildmatch.matcher_finetune.keypoint_cache import (
-    CacheSpec, KeypointCache, MANIFEST_NAME, weights_fingerprint,
+    MANIFEST_NAME,
+    CacheSpec,
+    KeypointCache,
+    weights_fingerprint,
 )
 from wildmatch.matcher_finetune.models import RDD_WEIGHTS, build_rdd, resolve_rdd_weights
 from wildmatch.matcher_finetune.train_common import _unwrap, extract_train, resize_long_side

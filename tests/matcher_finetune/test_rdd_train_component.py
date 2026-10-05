@@ -1,4 +1,3 @@
-import torch
 from torch import nn
 
 from wildmatch.matcher_finetune.train_by_lg_matches import (

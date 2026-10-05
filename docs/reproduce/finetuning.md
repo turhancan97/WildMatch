@@ -75,8 +75,9 @@ download` places them where the evaluation looks for them (see [Evaluation](prob
 ## Reproducibility
 
 The paper's checkpoints were trained with an earlier version of this training code, in a
-separate environment with a different PyTorch version. The published checkpoints evaluate
-bit-identically with the current package. Retraining with `wildmatch finetune-matcher` follows
+separate environment with a different PyTorch version. Evaluating the published checkpoints with
+the current package gives bit-identical scores; this was checked for all of them except the two
+CzechLynx LoMa checkpoints, whose check did not fit in memory. Retraining with `wildmatch finetune-matcher` follows
 the same recipe and gives equivalent checkpoints, not bit-identical ones: the PyTorch version
 and nondeterministic GPU kernels change the trained weights slightly. The paper's numbers come
 from the published checkpoints.

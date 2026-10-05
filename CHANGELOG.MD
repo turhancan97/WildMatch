@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-05: integration parity L6 closed (user decision) without the two CzechLynx LoMa checkpoints:
+  their main-vs-integration check ran out of host memory in both environments (64 GB, then 125 GB in
+  rerun 525434), because it extracts the LoMa features of the whole ~27.6k-image gallery from scratch.
+  All other finished checkpoints are bit-identical; `docs/reproduce/finetuning.md` names the exception.
 - 2026-10-05 (branch `docs/reproduce-merged`): reproduce pages and README for the merged package.
   `docs/reproduce/index.md` lists one command per step and one environment (`--extra train` for
   mining and fine-tuning), with locations through the path profile; `mining.md` uses

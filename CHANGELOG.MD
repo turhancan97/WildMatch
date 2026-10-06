@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: the Hub model card of `turhancan97/wildmatch-checkpoints` states the checkpoint licence
+  (user request after PR #10). The metadata changed from `license: other` to `cc-by-nc-4.0`, and the
+  "still being settled, not for redistribution" paragraph became a Licence section: CC BY-NC 4.0, why
+  it is non-commercial (WildlifeReID-10k terms, LoMa-B base weights, MegaDescriptor-L), RDD-LightGlue
+  base weights and code Apache-2.0, datasets under their own terms. Hub commit `4d1744fe`. The
+  repository stays private. Weights and checksums are unchanged.
 - 2026-10-06: LoMa-B weight licence researched and recorded (`THIRD_PARTY_LICENSES.md`, AGENTS.md).
   No licence is stated for the weights: the LoMa README and PyPI page cover only the code, and the
   weights are release assets of `davnords/storage` (MIT licence file, which does not say it covers

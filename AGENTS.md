@@ -886,8 +886,9 @@ verified on 2026-10-04. Hub repository (user decision 2026-10-04): `turhancan97/
 private until the release (the user's personal account; an organisation was considered), the
 default `repo_id` in `conf/weights.yaml` (override with `WILDMATCH_HUB_REPO`; private access needs
 `HF_TOKEN` or `hf auth login`). Uploaded 2026-10-04 (commit `b15cf351`): 18 checkpoints, 4 protocol
-files, `SHA256SUMS.md` and a README that leaves the licence open; a full download into an empty
-folder matched every recorded SHA-256.
+files, `SHA256SUMS.md` and a README; a full download into an empty folder matched every recorded
+SHA-256. The model card states CC BY-NC 4.0 since 2026-10-06 (Hub commit `4d1744fe`, card metadata
+`license: cc-by-nc-4.0`; before, `license: other` and "still being settled").
 `wildmatch prepare status` checks each registry entry (root, metadata, split values, a sample of
 images, the mask column when masks are applied at load) and prints its `registry.download`
 block (`raw` source, `derived` files, `reproducible`); all 17 entries are ready on the cluster.
@@ -1086,9 +1087,9 @@ reproduction live under "Known issues" instead.
   2026-10-06): no weight licence stated; read as non-commercial (training data includes ScanNet++,
   Map-free and CO3Dv2, all non-commercial, and the author published separate `commercial_loma_*`
   weights on 2026-09-26); our checkpoints come from the original `loma_B.pt` (SHA-256 `3a388243...`),
-  so CC BY-NC 4.0 stays consistent; an email to the authors would make it certain. Still open: the AnimalCLEF2025 and
-  Jaguar competition rules (read them on Kaggle), and the Hub model card, which still leaves the
-  licence open (update it with the checkpoint licence before the release).
+  so CC BY-NC 4.0 stays consistent; an email to the authors would make it certain. The Hub model card
+  states CC BY-NC 4.0 (2026-10-06, Hub commit `4d1744fe`). Still open: the AnimalCLEF2025 and
+  Jaguar competition rules (read them on Kaggle).
 - [ ] Consider atomic checkpoint writes and explicit checkpoint retention.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
 

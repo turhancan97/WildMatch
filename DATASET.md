@@ -350,7 +350,8 @@ wildmatch prepare jaguar embed      # DINOv2-small embeddings used to find photo
 wildmatch prepare jaguar split      # burst-aware database/query split: jaguar_reid_v2_no_background.csv
 ```
 
-Unlike the other steps, these overwrite existing outputs without asking.
+Like the other steps, they refuse to replace existing outputs unless you pass `--overwrite` after
+the step name (for example `wildmatch prepare jaguar split --overwrite`).
 
 ## 6. Checking the result
 

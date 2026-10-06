@@ -632,16 +632,39 @@ def split_dataset(
 # ---------------------------------------------------------------------------
 
 
+def step_outputs(root: Path, command: str) -> List[Path]:
+    """The files (and, for ``prepare``, the masked-image folder) that ``command`` writes under ``root``."""
+    if command == "prepare":
+        return [root / MASKED_DIR, root / BASE_NAME, root / BASE_MANIFEST_NAME]
+    if command == "embed":
+        return [root / EMBEDDINGS_NAME]
+    return [root / METADATA_NAME, root / MANIFEST_NAME]
+
+
+def refuse_existing(root: Path, command: str) -> None:
+    """Fail before any work when a step's outputs exist (a non-empty folder counts as existing)."""
+    existing = [
+        path
+        for path in step_outputs(root, command)
+        if (path.is_dir() and any(path.iterdir())) or (path.exists() and not path.is_dir())
+    ]
+    if existing:
+        names = ", ".join(str(path) for path in existing)
+        raise PreparationError(f"{names} already exist(s); pass --overwrite to replace")
+
+
 def parse_args(argv: Iterable[str] | None = None, prog: str | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT, help="Kaggle Jaguar dataset root")
     parser.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 1))
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--overwrite", action="store_true", help="replace this step's existing outputs")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("prepare", help="write masked images and the base table")
-    sub.add_parser("embed", help="DINOv2-small embeddings of the masked images (CPU)")
-    split = sub.add_parser("split", help="burst-aware database/query split")
+    sub.add_parser("prepare", parents=[common], help="write masked images and the base table")
+    sub.add_parser("embed", parents=[common], help="DINOv2-small embeddings of the masked images (CPU)")
+    split = sub.add_parser("split", parents=[common], help="burst-aware database/query split")
     split.add_argument("--threshold", type=int, default=32, help="hash distance that always joins two photos")
     split.add_argument("--adjacent-gap", type=int, default=1, help="largest file-number gap that counts as adjacent")
     split.add_argument("--adjacent-cos", type=float, default=0.85, help="embedding cosine that joins adjacent photos")
@@ -660,6 +683,15 @@ def parse_args(argv: Iterable[str] | None = None, prog: str | None = None) -> ar
 
 def main(argv: Iterable[str] | None = None, prog: str | None = None) -> None:
     args = parse_args(argv, prog)
+    try:
+        _run(args)
+    except PreparationError as error:
+        sys.exit(f"[jaguar] {error}")
+
+
+def _run(args: argparse.Namespace) -> None:
+    if not args.overwrite:
+        refuse_existing(args.root, args.command)
     if args.command == "prepare":
         print(json.dumps(prepare(args.root, workers=args.workers)["counts"], indent=2))
     elif args.command == "embed":
@@ -680,7 +712,4 @@ def main(argv: Iterable[str] | None = None, prog: str | None = None) -> None:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except PreparationError as error:
-        sys.exit(f"[jaguar] {error}")
+    main()

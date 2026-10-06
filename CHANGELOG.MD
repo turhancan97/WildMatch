@@ -21,8 +21,13 @@ kept under Unreleased until a project version is assigned.
   (`metadata_mdsplit_no_background`) were rewritten, "Data and paper checkpoints" became "Paper
   checkpoints", and the Quickstart, Jaguar, unseen-split and tools sections link to the guide.
   AGENTS.md: the SAM 3 sbatch default is `rtx4090_batch` (not H100), and the registry licences are
-  filled. Found, not fixed: `prepare jaguar` overwrites without asking; the `prepare` summary in
-  `wildmatch --help` omits `retry-empty`.
+  filled. Three small fixes found while writing it (user request): `wildmatch prepare jaguar
+  prepare|embed|split` now refuses to replace its outputs (base table and manifest or a non-empty
+  `masked_images/`, the embeddings, the split table and manifest) unless `--overwrite` is passed
+  after the step name, checked before any work, and its errors exit with a `[jaguar] ...` message
+  through the CLI too instead of a traceback (`OverwriteGuardTests`); the `prepare` summary in
+  `wildmatch --help` and the module docstring list `retry-empty`; an unused variable in
+  `notes/integration_parity/match_features.py` (outside the CI lint scope) is removed.
 - 2026-10-06: competition rules read for the two Kaggle-competition datasets (user pasted them) and
   recorded in `THIRD_PARTY_LICENSES.md`, the registry `licence` fields, AGENTS.md and README.
   AnimalCLEF2025 (SalamanderID2025): non-commercial use including academic research, so the paper,

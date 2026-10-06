@@ -1547,7 +1547,8 @@ images with OpenCV's default flag (alpha dropped), so the files cannot be used d
 The files carry no capture time.
 
 `python -m wildmatch.data.prepare.jaguar` (CPU) has three steps, all writing into the dataset
-root. `prepare` writes `masked_images/<filename>` (RGB times alpha, black background) and
+root; each refuses to replace its existing outputs unless `--overwrite` follows the step name
+(since 2026-10-06; before, they overwrote silently). `prepare` writes `masked_images/<filename>` (RGB times alpha, black background) and
 `jaguar_reid_base.csv` (`image_id`, `identity`, masked `path`, `original_path`, COCO-RLE
 `mask` from alpha, 256-bit difference hash `dhash`, `masked_sha256`) with
 `jaguar_reid_base_manifest.json`. `embed` writes `jaguar_reid_dinov2_small_cls.npz`:

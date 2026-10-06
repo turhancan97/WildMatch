@@ -1,4 +1,4 @@
-"""Dataset preparation: ``wildmatch prepare status|download|build|finish|compare-masks|jaguar|unseen-split``.
+"""Dataset preparation: ``wildmatch prepare status|download|build|retry-empty|finish|compare-masks|jaguar|unseen-split``.
 
 ``status`` checks what each registry entry needs on disk (root, metadata, split values, a
 sample of image files, the mask column when masks are applied at load time) and prints the

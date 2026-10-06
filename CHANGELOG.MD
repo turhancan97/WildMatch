@@ -7,6 +7,22 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: `DATASET.md`, a dataset preparation guide for outside researchers (user request;
+  decisions: all 17 registry entries, a full SAM 3 setup section, repository file only, README data
+  sections become links, mask agreement only, counts plus checksums, no checkpoints). It covers the
+  path profile and registry, a dataset overview with licences, prerequisites (Kaggle credentials,
+  competition rules), installing SAM 3 in its own environment (upstream steps, gated `sam3.pt`,
+  `WILDMATCH_SAM3_REPO`/`WILDMATCH_SAM3_CHECKPOINT`/`SAM3_PYTHON`, running with or without Slurm),
+  recipes for WildlifeReID-10k, CzechLynx, the unseen split and SalamanderID2025, JaguarReID as
+  paused, expected sizes for every entry, SHA-256 of the files that rebuild exactly, and
+  troubleshooting. Counts and checksums were computed from the cluster's prepared files; the Nyala
+  split table was rebuilt into a scratch folder and matched its checksum. README: the outdated
+  "Dataset Requirements" (cluster path, CzechLynx-only columns) and the WildlifeReID-10k paragraph
+  (`metadata_mdsplit_no_background`) were rewritten, "Data and paper checkpoints" became "Paper
+  checkpoints", and the Quickstart, Jaguar, unseen-split and tools sections link to the guide.
+  AGENTS.md: the SAM 3 sbatch default is `rtx4090_batch` (not H100), and the registry licences are
+  filled. Found, not fixed: `prepare jaguar` overwrites without asking; the `prepare` summary in
+  `wildmatch --help` omits `retry-empty`.
 - 2026-10-06: competition rules read for the two Kaggle-competition datasets (user pasted them) and
   recorded in `THIRD_PARTY_LICENSES.md`, the registry `licence` fields, AGENTS.md and README.
   AnimalCLEF2025 (SalamanderID2025): non-commercial use including academic research, so the paper,

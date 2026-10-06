@@ -299,6 +299,7 @@ Run and log inspection:
 - `wildmatch summarize-runs`: filter and sort `reports/runs.csv`.
 - `wildmatch check-index`: find `reports/runs.csv` rows whose run folder moved or is gone (`--fix` repoints or marks them).
 - `wildmatch audit-runs`: count run manifests and index rows that predate provenance fields (read-only; `--output` lists them per run).
+- `python paper/tools/profile_vismatch.py --root experiments/probe`: where Vismatch runs spend their time (ms per candidate pair, per extracted image, per cache hit; share of matching), read from completed runs.
 - `wildmatch summarize-logs`: list sweep task logs; `--write-index` rebuilds `logs/index.csv`.
 
 Project page exporters in `paper/page/` (write committed files under `docs/`; GPU where noted;

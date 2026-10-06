@@ -26,7 +26,7 @@ registry:
     custom:
       loma: "${paths.checkpoint_root}/wildlife-reid-10k/SalamanderID2025/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors"
-  licence: null   # to verify before release (Phase 4)
+  licence: "AnimalCLEF2025 Kaggle competition rules (to confirm; images shown on the page with the dataset team's permission)"  # checked 2026-10-06 (THIRD_PARTY_LICENSES.md)
   # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
   prepare:
     builder: salamander

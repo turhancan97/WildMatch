@@ -7,6 +7,22 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: licensing decided and recorded (user decisions). Facts checked from the Kaggle API
+  metadata and source pages:
+  - WildlifeReID-10k: no commercial use, no re-upload, attribution of it and every source dataset.
+  - CDLA-Permissive-1.0: Hyena, Leopard, Sea star, Whale shark, Beluga, GiraffeZebraID.
+  - Zindi CC BY-SA 4.0; ATRW CC BY-NC-SA 4.0; StripeSpotter CC BY-SA 3.0; CowDataset CC BY 4.0;
+    Nyala and Giraffes state no licence.
+  - CzechLynx CC BY 4.0; RDD weights Apache-2.0 (published with the code).
+  - LoMa-B weights: no licence stated. AnimalCLEF2025 and Jaguar: competition rules, to confirm.
+
+  Decisions: the fine-tuned checkpoints are released under CC BY-NC 4.0; the WildlifeReID-10k SAM 3
+  masks are released as a recipe, not as files; all dataset photos stay on the project page, with
+  attribution. Changes: all 17 registry `licence` fields filled; `THIRD_PARTY_LICENSES.md` has a
+  dataset table and the weight licences; the Datasets page's licensing table lists source and
+  licence per dataset and replaces the open-item warning; Paper & Code states the code and
+  checkpoint licences and that the pipeline is non-commercial because of MegaDescriptor-L;
+  `conf/weights.yaml` notes the checkpoint licence. The Hub model card is not changed yet.
 - 2026-10-06: the two "Draft" boxes on the project page are settled (user decisions, against the
   submitted paper). Method: the masking sentence follows the records: CzechLynx ships its masks,
   the WildlifeReID-10k masked images were made by the team, SalamanderID2025 was segmented with

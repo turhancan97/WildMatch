@@ -1003,7 +1003,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
   two are real disagreements (one Nyala photo picks another animal, one two-shark photo); the
   rest are dark-photo artefacts or old speck/fragment masks where SAM 3 is better. WildlifeReID-10k
   entries therefore use `merge: largest` (Salamander keeps `union`). **Decision (user,
-  2026-10-04): publish the new SAM 3 masks.** WildlifeReID-10k registry entries now read
+  2026-10-04): publish the new SAM 3 masks**, narrowed on 2026-10-06 (user decision) to publishing
+  the recipe that rebuilds them, not the mask files, because the WildlifeReID-10k terms forbid
+  re-uploading. WildlifeReID-10k registry entries now read
   `metadata_sam3/metadata_<animal>.csv` with images in `masked_images_sam3/` (both inside the
   release folder, next to the untouched team files); `registry.paper_inputs.metadata_file` keeps
   the table the paper's runs read, and `PAPER_PROFILES` uses it so the paper tooling still matches
@@ -1077,8 +1079,13 @@ reproduction live under "Known issues" instead.
   matcher defaults. The 2026-08-12 full-split comparison agreed on 65 of 66 top-1
   predictions, not 100 %, so this gate is still open (details under "Vismatch matcher policy").
 - [ ] Complete matcher ablations for RDD-LightGlue, ALIKED-LightGlue, SuperPoint-LightGlue, and LoMa-B.
-- [ ] Settle the licences still open in `THIRD_PARTY_LICENSES.md`: default LoMa/RDD weights, the
-  release licence of the WildMatch checkpoints, and the dataset licences (`registry.licence`).
+- [ ] Licences (decided and recorded 2026-10-06, see `THIRD_PARTY_LICENSES.md`): code Apache-2.0;
+  fine-tuned checkpoints CC BY-NC 4.0 (training data with non-commercial terms, MegaDescriptor-L
+  non-commercial too); SAM 3 masks released as a recipe, not as files (WildlifeReID-10k forbids
+  re-uploading); every registry entry has `registry.licence`. Still open: the LoMa-B weight licence
+  (the repository states licences for the code only; ask the authors), the AnimalCLEF2025 and
+  Jaguar competition rules (read them on Kaggle), and the Hub model card, which still leaves the
+  licence open (update it with the checkpoint licence before the release).
 - [ ] Consider atomic checkpoint writes and explicit checkpoint retention.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
 
@@ -1256,8 +1263,10 @@ Binding rules from that history:
   text when the preprint is online ("available online", venue only after acceptance).
 - [ ] Add the preprint link and the authors' BibTeX entry on Paper & Code; fill the
   Acknowledgements section.
-- [ ] Confirm web display rights for CzechLynx photographs and the WildlifeReID-10k
-  sub-datasets other than Hyena and Leopard; update the licensing table.
+- [x] Web display of dataset photos (decided 2026-10-06 by the user: keep all photos, with
+  attribution). The Datasets page's licensing table lists each dataset's source and licence and the
+  WildlifeReID-10k terms (no commercial use, no re-upload, attribution); Nyala's source states no
+  licence, a risk the user accepted.
 - [ ] Rerun the exporters after the final paper results snapshot (`export_project_page_data`,
   `export_score_separation`, `export_budget_tradeoff`, `export_frequency_bins`) and the RDD
   retrain, and re-check `tests/test_project_page_numbers.py`.

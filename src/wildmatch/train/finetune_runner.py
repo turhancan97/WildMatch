@@ -34,7 +34,7 @@ from wildmatch.train.checkpointing import (
     save_full_checkpoint,
     validate_resume_epochs,
 )
-from wildmatch.train.results import build_final_training_metrics
+from wildmatch.train.results import build_final_training_metrics, resolve_selection
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
 from wildmatch.utils.fingerprints import file_digest_cache
 from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file, update_csv_rows
@@ -307,6 +307,7 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
         start_epoch = load_full_checkpoint(resume_path, model, objective, optimizer, scheduler, scaler)
         validate_resume_epochs(start_epoch, int(cfg.train.epochs), resume_path)
 
+    selection = resolve_selection(getattr(cfg.output, "selection", "final"))
     best_metric_name = str(cfg.output.best_metric)
     best_metric_value = -float("inf")
     best_epoch = 0
@@ -456,11 +457,12 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
         int(cfg.train.epochs),
     )
 
-    selected_checkpoint = output_folder / "checkpoint-best.pth"
-    if not selected_checkpoint.is_file():
-        selected_checkpoint = output_folder / "checkpoint-final.pth"
-    selected_metrics = dict(metrics)
-    if selected_checkpoint.is_file():
+    # The evaluation split is the test split (dataset.val_split_value), so the default reports the
+    # final-epoch model; "best_on_test" keeps the former selection and is labelled as such.
+    selected_checkpoint = output_folder / "checkpoint-final.pth"
+    selected_metrics = dict(final_epoch_metrics or metrics)
+    if selection == "best_on_test" and (output_folder / "checkpoint-best.pth").is_file():
+        selected_checkpoint = output_folder / "checkpoint-best.pth"
         selected_state = torch.load(selected_checkpoint, map_location="cpu")
         model.load_state_dict(selected_state)
         selected_metrics = evaluate(
@@ -483,6 +485,8 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
             best_epoch=best_epoch,
             best_metric=best_metric_name,
             selected_checkpoint=str(selected_checkpoint),
+            selection=selection,
+            best_metric_value=best_metric_value if best_epoch else None,
         )
         final_metrics["total_run_sec"] = float(elapsed_sec)
         final_metrics["total_run_min"] = float(elapsed_sec / 60.0)
@@ -531,6 +535,7 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
                     **selected_metrics,
                     "best_epoch": float(best_epoch),
                     "best_metric": best_metric_name,
+                    "selection": selection,
                     "selected_checkpoint": str(selected_checkpoint),
                     "total_runtime_sec": float(elapsed_sec),
                 },

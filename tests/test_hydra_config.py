@@ -40,6 +40,11 @@ class HydraConfigurationTests(unittest.TestCase):
         self.assertFalse(probe.benchmark.classifier_evaluation.embedding_retrieval)
         # Disabled on purpose in the shipped probe config; see AGENTS.md.
         self.assertFalse(probe.safety_checks.enabled)
+        # No per-epoch evaluation on the test split, and fine-tuning reports the final epoch
+        # (2026-10-06): neither may select or tune on the test split by default.
+        self.assertFalse(probe.benchmark.methods.linear_probe.log_test_each_epoch)
+        self.assertFalse(probe.benchmark.methods.efficient_probe.log_test_each_epoch)
+        self.assertEqual(finetune.output.selection, "final")
         self.assertNotIn("map_at_k", probe.benchmark)
         self.assertNotIn("B", probe.benchmark.methods.wildfusion)
         self.assertNotIn("candidate_k", probe.benchmark.methods.vismatch)

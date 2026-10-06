@@ -644,6 +644,31 @@ def _set_trainable_params(model: Any, cfg: DictConfig, method_key: str) -> None:
     raise ValueError(f"{method_key}.train_mode must be one of: all, partial, classifier")
 
 
+def _log_test_each_epoch(method_cfg: Any, method: str) -> bool:
+    """Whether a classifier probe evaluates the query (test) split after every epoch.
+
+    Off by default: per-epoch test curves invite choosing an epoch or hyperparameters on the
+    test split. Reported metrics never depend on it; they come from the final-epoch model.
+    """
+    enabled = bool(getattr(method_cfg, "log_test_each_epoch", False))
+    if enabled:
+        print(
+            f"[{method}] log_test_each_epoch=true: per-epoch loss and metrics are computed on the "
+            "query (test) split; use them as diagnostics only, never to choose an epoch."
+        )
+    return enabled
+
+
+def _skip_loader_pass(loader: Any) -> None:
+    """Draw the seed that iterating ``loader`` would draw, without iterating it.
+
+    Every DataLoader iterator draws one base seed from ``loader.generator`` (the global torch
+    RNG when unset). Skipping the per-epoch test pass must not shift the RNG stream that shuffles
+    the next epoch's training batches, so the reported metrics stay identical either way.
+    """
+    torch.empty((), dtype=torch.int64).random_(generator=loader.generator)
+
+
 def _set_probe_training_mode(model: Any, objective: Any, train_mode: str) -> None:
     """Set module modes without accidentally training a frozen probe backbone.
 
@@ -1234,6 +1259,7 @@ def run_linear_probe(
 
     t_train = time.perf_counter()
     log_every = int(lp_cfg.log_every) if "log_every" in lp_cfg else 1
+    log_test_each_epoch = _log_test_each_epoch(lp_cfg, "linear_probe")
     for epoch in range(start_epoch, int(lp_cfg.epochs)):
         _set_probe_training_mode(model, objective, str(lp_cfg.train_mode))
         losses: List[float] = []
@@ -1266,81 +1292,85 @@ def run_linear_probe(
 
         scheduler.step()
 
-        model.eval()
-        objective.eval()
-        probs_list: List[np.ndarray] = []
-        val_losses: List[float] = []
-        with torch.no_grad():
-            val_iter = tqdm(
-                query_loader,
-                desc=f"[linear_probe][val] epoch {epoch + 1}/{int(lp_cfg.epochs)}",
-                mininterval=1,
-                ncols=120,
-            )
-            for xq, yq in val_iter:
-                xq = xq.to(device)
-                yq = yq.to(device)
-                emb = model(xq)
-                probs = _predict_class_probabilities(objective, emb)
-                known = yq >= 0
-                if bool(known.any()):
-                    val_loss = objective.unweighted_loss(emb[known], yq[known])
-                    val_losses.append(float(val_loss.detach().cpu()))
-                probs_list.append(probs.detach().cpu().numpy())
-                displayed_loss = val_losses[-1] if val_losses else float("nan")
-                val_iter.set_postfix(loss=f"{displayed_loss:.4f}")
-        probs_query = np.concatenate(probs_list, axis=0)
         probs_train = np.concatenate(train_probs_list, axis=0)
         train_targets = np.concatenate(train_targets_list, axis=0)
-
         train_cls_metrics = _classification_topk_accuracy(probs_train, train_targets, [1, 5, 10])
-        cls_metrics = _classifier_metrics(
-            probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
-        )
-        # Per-epoch retrieval metrics are only logged to W&B; skip them otherwise, and never build
-        # the image-level matrix here (it is computed once after training for the reported metrics).
-        retrieval_metrics = (
-            _probe_retrieval_metrics(
-                cfg,
-                dataset_query,
-                dataset_database,
-                probs_query,
-                db_labels_idx,
-                query_labels_idx,
-                include_image_level=False,
+        val_losses: List[float] = []
+        cls_metrics: Dict[str, Any] = {}
+        retrieval_metrics: Dict[str, Any] = {}
+        if log_test_each_epoch:
+            model.eval()
+            objective.eval()
+            probs_list: List[np.ndarray] = []
+            with torch.no_grad():
+                val_iter = tqdm(
+                    query_loader,
+                    desc=f"[linear_probe][test] epoch {epoch + 1}/{int(lp_cfg.epochs)}",
+                    mininterval=1,
+                    ncols=120,
+                )
+                for xq, yq in val_iter:
+                    xq = xq.to(device)
+                    yq = yq.to(device)
+                    features = model(xq)
+                    probs = _predict_class_probabilities(objective, features)
+                    known = yq >= 0
+                    if bool(known.any()):
+                        val_loss = objective.unweighted_loss(features[known], yq[known])
+                        val_losses.append(float(val_loss.detach().cpu()))
+                    probs_list.append(probs.detach().cpu().numpy())
+                    displayed_loss = val_losses[-1] if val_losses else float("nan")
+                    val_iter.set_postfix(loss=f"{displayed_loss:.4f}")
+            probs_query = np.concatenate(probs_list, axis=0)
+            cls_metrics = _classifier_metrics(
+                probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
             )
-            if wandb_run is not None
-            else {}
-        )
+            # Per-epoch retrieval metrics are only logged to W&B; skip them otherwise, and never build
+            # the image-level matrix here (it is computed once after training for the reported metrics).
+            if wandb_run is not None:
+                retrieval_metrics = _probe_retrieval_metrics(
+                    cfg,
+                    dataset_query,
+                    dataset_database,
+                    probs_query,
+                    db_labels_idx,
+                    query_labels_idx,
+                    include_image_level=False,
+                )
+        else:
+            _skip_loader_pass(query_loader)
 
         if wandb_run is not None:
             lr = float(optimizer.param_groups[0].get("lr", 0.0))
-            wandb_run.log(
-                {
-                    "linear_probe/epoch": epoch + 1,
-                    "linear_probe/train_loss": float(np.mean(losses)) if losses else float("nan"),
-                    "linear_probe/val_loss": float(np.mean(val_losses)) if val_losses else float("nan"),
-                    "linear_probe/lr": lr,
-                    **{f"linear_probe/train_{k}": v for k, v in train_cls_metrics.items()},
-                    **{f"linear_probe/{k}": v for k, v in cls_metrics.items()},
-                    **{f"linear_probe/{k}": v for k, v in retrieval_metrics.items()},
-                },
-                step=epoch + 1,
-            )
+            record = {
+                "linear_probe/epoch": epoch + 1,
+                "linear_probe/train_loss": float(np.mean(losses)) if losses else float("nan"),
+                "linear_probe/lr": lr,
+                **{f"linear_probe/train_{k}": v for k, v in train_cls_metrics.items()},
+            }
+            if log_test_each_epoch:
+                record["linear_probe/test_loss"] = float(np.mean(val_losses)) if val_losses else float("nan")
+                record.update({f"linear_probe/test_{k}": v for k, v in cls_metrics.items()})
+                record.update({f"linear_probe/test_{k}": v for k, v in retrieval_metrics.items()})
+            wandb_run.log(record, step=epoch + 1)
 
         if (epoch + 1) % log_every == 0:
-            print(
+            line = (
                 f"[linear_probe] epoch {epoch + 1}/{int(lp_cfg.epochs)} "
                 f"train_loss={float(np.mean(losses)) if losses else float('nan'):.6f} "
                 f"train_top1={train_cls_metrics.get('classification_top_1', float('nan')):.4f} "
                 f"train_top5={train_cls_metrics.get('classification_top_5', float('nan')):.4f} "
-                f"train_top10={train_cls_metrics.get('classification_top_10', float('nan')):.4f} "
-                f"val_loss={float(np.mean(val_losses)) if val_losses else float('nan'):.6f} "
-                f"val_top1={cls_metrics.get('classification_top_1', float('nan')):.4f} "
-                f"val_top5={cls_metrics.get('classification_top_5', float('nan')):.4f} "
-                f"val_top10={cls_metrics.get('classification_top_10', float('nan')):.4f} "
-                f"val_balanced_top1={cls_metrics.get('classification_balanced_top_1', float('nan')):.4f}"
+                f"train_top10={train_cls_metrics.get('classification_top_10', float('nan')):.4f}"
             )
+            if log_test_each_epoch:
+                line += (
+                    f" test_loss={float(np.mean(val_losses)) if val_losses else float('nan'):.6f} "
+                    f"test_top1={cls_metrics.get('classification_top_1', float('nan')):.4f} "
+                    f"test_top5={cls_metrics.get('classification_top_5', float('nan')):.4f} "
+                    f"test_top10={cls_metrics.get('classification_top_10', float('nan')):.4f} "
+                    f"test_balanced_top1={cls_metrics.get('classification_balanced_top_1', float('nan')):.4f}"
+                )
+            print(line)
 
         if bool(lp_cfg.save_checkpoint) and ((epoch + 1) % int(lp_cfg.save_every) == 0):
             run_dir.mkdir(parents=True, exist_ok=True)
@@ -1516,6 +1546,7 @@ def run_efficient_probe(
 
     t_train = time.perf_counter()
     log_every = int(ep_cfg.log_every) if "log_every" in ep_cfg else 1
+    log_test_each_epoch = _log_test_each_epoch(ep_cfg, "efficient_probe")
     for epoch in range(start_epoch, int(ep_cfg.epochs)):
         _set_probe_training_mode(model, objective, str(ep_cfg.train_mode))
         losses: List[float] = []
@@ -1548,81 +1579,85 @@ def run_efficient_probe(
 
         scheduler.step()
 
-        model.eval()
-        objective.eval()
-        probs_list: List[np.ndarray] = []
-        val_losses: List[float] = []
-        with torch.no_grad():
-            val_iter = tqdm(
-                query_loader,
-                desc=f"[efficient_probe][val] epoch {epoch + 1}/{int(ep_cfg.epochs)}",
-                mininterval=1,
-                ncols=120,
-            )
-            for xq, yq in val_iter:
-                xq = xq.to(device)
-                yq = yq.to(device)
-                patch_tokens = _forward_patch_tokens(model, xq, number_of_patches=number_of_patches)
-                probs = _predict_class_probabilities(objective, patch_tokens)
-                known = yq >= 0
-                if bool(known.any()):
-                    val_loss = objective.unweighted_loss(patch_tokens[known], yq[known])
-                    val_losses.append(float(val_loss.detach().cpu()))
-                probs_list.append(probs.detach().cpu().numpy())
-                displayed_loss = val_losses[-1] if val_losses else float("nan")
-                val_iter.set_postfix(loss=f"{displayed_loss:.4f}")
-        probs_query = np.concatenate(probs_list, axis=0)
         probs_train = np.concatenate(train_probs_list, axis=0)
         train_targets = np.concatenate(train_targets_list, axis=0)
-
         train_cls_metrics = _classification_topk_accuracy(probs_train, train_targets, [1, 5, 10])
-        cls_metrics = _classifier_metrics(
-            probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
-        )
-        # Per-epoch retrieval metrics are only logged to W&B; skip them otherwise, and never build
-        # the image-level matrix here (it is computed once after training for the reported metrics).
-        retrieval_metrics = (
-            _probe_retrieval_metrics(
-                cfg,
-                dataset_query,
-                dataset_database,
-                probs_query,
-                db_labels_idx,
-                query_labels_idx,
-                include_image_level=False,
+        val_losses: List[float] = []
+        cls_metrics: Dict[str, Any] = {}
+        retrieval_metrics: Dict[str, Any] = {}
+        if log_test_each_epoch:
+            model.eval()
+            objective.eval()
+            probs_list: List[np.ndarray] = []
+            with torch.no_grad():
+                val_iter = tqdm(
+                    query_loader,
+                    desc=f"[efficient_probe][test] epoch {epoch + 1}/{int(ep_cfg.epochs)}",
+                    mininterval=1,
+                    ncols=120,
+                )
+                for xq, yq in val_iter:
+                    xq = xq.to(device)
+                    yq = yq.to(device)
+                    features = _forward_patch_tokens(model, xq, number_of_patches=number_of_patches)
+                    probs = _predict_class_probabilities(objective, features)
+                    known = yq >= 0
+                    if bool(known.any()):
+                        val_loss = objective.unweighted_loss(features[known], yq[known])
+                        val_losses.append(float(val_loss.detach().cpu()))
+                    probs_list.append(probs.detach().cpu().numpy())
+                    displayed_loss = val_losses[-1] if val_losses else float("nan")
+                    val_iter.set_postfix(loss=f"{displayed_loss:.4f}")
+            probs_query = np.concatenate(probs_list, axis=0)
+            cls_metrics = _classifier_metrics(
+                probs_query, query_labels_idx, query_labels_raw, label_to_index, open_set_policy
             )
-            if wandb_run is not None
-            else {}
-        )
+            # Per-epoch retrieval metrics are only logged to W&B; skip them otherwise, and never build
+            # the image-level matrix here (it is computed once after training for the reported metrics).
+            if wandb_run is not None:
+                retrieval_metrics = _probe_retrieval_metrics(
+                    cfg,
+                    dataset_query,
+                    dataset_database,
+                    probs_query,
+                    db_labels_idx,
+                    query_labels_idx,
+                    include_image_level=False,
+                )
+        else:
+            _skip_loader_pass(query_loader)
 
         if wandb_run is not None:
             lr = float(optimizer.param_groups[0].get("lr", 0.0))
-            wandb_run.log(
-                {
-                    "efficient_probe/epoch": epoch + 1,
-                    "efficient_probe/train_loss": float(np.mean(losses)) if losses else float("nan"),
-                    "efficient_probe/val_loss": float(np.mean(val_losses)) if val_losses else float("nan"),
-                    "efficient_probe/lr": lr,
-                    **{f"efficient_probe/train_{k}": v for k, v in train_cls_metrics.items()},
-                    **{f"efficient_probe/{k}": v for k, v in cls_metrics.items()},
-                    **{f"efficient_probe/{k}": v for k, v in retrieval_metrics.items()},
-                },
-                step=epoch + 1,
-            )
+            record = {
+                "efficient_probe/epoch": epoch + 1,
+                "efficient_probe/train_loss": float(np.mean(losses)) if losses else float("nan"),
+                "efficient_probe/lr": lr,
+                **{f"efficient_probe/train_{k}": v for k, v in train_cls_metrics.items()},
+            }
+            if log_test_each_epoch:
+                record["efficient_probe/test_loss"] = float(np.mean(val_losses)) if val_losses else float("nan")
+                record.update({f"efficient_probe/test_{k}": v for k, v in cls_metrics.items()})
+                record.update({f"efficient_probe/test_{k}": v for k, v in retrieval_metrics.items()})
+            wandb_run.log(record, step=epoch + 1)
 
         if (epoch + 1) % log_every == 0:
-            print(
+            line = (
                 f"[efficient_probe] epoch {epoch + 1}/{int(ep_cfg.epochs)} "
                 f"train_loss={float(np.mean(losses)) if losses else float('nan'):.6f} "
                 f"train_top1={train_cls_metrics.get('classification_top_1', float('nan')):.4f} "
                 f"train_top5={train_cls_metrics.get('classification_top_5', float('nan')):.4f} "
-                f"train_top10={train_cls_metrics.get('classification_top_10', float('nan')):.4f} "
-                f"val_loss={float(np.mean(val_losses)) if val_losses else float('nan'):.6f} "
-                f"val_top1={cls_metrics.get('classification_top_1', float('nan')):.4f} "
-                f"val_top5={cls_metrics.get('classification_top_5', float('nan')):.4f} "
-                f"val_top10={cls_metrics.get('classification_top_10', float('nan')):.4f} "
-                f"val_balanced_top1={cls_metrics.get('classification_balanced_top_1', float('nan')):.4f}"
+                f"train_top10={train_cls_metrics.get('classification_top_10', float('nan')):.4f}"
             )
+            if log_test_each_epoch:
+                line += (
+                    f" test_loss={float(np.mean(val_losses)) if val_losses else float('nan'):.6f} "
+                    f"test_top1={cls_metrics.get('classification_top_1', float('nan')):.4f} "
+                    f"test_top5={cls_metrics.get('classification_top_5', float('nan')):.4f} "
+                    f"test_top10={cls_metrics.get('classification_top_10', float('nan')):.4f} "
+                    f"test_balanced_top1={cls_metrics.get('classification_balanced_top_1', float('nan')):.4f}"
+                )
+            print(line)
 
         if bool(ep_cfg.save_checkpoint) and ((epoch + 1) % int(ep_cfg.save_every) == 0):
             run_dir.mkdir(parents=True, exist_ok=True)

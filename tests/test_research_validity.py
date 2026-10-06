@@ -552,6 +552,22 @@ class ResearchValidityTests(unittest.TestCase):
         )
         self.assertEqual(metrics["top_1"], 0.9)
         self.assertEqual(metrics["final_epoch_metrics"]["top_1"], 0.8)
+        self.assertEqual(metrics["selected_on"], "test")
+
+    def test_final_selection_reports_final_epoch_and_keeps_best_on_test_value(self):
+        metrics = build_final_training_metrics(
+            {"top_1": 0.8},
+            {"top_1": 0.8},
+            best_epoch=3,
+            best_metric="top_1",
+            selected_checkpoint="checkpoint-final.pth",
+            selection="final",
+            best_metric_value=0.9,
+        )
+        self.assertEqual(metrics["top_1"], 0.8)
+        self.assertEqual(metrics["selected_on"], "final_epoch")
+        self.assertEqual(metrics["best_metric_value"], 0.9)
+        self.assertNotIn("best_checkpoint_metrics", metrics)
 
     def test_model_weight_hash_changes_when_weights_change(self):
         first = hash_state_dict({"weight": np.array([1.0, 2.0], dtype=np.float32)})

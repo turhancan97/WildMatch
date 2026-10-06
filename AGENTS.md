@@ -1138,9 +1138,8 @@ dropped), no CzechLynx open-split results (the unseen-identity protocol replaces
 State with every cosine or classifier baseline that MegaDescriptor-L was trained on six
 of the eight datasets (all except Sea star, CzechLynx, Salamander). Never call the
 descriptor-only result a "collapse". No BibTeX or preprint exists; the user writes all
-BibTeX entries. Items the authors still mark as draft (SAM 3 masking wording, the caching explanation
-of the cost gap, pending expert study, Fig. 2 revision) carry a "Draft" admonition on the
-page. Settled on 2026-10-02 by the paper session: the objective is a triplet margin loss on
+BibTeX entries. Items the authors still mark as draft carry a "Draft" admonition on the page (none left
+since 2026-10-06: the masking and cost-gap boxes were settled against the submitted paper). Settled on 2026-10-02 by the paper session: the objective is a triplet margin loss on
 the relaxed score, confirmed from the training code; the page calls it "a triplet margin
 objective, a contrastive loss" and never "softmax-based contrastive" or "InfoNCE" (an
 old project note that was wrong); the abstract's "contrastively fine-tune" is kept on
@@ -1236,8 +1235,16 @@ Binding rules from that history:
 
 **Publication checklist (keep current; tick items as they close).**
 
-- [ ] Settle the two "Draft" admonitions with the authors: the masking sentence on Method
-  and the cost-gap explanation on Training cost; then remove the admonitions.
+- [x] Settle the two "Draft" admonitions (done 2026-10-06, user decisions, against the submitted
+  paper). Method: the masking sentence follows the records, not the paper's wording, which says
+  "dataset-provided masks; otherwise SAM 3 with the prompt 'animal'": CzechLynx ships its masks,
+  the WildlifeReID-10k masked images were made by the team, SalamanderID2025 used SAM 3 with the
+  prompt "Salamander" (`masks.csv`, `prompt_used`). Worth raising with the co-authors for a later
+  arXiv version. Training cost: a "Why the matcher adapts more cheaply" section carries the paper's
+  explanation (per-identity classifier parameters dominated by frequent individuals; pair-trained
+  matcher without per-identity parameters; no unseen individuals for the classifier), and the
+  re-run provenance of the matcher curve is a plain bullet. The Home warning no longer mentions
+  sections marked draft.
 - [x] Rename the GitHub repository (done 2026-10-06 by the user: `turhancan97/WildMatch`, still
   private; GitHub redirects the old URL). `mkdocs.yml` (`site_url` `https://turhancan97.github.io/WildMatch/`,
   `repo_url`, `repo_name`) and Paper & Code follow; the provisional-name note is gone. The local

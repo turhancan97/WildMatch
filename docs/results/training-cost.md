@@ -51,8 +51,13 @@ cost axis to separate the first fine-tuning checkpoint (0.02 GPU-hours) from the
 - The curves are evaluated on the test split because no clean validation split exists,
   so no checkpoint is ever selected from them. Each method's fixed final epoch is the
   reported result.
+- The matcher curve combines intermediate checkpoints from a re-run of the training job
+  with the final checkpoint of the original run; both use the same recipe.
 
-!!! note "Draft"
-    The matcher curve combines intermediate checkpoints from a re-run of the training
-    job with the final checkpoint of the original run; both use the same recipe. The
-    authors are confirming the explanation of the cost gap between the arms.
+## Why the matcher adapts more cheaply
+
+A classifier learns parameters for each individual, so its training is dominated by the
+frequently photographed ones, while the matcher is trained on image pairs and has no
+per-identity parameters. The classifier also cannot recognize individuals outside its
+label set: it must be retrained whenever a new individual is added and cannot be
+evaluated under the unseen-identity protocol.

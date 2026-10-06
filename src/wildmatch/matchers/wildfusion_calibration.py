@@ -6,6 +6,9 @@ import warnings
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+import pandas as pd
+
+CALIBRATION_MODES = ("same_set", "disjoint")
 
 
 def _feature_paths(dataset: Any) -> Optional[Tuple[str, ...]]:
@@ -24,6 +27,55 @@ def _is_same_image_set(dataset_a: Any, dataset_b: Any) -> bool:
     paths_a = _feature_paths(dataset_a)
     paths_b = _feature_paths(dataset_b)
     return paths_a is not None and paths_a == paths_b
+
+
+def resolve_calibration_mode(value: Any) -> str:
+    """Validate ``benchmark.calibration.mode``."""
+    mode = str(value)
+    if mode not in CALIBRATION_MODES:
+        raise ValueError(f"benchmark.calibration.mode must be one of {CALIBRATION_MODES}, got {mode!r}")
+    return mode
+
+
+def disjoint_calibration_frames(
+    metadata: pd.DataFrame, label_col: str, size: int, seed: int
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Split a calibration sample into two image sets that share identities but no image.
+
+    Identities are visited in a seeded random order, and each visit takes two unused images of one
+    identity, one for each side, so every side-A image has a positive on side B and no pair is an
+    image with itself. Rounds repeat until ``size`` images are taken or no identity has two images
+    left; remaining slots take single images (negatives only), alternating sides. Identities with
+    many images are thus not over-represented. Fails when no identity has two images, because
+    calibration then has no positive pairs.
+    """
+    if size < 2:
+        raise ValueError("disjoint calibration needs dataset.calibration_size >= 2")
+    rng = np.random.default_rng(int(seed))
+    labels = metadata[label_col].astype(str)
+    order = list(dict.fromkeys(labels.tolist()))
+    order = [order[i] for i in rng.permutation(len(order))]
+    remaining = {label: list(rng.permutation(np.flatnonzero(labels.to_numpy() == label))) for label in order}
+    if not any(len(rows) >= 2 for rows in remaining.values()):
+        raise ValueError("disjoint calibration needs at least one identity with two images")
+    side_a: list = []
+    side_b: list = []
+    progress = True
+    while progress and len(side_a) + len(side_b) + 2 <= size:
+        progress = False
+        for label in order:
+            if len(side_a) + len(side_b) + 2 > size:
+                break
+            rows = remaining[label]
+            if len(rows) >= 2:
+                side_a.append(rows.pop())
+                side_b.append(rows.pop())
+                progress = True
+    for label in order:
+        rows = remaining[label]
+        while rows and len(side_a) + len(side_b) < size:
+            (side_a if len(side_a) <= len(side_b) else side_b).append(rows.pop())
+    return metadata.iloc[side_a], metadata.iloc[side_b]
 
 
 def fit_pipeline_calibration(
@@ -54,7 +106,11 @@ def fit_pipeline_calibration(
     pipeline.calibration.fit(calibration_scores, calibration_hits)
     pipeline.calibration_done = True
     return {
-        "source": "same_set_excluding_self_pairs" if same_set and exclude_self_pairs else "official_all_pairs",
+        "source": (
+            ("same_set_excluding_self_pairs" if exclude_self_pairs else "official_all_pairs")
+            if same_set
+            else "disjoint_sets"
+        ),
         "total_pairs": int(scores.size),
         "used_pairs": int(calibration_scores.size),
         "excluded_self_pairs": excluded,

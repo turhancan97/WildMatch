@@ -111,6 +111,14 @@ Key blocks:
   from `benchmark.candidate_k`.
 - Local LightGlue also receives its refinement budget from `benchmark.candidate_k`; its
   old method-specific `B` override is no longer supported.
+- `benchmark.calibration`: how WildFusion and Local LightGlue fit their score calibration on
+  `dataset.calibration_size` images. `mode: same_set` (default, every earlier run) uses the first
+  rows of the database on both sides and drops each image's pair with itself (`exclude_self_pairs`;
+  `official_same_set: true` keeps them). `mode: disjoint` draws two image sets with `seed`: identities in
+  random order, two images of one identity per turn, one on each side, so the sides share identities
+  but no image. `split_value` calibrates on other rows of `dataset.split_col` instead of the database;
+  the query split is refused. The chosen mode, seed, side sizes and shared identities are recorded
+  under `calibration` in the run manifest.
 - `visualization`: optional qualitative retrieval plots
 - `output`: experiment root, legacy run folder, and aggregate CSV
 - `reporting`: central run-index path

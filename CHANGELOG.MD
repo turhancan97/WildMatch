@@ -7,6 +7,16 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: Opt-in disjoint calibration for WildFusion and Local LightGlue (future-work item
+  closed; user decision: default kept). `benchmark.calibration.mode: same_set | disjoint` and
+  `seed`. `disjoint` builds two image sets sharing identities but no image (two images of one
+  identity per turn, one per side, seeded identity order), and both sides reach WildFusion, Local
+  LightGlue and Vismatch's first stage. New guard: `split_value` equal to the query split value is
+  refused. Calibration on two different sets is labelled `disjoint_sets` instead of
+  `official_all_pairs`. The manifest's `calibration` block records mode, seed, side sizes and shared
+  identities. The default reproduces earlier runs: `local_lightglue` on the demo images gives scores
+  bit-identical to `main`. Tests: the disjoint split, determinism by seed, the query-split refusal,
+  the label, and the finished stub `test_official_calibration_mode_keeps_diagonal_pairs`.
 - 2026-10-06: No test-split curves or selection during training (known issue closed; user decisions:
   per-epoch test pass off by default, fine-tuning reports the final epoch). Probes:
   `log_test_each_epoch: false` for the linear and efficient probes skips the per-epoch query pass;

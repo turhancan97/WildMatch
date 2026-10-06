@@ -1097,9 +1097,6 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Implement truly disjoint calibration inputs for WildFusion and local matcher
-  calibration; the current split setting selects one dataset and passes it to both
-  sides of calibration.
 - [ ] Make legacy checkpoint discovery recursive for the existing nested no-manifest
   `results/<dataset>/<animal>/mask_<...>/run_<...>` layout.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
@@ -1496,9 +1493,20 @@ applied at load time.
 - Accumulation divides each raw loss by the actual microbatch count in its group, including
   a partial final group; optimizer-step boundaries and scheduler behavior are unchanged.
 - WildFusion calibration excludes same-image diagonal pairs by default and warns on the
-  database-derived fallback. The configured split currently produces one calibration
-  dataset used on both sides; a truly disjoint protocol is in the future-work checklist.
-  `official_same_set: true` enables exact all-pairs compatibility calibration for parity.
+  database-derived fallback. `official_same_set: true` enables exact all-pairs compatibility
+  calibration for parity. **Disjoint calibration (branch `feat/disjoint-calibration`, 2026-10-06, user
+  decision: opt-in, default kept).** `benchmark.calibration.mode: same_set` (default; the first
+  `calibration_size` database rows on both sides, as in every paper run) or `disjoint`
+  (`disjoint_calibration_frames` in `matchers/wildfusion_calibration.py`: identities in seeded
+  random order, two images of one identity per turn, one per side, then single images; two image
+  sets sharing identities but no image; fails without any identity of two images). Both
+  WildFusion and Local LightGlue (also as Vismatch's first stage) receive side A and side B.
+  `split_value` equal to the query split value is refused; a `split_value` that selects nothing
+  still falls back to the database in `same_set` (compatibility) and fails in `disjoint`. Distinct
+  sides are labelled `disjoint_sets` (before: `official_all_pairs`), and the manifest's `calibration`
+  block records mode, seed, side sizes and shared identities. Checked on the demo images:
+  `local_lightglue` with the default gives scores bit-identical to `main`. Disjoint calibration
+  changes WildFusion and Local LightGlue scores; report it as its own configuration.
 
 These validity changes are forward-only. Historical generated artifacts, aggregate CSVs,
 and old caches are not rewritten automatically; rerun affected experiments before using

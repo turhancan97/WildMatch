@@ -33,7 +33,12 @@ from wildmatch.evaluate.metrics import compute_identity_metrics, compute_metrics
 from wildmatch.evaluate.ranking import stable_rank_indices
 from wildmatch.features.containers import FeatureContainer, get_labels_string
 from wildmatch.matchers.vismatch import run_vismatch_benchmark
-from wildmatch.matchers.wildfusion_calibration import fit_pipeline_calibration, fit_wildfusion_calibration
+from wildmatch.matchers.wildfusion_calibration import (
+    disjoint_calibration_frames,
+    fit_pipeline_calibration,
+    fit_wildfusion_calibration,
+    resolve_calibration_mode,
+)
 from wildmatch.models.model import get_model
 from wildmatch.models.objective import SoftmaxLoss, SoftmaxLossEP
 from wildmatch.reporting.artifacts import build_run_context, file_identity, run_index_row, upsert_run_index
@@ -313,17 +318,70 @@ def get_calibration_dataset(
     source_dataset: Optional[WildlifeDataset] = None,
     split_col: Optional[str] = None,
     split_value: Optional[str] = None,
-) -> WildlifeDataset:
+    *,
+    query_split_value: Optional[str] = None,
+    mode: str = "same_set",
+    seed: int = 0,
+) -> Tuple[WildlifeDataset, WildlifeDataset]:
+    """The two calibration image sets (side A, side B) for WildFusion and local matchers.
+
+    The pool is the database split, or the rows whose ``split_col`` equals ``split_value`` when
+    that is set (never the query split). ``same_set`` returns the first ``size`` pool rows on both
+    sides (one object; self-pairs are excluded at fitting), as every earlier run did. ``disjoint``
+    returns two image sets sharing identities but no image (``disjoint_calibration_frames``).
+    """
     if size <= 0:
         raise ValueError("dataset.calibration_size must be > 0")
-    source = source_dataset
-    if source is not None and split_col and split_value is not None and split_col in source.metadata.columns:
-        selected = source.metadata[source.metadata[split_col] == split_value]
-        if len(selected) > 0:
-            return WildlifeDataset(root, df=selected.iloc[:size], load_label=True, col_label=label_col)
-    if len(dataset_database.metadata) < size:
-        size = len(dataset_database.metadata)
-    return WildlifeDataset(root, df=dataset_database.metadata.iloc[:size], load_label=True, col_label=label_col)
+    mode = resolve_calibration_mode(mode)
+    pool = dataset_database.metadata
+    if split_value is not None:
+        if query_split_value is not None and str(split_value) == str(query_split_value):
+            raise ValueError(
+                f"benchmark.calibration.split_value={split_value!r} is the query (test) split; "
+                "calibration must not see test images"
+            )
+        source = source_dataset
+        if source is not None and split_col and split_col in source.metadata.columns:
+            selected = source.metadata[source.metadata[split_col] == split_value]
+            if len(selected) > 0:
+                pool = selected
+            elif mode == "disjoint":
+                raise ValueError(f"benchmark.calibration.split_value={split_value!r} selects no rows of {split_col}")
+        elif mode == "disjoint":
+            raise ValueError(f"benchmark.calibration.split_value is set but column {split_col!r} is missing")
+    if mode == "disjoint":
+        side_a, side_b = disjoint_calibration_frames(pool, label_col, int(size), int(seed))
+        return (
+            WildlifeDataset(root, df=side_a, load_label=True, col_label=label_col),
+            WildlifeDataset(root, df=side_b, load_label=True, col_label=label_col),
+        )
+    calibration = WildlifeDataset(root, df=pool.iloc[:size], load_label=True, col_label=label_col)
+    return calibration, calibration
+
+
+def _calibration_side_b(
+    cfg: DictConfig, raw_a: WildlifeDataset, raw_b: WildlifeDataset, transform: Any
+) -> Optional[Any]:
+    """The side-B view in `disjoint` mode; None (side A on both sides) in `same_set` mode."""
+    if raw_b is raw_a:
+        return None
+    return make_dataset_view(cfg, raw_b, transform=transform)
+
+
+def _calibration_provenance(cfg: DictConfig, side_a: Any, side_b: Any) -> Dict[str, Any]:
+    """How the calibration sides were chosen, for the run's method artifacts and manifest."""
+    calibration_cfg = getattr(cfg.benchmark, "calibration", {})
+    label_col = str(cfg.dataset.label_col)
+    labels_a = set(side_a.df[label_col].astype(str)) if hasattr(side_a, "df") else set()
+    labels_b = set(side_b.df[label_col].astype(str)) if hasattr(side_b, "df") else set()
+    return {
+        "mode": str(getattr(calibration_cfg, "mode", "same_set")),
+        "seed": int(getattr(calibration_cfg, "seed", 0)),
+        "split_value": getattr(calibration_cfg, "split_value", None),
+        "side_a_images": len(side_a),
+        "side_b_images": len(side_b),
+        "shared_identities": len(labels_a & labels_b),
+    }
 
 
 def cache_mask_col(cfg: DictConfig) -> Optional[str]:
@@ -1795,7 +1853,10 @@ def run_method(
     run_dir: Path,
     wandb_run: Any = None,
     method_artifacts: Optional[Dict[str, Any]] = None,
+    dataset_calibration_b: Optional[WildlifeDataset] = None,
 ) -> Tuple[np.ndarray, Dict[str, float], Dict[str, float]]:
+    # Side B of calibration: a second, image-disjoint set in `disjoint` mode, else side A again.
+    calibration_b = dataset_calibration if dataset_calibration_b is None else dataset_calibration_b
     if method == "rdd":
         raise ValueError(
             "The public probe method 'rdd' was removed. Use method='vismatch' with "
@@ -1885,11 +1946,12 @@ def run_method(
         calibration_info = fit_wildfusion_calibration(
             wildfusion,
             dataset_calibration,
-            dataset_calibration,
+            calibration_b,
             exclude_self_pairs=bool(getattr(calibration_cfg, "exclude_self_pairs", True)),
             official_same_set=bool(getattr(calibration_cfg, "official_same_set", False)),
         )
         timings["calibration_sec"] = time.perf_counter() - t_calibration
+        calibration_info.update(_calibration_provenance(cfg, dataset_calibration, calibration_b))
         if method_artifacts is not None:
             method_artifacts["wildfusion_calibration"] = calibration_info
         _instrument_local_pipeline(matcher_aliked, timings)
@@ -1921,11 +1983,12 @@ def run_method(
         calibration_info = fit_pipeline_calibration(
             matcher_local,
             dataset_calibration,
-            dataset_calibration,
+            calibration_b,
             exclude_self_pairs=bool(getattr(calibration_cfg, "exclude_self_pairs", True))
             and not bool(getattr(calibration_cfg, "official_same_set", False)),
         )
         timings["calibration_sec"] = time.perf_counter() - t_calibration
+        calibration_info.update(_calibration_provenance(cfg, dataset_calibration, calibration_b))
         if method_artifacts is not None:
             method_artifacts["local_calibration"] = calibration_info
         _instrument_local_pipeline(matcher_local, timings)
@@ -1992,6 +2055,7 @@ def run_method(
             dataset_query=dataset_query,
             dataset_database=dataset_database,
             dataset_calibration=dataset_calibration,
+            dataset_calibration_b=dataset_calibration_b,
             transform_model=transform_model,
             transform_aliked=transform_aliked,
             checkpoint_path=checkpoint_path,
@@ -2222,7 +2286,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
         checkpoint_path = None
 
     transform_display, transform_model, transform_aliked = build_transforms(mean, std, img_size)
-    dataset_calibration_raw = get_calibration_dataset(
+    dataset_calibration_raw, dataset_calibration_b_raw = get_calibration_dataset(
         dataset_database=dataset_database_raw,
         size=int(cfg.dataset.calibration_size),
         root=cfg.dataset.root,
@@ -2230,26 +2294,37 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
         source_dataset=dataset,
         split_col=str(cfg.dataset.split_col),
         split_value=getattr(cfg.benchmark.calibration, "split_value", None),
+        query_split_value=str(cfg.dataset.query_split_value),
+        mode=str(getattr(cfg.benchmark.calibration, "mode", "same_set")),
+        seed=int(getattr(cfg.benchmark.calibration, "seed", 0)),
     )
 
     if method in {"cosine", "linear_probe", "efficient_probe"}:
         dataset_database = make_dataset_view(cfg, dataset_database_raw, transform=transform_model)
         dataset_query = make_dataset_view(cfg, dataset_query_raw, transform=transform_model)
         dataset_calibration = make_dataset_view(cfg, dataset_calibration_raw, transform=transform_model)
+        dataset_calibration_b = _calibration_side_b(
+            cfg, dataset_calibration_raw, dataset_calibration_b_raw, transform_model
+        )
     elif method == "vismatch":
         stage_a_method = str(cfg.benchmark.methods.vismatch.stage_a_method)
         if stage_a_method in {"cosine", "wildfusion", "linear_probe", "efficient_probe"}:
             dataset_database = make_dataset_view(cfg, dataset_database_raw, transform=transform_model)
             dataset_query = make_dataset_view(cfg, dataset_query_raw, transform=transform_model)
             dataset_calibration = make_dataset_view(cfg, dataset_calibration_raw, transform=transform_model)
+            dataset_calibration_b = _calibration_side_b(
+                cfg, dataset_calibration_raw, dataset_calibration_b_raw, transform_model
+            )
         else:
             dataset_database = make_dataset_view(cfg, dataset_database_raw, transform=None)
             dataset_query = make_dataset_view(cfg, dataset_query_raw, transform=None)
             dataset_calibration = make_dataset_view(cfg, dataset_calibration_raw, transform=None)
+            dataset_calibration_b = _calibration_side_b(cfg, dataset_calibration_raw, dataset_calibration_b_raw, None)
     else:
         dataset_database = make_dataset_view(cfg, dataset_database_raw, transform=None)
         dataset_query = make_dataset_view(cfg, dataset_query_raw, transform=None)
         dataset_calibration = make_dataset_view(cfg, dataset_calibration_raw, transform=None)
+        dataset_calibration_b = _calibration_side_b(cfg, dataset_calibration_raw, dataset_calibration_b_raw, None)
 
     cache = FeatureCache(
         enabled=bool(cfg.benchmark.cache.enabled),
@@ -2294,6 +2369,7 @@ def _run_probe(cfg: DictConfig, context: Any) -> None:
         dataset_query=dataset_query,
         dataset_database=dataset_database,
         dataset_calibration=dataset_calibration,
+        dataset_calibration_b=dataset_calibration_b,
         transform_model=transform_model,
         transform_aliked=transform_aliked,
         checkpoint_path=checkpoint_path,

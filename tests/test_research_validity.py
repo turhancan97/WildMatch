@@ -20,7 +20,11 @@ from wildmatch.evaluate.candidate_scoring import (
 )
 from wildmatch.evaluate.metrics import _label_retrieval_metrics, _truncated_average_precision
 from wildmatch.evaluate.ranking import stable_rank_indices
-from wildmatch.matchers.wildfusion_calibration import fit_pipeline_calibration
+from wildmatch.matchers.wildfusion_calibration import (
+    disjoint_calibration_frames,
+    fit_pipeline_calibration,
+    resolve_calibration_mode,
+)
 from wildmatch.train.accumulation import accumulation_group_size
 from wildmatch.train.checkpointing import resolve_model_checkpoint, validate_resume_epochs
 from wildmatch.train.results import build_final_training_metrics
@@ -577,6 +581,63 @@ class ResearchValidityTests(unittest.TestCase):
     def test_official_calibration_mode_keeps_diagonal_pairs(self):
         dataset = type("Dataset", (), {})()
         dataset.df = pd.DataFrame({"path": ["a", "b"], "label": ["x", "y"]})
+        pipeline = _FakePipeline()
+        diagnostics = fit_pipeline_calibration(pipeline, dataset, dataset, exclude_self_pairs=False)
+        self.assertEqual(diagnostics["source"], "official_all_pairs")
+        self.assertEqual(diagnostics["excluded_self_pairs"], 0)
+        self.assertEqual(len(pipeline.calibration.scores), 4)
+
+    def test_distinct_calibration_sets_are_labelled_disjoint(self):
+        side_a = type("Dataset", (), {})()
+        side_a.df = pd.DataFrame({"path": ["a", "b"], "label": ["x", "y"]})
+        side_b = type("Dataset", (), {})()
+        side_b.df = pd.DataFrame({"path": ["c", "d"], "label": ["x", "y"]})
+        pipeline = _FakePipeline()
+        diagnostics = fit_pipeline_calibration(pipeline, side_a, side_b, exclude_self_pairs=True)
+        self.assertEqual(diagnostics["source"], "disjoint_sets")
+        self.assertEqual(diagnostics["used_pairs"], 4)
+
+    def test_disjoint_calibration_frames_share_identities_not_images(self):
+        rows = [(f"{label}{i}.jpg", label) for label, n in (("a", 5), ("b", 3), ("c", 1), ("d", 2)) for i in range(n)]
+        metadata = pd.DataFrame(rows, columns=["path", "identity"])
+        side_a, side_b = disjoint_calibration_frames(metadata, "identity", size=8, seed=0)
+        self.assertEqual(len(side_a) + len(side_b), 8)
+        self.assertFalse(set(side_a["path"]) & set(side_b["path"]))
+        # Every identity with two or more images contributes a cross-side positive before any
+        # identity contributes a second pair.
+        self.assertEqual(set(side_a["identity"]) & set(side_b["identity"]), {"a", "b", "d"})
+        again_a, again_b = disjoint_calibration_frames(metadata, "identity", size=8, seed=0)
+        self.assertEqual(list(side_a["path"]), list(again_a["path"]))
+        self.assertEqual(list(side_b["path"]), list(again_b["path"]))
+        other_a, _ = disjoint_calibration_frames(metadata, "identity", size=8, seed=1)
+        self.assertNotEqual(list(side_a["path"]), list(other_a["path"]))
+
+    def test_disjoint_calibration_needs_a_positive_pair(self):
+        metadata = pd.DataFrame({"path": ["a.jpg", "b.jpg"], "identity": ["x", "y"]})
+        with self.assertRaises(ValueError):
+            disjoint_calibration_frames(metadata, "identity", size=2, seed=0)
+
+    @unittest.skipUnless(HAS_PROBE_CACHE_DEPS, "probe runner dependencies not available")
+    def test_calibration_refuses_the_query_split(self):
+        from wildmatch.evaluate.probe_runner import get_calibration_dataset
+
+        database = type("Dataset", (), {})()
+        database.metadata = pd.DataFrame({"path": ["a", "b"], "identity": ["x", "x"], "split": ["train", "train"]})
+        with self.assertRaises(ValueError):
+            get_calibration_dataset(
+                database,
+                2,
+                "/tmp",
+                "identity",
+                source_dataset=database,
+                split_col="split",
+                split_value="test",
+                query_split_value="test",
+            )
+
+    def test_unknown_calibration_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            resolve_calibration_mode("official")
 
     def test_calibration_excludes_same_set_diagonal(self):
         with tempfile.TemporaryDirectory():

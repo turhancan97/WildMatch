@@ -118,8 +118,16 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
   new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`). Run them as `python paper/<group>/<script>.py`.
-- README.md and guides/: the README is short (2026-10-06, user decisions): title, overview, one
-  quick start, a documentation table, a compact repository tree, troubleshooting, licence. The
+- README.md and guides/: the README is short (2026-10-06, user decisions). Its header follows
+  gmum/SpaRRTa (user request 2026-10-06): logo and full paper title, badges, a links row (Project
+  Page, Paper, arXiv and YouTube Video left empty until they are public; the Hub checkpoint repo),
+  the six authors as confirmed by the paper session (Kargin and Kubaty equal contribution; links:
+  personal pages for Kargin, Zielinski, Przewiezlikowski, LinkedIn for Kubaty, ORCID for
+  Rostovskaya, ResearchGate for Wierzbowska), an empty NEWS list (template in an HTML comment) and
+  an empty BibTeX block until the arXiv ID is announced. Never add the venue or the review status
+  (embargo); the repository is private, so the author names do not break double-blind review, but
+  keep it private until the notification. Below the header: About, overview, one quick start, a
+  documentation table, a compact repository tree, troubleshooting, licence. The
   reference material lives in `guides/` (user-facing, linked from the README; never cluster paths or
   the venue, pinned by `tests/test_guides.py`, which also resolves every relative link and heading
   anchor in README.md and guides/):

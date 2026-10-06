@@ -1,16 +1,36 @@
-<p align="center">
-  <img src="docs/assets/logo/wildmatch-fullname.png" alt="WildMatch" width="360">
-</p>
+<div align="center">
 
-<p align="center">
-  <a href="https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml"><img src="https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/python-3.12-blue" alt="Python 3.12">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-Apache--2.0-green" alt="Licence: Apache-2.0"></a>
-</p>
+# <img src="docs/assets/logo/wildmatch-logo-256.png" alt="Logo" width="55"/> WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification
 
-# WildMatch
+[![python](https://img.shields.io/badge/-Python_3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![pytorch](https://img.shields.io/badge/PyTorch_2.8-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
+[![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
+[![license](https://img.shields.io/badge/License-Apache--2.0-green.svg?labelColor=gray)](LICENSE)
+[![ci](https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml/badge.svg)](https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml)
 
-Code for *WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification*.
+[**Project Page**]() | [**Paper**]() | [**arXiv**]() | [**HuggingFace Model**](https://huggingface.co/turhancan97/wildmatch-checkpoints) | [**YouTube Video**]()
+
+[Turhan Can Kargin](https://turhancankargin.me/)\*, [Piotr Kubaty](https://www.linkedin.com/in/piotr-kubaty/)\*, [Ekaterina Rostovskaya](https://orcid.org/0000-0002-8421-1838), [Izabela Wierzbowska](https://www.researchgate.net/profile/Izabela-Wierzbowska), [Bartosz Zieliński](https://bartoszzielinski.github.io/), [Marcin Przewięźlikowski](https://mprzewie.github.io/)
+
+<sub>\* Equal contribution</sub>
+
+</div>
+
+:newspaper: **NEWS**:
+
+<!-- Newest first, for example:
+- *Mon. YYYY:* What happened, with a [link](https://...).
+-->
+
+--------------------------------
+
+If you find this research useful, please consider citing:
+
+```bibtex
+```
+
+## About
+
 WildMatch identifies individual animals: given a query photo, it ranks the gallery photos by how
 likely they show the same individual. Starting from a fixed MegaDescriptor-L candidate list, a
 pretrained keypoint matcher (LoMa or RDD-LightGlue) scores each query against its candidates by

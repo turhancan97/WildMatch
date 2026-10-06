@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: competition rules read for the two Kaggle-competition datasets (user pasted them) and
+  recorded in `THIRD_PARTY_LICENSES.md`, the registry `licence` fields, AGENTS.md and README.
+  AnimalCLEF2025 (SalamanderID2025): non-commercial use including academic research, so the paper,
+  runs and CC BY-NC checkpoints are covered; the data must not be published outside the competition,
+  so the 10 Salamander photos on the page need the sponsor's written permission before the page goes
+  public (new publication-checklist item, user decision). Jaguar Re-ID: competition use only;
+  research use and derivative datasets need the sponsors' written authorization and the data had to
+  be deleted within 30 days after 2026-03-17, so the JaguarReID split and runs of 2026-10-03/04 are
+  not covered. User decision: request authorization; no Jaguar runs until it is granted (the sweep
+  spec and README say so); delete the data if it is refused. JaguarReID is not in the paper, on the
+  page or on the Hub.
 - 2026-10-06: the Hub model card of `turhancan97/wildmatch-checkpoints` states the checkpoint licence
   (user request after PR #10). The metadata changed from `license: other` to `cc-by-nc-4.0`, and the
   "still being settled, not for redistribution" paragraph became a Licence section: CC BY-NC 4.0, why

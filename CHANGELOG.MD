@@ -7,6 +7,12 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: README header in the style of gmum/SpaRRTa (user request): logo and full paper title,
+  Python/PyTorch/Hydra/licence/CI badges, a links row (Project Page, Paper, arXiv, YouTube Video
+  empty until public; HuggingFace Model points at the private checkpoint repository), the authors
+  with links and the equal-contribution mark (order, spelling and marks confirmed against the
+  manuscript by the paper session), an empty NEWS section and an empty citation block. The
+  method paragraph moves under a new "About" heading. No venue or review status is named.
 - 2026-10-06: Lighter README with the reference material in `guides/` (user request; decisions:
   guides in a new `guides/` folder, one configuration file, compact repository tree kept, the two
   quick starts merged, title "WildMatch", logo and badges, the paper named by title only, the

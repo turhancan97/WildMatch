@@ -7,6 +7,7 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: README: the logo sits above the title, 150 px wide instead of 55 px inline (user request).
 - 2026-10-06: Light and dark logos (user request; decisions: dark full-name logo B1 two-colour, a
   dark mark cut from A1, favicons follow the OS theme, only the unused dark favicon sizes deleted).
   New `docs/assets/logo/wildmatch-fullname-dark.png` (B1 dark at 1200 px) and

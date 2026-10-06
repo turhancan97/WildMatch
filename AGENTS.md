@@ -119,7 +119,7 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`). Run them as `python paper/<group>/<script>.py`.
 - README.md and guides/: the README is short (2026-10-06, user decisions). Its header follows
-  gmum/SpaRRTa (user request 2026-10-06): logo and full paper title, badges, a links row (Project
+  gmum/SpaRRTa (user request 2026-10-06): the logo (150 px, light/dark via `<picture>`) above the full paper title, badges, a links row (Project
   Page, Paper, arXiv and YouTube Video left empty until they are public; the Hub checkpoint repo),
   the six authors as confirmed by the paper session (Kargin and Kubaty equal contribution; links:
   personal pages for Kargin, Zielinski, Przewiezlikowski, LinkedIn for Kubaty, ORCID for

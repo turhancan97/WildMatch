@@ -1,6 +1,11 @@
 <div align="center">
 
-# <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/wildmatch-logo-256-dark.png"><img src="docs/assets/logo/wildmatch-logo-256.png" alt="Logo" width="55"/></picture> WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/wildmatch-logo-256-dark.png">
+  <img src="docs/assets/logo/wildmatch-logo-256.png" alt="WildMatch logo" width="150"/>
+</picture>
+
+# WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification
 
 [![python](https://img.shields.io/badge/-Python_3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![pytorch](https://img.shields.io/badge/PyTorch_2.8-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)

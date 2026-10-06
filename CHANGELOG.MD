@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: the two "Draft" boxes on the project page are settled (user decisions, against the
+  submitted paper). Method: the masking sentence follows the records: CzechLynx ships its masks,
+  the WildlifeReID-10k masked images were made by the team, SalamanderID2025 was segmented with
+  SAM 3 using the prompt "Salamander". It no longer says WildlifeReID-10k "provides" masks, which
+  contradicted the Evaluation page. The paper's own sentence ("dataset-provided masks; otherwise
+  SAM 3 with the prompt 'animal'") differs on these two details. Training cost: a new section
+  gives the paper's explanation of the gap between matcher and classifier, and the re-run
+  provenance of the matcher curve moves into the cost bullets. The Home warning no longer refers
+  to sections marked draft. Also noted (not acted on, user decision): the arXiv version's abstract
+  names the project page `wildmatch.gmum.net`, while `site_url` and the repository website stay on
+  the GitHub Pages address for now.
 - 2026-10-06: the GitHub repository was renamed to `turhancan97/WildMatch` (by the user; still
   private). `mkdocs.yml` (`site_url` `https://turhancan97.github.io/WildMatch/`, `repo_url`,
   `repo_name`), the Paper & Code table and link follow it; the provisional-name note is removed

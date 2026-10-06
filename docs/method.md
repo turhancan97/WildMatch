@@ -23,15 +23,10 @@ MegaDescriptor-L for the candidate list, a fixed starting point shared by every
 matching method and baseline; \(k\) is the candidate budget reported with each result.
 
 **Background masking.** Pixels outside the animal mask are blacked out and nothing is
-cropped, so every method sees the same inputs. CzechLynx ships its own masks, the
-WildlifeReID-10k datasets provide pre-masked images, and SalamanderID2025 was segmented
-for this work with text-prompted SAM 3 (prompt "Salamander", recorded in the dataset's
-mask metadata).
-
-!!! note "Draft"
-    The manuscript's description of masking is being revised by the authors. The
-    statement above follows the mask metadata and the segmentation script, not the
-    current manuscript text.
+cropped, so every method sees the same inputs. CzechLynx ships its own masks; the masked
+images of the WildlifeReID-10k datasets were made by the team; SalamanderID2025 was
+segmented for this work with text-prompted SAM 3 (prompt "Salamander", recorded in the
+dataset's mask metadata).
 
 ## Identity-guided pair mining
 

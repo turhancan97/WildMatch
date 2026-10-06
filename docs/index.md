@@ -56,8 +56,7 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 </div>
 
 !!! warning "Draft page"
-    This page is a private draft that mirrors the manuscript as of 2026-10-02. Sections
-    marked *draft* follow text that the authors are still revising.
+    This page is a private draft that mirrors the manuscript as of 2026-10-02.
 
 ## In 78 seconds
 

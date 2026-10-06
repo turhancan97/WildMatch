@@ -26,13 +26,29 @@ licences. Checked on 2026-10-04 from the installed packages' metadata, the upstr
 | Model | Licence | Notes |
 | --- | --- | --- |
 | MegaDescriptor-L-384 (BVRA) | CC BY-NC 4.0 | model card on Hugging Face; non-commercial use only |
-| LoMa-B and RDD-LightGlue default weights | as published by their authors | downloaded by Vismatch on first use; the code licences above do not state a separate weight licence (to confirm with the authors before a release) |
-| WildMatch fine-tuned matcher checkpoints (`wildmatch weights`) | to decide | fine-tuned from the LoMa-B and RDD-LightGlue weights above; their release licence must be compatible with those |
+| RDD and RDD-LightGlue weights (`RDD-v2.pth`, `RDD_lg-v2.pth`) | Apache-2.0 | published in the xtcpete/rdd repository, whose licence is Apache-2.0 |
+| LoMa-B weights | not stated | the davnords/LoMa repository states licences for the code only (checked 2026-10-06); ask the authors before a release |
+| WildMatch fine-tuned matcher checkpoints (`wildmatch weights`) | **CC BY-NC 4.0** (user decision 2026-10-06) | fine-tuned from the weights above on data with non-commercial terms (WildlifeReID-10k); non-commercial like MegaDescriptor-L, which every method uses for the candidate list |
 | SAM 3 | SAM License | redistribution of SAM Materials or derivatives must follow the agreement; publications of research using them must acknowledge SAM |
 
 ## Datasets
 
 Datasets are not redistributed here; `wildmatch prepare` downloads or rebuilds them from their
-published sources. Each dataset's licence (WildlifeReID-10k and its sub-datasets, CzechLynx,
-AnimalCLEF2025 SalamanderID2025, Kaggle Jaguar Re-ID) is still to be checked and recorded in the
-registry (`registry.licence`).
+published sources. Derived data is not redistributed either: the SAM 3 masks for
+WildlifeReID-10k are released as a recipe (`wildmatch prepare` and `slurm/sam3_masks.sbatch`),
+not as mask files (user decision 2026-10-06), because the WildlifeReID-10k terms forbid
+re-uploading. Each registry entry records its licence in `registry.licence`. Checked on
+2026-10-06 from the Kaggle dataset metadata (through the Kaggle API) and the source pages:
+
+| Dataset | Licence | Notes |
+| --- | --- | --- |
+| WildlifeReID-10k (Kaggle `wildlifedatasets/wildlifereid-10k`) | "Other": no commercial use, no re-upload, attribution of WildlifeReID-10k and of every source dataset | applies on top of each source licence below |
+| HyenaID2022, LeopardID2022, SeaStarReID2023, WhaleSharkID, BelugaID, GiraffeZebraID | CDLA-Permissive-1.0 | via WildlifeReID-10k |
+| ZindiTurtleRecall | CC BY-SA 4.0 | via WildlifeReID-10k |
+| NyalaData, Giraffes | none stated by the source | via WildlifeReID-10k; strictly all rights reserved |
+| ATRW | CC BY-NC-SA 4.0 | via WildlifeReID-10k |
+| StripeSpotter | CC BY-SA 3.0 | via WildlifeReID-10k |
+| CowDataset | CC BY 4.0 | via WildlifeReID-10k |
+| CzechLynx (Kaggle `picekl/czechlynx`) | CC BY 4.0 | also covers the synthetic renders bundled with `wildmatch demo` |
+| SalamanderID2025 (AnimalCLEF2025, Kaggle competition) | competition rules | not stated on the ImageCLEF page; confirm from the Kaggle rules |
+| JaguarReID (Kaggle Jaguar Re-ID competition) | competition rules | to confirm; not a paper dataset |

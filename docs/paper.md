@@ -58,4 +58,6 @@ One repository implements the whole pipeline: pair mining, matcher fine-tuning a
 | WildFusion | Baseline | wildlife-tools |
 | SAM 3 | Background removal for SalamanderID2025 | prompt "Salamander" |
 
-Licenses of wrapped models and downloaded weights are being collected for the release.
+The code is Apache-2.0 and the fine-tuned matcher checkpoints are CC BY-NC 4.0. MegaDescriptor-L,
+used for every method's candidate list, is CC BY-NC 4.0, so the full pipeline is for
+non-commercial use. Each dataset keeps its own license (see [Datasets](datasets/index.md#licensing)).

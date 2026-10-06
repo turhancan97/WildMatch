@@ -75,14 +75,18 @@ text.
 
 ## Licensing
 
-| Dataset | License as far as recorded |
-|---|---|
-| Hyena, Leopard (LILA BC) | CDLA-Permissive |
-| CzechLynx synthetic renders (demos) | CC BY 4.0, Zenodo record 17592004 |
-| Nyala, Sea star, Whale shark, Turtle | See the WildlifeReID-10k distribution; web display to be confirmed |
-| Salamander (AnimalCLEF 2025, Kaggle) | Shown with the dataset team's permission; Kaggle competition rules restrict redistribution |
-| CzechLynx photographs | Web display to be confirmed with the dataset authors |
+The photographs on this page are shown to illustrate the research, with attribution to
+their datasets. No dataset is redistributed: the code downloads or rebuilds each one from
+its published source.
 
-!!! warning "Open item"
-    Web display of the CzechLynx and WildlifeReID-10k photographs other than Hyena and
-    Leopard must be confirmed with the dataset authors before the page is published.
+| Dataset | Source | License |
+|---|---|---|
+| CzechLynx photographs | CzechLynx (Kaggle) | CC BY 4.0 |
+| CzechLynx synthetic renders (demos) | CzechLynx, Zenodo record 17592004 | CC BY 4.0 |
+| Hyena, Leopard, Sea star, Whale shark | WildlifeReID-10k (Kaggle), from LILA BC | CDLA-Permissive-1.0 |
+| Turtle | WildlifeReID-10k (Kaggle), from Zindi Turtle Recall | CC BY-SA 4.0 |
+| Nyala | WildlifeReID-10k (Kaggle) | no license stated by the source |
+| Salamander | AnimalCLEF 2025 (Kaggle competition) | competition rules; shown with the dataset team's permission |
+
+WildlifeReID-10k additionally forbids commercial use and re-uploading, and asks users to
+attribute WildlifeReID-10k and each of its source datasets.

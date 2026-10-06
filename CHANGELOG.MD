@@ -7,6 +7,24 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: Lighter README with the reference material in `guides/` (user request; decisions:
+  guides in a new `guides/` folder, one configuration file, compact repository tree kept, the two
+  quick starts merged, title "WildMatch", logo and badges, the paper named by title only, the
+  research-validity summary kept public, the project page links to the guides, a short
+  troubleshooting kept). README.md (919 to about 140 lines): logo, CI/Python/licence badges, a
+  paragraph on the method, overview, one quick start (now also mining and matcher fine-tuning), a
+  documentation table, repository tree, troubleshooting (adds the private Hub token), licence.
+  `DATASET.md` moved to `guides/DATASET.md` (`git mv`; links to the README now point at
+  `INSTALLATION.md`). New `guides/INSTALLATION.md`, `guides/CONFIGURATION.md` and
+  `guides/EXPERIMENTS.md` hold the former README sections verbatim apart from headings and these
+  fixes: the unseen-split example used cluster paths (now `<data_root>`), the safety-check text said
+  checks are on by default (the shipped `probe.yaml` turns them off), Vismatch was said to be pinned
+  in `requirements.txt` (it is `[tool.uv.sources]`), a leftover note about the launchers' `VARIANTS`
+  table was dropped, "default configs contain shared filesystem paths" now describes path profiles,
+  and "mask contents are not hashed yet" now states the mask digest and the GPU type in the cache
+  keys. `docs/reproduce/index.md` and `probing.md` link to the guides on GitHub. New
+  `tests/test_guides.py` resolves every relative link and heading anchor in README.md and `guides/`
+  and keeps cluster paths and the venue out of them.
 - 2026-10-06: `DATASET.md`, a dataset preparation guide for outside researchers (user request;
   decisions: all 17 registry entries, a full SAM 3 setup section, repository file only, README data
   sections become links, mask agreement only, counts plus checksums, no checkpoints). It covers the

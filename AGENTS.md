@@ -118,7 +118,20 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
   new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`). Run them as `python paper/<group>/<script>.py`.
-- DATASET.md: the user-facing dataset preparation guide (2026-10-06): all 17 registry entries,
+- README.md and guides/: the README is short (2026-10-06, user decisions): title, overview, one
+  quick start, a documentation table, a compact repository tree, troubleshooting, licence. The
+  reference material lives in `guides/` (user-facing, linked from the README; never cluster paths or
+  the venue, pinned by `tests/test_guides.py`, which also resolves every relative link and heading
+  anchor in README.md and guides/):
+  `INSTALLATION.md` (uv, conda, path profiles, paper checkpoints, tests), `DATASET.md`,
+  `CONFIGURATION.md` (Hydra, dataset contract, backbones, probes, Vismatch, safety checks, W&B,
+  reproducibility) and `EXPERIMENTS.md` (mining pointer, single runs, sweeps, outputs, tables and
+  figures, research validity, known constraints, other tools). Update the matching guide with any
+  change to a command, setting or output layout it describes. The project page links to them by
+  absolute GitHub URL (`docs/reproduce/index.md`, `probing.md`), since MkDocs cannot link outside
+  `docs/`.
+- guides/DATASET.md: the user-facing dataset preparation guide (2026-10-06; moved from the root the
+  same day): all 17 registry entries,
   SAM 3 environment setup, recipes, expected counts and SHA-256 of the exactly rebuilt tables.
   Update it whenever `wildmatch prepare`, `sam3_masks.py` or a registry entry's data changes.
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:

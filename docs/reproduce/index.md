@@ -18,6 +18,10 @@ reads the previous step's outputs from the storage layout set by the path profil
 [Few-shot views](fewshot.md) run the same three steps on a reduced training split; they are an
 extension and not part of the paper.
 
+The repository's guides go further than these pages: [installation](https://github.com/turhancan97/WildMatch/blob/main/guides/INSTALLATION.md),
+[dataset preparation](https://github.com/turhancan97/WildMatch/blob/main/guides/DATASET.md) for every registry dataset, [configuration](https://github.com/turhancan97/WildMatch/blob/main/guides/CONFIGURATION.md)
+of every method, and [experiments](https://github.com/turhancan97/WildMatch/blob/main/guides/EXPERIMENTS.md) (sweeps, outputs, tables and figures).
+
 ## Environment
 
 One environment with pinned dependencies (Python 3.12) runs all three steps:

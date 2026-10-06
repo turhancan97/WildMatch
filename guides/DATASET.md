@@ -5,10 +5,10 @@ This guide takes you from a fresh clone to every dataset WildMatch evaluates on,
 dataset registry: the eight datasets of the paper, the CzechLynx unseen-identity protocol, and the
 other WildlifeReID-10k animals the pipeline supports.
 
-You need the `wildmatch` package installed (see the [README](README.md#installation)), Kaggle
+You need the `wildmatch` package installed (see [INSTALLATION.md](INSTALLATION.md)), Kaggle
 API access and, for the masked datasets, a GPU that can run SAM 3. Downloading and preparing data
-does not need the paper checkpoints; those are described in the README
-([Paper checkpoints](README.md#paper-checkpoints)).
+does not need the paper checkpoints; those are described in the installation guide
+([Paper checkpoints](INSTALLATION.md#paper-checkpoints)).
 
 **Contents**
 
@@ -84,7 +84,7 @@ CzechLynx release.
 | `jaguar` | JaguarReID | no | Jaguar Re-ID (Kaggle competition) | **paused** | [5.5](#55-jaguarreid-paused) |
 
 **Licences and terms.** Each dataset keeps its own terms; read them before you download, and see
-[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) for the full table. In short:
+[`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md) for the full table. In short:
 
 - **WildlifeReID-10k**: no commercial use, no re-uploading, and attribution of WildlifeReID-10k and
   of each source dataset, on top of the source licence. Source licences:
@@ -105,7 +105,7 @@ rebuild them from your own downloads.
 
 ## 3. Prerequisites
 
-1. **The package**, installed as in the README. `wildmatch prepare` runs on CPU.
+1. **The package**, installed as in [INSTALLATION.md](INSTALLATION.md). `wildmatch prepare` runs on CPU.
 2. **Kaggle API credentials.** Downloads go through the `kaggle` command-line tool, installed with
    the package. Create an API token on your Kaggle account page and put it in
    `~/.kaggle/kaggle.json`, or export `KAGGLE_USERNAME` and `KAGGLE_KEY`.

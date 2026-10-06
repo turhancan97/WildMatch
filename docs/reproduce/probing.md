@@ -4,6 +4,8 @@ Command: `wildmatch evaluate`, part of the `wildmatch` package like the mining a
 steps. Evaluation is a Hydra-configured *probe*: for every query it ranks the gallery with one method, stores the
 score matrix, metrics and timings in a self-contained run directory, and appends one row
 to a central run index. Tables and figures are built from those run directories.
+Every setting is described in the repository's [configuration guide](https://github.com/turhancan97/WildMatch/blob/main/guides/CONFIGURATION.md),
+and outputs, sweeps and reporting rules in the [experiments guide](https://github.com/turhancan97/WildMatch/blob/main/guides/EXPERIMENTS.md).
 
 ## Environment
 

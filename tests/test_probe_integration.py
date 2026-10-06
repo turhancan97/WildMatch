@@ -101,6 +101,7 @@ class ProbeIntegrationTest(unittest.TestCase):
         self.assertEqual(rows[0]["status"], "completed")
         self.assertEqual(rows[0]["method"], method)
         self.assertEqual((rows[0]["num_query"], rows[0]["num_database"]), ("6", "18"))
+        self.assertTrue(rows[0]["git_commit"], "run index row without git_commit")
         return metrics
 
     def test_cosine_run_is_complete(self):

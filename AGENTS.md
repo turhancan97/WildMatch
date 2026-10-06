@@ -19,7 +19,7 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 
 - src/wildmatch/cli.py: the `wildmatch` command (`[project.scripts]`; `python -m wildmatch` is the
   same). Subcommands: `evaluate`, `finetune-backbone`, `finetune-matcher`, `mine`, `sweep`, `sweep-task`, `summarize-runs`,
-  `summarize-logs`, `tables`, `figures`, `build-unseen-split`, `class-balance`, `audit`.
+  `summarize-logs`, `check-index`, `audit-runs`, `tables`, `figures`, `build-unseen-split`, `class-balance`, `audit`.
 - src/wildmatch/entrypoints.py: Hydra entry points behind `evaluate` and `finetune-backbone`
   (configs resolved as `pkg://wildmatch.conf`; job names pinned in the configs).
 - src/wildmatch/sweep/: evaluation sweeps (spec and task table, immutable submissions, task
@@ -345,6 +345,18 @@ notes do not make a run dirty). A dirty run also keeps the diff, untracked files
 `code.diff` in its run folder. `file_identity` (backbone checkpoint of a probe, final checkpoint of
 a finetune) now includes the file's SHA-256; Vismatch checkpoints already recorded theirs in
 `vismatch_checkpoint`/`checkpoint_provenance`. Older manifests have neither field.
+
+**Metadata audit (branch `feat/artifact-audit`, 2026-10-06, user decision: read-only).**
+`wildmatch audit-runs [--root experiments] [--index reports/runs.csv] [--output <csv>]` counts run
+manifests and index rows that predate provenance fields and changes nothing (historical artifacts
+are never rewritten). First run on the cluster (931 manifests, 855 index rows): no `code` block 930
+(added 2026-10-04), no `vismatch_device` 632 Vismatch runs (2026-10-05), no primary timing 200
+probes, no `model`/`split_protocol` 11, no `git_commit`, schema or checkpoint SHA-256 gap 0, and
+one unreadable manifest: `WildlifeReID-10k/WhaleSharkID/.../wildfusion/default/20261004T200236Z_fda65a57`
+is an empty file written during the full-disk night of 2026-10-04 (left as is). Two forward fixes
+came out of it: run JSON files (manifest, metrics, timings) are now written atomically, and the run
+index's `git_commit` column, empty in all 855 rows since the index exists, is now filled.
+`summarize-runs`, `tables` and `figures` already label missing fields `unknown` or `--`.
 
 `reports/runs.csv` is the central one-row-per-run index. `wildmatch check-index` finds
 `completed` rows whose run directory is gone (dry run by default); `--fix` repoints runs that
@@ -1126,7 +1138,6 @@ reproduction live under "Known issues" instead.
   fine) but forbids publishing the data outside the competition, so the Salamander photos on the page
   need the sponsor's written permission (publication checklist). Still open: the JaguarReID
   authorization (see "JaguarReID").
-- [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
 
 
 ## Project page

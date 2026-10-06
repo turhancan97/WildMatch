@@ -44,6 +44,9 @@ COMMANDS: Dict[str, Command] = {
     "check-index": Command(
         "wildmatch.reporting.check_index:main", "find runs.csv rows whose run directory moved or is gone"
     ),
+    "audit-runs": Command(
+        "wildmatch.reporting.audit_runs:main", "report run manifests and index rows that predate provenance fields"
+    ),
     "tables": Command("wildmatch.reporting.export_tables:main", "export LaTeX/CSV result tables from experiments/"),
     "figures": Command("wildmatch.reporting.export_figures:main", "plot accuracy versus candidate budget"),
     "build-unseen-split": Command("wildmatch.data.unseen_split:main", "build the unseen-identity evaluation split"),

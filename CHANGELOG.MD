@@ -7,6 +7,16 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: End-to-end probe test and config checks (closes two future-work items; plan approved
+  by the user). `tests/test_probe_integration.py` runs `wildmatch evaluate` through Hydra on the 24
+  bundled demo images with `get_model` patched to a tiny deterministic CNN: cosine (complete run
+  folder, manifest `completed`, run-index row with 6 queries and 18 gallery images, bit-identical
+  scores across two runs) and a two-epoch linear probe. CPU only, no download, about 15 s, so it
+  runs in CI. `tests/test_conf_files.py`: every YAML under `src/wildmatch/conf/` parses, the
+  `weights.yaml` schema (keys, lowercase hex SHA-256, relative paths, no duplicate Hub names or
+  dataset/matcher pairs, known registry keys), and `finetune_matcher` composes with both recipes.
+  The other config checks already existed (every dataset entry composed, every sweep spec built,
+  `weights.yaml` against the registry).
 - 2026-10-06: README: the logo sits above the title, 150 px wide instead of 55 px inline (user request).
 - 2026-10-06: Light and dark logos (user request; decisions: dark full-name logo B1 two-colour, a
   dark mark cut from A1, favicons follow the OS theme, only the unused dark favicon sizes deleted).

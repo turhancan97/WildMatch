@@ -94,7 +94,8 @@ class FinetuneIntegrationTest(unittest.TestCase):
             self.assertIn("best_checkpoint_metrics", metrics)
 
     def test_unknown_selection_is_rejected(self):
-        with tempfile.TemporaryDirectory() as tmp, self.assertRaises(Exception):
+        # Hydra re-raises with HYDRA_FULL_ERROR=1 and exits with status 1 otherwise (as in CI).
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaises((ValueError, SystemExit)):
             run_finetune(Path(tmp), ["output.selection=best"])
 
 

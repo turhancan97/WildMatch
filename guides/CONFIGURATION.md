@@ -234,7 +234,8 @@ Core options:
 - `lr`, `momentum`, `weight_decay`, `eta_min_scale`
 - `eval_batch_size`, `eval_num_workers`
 - `resume_checkpoint`
-- `save_checkpoint` (default `false`), `save_every`, `final_checkpoint_name`
+- `save_checkpoint` (default `false`), `save_every`, `final_checkpoint_name`, `keep_last_epoch_checkpoints`
+  (default `null`: keep every `*_epoch_<n>.pth`; a number keeps the newest N)
 - `partial_rules`: per-model parameter-name patterns for partial unfreezing
 
 Reported metrics for `linear_probe`:
@@ -438,6 +439,11 @@ The standard finetune-to-probe workflow uses checkpoint-final.pth. If automatic
 discovery is enabled, the newest run is searched for the configured canonical
 filename first and then for compatible tagged model-only checkpoints. Full
 checkpoints are never selected for inference.
+
+Checkpoints are written atomically: a crash or a full disk leaves the previous file intact.
+`output.keep_last_epoch_checkpoints` keeps only the newest N `checkpoint-epoch-<n>` files of a
+fine-tuning run (default `null` keeps all); final, best and latest checkpoints are never deleted.
+Legacy result folders without a run manifest are found at any depth under `results/`.
 
 accumulation_steps controls optimizer updates in all three training loops:
 finetune, linear_probe, and efficient_probe. The final partial group at the end

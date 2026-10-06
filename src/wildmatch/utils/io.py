@@ -1,10 +1,12 @@
 import csv
 import fcntl
 import os
+import re
+import shutil
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Sequence
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence
 
 
 def ensure_file(path: Path, description: str) -> None:
@@ -53,6 +55,59 @@ def write_csv_atomically(csv_path: Path, header: Sequence[str], rows: Sequence[D
             os.unlink(temporary)
 
 
+def atomic_write(path: Path, write: Callable[[Path], None]) -> None:
+    """Write ``path`` through ``write(temporary_path)``, then rename it into place.
+
+    The temporary file has the target's own name inside a fresh hidden folder next to the target:
+    ``torch.save`` stores the file name in its archive, so a different temporary name would change
+    the bytes (and the SHA-256 that manifests and cache keys record). A crash leaves the old file
+    intact, and readers never see a partial file.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    folder = Path(tempfile.mkdtemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent))
+    try:
+        temporary = folder / path.name
+        write(temporary)
+        os.chmod(temporary, _target_mode(path))
+        os.replace(temporary, path)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def atomic_torch_save(obj: Any, path: Path) -> None:
+    """``torch.save`` that never leaves a partial checkpoint (see ``atomic_write``)."""
+    import torch
+
+    atomic_write(Path(path), lambda temporary: torch.save(obj, temporary))
+
+
+def prune_epoch_files(folder: Path, pattern: str, keep: Optional[int]) -> List[Path]:
+    """Delete epoch checkpoints in ``folder`` beyond the newest ``keep`` epochs.
+
+    ``pattern`` is a regular expression on file names with one group, the epoch number; every file
+    of a pruned epoch goes (canonical and tagged copies alike). ``keep=None`` keeps everything.
+    Only files matching the pattern are touched, so final, best and latest checkpoints stay.
+    """
+    if keep is None:
+        return []
+    keep = int(keep)
+    if keep < 1:
+        raise ValueError("keep_last_epoch_checkpoints must be >= 1 or null")
+    regex = re.compile(pattern)
+    by_epoch: Dict[int, List[Path]] = {}
+    for candidate in Path(folder).iterdir():
+        match = regex.fullmatch(candidate.name)
+        if match and candidate.is_file():
+            by_epoch.setdefault(int(match.group(1)), []).append(candidate)
+    removed: List[Path] = []
+    for epoch in sorted(by_epoch)[:-keep]:
+        for candidate in by_epoch[epoch]:
+            candidate.unlink()
+            removed.append(candidate)
+    return removed
+
+
 def _target_mode(path: Path) -> int:
     try:
         return path.stat().st_mode & 0o777
@@ -69,11 +124,7 @@ def append_csv_row(csv_path: Path, row: Dict[str, Any]) -> None:
 
 def _append_csv_row_locked(csv_path: Path, row: Dict[str, Any]) -> None:
     if not csv_path.is_file():
-        fieldnames = list(row.keys())
-        with csv_path.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerow(row)
+        write_csv_atomically(csv_path, list(row.keys()), [row])
         return
 
     with csv_path.open("r", newline="", encoding="utf-8") as f:
@@ -82,11 +133,7 @@ def _append_csv_row_locked(csv_path: Path, row: Dict[str, Any]) -> None:
         existing_rows = list(reader)
 
     if not existing_header:
-        fieldnames = list(row.keys())
-        with csv_path.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerow(row)
+        write_csv_atomically(csv_path, list(row.keys()), [row])
         return
 
     new_keys = [k for k in row.keys() if k not in existing_header]

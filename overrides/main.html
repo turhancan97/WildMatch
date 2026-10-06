@@ -25,8 +25,11 @@
   <meta name="twitter:title" content="{{ page_title }} · {{ config.site_name }}">
   <meta name="twitter:description" content="{{ config.site_description }}">
   <meta name="twitter:image" content="{{ 'assets/logo/wildmatch-social.png' | url }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'assets/logo/favicon-32.png' | url }}">
-  <link rel="icon" type="image/png" sizes="192x192" href="{{ 'assets/logo/favicon-192.png' | url }}">
+  {# Light and dark favicons follow the visitor's OS/browser theme (Safari ignores media). #}
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'assets/logo/favicon-32.png' | url }}" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ 'assets/logo/favicon-192.png' | url }}" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ 'assets/logo/favicon-32_dark.png' | url }}" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ 'assets/logo/favicon-192_dark.png' | url }}" media="(prefers-color-scheme: dark)">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ 'assets/logo/apple-touch-icon-180.png' | url }}">
   <meta name="theme-color" content="#ffffff">
 {% endblock %}

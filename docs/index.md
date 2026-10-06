@@ -9,7 +9,8 @@ hide:
 <div class="wm-hero-head" markdown>
 
 <div class="wm-hero-logo" markdown>
-![WildMatch](assets/logo/wildmatch-fullname.png){ .wm-logo }
+![WildMatch](assets/logo/wildmatch-fullname.png#only-light){ .wm-logo }
+![WildMatch](assets/logo/wildmatch-fullname-dark.png#only-dark){ .wm-logo }
 </div>
 
 <div class="wm-hero-title" markdown>

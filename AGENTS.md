@@ -1209,8 +1209,19 @@ replacing the white tile `wildmatch-tile-192.png`, which stays in the assets;
 `wildmatch-mark-256.png`; PNG favicons and the Apple touch icon) and `docs/assets/favicon.ico`
 is the package's multi-size icon. The hero puts the full-name logo (11 rem) beside the title
 in a head row, with authors and buttons full width below (user request 2026-10-02), with the extra `<link rel="icon">` tags in
-`overrides/main.html`. The "dark" logo variants have dark-grey lettering for light
-backgrounds, not dark-mode art, so both schemes use the two-colour wordmark. Interactive charts (step 3) should use brand blue for
+`overrides/main.html`. The package's original "dark" variants (dark-grey lettering) are for light
+backgrounds, not dark-mode art. **Dark-mode logos (user request 2026-10-06):** the user added a
+dark set (blue/orange on transparent, `*_dark*` in `docs/assets/logo/`). Light and dark switch
+automatically: the hero uses `wildmatch-fullname.png#only-light` and `wildmatch-fullname-dark.png#only-dark`
+(1200 px from `B1_fullname_two-color_dark_transparent.png`; `extra.css` re-hides the other one,
+because `.wm-logo`'s `display: block` beats Material's rule), the header mark comes from
+`overrides/partials/logo.html` (theme logo `#only-light`, `wildmatch-logo-256-dark.png` `#only-dark`,
+the mark cut from `A1_wildmatch_two-color_dark_transparent.png` above its text), both following the page's
+colour scheme; the favicons switch with the visitor's OS theme (`media="(prefers-color-scheme: ...)"`
+on `favicon-32`/`-192` and `favicon-32_dark`/`-192_dark`; Safari ignores it, the `.ico` stays the
+fallback); the README title uses `<picture>` with the dark mark. Kept but unused: A1, A2, B1 and B2
+dark sources and `icon-512-transparent_dark.png`; deleted as unused: the dark 16/48/64 px favicons and
+`favicon_dark.ico` (user choice). The social card has one version. Interactive charts (step 3) should use brand blue for
 "ours" and the validated gold `#b8860b` as a third hue, always with a second cue (marker
 or line style), because the paper notes found no safe fourth hue.
 

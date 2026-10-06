@@ -137,7 +137,15 @@
   display: block;
 }
 
-/* Header mark: the two-colour logo with its background removed. */
+/* Light and dark logo files (#only-light / #only-dark): the display above would otherwise
+   override Material's rule that hides the one for the other scheme. */
+[data-md-color-scheme="default"] .md-typeset img.wm-logo[src$="#only-dark"],
+[data-md-color-scheme="slate"] .md-typeset img.wm-logo[src$="#only-light"] {
+  display: none;
+}
+
+/* Header mark: the two-colour logo with its background removed (dark-scheme version in
+   overrides/partials/logo.html). */
 .md-header__button.md-logo img {
   height: 1.9rem;
   width: auto;

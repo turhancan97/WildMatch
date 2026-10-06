@@ -1,0 +1,4 @@
+{#- Header logo: the light mark in the light scheme, the dark mark in the dark (slate) scheme.
+    Material hides img[src$="#only-dark"] / img[src$="#only-light"] by the page's colour scheme. -#}
+<img src="{{ config.theme.logo | url }}#only-light" alt="logo">
+<img src="{{ 'assets/logo/wildmatch-logo-256-dark.png' | url }}#only-dark" alt="logo">

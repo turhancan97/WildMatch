@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: Light and dark logos (user request; decisions: dark full-name logo B1 two-colour, a
+  dark mark cut from A1, favicons follow the OS theme, only the unused dark favicon sizes deleted).
+  New `docs/assets/logo/wildmatch-fullname-dark.png` (B1 dark at 1200 px) and
+  `wildmatch-logo-256-dark.png` (the mark from A1 dark, 256 px). The project page hero and header
+  switch with the page's colour scheme (`#only-light`/`#only-dark`, new `overrides/partials/logo.html`,
+  a CSS rule so `.wm-logo` stays hidden in the other scheme); the favicons switch with
+  `prefers-color-scheme`; the README title uses `<picture>`. Deleted: `favicon-16_dark.png`,
+  `favicon-48_dark.png`, `favicon-64_dark.png`, `favicon_dark.ico`. Checked in headless Chromium in
+  both schemes.
 - 2026-10-06: README header in the style of gmum/SpaRRTa (user request): logo and full paper title,
   Python/PyTorch/Hydra/licence/CI badges, a links row (Project Page, Paper, arXiv, YouTube Video
   empty until public; HuggingFace Model points at the private checkpoint repository), the authors

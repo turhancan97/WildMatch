@@ -27,7 +27,7 @@ licences. Checked on 2026-10-04 from the installed packages' metadata, the upstr
 | --- | --- | --- |
 | MegaDescriptor-L-384 (BVRA) | CC BY-NC 4.0 | model card on Hugging Face; non-commercial use only |
 | RDD and RDD-LightGlue weights (`RDD-v2.pth`, `RDD_lg-v2.pth`) | Apache-2.0 | published in the xtcpete/rdd repository, whose licence is Apache-2.0 |
-| LoMa-B weights | not stated | the davnords/LoMa repository states licences for the code only (checked 2026-10-06); ask the authors before a release |
+| LoMa-B weights (`loma_B.pt`) | no weight licence stated; read as non-commercial | checked 2026-10-06: the davnords/LoMa README and PyPI page state licences for the code only. The weights are release assets of `davnords/storage`, a repository whose licence file is MIT, but nothing says that licence covers the assets. LoMa was trained on 17 datasets, among them ScanNet++ (non-commercial research only), Niantic Map-free (non-commercial) and CO3Dv2 (CC BY-NC 4.0), and on 2026-09-26 the author added separate, undocumented `commercial_loma_*` weights next to the original `loma_B.pt` (2026-03-28), which suggests the original is meant for non-commercial use. Our checkpoints were fine-tuned from the original (757,888,113 bytes, SHA-256 `3a388243...`). Written confirmation from the authors is optional |
 | WildMatch fine-tuned matcher checkpoints (`wildmatch weights`) | **CC BY-NC 4.0** (user decision 2026-10-06) | fine-tuned from the weights above on data with non-commercial terms (WildlifeReID-10k); non-commercial like MegaDescriptor-L, which every method uses for the candidate list |
 | SAM 3 | SAM License | redistribution of SAM Materials or derivatives must follow the agreement; publications of research using them must acknowledge SAM |
 

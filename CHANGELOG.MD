@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: LoMa-B weight licence researched and recorded (`THIRD_PARTY_LICENSES.md`, AGENTS.md).
+  No licence is stated for the weights: the LoMa README and PyPI page cover only the code, and the
+  weights are release assets of `davnords/storage` (MIT licence file, which does not say it covers
+  the assets). LoMa's training data includes non-commercial datasets (ScanNet++, Niantic Map-free,
+  CO3Dv2 CC BY-NC 4.0), and the author added separate, undocumented `commercial_loma_*` weights on
+  2026-09-26, which suggests the original `loma_B.pt` is meant for non-commercial use. Our
+  checkpoints come from that original (same size, upload date and SHA-256 `3a388243...` recorded
+  in the feature caches), so the CC BY-NC 4.0 release licence stays consistent. Asking the authors
+  is optional.
 - 2026-10-06: licensing decided and recorded (user decisions). Facts checked from the Kaggle API
   metadata and source pages:
   - WildlifeReID-10k: no commercial use, no re-upload, attribution of it and every source dataset.

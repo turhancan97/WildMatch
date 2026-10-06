@@ -1082,8 +1082,11 @@ reproduction live under "Known issues" instead.
 - [ ] Licences (decided and recorded 2026-10-06, see `THIRD_PARTY_LICENSES.md`): code Apache-2.0;
   fine-tuned checkpoints CC BY-NC 4.0 (training data with non-commercial terms, MegaDescriptor-L
   non-commercial too); SAM 3 masks released as a recipe, not as files (WildlifeReID-10k forbids
-  re-uploading); every registry entry has `registry.licence`. Still open: the LoMa-B weight licence
-  (the repository states licences for the code only; ask the authors), the AnimalCLEF2025 and
+  re-uploading); every registry entry has `registry.licence`. LoMa-B weights (researched
+  2026-10-06): no weight licence stated; read as non-commercial (training data includes ScanNet++,
+  Map-free and CO3Dv2, all non-commercial, and the author published separate `commercial_loma_*`
+  weights on 2026-09-26); our checkpoints come from the original `loma_B.pt` (SHA-256 `3a388243...`),
+  so CC BY-NC 4.0 stays consistent; an email to the authors would make it certain. Still open: the AnimalCLEF2025 and
   Jaguar competition rules (read them on Kaggle), and the Hub model card, which still leaves the
   licence open (update it with the checkpoint licence before the release).
 - [ ] Consider atomic checkpoint writes and explicit checkpoint retention.

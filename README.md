@@ -281,6 +281,10 @@ The Kaggle Jaguar Re-ID training photos run through the shared probe pipeline as
 `JaguarReID`: prepare them once with `wildmatch prepare jaguar prepare`, `... embed` and `... split`, then run
 `wildmatch sweep jaguar_default`. See AGENTS.md, "JaguarReID".
 
+The competition rules allow competition use only: research use needs the sponsors' written
+authorization (requested 2026-10-06). Do not run JaguarReID until it is granted; see
+`THIRD_PARTY_LICENSES.md`.
+
 ## Configuration Guide
 
 Hydra is the primary configuration interface for probe and finetuning. The shipped

@@ -53,7 +53,7 @@ COMMANDS: Dict[str, Command] = {
     "audit": Command("wildmatch.data.image_quality:main", "flag candidate low-quality images for review"),
     "prepare": Command(
         "wildmatch.data.prepare:main",
-        "check, download or rebuild datasets (status, download, build, finish, compare-masks, jaguar, unseen-split)",
+        "check, download or rebuild datasets (status, download, build, retry-empty, finish, compare-masks, jaguar, unseen-split)",
     ),
     "weights": Command("wildmatch.weights:main", "list, verify, download or stage the paper checkpoints"),
     "demo": Command("wildmatch.demo:main", "run the pipeline on 24 bundled synthetic lynx renders (CPU)"),

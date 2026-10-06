@@ -30,7 +30,7 @@ source .venv/bin/activate                     # or prefix the commands below wit
 wildmatch demo                                # cosine on 24 bundled synthetic lynx renders
 wildmatch demo --method loma                  # default LoMa over the cosine candidates (~2 min)
 
-# 2. Data: see what each registry dataset needs, then download or rebuild it
+# 2. Data: see what each registry dataset needs, then download or rebuild it (DATASET.md)
 wildmatch prepare status
 wildmatch prepare download zindi              # raw WildlifeReID-10k (Kaggle credentials)
 wildmatch prepare build zindi                 # split table; prints the SAM 3 masking command
@@ -52,8 +52,9 @@ wildmatch summarize-runs --format markdown
 wildmatch tables && wildmatch figures
 ```
 
-`wildmatch --help` lists every command. The sections below describe installation options,
-data locations, the dataset registry and each workflow in detail.
+`wildmatch --help` lists every command. [DATASET.md](DATASET.md) explains how to download and
+prepare every dataset, including the SAM 3 masking setup. The sections below describe installation
+options, data locations, the dataset registry and each workflow in detail.
 
 ## Repository Structure
 
@@ -158,28 +159,25 @@ Supported model identifiers:
 The legacy name megadescriptor is not accepted. Use an explicit supported
 identifier in custom configurations.
 
-The WildlifeReID-10k analysis profiles currently cover NyalaData, WhaleSharkID,
-BelugaID, ZindiTurtleRecall, ATRW, Giraffes, LeopardID2022, HyenaID2022,
-GiraffeZebraID, CowDataset, StripeSpotter, and SeaStarReID2023. The added
-profiles use `metadata_mdsplit_no_background/metadata_<animal>.csv`, with
-`identity` as the label column and `split` values `train` and `test`. These
-metadata paths point to the corresponding pre-masked `masked_images/` tree, so
-their profile uses `image_variant: no_background` and `no_background: false`.
+The WildlifeReID-10k registry entries cover NyalaData, WhaleSharkID, BelugaID,
+ZindiTurtleRecall, ATRW, Giraffes, LeopardID2022, HyenaID2022, GiraffeZebraID, CowDataset,
+StripeSpotter, and SeaStarReID2023. They read `metadata_sam3/metadata_<animal>.csv`, with
+`identity` as the label column and `split` values `train` and `test`; these tables point at the
+SAM 3 pre-masked `masked_images_sam3/` tree, so the entries use `image_variant: no_background`
+and `no_background: false`. The tables the paper's runs read are recorded as
+`registry.paper_inputs` (see [DATASET.md](DATASET.md#51-wildlifereid-10k-12-entries)).
 
 
 ## Dataset Requirements
 
-Configs assume a dataset root containing metadata CSV with split/label columns.
+Every dataset is a registry entry (`src/wildmatch/conf/dataset/<key>.yaml`): a root folder under
+the profile's `data_root` and a metadata CSV with an image path (relative to the root), an
+identity column and a split column with a database and a query value. Masked inputs are either
+pre-masked images the CSV points at (WildlifeReID-10k, SalamanderID2025) or a COCO run-length
+`mask` column applied at load time (`dataset.no_background: true`, CzechLynx).
 
-Default expected fields:
-- `unique_name` (identity label)
-- split column:
-  - probe: `split-time_closed`
-  - finetune: `split-time_closed`
-- optional `mask` column for background removal (`dataset.no_background: true`)
-
-Default path in configs:
-- `/shared/sets/datasets/vision/czechlynx/CzechLynx_v2`
+**How to download and prepare each dataset, check the result and set up SAM 3:
+[DATASET.md](DATASET.md).**
 
 ## Quick Start
 
@@ -257,33 +255,24 @@ wildmatch summarize-logs --method vismatch --matcher loma --format csv
 
 Historical log files are not moved or rewritten.
 
-### Data and paper checkpoints
+### Paper checkpoints
+
+Datasets are prepared with `wildmatch prepare`; see [DATASET.md](DATASET.md).
 
 ```bash
-wildmatch prepare status                      # what each registry dataset has on disk, and its source
-wildmatch prepare download zindi              # raw WildlifeReID-10k from Kaggle (needs Kaggle credentials)
-wildmatch prepare unseen-split                # rebuild the CzechLynx unseen-identity split
-wildmatch prepare build salamander --source <animal-clef-2025 folder>   # split table + images, prints the SAM 3 command
-sbatch slurm/sam3_masks.sbatch <printed arguments>                       # SAM 3 masks (rtx4090_batch by default)
-wildmatch prepare finish salamander           # pre-masked metadata the registry reads
 wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
 wildmatch weights download --dataset salamander   # from turhancan97/wildmatch-checkpoints (private for now: HF_TOKEN)
 wildmatch weights verify
 ```
 
 Downloaded checkpoints land where the dataset registry expects them (under the profile's
-`checkpoint_root`), so fine-tuned sweep rows find them without extra settings. The split tables are rebuilt exactly, but the prepared inputs are not all identical: new SAM 3 masks for WildlifeReID-10k can differ from the masks the paper used
-(AGENTS.md, "Known issues").
+`checkpoint_root`), so fine-tuned sweep rows find them without extra settings.
 
 ### Jaguar (JaguarReID)
 
-The Kaggle Jaguar Re-ID training photos run through the shared probe pipeline as
-`JaguarReID`: prepare them once with `wildmatch prepare jaguar prepare`, `... embed` and `... split`, then run
-`wildmatch sweep jaguar_default`. See AGENTS.md, "JaguarReID".
-
-The competition rules allow competition use only: research use needs the sponsors' written
-authorization (requested 2026-10-06). Do not run JaguarReID until it is granted; see
-`THIRD_PARTY_LICENSES.md`.
+Paused: the competition rules allow competition use only, and research use needs the sponsors'
+written authorization (requested 2026-10-06). Do not run JaguarReID until it is granted; see
+[DATASET.md](DATASET.md#55-jaguarreid-paused) and `THIRD_PARTY_LICENSES.md`.
 
 ## Configuration Guide
 
@@ -375,6 +364,10 @@ classifier-head metrics and is disabled by default. No unknown classifier class 
 added.
 
 #### Building an unseen-identity evaluation split
+
+To rebuild the paper's CzechLynx unseen-identity split, run `wildmatch prepare unseen-split`
+([DATASET.md](DATASET.md#53-czechlynx-unseen-identity-split)); this section describes the
+general tool behind it.
 
 For an evaluation-only open-world test, the standalone
 `wildmatch build-unseen-split` utility can derive a new metadata CSV
@@ -876,10 +869,11 @@ Paper tables and figures (all read completed runs under `experiments/`):
 - `wildmatch class-balance`: per-identity image counts and imbalance statistics.
 - `wildmatch audit`: heuristic low-quality image flags for review by eye.
 
-Data preparation:
+Data preparation (step by step in [DATASET.md](DATASET.md)):
 
+- `wildmatch prepare status|download|build|retry-empty|finish|compare-masks|unseen-split|jaguar`: the dataset recipes.
 - `wildmatch build-unseen-split`: unseen-identity gallery/query split.
-- `src/wildmatch/data/prepare/sam3_masks.py` (via `slurm/sam3_masks.sbatch`): SAM 3 background removal and pre-masked metadata (`lynx-app` env; any GPU but V100).
+- `src/wildmatch/data/prepare/sam3_masks.py` (via `slurm/sam3_masks.sbatch`): SAM 3 background removal and pre-masked metadata (its own SAM 3 environment, see DATASET.md; any GPU but V100).
 - `python -m wildmatch.data.prepare.jaguar`: brings the Kaggle Jaguar training data into the shared format (`JaguarReID`: `prepare` writes masked images and RLE masks, `embed` DINOv2 embeddings, `split` the burst-aware `split_v2` database/query split).
 
 Run and log inspection:

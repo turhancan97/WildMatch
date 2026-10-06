@@ -27,7 +27,6 @@ def compare(a: Path, b: Path, label: str) -> None:
     for rel in sorted(p.relative_to(a) for p in a.rglob("*.npz")):
         ka, da, ra, size = load(a / rel)
         kb, db, rb, _ = load(b / rel)
-        scale = 1.0
         if np.abs(ka).max() <= 1.5 and size is not None:  # normalized [-1, 1] -> pixels of the processed image
             h, w = (float(x) for x in np.asarray(size).ravel()[:2])
             ka = (ka + 1) / 2 * [w, h]

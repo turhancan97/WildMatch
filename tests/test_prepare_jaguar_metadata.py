@@ -278,6 +278,47 @@ class SplitDatasetTests(unittest.TestCase):
                 P.load_embeddings(root / P.EMBEDDINGS_NAME, [r["image_id"] for r in rows])
 
 
+class OverwriteGuardTests(unittest.TestCase):
+    """Each step refuses to replace its outputs unless --overwrite is passed (2026-10-06)."""
+
+    def _run(self, root: Path, *argv: str) -> str:
+        with self.assertRaises(SystemExit) as caught:
+            P.main(["--root", str(root), "--workers", "1", *argv])
+        return str(caught.exception.code)
+
+    def test_every_step_refuses_existing_outputs_and_leaves_them_untouched(self):
+        for command, existing in (
+            ("prepare", P.BASE_NAME),
+            ("embed", P.EMBEDDINGS_NAME),
+            ("split", P.METADATA_NAME),
+        ):
+            with self.subTest(command=command), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / existing).write_text("keep me", encoding="utf-8")
+                message = self._run(root, command)
+                self.assertIn("already exist", message)
+                self.assertIn("--overwrite", message)
+                self.assertEqual((root / existing).read_text(encoding="utf-8"), "keep me")
+
+    def test_non_empty_masked_folder_counts_as_existing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / P.MASKED_DIR).mkdir()
+            self.assertEqual(P.step_outputs(root, "prepare")[0], root / P.MASKED_DIR)
+            P.refuse_existing(root, "prepare")  # empty folder: allowed
+            (root / P.MASKED_DIR / "train_0001.png").write_bytes(b"x")
+            with self.assertRaises(P.PreparationError):
+                P.refuse_existing(root, "prepare")
+
+    def test_overwrite_skips_the_guard_and_errors_exit_cleanly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / P.BASE_NAME).write_text("old", encoding="utf-8")
+            # Past the guard, prepare fails on the missing train.csv with a clean message, not a traceback.
+            message = self._run(root, "prepare", "--overwrite")
+            self.assertTrue(message.startswith("[jaguar] missing"), message)
+
+
 @pytest.mark.data
 class PreparedDatasetTests(unittest.TestCase):
     """Checks the real JaguarReID metadata when it exists on this machine."""

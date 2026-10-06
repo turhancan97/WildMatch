@@ -118,6 +118,9 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
   new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`). Run them as `python paper/<group>/<script>.py`.
+- DATASET.md: the user-facing dataset preparation guide (2026-10-06): all 17 registry entries,
+  SAM 3 environment setup, recipes, expected counts and SHA-256 of the exactly rebuilt tables.
+  Update it whenever `wildmatch prepare`, `sam3_masks.py` or a registry entry's data changes.
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
   pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
 - tests/: dependency-light regression tests (pytest).
@@ -293,7 +296,7 @@ CzechLynx closed, open and unseen-eval), selected with `dataset=<key>` (default
 default fine-tuned checkpoints from `${paths.checkpoint_root}` keyed by sweep checkpoint label,
 `checkpoints.{custom,descriptor-fine-tuned,joint-fine-tuned}.{loma,rdd-lightglue}` (the files the
 paper's runs used, see "Paper checkpoints and data preparation"; only CzechLynx closed has
-descriptor and joint entries), licence (still `null`) and the data source `download` block). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
+descriptor and joint entries), licence (filled for every entry on 2026-10-06) and the data source `download` block). `wildmatch.data.registry.load_dataset(key)` resolves an entry for code outside
 Hydra; `wildmatch.reporting.paper_datasets` builds `PAPER_PROFILES` and `BENCHMARK_ONLY_PROFILES`
 from it (same keys and order as before). Sweeps build their tasks from it; the removed launchers'
 profile values are pinned as a literal in `tests/test_paths_registry.py`. Submission snapshots
@@ -898,7 +901,7 @@ unseen-split` rebuilds the CzechLynx unseen-identity split from `czechlynx_open`
 parameters (encounter groups, date order) and reproduced the paper's
 `metadata/czechlynx-unseen-eval/metadata_unseen_eval.csv` byte for byte (SHA-256 `eef513b5...`).
 The registry's unseen entry now defaults to that file (the old default pointed at a file that
-does not exist). Licences in the registry are still `null` (user: check later).
+does not exist). Every registry entry has a `licence` since 2026-10-06 (`THIRD_PARTY_LICENSES.md`).
 
 **Rebuilding prepared inputs (user decisions 2026-10-04).** WildlifeReID-10k: write the masking
 script (SAM 3 + metadata arrangement); SalamanderID2025: reverse-engineer the split made by
@@ -930,7 +933,7 @@ Rules recovered and implemented in `wildmatch.data.prepare.sources`:
   query later than its database photos) that `salamander_table` now runs too.
 Steps: `wildmatch prepare build <key> [--source] [--output-dir]` writes the split table
 (WildlifeReID-10k: `wildmatch_prepare/<animal>_split.csv`; Salamander also copies the images) and
-prints the SAM 3 command (`sbatch slurm/sam3_masks.sbatch <args>`, H100 by default);
+prints the SAM 3 command (`sbatch slurm/sam3_masks.sbatch <args>`, `rtx4090_batch` by default);
 `wildmatch prepare finish <key>` joins the masks into the registry's metadata file;
 `compare-masks` compares new masks with the masked files on disk. Every step refuses to overwrite
 existing files without `--overwrite`, and the SAM 3 script (moved from `paper/tools/` into the
@@ -1544,7 +1547,8 @@ images with OpenCV's default flag (alpha dropped), so the files cannot be used d
 The files carry no capture time.
 
 `python -m wildmatch.data.prepare.jaguar` (CPU) has three steps, all writing into the dataset
-root. `prepare` writes `masked_images/<filename>` (RGB times alpha, black background) and
+root; each refuses to replace its existing outputs unless `--overwrite` follows the step name
+(since 2026-10-06; before, they overwrote silently). `prepare` writes `masked_images/<filename>` (RGB times alpha, black background) and
 `jaguar_reid_base.csv` (`image_id`, `identity`, masked `path`, `original_path`, COCO-RLE
 `mask` from alpha, 256-bit difference hash `dhash`, `masked_sha256`) with
 `jaguar_reid_base_manifest.json`. `embed` writes `jaguar_reid_dinov2_small_cls.npz`:

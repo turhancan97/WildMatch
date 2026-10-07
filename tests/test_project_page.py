@@ -5,6 +5,7 @@ tests keep the configuration and the Markdown sources consistent without running
 MkDocs, which is not part of the core environment.
 """
 
+import base64
 import re
 import unittest
 from pathlib import Path
@@ -23,7 +24,10 @@ FORBIDDEN_PATTERNS = (
 )
 # The venue must not be named anywhere on the site until the authors announce it
 # (user decision 2026-10-02); the submission status is never described either.
-FORBIDDEN_PHRASES = ("ECIR", "LNCS", "Springer", "under review", "Submitted to", "submitted to")
+# Venue and review-status words, base64-encoded so this public file does not name the venue.
+FORBIDDEN_PHRASES = tuple(
+    base64.b64decode("RUNJUnxMTkNTfFNwcmluZ2VyfHVuZGVyIHJldmlld3xTdWJtaXR0ZWQgdG98c3VibWl0dGVkIHRv").decode().split("|")
+)
 
 
 def _nav_paths(items) -> list[str]:

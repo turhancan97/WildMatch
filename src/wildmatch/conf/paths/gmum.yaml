@@ -7,7 +7,7 @@ checkpoint_root: /shared/sets/datasets/vision/czechlynx/checkpoints
 # Few-shot views, indices, checkpoints and probe metadata (wildmatch mine/finetune-matcher --fraction).
 fewshot_root: ${.data_root}/fewshot
 external:
-  paper_repo: /home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper
+  paper_repo: /home/kargin/Projects/repositories/wildmatch-paper
   mining_outputs: /home/kargin/Projects/repositories/rdd-parallel-benchmark/outputs
   finetuning_repo: /home/kargin/Projects/repositories/lynx-finetuning
   sam3_repo: /home/kargin/Projects/repositories/lynx_application/external/sam3

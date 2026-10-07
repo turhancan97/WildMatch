@@ -41,7 +41,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_PAPER_REPO = REPO_ROOT.parent / "ECIR-Animal-ReID-Paper"
+DEFAULT_PAPER_REPO = REPO_ROOT.parent / "wildmatch-paper"  # sibling clone of the paper repository
 DEFAULT_OUT = REPO_ROOT / "docs" / "data" / "budget_tradeoff.json"
 LOG_INDEX = REPO_ROOT / "logs" / "index.csv"
 BUDGETS = [10, 50, 100, 250, 500, 1000]

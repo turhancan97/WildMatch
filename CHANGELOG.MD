@@ -23,6 +23,8 @@ kept under Unreleased until a project version is assigned.
   hide rule; `extra.css` now hides the other scheme's mark. The Paper & Code buttons use the hero's
   `wm-buttons` style (Material's default button colour is the white header colour in light mode).
   Checked in headless Chromium, light and dark, 1280 and 390 px.
+  Hugging Face model card updated the same day (Hub commit `ad3c6491`): paper and project-page line
+  and a Citation section with the BibTeX; licence text unchanged.
 - 2026-10-07: Single-GPU Vismatch cost profile (user request; job 525920, RTX 4090, 9.7 min).
   New `slurm/profile_vismatch.sbatch` runs SalamanderID2025 at k=50 with default LoMa and RDD-LightGlue,
   each on a fresh feature cache (cold) and again (warm). All outputs, including the run index and

@@ -1181,7 +1181,10 @@ README, the Paper & Code page and the Hugging Face model card carry the arXiv li
 `kargin2026wildmatch` (drafted by Claude in arXiv's `@misc` form, approved by the user); the status
 pill says "Preprint available online"; the draft banner, the Home "Draft page" warning and the
 draft `copyright` line are gone (`copyright: © 2026 The WildMatch Authors`); `site_url` is
-`https://wildmatch.gmum.net/` with `docs/CNAME`. The rest of the embargo below still holds.
+`https://wildmatch.gmum.net/` with `docs/CNAME`. The Hugging Face model card links the preprint and
+the project page and carries the BibTeX (Hub commit `ad3c6491`, 2026-10-07, licence text unchanged).
+Open: DNS for wildmatch.gmum.net (the user asks the GMUM admin), the YouTube description's
+"to follow" line (user), Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
 
 **Embargo (binding until the ECIR 2027 notification, 2026-12-07).** The manuscript
 ("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification",

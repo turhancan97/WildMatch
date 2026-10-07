@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: RDD-LightGlue retrain under the shared recipe evaluated (new `*-relaxed` checkpoint folders,
+  published checkpoints and registry unchanged; sweeps `rdd_relaxed`, array 527403, 36/36, and
+  `rdd_relaxed_czechlynx`, 527416, 4/4, into `experiments/rdd-relaxed/`). Top-1 against the paper's
+  fine-tuned RDD rows: Zindi +3.5 to +14.4 points, Whale shark +1.1 to +5.2, Hyena, Sea star and
+  CzechLynx unseen-identity within about +-1.5, Salamander within +-0.9 up to k = 500 (-4.3 at k = 1000),
+  Leopard -2.0 to -6.3 from k = 50 on. Details in AGENTS.md ("Fine-tuned matcher objective"). The
+  CzechLynx closed descriptor retrain (job 527423) is queued.
 - 2026-10-07: The explainer video is public on YouTube (user decision; checked: not unlisted, not
   private; its description links the project page and the arXiv preprint). The README's YouTube Video
   link and a NEWS entry point at it; AGENTS.md and the explainer sources no longer say it stays unlisted.

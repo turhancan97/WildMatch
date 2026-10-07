@@ -299,7 +299,23 @@ RDD descriptor default, which moves from `epoch_175` to `epoch_299` once the ret
 checkpoint exists. RDD probe results produced before the retrain describe the archived
 checkpoints. Status checked on 2026-10-03: the retrain has not started under this plan (no
 `__filtered-archive` directory exists), and the newest CzechLynx closed RDD descriptor
-checkpoint is still `epoch_175`. Two relaxed-score RDD runs from 2026-09-29 exist under
+checkpoint is still `epoch_175`. **Retrain done (2026-10-07, user decision: new folders, not the
+canonical names).** The six filtered-score wildlife RDD runs (Hyena, Leopard, Sea star, Whale shark,
+Zindi, Salamander; all on LoMa-mined pairs, so Whale shark and Salamander change pair source too) and
+CzechLynx open were retrained under the shared recipe into `.../rdd-finetuned/legacy-loma-mined-relaxed/`
+(`czechlynx-time-open/rdd-finetuned-loma-mined-legacy-relaxed/`); the published checkpoints, the registry
+and `weights.yaml` are unchanged. Evaluated with the sweeps `rdd_relaxed` (array 527403, 36/36) and
+`rdd_relaxed_czechlynx` (527416, 4/4) into `experiments/rdd-relaxed/` on the paper's input tables;
+`compare_with_paper.py --job <id>` (`reports/rdd_relaxed_vs_paper.csv`), Top-1 change against the paper's
+fine-tuned RDD-LightGlue rows, k = 10 / 50 / 100 / 250 / 500 / 1000: Zindi +3.5 / +10.8 / +12.8 / +14.4 /
++13.2 / +12.9 (balanced Top-1 +4.5 to +15.7; the filtered checkpoint lost Top-1 as k grew, 71.6 -> 20.5,
+the retrained one still does, 75.2 -> 33.5), Whale shark +1.1 to +5.2 (gain grows with k), Hyena -0.8 to
++0.2, Sea star -0.5 to +0.9, Salamander -0.9 to +0.9 up to k = 500 and -4.3 at k = 1000, Leopard +0.2 at
+k = 10 and then -2.0 / -2.2 / -3.0 / -4.8 / -6.3 (balanced Top-1 down to -8.3); CzechLynx unseen-identity
+(k = 10-160) Top-1 +0.3 to +1.5, balanced Top-1 -0.6 to -1.4. Whether the paper's RDD rows should move to
+the retrained checkpoints is open (authors). The CzechLynx closed descriptor retrain (job 527423, into
+`czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix) and its
+`rdd_relaxed_descriptor` evaluation follow. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
 the paper snapshot's CzechLynx closed and NyalaData RDD-LightGlue rows come from them (found

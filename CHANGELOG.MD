@@ -16,7 +16,11 @@ kept under Unreleased until a project version is assigned.
   produced the published checkpoints, keep the former settings. Smoke test (job 527325, 2 GPUs,
   64-pair index): the old code failed at the first step, the fix trained a full epoch (32 steps).
   `tests/matcher_finetune/test_ddp_kwargs.py` pins both settings.
-
+- 2026-10-07: JaguarReID grid run (research use authorized): new packaged sweep `jaguar_grid` (k = 50,
+  100, 250, 500, 1000 with cosine, WildFusion, default LoMa and RDD-LightGlue, plus the frozen weighted
+  linear probe), array 526001, 21/21 completed. At k = 250, Top-1 / Top-5: LoMa 83.4 / 87.5,
+  WildFusion 81.3 / 84.8, RDD-LightGlue 80.1 / 82.5; cosine 45.2 / 60.0; linear probe 34.3 / 69.6.
+  Full numbers in AGENTS.md "JaguarReID".
 - 2026-10-07: Faster cold-cache Vismatch extraction: `benchmark.methods.vismatch.io_workers` (default 4)
   hashes, decodes and loads/saves cache files in worker threads ahead of the GPU, in index order with a
   bounded look-ahead, so batches and features are unchanged; cache files are written in the background

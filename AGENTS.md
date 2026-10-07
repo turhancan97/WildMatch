@@ -1194,16 +1194,16 @@ pill says "Preprint available online"; the draft banner, the Home "Draft page" w
 draft `copyright` line are gone (`copyright: © 2026 The WildMatch Authors`); `site_url` is
 `https://wildmatch.gmum.net/` with `docs/CNAME`. The Hugging Face model card links the preprint and
 the project page and carries the BibTeX (Hub commit `ad3c6491`, 2026-10-07, licence text unchanged).
-Open: DNS for wildmatch.gmum.net (the user asks the GMUM admin), the YouTube description's
-"to follow" line (user), Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
+Open: the YouTube description's "to follow" line (user), Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
 
 **Public since 2026-10-07 (user decision; supersedes the deploy and visibility parts of the embargo
 below).** The user made the GitHub repository public and asked for the deploy: the page is live at
-`https://turhancan97.github.io/WildMatch/` (branch `gh-pages`, GitHub Pages from `gh-pages` `/`,
-enabled automatically on the first push). Because `wildmatch.gmum.net` has no DNS record yet, it is
-deployed with `mkdocs gh-deploy --strict -f mkdocs.githubio.yml` (inherits `mkdocs.yml`; github.io
-`site_url`, no `CNAME`). Once the GMUM admin points the domain at GitHub Pages, deploy with
-`mkdocs.yml` (keeps `docs/CNAME`) and delete `mkdocs.githubio.yml`. Link previews use an absolute
+`https://wildmatch.gmum.net/` (branch `gh-pages`, GitHub Pages from `gh-pages` `/`, enabled
+automatically on the first push). The GMUM admin added `wildmatch.gmum.net CNAME turhancan97.github.io`
+on 2026-10-07; the Pages custom domain is set (`docs/CNAME` and the Pages API) with HTTPS enforced, and
+`turhancan97.github.io/WildMatch/` redirects there. Deploy with `mkdocs gh-deploy --strict` from an
+up-to-date `main` (the user runs it or asks for it). Until the DNS existed the page was briefly served
+from github.io with a temporary `mkdocs.githubio.yml` (no `CNAME`), deleted the same day. Link previews use an absolute
 `og:image` built from `site_url`. Google Analytics 4 (`extra.analytics`, Measurement ID
 `G-W9GXV5470E`, user request 2026-10-07) loads on every page without a consent banner (user decision;
 Material's `extra.consent` would add one). The only 404 on the live site is the theme's GitHub widget asking
@@ -1385,7 +1385,8 @@ Binding rules from that history:
 - [x] Add the preprint link and the BibTeX entry on Paper & Code (done 2026-10-07: arXiv and PDF
   buttons, `kargin2026wildmatch`; an arXiv button in the Home hero too).
 - [ ] Fill the Acknowledgements section on Paper & Code (authors).
-- [ ] Point `wildmatch.gmum.net` at GitHub Pages (DNS, user/GMUM); `docs/CNAME` is in place.
+- [x] Point `wildmatch.gmum.net` at GitHub Pages (done 2026-10-07: CNAME record by the GMUM admin,
+  custom domain and HTTPS set on GitHub).
 - [x] Web display of dataset photos (decided 2026-10-06 by the user: keep all photos, with
   attribution). The Datasets page's licensing table lists each dataset's source and licence and the
   WildlifeReID-10k terms (no commercial use, no re-upload, attribution); Nyala's source states no
@@ -1422,7 +1423,7 @@ Binding rules from that history:
 - [x] Make the repository public and deploy (done 2026-10-07 at the user's request, earlier than
   the notification date; github.io until the DNS exists, see "Public since 2026-10-07"). Favicon and
   social image return 200 on the live URL; the social image URL is absolute since the same day.
-- [ ] Switch the deploy to `wildmatch.gmum.net` once its DNS exists (deploy with `mkdocs.yml`).
+- [x] Switch the deploy to `wildmatch.gmum.net` (done 2026-10-07; `mkdocs.githubio.yml` deleted).
 
 
 ## Vismatch matcher policy

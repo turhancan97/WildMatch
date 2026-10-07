@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: The project page moved to its own address, https://wildmatch.gmum.net/ (the one the
+  preprint gives): the GMUM admin added `wildmatch.gmum.net CNAME turhancan97.github.io`; deployed with
+  `mkdocs.yml` (`site_url` and `docs/CNAME`), the custom domain set through the Pages API, HTTPS enforced
+  once the certificate was issued; `turhancan97.github.io/WildMatch/` redirects. `mkdocs.githubio.yml`
+  (the temporary github.io config) deleted; `CITATION.cff` and the release notes point at the new address.
 - 2026-10-07: Venue and review status removed from every tracked file (user decision after the
   public-repository review): AGENTS.md and CHANGELOG.MD reworded; the paper clone is reached through
   the neutral alias `wildmatch-paper` (a symlink next to this checkout) in the page exporters,

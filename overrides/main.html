@@ -1,15 +1,5 @@
 {% extends "base.html" %}
 
-{#
-  Draft banner. The page is built locally and not deployed while the manuscript is
-  unpublished (see AGENTS.md, "Project page"). Remove this block at publication time.
-#}
-{% block announce %}
-  <span class="wm-announce">
-    Private draft page. The manuscript is not yet published.
-  </span>
-{% endblock %}
-
 {# WildMatch favicon set (team logo package); mkdocs.yml points theme.favicon at the .ico. #}
 {% block extrahead %}
   {# Link previews: every page shares the project card. #}

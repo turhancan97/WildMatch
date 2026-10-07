@@ -7,6 +7,24 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: The arXiv preprint (2610.07384, v1 of 2026-10-05, CC BY 4.0) in the README, the
+  project page and the Hub model card (user decisions after ten yes/no questions). README: arXiv
+  badge; Paper, arXiv and Project Page links (`https://wildmatch.gmum.net`, the address the preprint
+  gives); first NEWS entry; BibTeX `kargin2026wildmatch` (arXiv `@misc` form, drafted by Claude and
+  approved). Project page: status pill "Preprint available online"; arXiv button in the hero; Paper
+  & Code links abstract and PDF, says the preprint is CC BY 4.0 and shows the BibTeX
+  (Acknowledgements stay for the authors); the draft banner (`overrides/main.html`, its CSS), the
+  Home "Draft page" warning and the draft `copyright` line removed (`© 2026 The WildMatch Authors`);
+  `site_url` `https://wildmatch.gmum.net/` and `docs/CNAME`. The Home abstract matches arXiv word
+  for word; its `local--global` is now an en dash as on arXiv. No deploy; the repository stays
+  private and the video unlisted; no venue or review status anywhere.
+  Also fixed (found in the screenshots): in the light scheme the header showed both the light and
+  the dark mark since 2026-10-06, because Material's `.md-logo img { display: block }` beats its own
+  hide rule; `extra.css` now hides the other scheme's mark. The Paper & Code buttons use the hero's
+  `wm-buttons` style (Material's default button colour is the white header colour in light mode).
+  Checked in headless Chromium, light and dark, 1280 and 390 px.
+  Hugging Face model card updated the same day (Hub commit `ad3c6491`): paper and project-page line
+  and a Citation section with the BibTeX; licence text unchanged.
 - 2026-10-07: Single-GPU Vismatch cost profile (user request; job 525920, RTX 4090, 9.7 min).
   New `slurm/profile_vismatch.sbatch` runs SalamanderID2025 at k=50 with default LoMa and RDD-LightGlue,
   each on a fresh feature cache (cold) and again (warm). All outputs, including the run index and

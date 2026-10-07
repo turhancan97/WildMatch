@@ -7,9 +7,11 @@ import os
 import tempfile
 import time
 import zipfile
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -943,6 +945,29 @@ def _clear_cuda_memory() -> None:
         torch.cuda.empty_cache()
 
 
+def _ordered_prefetch(count: int, fetch: Callable[[int], Any], workers: int, window: int) -> Iterator[Tuple[int, Any]]:
+    """Yield ``(index, fetch(index))`` for ``range(count)`` in order, computed ahead by worker threads.
+
+    At most ``window`` results are in flight, so prefetched images cannot pile up in memory.
+    ``workers <= 0`` runs ``fetch`` inline, one index at a time (the former behaviour). Results are
+    always consumed in index order, so everything downstream (cache order, extraction batches, and
+    with them the features) is unchanged by the number of workers.
+    """
+    if workers <= 0:
+        for index in range(count):
+            yield index, fetch(index)
+        return
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="vismatch-io") as executor:
+        pending: "deque[Tuple[int, Future]]" = deque()
+        next_index = 0
+        while next_index < count or pending:
+            while next_index < count and len(pending) < max(1, window):
+                pending.append((next_index, executor.submit(fetch, next_index)))
+                next_index += 1
+            index, future = pending.popleft()
+            yield index, future.result()
+
+
 def _extract_split_features(
     dataset: Any,
     split_name: str,
@@ -959,6 +984,7 @@ def _extract_split_features(
     batch_mode: str = "batched",
     extract_batch_size: int = 8,
     oom_backoff: bool = True,
+    io_workers: int = 0,
 ) -> List[FrameFeat]:
     if path_col not in dataset.df.columns:
         raise KeyError(f"Vismatch method requires path_col='{path_col}' in dataset dataframe")
@@ -971,6 +997,11 @@ def _extract_split_features(
     features: List[Optional[FrameFeat]] = [None] * len(dataset)
     pending: Dict[tuple[int, int], List[Tuple[int, PreparedImage, Path]]] = {}
     backend.batch_diagnostics["configured_extract_batch_size"] = int(extract_batch_size)
+    io_workers = max(0, int(io_workers))
+    # Cache files are written in the background when io_workers > 0; every write finishes (and any
+    # error is raised) before this function returns.
+    writer = ThreadPoolExecutor(max_workers=io_workers, thread_name_prefix="vismatch-cache") if io_workers else None
+    writes: List[Future] = []
 
     def store_batch(
         entries: Sequence[Tuple[int, PreparedImage, Path]],
@@ -986,7 +1017,10 @@ def _extract_split_features(
         )
         for (index, _image, cache_path), feature in zip(entries, extracted):
             features[index] = feature
-            _save_cached_feat(cache_path, feature)
+            if writer is None:
+                _save_cached_feat(cache_path, feature)
+            else:
+                writes.append(writer.submit(_save_cached_feat, cache_path, feature))
 
     def process_entries(entries: Sequence[Tuple[int, PreparedImage, Path]]) -> None:
         if not entries:
@@ -1017,9 +1051,10 @@ def _extract_split_features(
         ):
             store_batch(processed_entries, extracted, effective_size)
 
-    iterator = tqdm(range(len(dataset)), desc=f"[vismatch][extract:{split_name}]", mininterval=1, ncols=120)
-    for idx in iterator:
-        image_path = str(dataset.df.iloc[idx][path_col])
+    def fetch(idx: int) -> Tuple[str, Any, Path, float]:
+        """File work for one image (thread-safe): hash, cache lookup, and on a miss the RGB tensor."""
+        row = dataset.df.iloc[idx]
+        image_path = str(row[path_col])
         resolved_path = Path(image_path)
         if not resolved_path.is_absolute():
             resolved_path = dataset_root / resolved_path
@@ -1030,7 +1065,7 @@ def _extract_split_features(
             resize_max=resize_max,
             top_k=top_k,
             cfg_tag=cfg_tag,
-            mask_hash=mask_digest(dataset.df.iloc[idx].get(mask_col)) if no_background else None,
+            mask_hash=mask_digest(row.get(mask_col)) if no_background else None,
         )
         cache_path = _cache_path(cache_dir, key)
         t_cache_lookup = time.perf_counter()
@@ -1038,15 +1073,10 @@ def _extract_split_features(
             try:
                 cached = _load_cached_feat(cache_path)
                 if cached.schema_version == FEATURE_SCHEMA_VERSION:
-                    features[idx] = cached
-                    backend.batch_diagnostics["feature_cache_hits"] += 1
-                    backend.batch_diagnostics["feature_cache_lookup_sec"] += time.perf_counter() - t_cache_lookup
-                    continue
+                    return "hit", cached, cache_path, time.perf_counter() - t_cache_lookup
             except (OSError, ValueError, KeyError, zipfile.BadZipFile):
                 pass
-        backend.batch_diagnostics["feature_cache_misses"] += 1
-        backend.batch_diagnostics["feature_cache_lookup_sec"] += time.perf_counter() - t_cache_lookup
-        row = dataset.df.iloc[idx]
+        lookup_sec = time.perf_counter() - t_cache_lookup
         image = _load_raw_rgb_image(
             row=row,
             idx=idx,
@@ -1055,22 +1085,39 @@ def _extract_split_features(
             no_background=no_background,
             mask_col=mask_col,
         )
-        image_tensor = _to_image_tensor(image=image)
-        # Preprocess once here: the prepared tensor supplies the bucketing shape and is
-        # reused by extraction, and buckets then retain the resized tensor rather than
-        # the full-resolution source.
-        prepared_image = backend.prepare_image(image_tensor)
-        if batch_mode == "serial":
-            process_entries([(idx, prepared_image, cache_path)])
-            continue
-        bucket = pending.setdefault(prepared_image.processed_size, [])
-        bucket.append((idx, prepared_image, cache_path))
-        if len(bucket) >= extract_batch_size:
-            process_entries(bucket[:extract_batch_size])
-            del bucket[:extract_batch_size]
+        return "miss", _to_image_tensor(image=image), cache_path, lookup_sec
 
-    for entries in pending.values():
-        process_entries(entries)
+    try:
+        prefetched = _ordered_prefetch(len(dataset), fetch, io_workers, window=2 * max(io_workers, 1))
+        for idx, (status, payload, cache_path, lookup_sec) in tqdm(
+            prefetched, total=len(dataset), desc=f"[vismatch][extract:{split_name}]", mininterval=1, ncols=120
+        ):
+            backend.batch_diagnostics["feature_cache_lookup_sec"] += lookup_sec
+            if status == "hit":
+                features[idx] = payload
+                backend.batch_diagnostics["feature_cache_hits"] += 1
+                continue
+            backend.batch_diagnostics["feature_cache_misses"] += 1
+            # Preprocess once here: the prepared tensor supplies the bucketing shape and is
+            # reused by extraction, and buckets then retain the resized tensor rather than
+            # the full-resolution source.
+            prepared_image = backend.prepare_image(payload)
+            if batch_mode == "serial":
+                process_entries([(idx, prepared_image, cache_path)])
+                continue
+            bucket = pending.setdefault(prepared_image.processed_size, [])
+            bucket.append((idx, prepared_image, cache_path))
+            if len(bucket) >= extract_batch_size:
+                process_entries(bucket[:extract_batch_size])
+                del bucket[:extract_batch_size]
+
+        for entries in pending.values():
+            process_entries(entries)
+    finally:
+        if writer is not None:
+            writer.shutdown(wait=True)
+    for write in writes:
+        write.result()  # re-raise a failed cache write
     if any(feature is None for feature in features):
         raise RuntimeError(f"Vismatch extraction did not produce features for all {split_name} samples")
     return [feature for feature in features if feature is not None]
@@ -1121,6 +1168,9 @@ def run_vismatch_benchmark(
     batch_mode = str(getattr(settings, "batch_mode", "batched")).lower()
     match_batch_size = int(getattr(settings, "match_batch_size", 16))
     extract_batch_size = int(getattr(settings, "extract_batch_size", 8))
+    # Threads for per-image file work (hashing, cache reads and writes, image decoding); 0 runs it
+    # inline. Not part of any cache key: features are identical for every value.
+    io_workers = int(getattr(settings, "io_workers", 0))
     oom_backoff = bool(getattr(settings, "oom_backoff", True))
     if batch_mode not in {"batched", "serial"}:
         raise ValueError("vismatch batch_mode must be 'batched' or 'serial'")
@@ -1188,6 +1238,7 @@ def run_vismatch_benchmark(
         batch_mode,
         extract_batch_size,
         oom_backoff,
+        io_workers,
     )
     db_feats = _extract_split_features(
         dataset_database,
@@ -1205,6 +1256,7 @@ def run_vismatch_benchmark(
         batch_mode,
         extract_batch_size,
         oom_backoff,
+        io_workers,
     )
     extract_sec = time.perf_counter() - t_extract
 

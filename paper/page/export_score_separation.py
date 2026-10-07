@@ -37,7 +37,7 @@ import pandas as pd
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_PAPER_REPO = REPO_ROOT.parent / "ECIR-Animal-ReID-Paper"
+DEFAULT_PAPER_REPO = REPO_ROOT.parent / "wildmatch-paper"  # sibling clone of the paper repository
 DEFAULT_OUT = REPO_ROOT / "docs" / "assets" / "demo" / "score_separation"
 MAIN_K = 250
 BINS = 50

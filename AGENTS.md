@@ -129,8 +129,7 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   "Oct. 2026: Paper is available on arXiv") and the BibTeX `kargin2026wildmatch`. Since 2026-10-07
   the links row points at the preprint (Paper = arXiv PDF, arXiv = abstract page, plus an arXiv
   badge) and Project Page at `https://wildmatch.gmum.net`; YouTube Video stays empty. Never add the venue or the review status
-  (embargo); the repository is private, so the author names do not break double-blind review, but
-  keep it private until the notification. Below the header: About, overview, one quick start, a
+  (venue rule, see "Project page"); the repository is public since 2026-10-07. Below the header: About, overview, one quick start, a
   documentation table, a compact repository tree, troubleshooting, licence. The
   reference material lives in `guides/` (user-facing, linked from the README; never cluster paths or
   the venue, pinned by `tests/test_guides.py`, which also resolves every relative link and heading
@@ -1054,9 +1053,8 @@ reproduction, and the measured impact so it can be picked up without re-investig
   and the cache tag no longer contains the raw checkpoint path; manifests keep the paths.
 
 - **New SAM 3 masks for WildlifeReID-10k may differ from the paper's inputs (2026-10-04).**
-  The runs read `masked_images/` files made by a teammate (owner `kubaty`, 2026-02 to 2026-08;
-  same paths and sizes as the raw release images, background black), whose masking method is
-  not recorded (the teammate's home folder is not readable). `wildmatch prepare build` rebuilds
+  The runs read `masked_images/` files made earlier in the project (2026-02 to 2026-08; same paths
+  and sizes as the raw release images, background black), whose masking method was not recorded. `wildmatch prepare build` rebuilds
   the split tables exactly, but its masks come from SAM 3 with the `species` prompt, so masked
   inputs, and with them scores, can differ. `wildmatch prepare compare-masks` measures the gap
   (IoU against the old files' foreground). Pilot 1 (2026-10-04, 100 images per paper dataset,
@@ -1185,7 +1183,7 @@ overrides, which Material's build banner warns about; the first strict build pas
 user. `tests/test_project_page.py` checks the configuration and sources without MkDocs:
 `strict: true`, every nav entry exists and every page is in the nav, local assets exist,
 relative links resolve, and no cluster path (`/shared/`, `/home/kargin`), session link,
-or the phrase "ECIR 2027 paper" appears in the sources.
+or venue or review-status word appears in the sources.
 
 **Preprint (2026-10-07).** The paper is public on arXiv: 2610.07384, v1 of 2026-10-05, cs.CV, CC BY
 4.0, same six authors; its Comments field gives the project page as `https://wildmatch.gmum.net`
@@ -1212,23 +1210,28 @@ Material's `extra.consent` would add one). The only 404 on the live site is the 
 for a release (none existed; release `v0.1.0` was published on 2026-10-07). Still binding: never name the venue or the review status until the
 authors announce acceptance; the explainer video's visibility is the user's call (the page embeds it).
 
-**Embargo (binding until the ECIR 2027 notification, 2026-12-07).** The manuscript
-("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification",
-submitted to ECIR 2027, under review) is double-blind. On 2026-10-03 the user made this
+**Embargo (until the conference decision, 2026-12-07; partly lifted 2026-10-07, see above).** The
+manuscript ("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification")
+is in anonymous peer review. On 2026-10-03 the user made this
 GitHub repository private and fast-forwarded the former local `project-page` branch into
 `main`, so the page sources now live on `main`. Until the notification, without the user's
 explicit instruction: do not run `mkdocs gh-deploy` or push a `gh-pages` branch, do not
 make the repository public, and keep the explainer video unlisted. **Venue rule (user decision 2026-10-02):** the site never names
 the venue or the submission status anywhere, not even in source comments; the status pill
 says "Preprint available online" (since 2026-10-07; before, "Manuscript · preprint to follow")
-and the Paper page links the arXiv preprint; the venue is announced only after acceptance. `test_project_page` forbids "ECIR",
-"LNCS", "Springer", "under review" and "submitted to" in the site sources.
+and the Paper page links the arXiv preprint; the venue is announced only after acceptance. Since the repository is public (2026-10-07), the rule
+covers every tracked file, AGENTS.md and CHANGELOG.MD included (user decision 2026-10-07). `test_project_page`
+and `test_guides` forbid the venue's name, its proceedings series and publisher, and the review-status
+phrases in the site sources and the README/guides; the word lists are base64-encoded in the tests so
+they do not name the venue themselves.
 The paper brief relayed by the paper-writing session (authors, abstract, outline,
 method text, dataset table, figure captions, headline numbers, open items) is stored at
 `reports/project_page/paper_brief_2026-10-02.md`, under the gitignored `reports/` tree
 on purpose; re-read it before writing page text. The paper's LaTeX source is cloned
-read-only at `/home/kargin/Projects/repositories/ECIR-Animal-ReID-Paper` (GitHub
-`turhancan97/ECIR-Animal-ReID-Paper`, approved by the user 2026-10-02; snapshot of
+read-only next to this checkout and reached through the neutral alias
+`/home/kargin/Projects/repositories/wildmatch-paper` (a symlink to the clone, added 2026-10-07; the
+page exporters, `tests/test_project_page_numbers.py` and `paths/gmum.yaml` use it; the paper's
+repository is private; approved by the user 2026-10-02; snapshot of
 `2773089`, refresh with `git pull` since the paper changes until the 2026-10-05
 deadline). `paper/main.tex` inputs `paper/tex/{abstract,intro,related,method_v2_mp,
 setup,results,conclusion}.tex` (not `method.tex` or the `_method*.tex` drafts); tables
@@ -1275,7 +1278,7 @@ rejected), with a hairline `#d1d3d4` rule under header and tabs and brand-blue a
 `paper/figures/icons/` set (copied to `docs/assets/icons/`, blue and grey variants plus a
 `docs/assets/icons/`). The WildMatch logo package is excluded from the paper
 repository by its `.gitignore` (`/paper/figures/logo/`, so the logo stays out of the
-double-blind source); the user copied it to the gitignored
+anonymous submission source); the user copied it to the gitignored
 `reports/project_page/logo/` on 2026-10-02. Web-sized copies live in `docs/assets/logo/`
 (`wildmatch-fullname.png` for the hero, 1200 px from `B1_fullname_two-color_transparent`;
 `wildmatch-wordmark.png`; `wildmatch-logo-256.png` and `-512.png`, the mark from

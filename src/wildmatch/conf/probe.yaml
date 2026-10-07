@@ -29,9 +29,11 @@ benchmark:
     open_set_policy: "open"  # open | warn | closed
     embedding_retrieval: false
   calibration:
+    mode: "same_set"        # same_set (default, the paper's runs) | disjoint (two image sets, shared identities)
+    seed: 0                 # sampling seed of the disjoint mode
     exclude_self_pairs: true
     official_same_set: false
-    split_value: null
+    split_value: null       # rows of dataset.split_col to calibrate on (never the query split); null: database
   seed: 0
   deterministic: false
   cache:

@@ -1154,9 +1154,12 @@ reproduction live under "Known issues" instead.
   so CC BY-NC 4.0 stays consistent; an email to the authors would make it certain. The Hub model card
   states CC BY-NC 4.0 (2026-10-06, Hub commit `4d1744fe`). Competition rules read 2026-10-06:
   AnimalCLEF2025 allows non-commercial academic research (paper, runs and CC BY-NC checkpoints are
-  fine) but forbids publishing the data outside the competition, so the Salamander photos on the page
-  need the sponsor's written permission (publication checklist). Still open: the JaguarReID
-  authorization (see "JaguarReID").
+  fine) but forbids publishing the data outside the competition (section 4b), so the Salamander photos
+  on the page needed the organisers' written permission: granted by email on 2026-10-07 (the
+  AnimalCLEF2025 organisers have no objection to showing some photos in the repository or on the
+  project page; the user keeps the email). The LeopardID2022 authors also confirmed on 2026-10-07
+  that showing their photos is fine for research purposes. Still open: the JaguarReID authorization
+  (see "JaguarReID").
 
 
 ## Project page
@@ -1385,11 +1388,12 @@ Binding rules from that history:
   (`split_frac<F>_seed<S>`: kept training images `train`, dropped `unused`, test unchanged). The
   evaluate command was checked by loading its splits (HyenaID2022, 1/4: 625 gallery, 630 queries).
   `slurm/mining/fewshot/` stays reference only.
-- [ ] Get the AnimalCLEF2025 sponsor's permission (University of West Bohemia, the dataset team) in
-  writing for the 10 Salamander photos on the page (`docs/assets/match/`, `demo/before_after/`,
-  `demo/masking/`, `datasets/challenges/`) before the page goes public: the competition rules
-  (section 4b) forbid publishing the data outside the competition (user decision 2026-10-06). Without
-  it, remove those photos and the Salamander demo panels.
+- [x] Permission for the Salamander photos (granted by email 2026-10-07 by the AnimalCLEF2025
+  organisers, University of West Bohemia; requested because competition rule 4b forbids publishing
+  the data outside the competition). The page shows 9 SalamanderID2025 photos in 15 files: 7 on Data
+  challenges (`datasets/challenges/salamander_*.jpg`) and one query/gallery pair in `match/`,
+  `demo/before_after/` and `demo/masking/` (raw and SAM 3 masked). The LeopardID2022 authors also
+  confirmed (2026-10-07) that their photos may be shown for research purposes.
 - [ ] After the notification date only: make the repository public (or deploy from it),
   run `mkdocs gh-deploy` (user), and verify the social card and favicon on the live URL.
 

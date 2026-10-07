@@ -43,12 +43,12 @@ re-uploading. Each registry entry records its licence in `registry.licence`. Che
 | Dataset | Licence | Notes |
 | --- | --- | --- |
 | WildlifeReID-10k (Kaggle `wildlifedatasets/wildlifereid-10k`) | "Other": no commercial use, no re-upload, attribution of WildlifeReID-10k and of every source dataset | applies on top of each source licence below |
-| HyenaID2022, LeopardID2022, SeaStarReID2023, WhaleSharkID, BelugaID, GiraffeZebraID | CDLA-Permissive-1.0 | via WildlifeReID-10k |
+| HyenaID2022, LeopardID2022, SeaStarReID2023, WhaleSharkID, BelugaID, GiraffeZebraID | CDLA-Permissive-1.0 | via WildlifeReID-10k; the LeopardID2022 authors also confirmed by email (2026-10-07) that showing their photos is fine for research purposes |
 | ZindiTurtleRecall | CC BY-SA 4.0 | via WildlifeReID-10k |
 | NyalaData, Giraffes | none stated by the source | via WildlifeReID-10k; strictly all rights reserved |
 | ATRW | CC BY-NC-SA 4.0 | via WildlifeReID-10k |
 | StripeSpotter | CC BY-SA 3.0 | via WildlifeReID-10k |
 | CowDataset | CC BY 4.0 | via WildlifeReID-10k |
 | CzechLynx (Kaggle `picekl/czechlynx`) | CC BY 4.0 | also covers the synthetic renders bundled with `wildmatch demo` |
-| SalamanderID2025 (AnimalCLEF2025, Kaggle competition) | competition rules: non-commercial use, including academic research and education | rules read 2026-10-06 (section 4a). The data must not be published or redistributed to anyone outside the competition (4b), so the photos on the project page need the sponsor's permission (University of West Bohemia, the dataset team) in writing before the page goes public. The SeaTurtleID2022 clause covers the turtle part only, which we do not use |
+| SalamanderID2025 (AnimalCLEF2025, Kaggle competition) | competition rules: non-commercial use, including academic research and education | rules read 2026-10-06 (section 4a). The data must not be published or redistributed to anyone outside the competition (4b), so showing photos needed the organisers' permission: granted by email on 2026-10-07 (no objection to showing some photos in the repository or on the project page). The SeaTurtleID2022 clause covers the turtle part only, which we do not use |
 | JaguarReID (Kaggle Jaguar Re-ID competition) | competition use only | rules read 2026-10-06 (section 2.4): research, publications, training models outside the competition and derivative datasets need written authorization from the sponsors (Antonio Rueda-Toicen, Abigail Martin), and the data had to be deleted within 30 days after the competition ended (2026-03-17) unless authorized. Our 2026-10 use (the burst-aware split, the probe runs) is not covered. Authorization being requested (user decision 2026-10-06); no Jaguar runs until it is granted. Not a paper dataset, nothing on the page or the Hub |

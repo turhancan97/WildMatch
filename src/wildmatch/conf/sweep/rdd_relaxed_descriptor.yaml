@@ -1,0 +1,14 @@
+# CzechLynx closed RDD descriptor retrained under the shared recipe to epoch 299 (the registry default is
+# still epoch_175, from the earlier recipe). Own run tree, so the descriptor family's tables keep the
+# runs they have.
+# Checkpoint paths are the gmum cluster's (spec files are not interpolated against the path profile).
+description: RDD descriptor retrained with the shared recipe (CzechLynx closed)
+experiment_root: experiments/rdd-relaxed
+datasets: [czechlynx_closed]
+candidate_k: [10, 50, 100, 250, 500, 1000]
+max_concurrent: 12
+variants:
+  - {method: vismatch, matcher: rdd-lightglue, checkpoint: descriptor-fine-tuned}
+dataset_overrides:
+  czechlynx_closed:
+    checkpoints: {descriptor-fine-tuned: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors"}}

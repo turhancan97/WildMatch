@@ -1,0 +1,27 @@
+# RDD-LightGlue retrained under the shared recipe (relaxed pair score, AdamW, LoMa-mined pairs, epoch
+# 299; jobs 525993-526000 and the Whale shark chain, 2026-10-07), on the paper's input tables and the
+# paper's candidate-budget grid, next to the published checkpoints' rows. The runs go to their own tree
+# (`experiment_root`) so they never replace the paper's fine-tuned RDD rows in `wildmatch tables`.
+# The published checkpoints and `weights.yaml` are unchanged.
+# Checkpoint paths are the gmum cluster's (spec files are not interpolated against the path profile).
+description: RDD-LightGlue retrained with the shared recipe (wildlife datasets)
+experiment_root: experiments/rdd-relaxed
+inputs: paper
+datasets: [hyenaid2022, leopardid2022, seastarreid2023, whaleshark, zindi, salamander]
+candidate_k: [10, 50, 100, 250, 500, 1000]
+max_concurrent: 12
+variants:
+  - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}
+dataset_overrides:
+  hyenaid2022:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/HyenaID2022/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"}}
+  leopardid2022:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/LeopardID2022/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"}}
+  seastarreid2023:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/SeaStarReID2023/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"}}
+  whaleshark:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"}}
+  zindi:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"}}
+  salamander:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"}}

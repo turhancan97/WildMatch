@@ -189,6 +189,7 @@ def create_submission(
     paths_profile: str,
     config_file: Path | None = None,
     repository_dir: Path | None = None,
+    experiment_root: str | None = None,
 ) -> Path:
     """Freeze a task table into ``submission_dir``; returns the manifest path.
 
@@ -230,6 +231,8 @@ def create_submission(
         "task_count": len(records),
         "tasks": records,
     }
+    if experiment_root:
+        payload["experiment_root"] = str(experiment_root)  # only when set: other manifests stay unchanged
     manifest_path = submission_dir / "manifest.json"
     atomic_json(manifest_path, payload)
     return manifest_path

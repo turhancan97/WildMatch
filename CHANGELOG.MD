@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: Sweep specs take an optional `experiment_root`: when set, the submission manifest records it
+  and every task adds `output.experiment_root=<root>`, so its runs land outside `experiments/probe/` and
+  cannot replace the paper's rows in `wildmatch tables` (the newest-run rule); without it, task commands
+  and manifests are byte-identical to before (tested). `experiments` is refused. New packaged specs
+  `rdd_relaxed` (36 tasks: six wildlife datasets, k = 10-1000, paper inputs), `rdd_relaxed_czechlynx`
+  (unseen-identity protocol, k = 10-160) and `rdd_relaxed_descriptor` (CzechLynx closed, k = 10-1000)
+  evaluate the shared-recipe RDD retrains into `experiments/rdd-relaxed/`. `test_packaged_specs_load_and_build`
+  skips a spec only when the unseen-identity metadata is missing on the machine (CI).
 - 2026-10-07: `CITATION.cff` (user request): GitHub shows "Cite this repository" with the arXiv preprint
   (DOI 10.48550/arXiv.2610.07384) as the preferred citation; software version 0.1.0, Apache-2.0, the
   six authors (ORCIDs from the manuscript; none for Piotr Kubaty). Validated with `cffconvert`;

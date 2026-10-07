@@ -26,7 +26,7 @@ registry:
     custom:
       loma: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/JaguarReID/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
-  licence: "Kaggle Jaguar Re-ID competition rules: competition use only; research use needs the sponsors' written authorization (requested 2026-10-06; do not run until granted)"  # checked 2026-10-06 (THIRD_PARTY_LICENSES.md)
+  licence: "Kaggle Jaguar Re-ID competition rules: competition use only; research use authorized for this project by the competition's authors by email (2026-10-07)"  # checked 2026-10-06 (THIRD_PARTY_LICENSES.md)
   prepare:
     builder: jaguar  # wildmatch prepare jaguar prepare|embed|split
   # Where the data comes from. raw: the published source; derived: the files this registry entry

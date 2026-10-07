@@ -83,8 +83,7 @@ its published source.
 |---|---|---|
 | CzechLynx photographs | CzechLynx (Kaggle) | CC BY 4.0 |
 | CzechLynx synthetic renders (demos) | CzechLynx, Zenodo record 17592004 | CC BY 4.0 |
-| Hyena, Sea star, Whale shark | WildlifeReID-10k (Kaggle), from LILA BC | CDLA-Permissive-1.0 |
-| Leopard | WildlifeReID-10k (Kaggle), from LILA BC | CDLA-Permissive-1.0; shown with the dataset authors' permission |
+| Hyena, Leopard, Sea star, Whale shark | WildlifeReID-10k (Kaggle), from LILA BC | CDLA-Permissive-1.0 |
 | Turtle | WildlifeReID-10k (Kaggle), from Zindi Turtle Recall | CC BY-SA 4.0 |
 | Nyala | WildlifeReID-10k (Kaggle) | no license stated by the source |
 | Salamander | AnimalCLEF 2025 (Kaggle competition) | competition rules; shown with the dataset team's permission |

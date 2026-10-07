@@ -37,7 +37,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_PAPER_REPO = REPO_ROOT.parent / "ECIR-Animal-ReID-Paper"
+DEFAULT_PAPER_REPO = REPO_ROOT.parent / "wildmatch-paper"  # sibling clone of the paper repository
 DEFAULT_OUT = REPO_ROOT / "docs" / "data"
 DEFAULT_FIGURES = REPO_ROOT / "docs" / "assets" / "figures" / "page"
 
@@ -866,7 +866,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         "--paper-repo",
         type=Path,
         default=DEFAULT_PAPER_REPO,
-        help="clone of the paper repository (default: sibling ECIR-Animal-ReID-Paper)",
+        help="clone of the paper repository (default: sibling wildmatch-paper)",
     )
     parser.add_argument(
         "--paper-results", type=Path, default=None, help="results directory (default: <paper-repo>/results)"

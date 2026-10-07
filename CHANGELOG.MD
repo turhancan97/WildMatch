@@ -7,6 +7,32 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: The project page moved to its own address, https://wildmatch.gmum.net/ (the one the
+  preprint gives): the GMUM admin added `wildmatch.gmum.net CNAME turhancan97.github.io`; deployed with
+  `mkdocs.yml` (`site_url` and `docs/CNAME`), the custom domain set through the Pages API, HTTPS enforced
+  once the certificate was issued; `turhancan97.github.io/WildMatch/` redirects. `mkdocs.githubio.yml`
+  (the temporary github.io config) deleted; `CITATION.cff` and the release notes point at the new address.
+- 2026-10-07: Venue and review status removed from every tracked file (user decision after the
+  public-repository review): AGENTS.md and CHANGELOG.MD reworded; the paper clone is reached through
+  the neutral alias `wildmatch-paper` (a symlink next to this checkout) in the page exporters,
+  `tests/test_project_page_numbers.py` and `paths/gmum.yaml`; the leak tests keep their word lists
+  base64-encoded. A remark about a co-author's account and home folder was made neutral. Git history
+  still holds the earlier wording (not rewritten).
+- 2026-10-07: Sweep specs take an optional `experiment_root`: when set, the submission manifest records it
+  and every task adds `output.experiment_root=<root>`, so its runs land outside `experiments/probe/` and
+  cannot replace the paper's rows in `wildmatch tables` (the newest-run rule); without it, task commands
+  and manifests are byte-identical to before (tested). `experiments` is refused. New packaged specs
+  `rdd_relaxed` (36 tasks: six wildlife datasets, k = 10-1000, paper inputs), `rdd_relaxed_czechlynx`
+  (unseen-identity protocol, k = 10-160) and `rdd_relaxed_descriptor` (CzechLynx closed, k = 10-1000)
+  evaluate the shared-recipe RDD retrains into `experiments/rdd-relaxed/`. `test_packaged_specs_load_and_build`
+  skips a spec only when the unseen-identity metadata is missing on the machine (CI).
+- 2026-10-07: `CITATION.cff` (user request): GitHub shows "Cite this repository" with the arXiv preprint
+  (DOI 10.48550/arXiv.2610.07384) as the preferred citation; software version 0.1.0, Apache-2.0, the
+  six authors (ORCIDs from the manuscript; none for Piotr Kubaty). Validated with `cffconvert`;
+  `tests/test_citation.py` keeps its version equal to `pyproject.toml`.
+- 2026-10-07: Google Analytics 4 on the project page (user request): `extra.analytics` in `mkdocs.yml`
+  (provider `google`, Measurement ID `G-W9GXV5470E`), inherited by `mkdocs.githubio.yml`. No consent
+  banner (user decision; Material's `extra.consent` adds one if needed).
 - 2026-10-07: First release `v0.1.0` (user decision): package version 0.1.0.dev0 -> 0.1.0 in
   `pyproject.toml` and `uv.lock` (only the project's own entry changed), tag `v0.1.0` and a GitHub
   release pointing to the preprint, the Hub checkpoints and the project page (the page's GitHub
@@ -844,12 +870,12 @@ kept under Unreleased until a project version is assigned.
   session (stored under the gitignored `reports/project_page/`). Decisions: MkDocs Material
   over plain HTML or Astro; page conventions follow the paper (k=250, Top-5 and balanced
   Top-1, weighted probes only, eight datasets, unseen-identity protocol instead of the
-  CzechLynx open split); the branch stays unpushed and undeployed until the ECIR 2027
-  notification because the submission is double-blind and the repository is public.
+  CzechLynx open split); the branch stays unpushed and undeployed until the conference
+  decision because the submission is under anonymous review and the repository is public.
   Verified for the paper: SalamanderID2025 SAM 3 prompt "Salamander" (all rows of
   `masks.csv`) and all training-cost jobs on `rtx4090_batch` (sacct).
   The paper's LaTeX repository was then cloned read-only as a sibling checkout
-  (`ECIR-Animal-ReID-Paper`, `dbe837b`, pulled to `9e78102` the same day once the implementation-details and GPU-hour edits were pushed) with the user's approval, and the page's masking
+  (the paper repository, `dbe837b`, pulled to `9e78102` the same day once the implementation-details and GPU-hour edits were pushed) with the user's approval, and the page's masking
   statement was marked draft because the manuscript sentence is unsettled.
   Brand palette applied (user request): custom Material primary/accent mapped to
   #3a7eab/#cf4832 with #d1d3d4 rules, brand greys for text, icon cards on the home page
@@ -888,7 +914,7 @@ kept under Unreleased until a project version is assigned.
   Conclusion (`226037a`); the earlier draft limitation bullets are superseded.
 - 2026-10-02: the project page no longer names the venue or the submission status
   (user decision): status pill, Paper page, banner and configuration comments reworded;
-  the leak test now forbids venue names and "under review"/"submitted to" in site sources.
+  the leak test now forbids venue names and review-status phrases in site sources.
 - 2026-10-02: header logo is now the background-free two-colour mark
   (`wildmatch-logo-256.png`, derived from `wildmatch-logo.png`), and the hero places the
   full-name logo beside the title instead of in a full-height left column (user request).

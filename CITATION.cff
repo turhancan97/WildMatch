@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below (preferred-citation)."
+title: "WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification"
+type: software
+version: 0.1.0
+date-released: 2026-10-07
+license: Apache-2.0
+repository-code: "https://github.com/turhancan97/WildMatch"
+url: "https://wildmatch.gmum.net/"
+keywords:
+  - wildlife re-identification
+  - image matching
+  - weak supervision
+authors:
+  - given-names: Turhan Can
+    family-names: Kargin
+    orcid: "https://orcid.org/0000-0002-6751-4773"
+  - given-names: Piotr
+    family-names: Kubaty
+  - given-names: Ekaterina
+    family-names: Rostovskaya
+    orcid: "https://orcid.org/0000-0002-8421-1838"
+  - given-names: Izabela
+    family-names: Wierzbowska
+    orcid: "https://orcid.org/0000-0001-6329-7241"
+  - given-names: Bartosz
+    family-names: Zieliński
+    orcid: "https://orcid.org/0000-0002-3063-3621"
+  - given-names: Marcin
+    family-names: Przewięźlikowski
+    orcid: "https://orcid.org/0000-0003-4772-3268"
+preferred-citation:
+  type: article
+  title: "WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification"
+  authors:
+    - given-names: Turhan Can
+      family-names: Kargin
+    - given-names: Piotr
+      family-names: Kubaty
+    - given-names: Ekaterina
+      family-names: Rostovskaya
+    - given-names: Izabela
+      family-names: Wierzbowska
+    - given-names: Bartosz
+      family-names: Zieliński
+    - given-names: Marcin
+      family-names: Przewięźlikowski
+  year: 2026
+  journal: "arXiv preprint"
+  doi: "10.48550/arXiv.2610.07384"
+  url: "https://arxiv.org/abs/2610.07384"
+  identifiers:
+    - type: other
+      value: "arXiv:2610.07384"

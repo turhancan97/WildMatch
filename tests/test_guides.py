@@ -5,6 +5,7 @@ renamed heading or a moved file breaks them silently on GitHub. These tests reso
 relative link and anchor, and keep cluster paths and the review venue out of these public files.
 """
 
+import base64
 import re
 import unittest
 from pathlib import Path
@@ -18,7 +19,10 @@ FORBIDDEN_PATTERNS = (
     re.compile(r"claude\.ai/code/session"),
 )
 # Same embargo rule as the project page (tests/test_project_page.py).
-FORBIDDEN_PHRASES = ("ECIR", "LNCS", "Springer", "under review", "Submitted to", "submitted to")
+# Venue and review-status words, base64-encoded so this public file does not name the venue.
+FORBIDDEN_PHRASES = tuple(
+    base64.b64decode("RUNJUnxMTkNTfFNwcmluZ2VyfHVuZGVyIHJldmlld3xTdWJtaXR0ZWQgdG98c3VibWl0dGVkIHRv").decode().split("|")
+)
 
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 HTML_LINK = re.compile(r"""(?:href|src)="([^"]+)\"""")

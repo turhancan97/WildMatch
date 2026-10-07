@@ -51,6 +51,13 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
 
+# Google Analytics 4 (user request 2026-10-07; no consent banner, user decision). Material injects
+# gtag.js with this Measurement ID on every page.
+extra:
+  analytics:
+    provider: google
+    property: G-W9GXV5470E
+
 extra_css:
   - assets/css/extra.css
 

@@ -15,6 +15,13 @@ kept under Unreleased until a project version is assigned.
   extraction 141 -> 91 s (LoMa) and 132 -> 78 s (RDD-LightGlue), whole cold runs -29 % and -32 %, warm
   cache loading 6 -> 2 s. Tests: features, batches and cache contents equal for 0 and 4 workers; the
   prefetch keeps order and its window.
+- 2026-10-07: Fix: live-image (descriptor and joint) RDD fine-tuning crashed at its first evaluation with
+  "not enough values to unpack (expected 3, got 1)" (job 526000, the shared-recipe CzechLynx closed
+  descriptor retrain). Pinned-memory loading (`pin_memory=True`) turns each pseudo-evaluation sample tuple
+  into a list, and `_is_live_pseudo_batch` accepted only tuples, so the batch went to the cached path.
+  It now accepts tuples or lists of three items that do not start with a feature dict; cached batches
+  (matcher-only runs, the published checkpoints) route as before. Reproduced and checked on a real
+  CzechLynx loader; regression test extended.
 - 2026-10-07: The project page moved to its own address, https://wildmatch.gmum.net/ (the one the
   preprint gives): the GMUM admin added `wildmatch.gmum.net CNAME turhancan97.github.io`; deployed with
   `mkdocs.yml` (`site_url` and `docs/CNAME`), the custom domain set through the Pages API, HTTPS enforced

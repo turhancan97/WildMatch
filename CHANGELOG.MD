@@ -15,6 +15,10 @@ kept under Unreleased until a project version is assigned.
   (unseen-identity protocol, k = 10-160) and `rdd_relaxed_descriptor` (CzechLynx closed, k = 10-1000)
   evaluate the shared-recipe RDD retrains into `experiments/rdd-relaxed/`. `test_packaged_specs_load_and_build`
   skips a spec only when the unseen-identity metadata is missing on the machine (CI).
+- 2026-10-07: `CITATION.cff` (user request): GitHub shows "Cite this repository" with the arXiv preprint
+  (DOI 10.48550/arXiv.2610.07384) as the preferred citation; software version 0.1.0, Apache-2.0, the
+  six authors (ORCIDs from the manuscript; none for Piotr Kubaty). Validated with `cffconvert`;
+  `tests/test_citation.py` keeps its version equal to `pyproject.toml`.
 - 2026-10-07: Google Analytics 4 on the project page (user request): `extra.analytics` in `mkdocs.yml`
   (provider `google`, Measurement ID `G-W9GXV5470E`), inherited by `mkdocs.githubio.yml`. No consent
   banner (user decision; Material's `extra.consent` adds one if needed).

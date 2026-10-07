@@ -146,6 +146,9 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   same day): all 17 registry entries,
   SAM 3 environment setup, recipes, expected counts and SHA-256 of the exactly rebuilt tables.
   Update it whenever `wildmatch prepare`, `sam3_masks.py` or a registry entry's data changes.
+- CITATION.cff: GitHub's "Cite this repository" metadata (2026-10-07): the software (version, licence,
+  six authors with ORCIDs where known) and the arXiv preprint as `preferred-citation`; keep `version` equal
+  to `pyproject.toml` (`tests/test_citation.py`).
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
   pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
 - tests/: dependency-light regression tests (pytest). `tests/test_probe_integration.py` runs

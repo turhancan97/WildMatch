@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: Permissions recorded. The AnimalCLEF2025 organisers (University of West Bohemia)
+  answered the request (drafted from competition rule 4b, which forbids publishing the data outside
+  the competition) by email: no objection to showing some photos in the repository or on the project
+  page. The Jaguar Re-ID competition's authors answered the 2026-10-06 request by email: research use
+  is no problem, so the JaguarReID pause is lifted (guides/DATASET.md section 5.5, now `#55-jaguarreid`,
+  guides/EXPERIMENTS.md, the `jaguar` registry licence note, the `jaguar_default` sweep header,
+  THIRD_PARTY_LICENSES.md, AGENTS.md "JaguarReID"). JaguarReID stays benchmark-only with nothing on the
+  page or the Hub. AGENTS.md: the Salamander checklist item is closed and its count corrected to 9
+  photos in 15 files. The emails stay with the user.
 - 2026-10-07: The arXiv preprint (2610.07384, v1 of 2026-10-05, CC BY 4.0) in the README, the
   project page and the Hub model card (user decisions after ten yes/no questions). README: arXiv
   badge; Paper, arXiv and Project Page links (`https://wildmatch.gmum.net`, the address the preprint

@@ -55,7 +55,7 @@ by its `raw:` source and `derived:` steps.
 ├── WildlifeReID-10k/        # 12 entries: Kaggle release + wildmatch_prepare/, masked_images_sam3/, metadata_sam3/
 ├── CzechLynx_v2/            # czechlynx_closed, czechlynx_open, czechlynx_unseen_eval
 ├── SalamanderID2025/        # salamander
-└── jaguar/                  # jaguar (paused, see 5.5)
+└── jaguar/                  # jaguar (see 5.5)
 ```
 
 `CzechLynx_v2` is the folder name the experiment paths and caches use; it holds the Kaggle
@@ -81,7 +81,7 @@ CzechLynx release.
 | `czechlynx_open` | CzechLynx, time-open split | source of the unseen split | CzechLynx (Kaggle) | download | 5.2 |
 | `czechlynx_unseen_eval` | CzechLynx unseen identities | yes (unseen-identity protocol) | derived from `czechlynx_open` | built locally | [5.3](#53-czechlynx-unseen-identity-split) |
 | `salamander` | SalamanderID2025 | yes | AnimalCLEF2025 (Kaggle competition) | manual download + SAM 3 | [5.4](#54-salamanderid2025) |
-| `jaguar` | JaguarReID | no | Jaguar Re-ID (Kaggle competition) | **paused** | [5.5](#55-jaguarreid-paused) |
+| `jaguar` | JaguarReID | no | Jaguar Re-ID (Kaggle competition) | manual download + 3 CPU steps | [5.5](#55-jaguarreid) |
 
 **Licences and terms.** Each dataset keeps its own terms; read them before you download, and see
 [`THIRD_PARTY_LICENSES.md`](../THIRD_PARTY_LICENSES.md) for the full table. In short:
@@ -98,7 +98,8 @@ CzechLynx release.
 - **CzechLynx**: CC BY 4.0.
 - **SalamanderID2025**: the AnimalCLEF2025 competition rules, which allow non-commercial use,
   including academic research and education, and forbid redistributing the data.
-- **JaguarReID**: the competition rules allow competition use only.
+- **JaguarReID**: the competition rules allow competition use only; research use was authorized by
+  the competition's authors by email (2026-10-07).
 
 Because of these terms this repository ships no images, masks or prepared tables. The recipes
 rebuild them from your own downloads.
@@ -333,14 +334,14 @@ handler's finger often splits one animal into several pieces. One image
 (`query/images/9d1fc96e28c0058e_1277.jpg`) uses a lower threshold of 0.10. The masked images go to
 `masked_images/`, the masks to `masks.csv`.
 
-### 5.5 JaguarReID (paused)
+### 5.5 JaguarReID
 
-> **Do not prepare or use this dataset for now.** The Jaguar Re-ID competition rules allow
-> competition use only. Research use, publications, training models outside the competition and
-> derived datasets need written authorization from the competition sponsors. That authorization
-> has been requested; until it is granted, this entry must not be run.
+> The Jaguar Re-ID competition rules allow competition use only; research use needs the authors'
+> authorization. For this project they confirmed by email (2026-10-07) that research use is fine.
+> If you are not part of this project, ask them yourself before using the data outside the
+> competition.
 
-For reference once research use is authorized: the entry reads the labelled training photos of
+The entry reads the labelled training photos of
 the competition (`train.csv` and `train/train/`) from `<data_root>/jaguar/` and prepares them in
 three CPU steps,
 

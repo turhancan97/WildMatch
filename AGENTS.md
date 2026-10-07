@@ -1154,9 +1154,11 @@ reproduction live under "Known issues" instead.
   so CC BY-NC 4.0 stays consistent; an email to the authors would make it certain. The Hub model card
   states CC BY-NC 4.0 (2026-10-06, Hub commit `4d1744fe`). Competition rules read 2026-10-06:
   AnimalCLEF2025 allows non-commercial academic research (paper, runs and CC BY-NC checkpoints are
-  fine) but forbids publishing the data outside the competition, so the Salamander photos on the page
-  need the sponsor's written permission (publication checklist). Still open: the JaguarReID
-  authorization (see "JaguarReID").
+  fine) but forbids publishing the data outside the competition (section 4b), so the Salamander photos
+  on the page needed the organisers' written permission: granted by email on 2026-10-07 (the
+  AnimalCLEF2025 organisers have no objection to showing some photos in the repository or on the
+  project page; the user keeps the email). The JaguarReID authorization was granted the same day
+  (see "JaguarReID").
 
 
 ## Project page
@@ -1385,11 +1387,11 @@ Binding rules from that history:
   (`split_frac<F>_seed<S>`: kept training images `train`, dropped `unused`, test unchanged). The
   evaluate command was checked by loading its splits (HyenaID2022, 1/4: 625 gallery, 630 queries).
   `slurm/mining/fewshot/` stays reference only.
-- [ ] Get the AnimalCLEF2025 sponsor's permission (University of West Bohemia, the dataset team) in
-  writing for the 10 Salamander photos on the page (`docs/assets/match/`, `demo/before_after/`,
-  `demo/masking/`, `datasets/challenges/`) before the page goes public: the competition rules
-  (section 4b) forbid publishing the data outside the competition (user decision 2026-10-06). Without
-  it, remove those photos and the Salamander demo panels.
+- [x] Permission for the Salamander photos (granted by email 2026-10-07 by the AnimalCLEF2025
+  organisers, University of West Bohemia; requested because competition rule 4b forbids publishing
+  the data outside the competition). The page shows 9 SalamanderID2025 photos in 15 files: 7 on Data
+  challenges (`datasets/challenges/salamander_*.jpg`) and one query/gallery pair in `match/`,
+  `demo/before_after/` and `demo/masking/` (raw and SAM 3 masked).
 - [ ] After the notification date only: make the repository public (or deploy from it),
   run `mkdocs gh-deploy` (user), and verify the social card and favicon on the live URL.
 
@@ -1625,15 +1627,15 @@ A100/H100 or RTX 4090 (its CUDA 13 PyTorch has no V100 kernels; the 4090 runs th
 
 ### JaguarReID
 
-**Do not run until authorized (2026-10-06).** The competition rules (section 2.4) allow competition
-use only; research, publications, training models outside the competition and derivative datasets
-need written authorization from the sponsors (Antonio Rueda-Toicen, Abigail Martin; Google Form in the
-rules, reviewed within 14 business days), and the data had to be deleted within 30 days after the
-competition ended on 2026-03-17 unless authorized. The work below (split, embeddings, probe runs,
-2026-10-03/04) is not covered. User decision 2026-10-06: request authorization; until it is granted,
-no runs, no new derived files, nothing published. If it is refused, delete the data folder, the
-derived files, the runs under `experiments/probe/JaguarReID/` and their logs (with the user's
-approval). The March 2026 Kaggle runs were competition use.
+**Research use authorized (2026-10-07).** The competition rules (section 2.4) allow competition use
+only; research, publications, training models outside the competition and derivative datasets need
+the authorization of the competition's authors (sponsors Antonio Rueda-Toicen, Abigail Martin), and
+the data had to be deleted within 30 days after the competition ended on 2026-03-17 unless
+authorized. Requested 2026-10-06 (user decision); the authors answered by email on 2026-10-07 that
+research use is no problem (the user keeps the email). This covers the work below (split,
+embeddings, probe runs, 2026-10-03/04) and further research runs; the earlier pause is lifted.
+JaguarReID stays a benchmark-only dataset with nothing on the project page or the Hub; ask the user
+before publishing any Jaguar photo or result. The March 2026 Kaggle runs were competition use.
 
 JaguarReID (added 2026-10-03) is the labelled part of the Kaggle Jaguar Re-ID data at
 `/shared/sets/datasets/vision/czechlynx/jaguar` (repository symlink

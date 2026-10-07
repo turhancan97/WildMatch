@@ -56,9 +56,9 @@ wildmatch evaluate benchmark.method=vismatch benchmark.methods.vismatch.matcher=
 
 ### JaguarReID
 
-Paused: the competition rules allow competition use only, and research use needs the sponsors'
-written authorization (requested 2026-10-06). Do not run JaguarReID until it is granted; see
-[DATASET.md](DATASET.md#55-jaguarreid-paused) and `THIRD_PARTY_LICENSES.md`.
+The competition rules allow competition use only; the competition's authors authorized research
+use for this project by email (2026-10-07). JaguarReID is not a paper dataset; see
+[DATASET.md](DATASET.md#55-jaguarreid) and `THIRD_PARTY_LICENSES.md`.
 
 ## Sweeps
 

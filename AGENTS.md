@@ -125,8 +125,10 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   Page, Paper, arXiv and YouTube Video left empty until they are public; the Hub checkpoint repo),
   the six authors as confirmed by the paper session (Kargin and Kubaty equal contribution; links:
   personal pages for Kargin, Zielinski, Przewiezlikowski, LinkedIn for Kubaty, ORCID for
-  Rostovskaya, ResearchGate for Wierzbowska), an empty NEWS list (template in an HTML comment) and
-  an empty BibTeX block until the arXiv ID is announced. Never add the venue or the review status
+  Rostovskaya, ResearchGate for Wierzbowska), a NEWS list (template in an HTML comment; first entry
+  "Oct. 2026: Paper is available on arXiv") and the BibTeX `kargin2026wildmatch`. Since 2026-10-07
+  the links row points at the preprint (Paper = arXiv PDF, arXiv = abstract page, plus an arXiv
+  badge) and Project Page at `https://wildmatch.gmum.net`; YouTube Video stays empty. Never add the venue or the review status
   (embargo); the repository is private, so the author names do not break double-blind review, but
   keep it private until the notification. Below the header: About, overview, one quick start, a
   documentation table, a compact repository tree, troubleshooting, licence. The
@@ -1172,6 +1174,15 @@ user. `tests/test_project_page.py` checks the configuration and sources without 
 relative links resolve, and no cluster path (`/shared/`, `/home/kargin`), session link,
 or the phrase "ECIR 2027 paper" appears in the sources.
 
+**Preprint (2026-10-07).** The paper is public on arXiv: 2610.07384, v1 of 2026-10-05, cs.CV, CC BY
+4.0, same six authors; its Comments field gives the project page as `https://wildmatch.gmum.net`
+(not resolving yet: DNS and deployment are the user's/GMUM's). User decisions the same day: the
+README, the Paper & Code page and the Hugging Face model card carry the arXiv links and the BibTeX
+`kargin2026wildmatch` (drafted by Claude in arXiv's `@misc` form, approved by the user); the status
+pill says "Preprint available online"; the draft banner, the Home "Draft page" warning and the
+draft `copyright` line are gone (`copyright: © 2026 The WildMatch Authors`); `site_url` is
+`https://wildmatch.gmum.net/` with `docs/CNAME`. The rest of the embargo below still holds.
+
 **Embargo (binding until the ECIR 2027 notification, 2026-12-07).** The manuscript
 ("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification",
 submitted to ECIR 2027, under review) is double-blind. On 2026-10-03 the user made this
@@ -1180,9 +1191,8 @@ GitHub repository private and fast-forwarded the former local `project-page` bra
 explicit instruction: do not run `mkdocs gh-deploy` or push a `gh-pages` branch, do not
 make the repository public, and keep the explainer video unlisted. **Venue rule (user decision 2026-10-02):** the site never names
 the venue or the submission status anywhere, not even in source comments; the status pill
-says "Manuscript · preprint to follow" and the Paper page says the manuscript is not yet
-public. When a preprint appears, the page says it is available online without naming the
-venue; the venue is announced only after acceptance. `test_project_page` forbids "ECIR",
+says "Preprint available online" (since 2026-10-07; before, "Manuscript · preprint to follow")
+and the Paper page links the arXiv preprint; the venue is announced only after acceptance. `test_project_page` forbids "ECIR",
 "LNCS", "Springer", "under review" and "submitted to" in the site sources.
 The paper brief relayed by the paper-writing session (authors, abstract, outline,
 method text, dataset table, figure captions, headline numbers, open items) is stored at
@@ -1211,8 +1221,9 @@ as primary metrics, class-weighted classifier probes only, eight datasets (Belug
 dropped), no CzechLynx open-split results (the unseen-identity protocol replaces them).
 State with every cosine or classifier baseline that MegaDescriptor-L was trained on six
 of the eight datasets (all except Sea star, CzechLynx, Salamander). Never call the
-descriptor-only result a "collapse". No BibTeX or preprint exists; the user writes all
-BibTeX entries. Items the authors still mark as draft carry a "Draft" admonition on the page (none left
+descriptor-only result a "collapse". The preprint is arXiv:2610.07384; its BibTeX
+(`kargin2026wildmatch`) is in README.md and `docs/paper.md`, and any other BibTeX entry comes from
+the user. Items the authors still mark as draft carry a "Draft" admonition on the page (none left
 since 2026-10-06: the masking and cost-gap boxes were settled against the submitted paper). Settled on 2026-10-02 by the paper session: the objective is a triplet margin loss on
 the relaxed score, confirmed from the training code; the page calls it "a triplet margin
 objective, a contrastive loss" and never "softmax-based contrastive" or "InfoNCE" (an
@@ -1253,7 +1264,8 @@ automatically: the hero uses `wildmatch-fullname.png#only-light` and `wildmatch-
 because `.wm-logo`'s `display: block` beats Material's rule), the header mark comes from
 `overrides/partials/logo.html` (theme logo `#only-light`, `wildmatch-logo-256-dark.png` `#only-dark`,
 the mark cut from `A1_wildmatch_two-color_dark_transparent.png` above its text), both following the page's
-colour scheme; the favicons switch with the visitor's OS theme (`media="(prefers-color-scheme: ...)"`
+colour scheme (`extra.css` also hides the other scheme's header mark: Material's `.md-logo img { display: block }`
+showed both marks in the light scheme until 2026-10-07); the favicons switch with the visitor's OS theme (`media="(prefers-color-scheme: ...)"`
 on `favicon-32`/`-192` and `favicon-32_dark`/`-192_dark`; Safari ignores it, the `.ico` stays the
 fallback); the README title uses `<picture>` with the dark mark. Kept but unused: A1, A2, B1 and B2
 dark sources and `icon-512-transparent_dark.png`; deleted as unused: the dark 16/48/64 px favicons and
@@ -1336,11 +1348,12 @@ Binding rules from that history:
   checkout keeps its folder name `explainable_individual_reidentification` on purpose (Claude's
   project memory and the notes are keyed to that path). The reference copies in
   `slurm/mining/fewshot/` and `notes/matcher_finetune/` keep their old wording.
-- [ ] Remove the draft banner (`{% block announce %}` in `overrides/main.html`), the
-  "Draft page" warning on Home, the `copyright` draft line, and change the status pill
-  text when the preprint is online ("available online", venue only after acceptance).
-- [ ] Add the preprint link and the authors' BibTeX entry on Paper & Code; fill the
-  Acknowledgements section.
+- [x] Remove the draft banner, the "Draft page" warning on Home and the `copyright` draft line,
+  and change the status pill to "Preprint available online" (done 2026-10-07, preprint online).
+- [x] Add the preprint link and the BibTeX entry on Paper & Code (done 2026-10-07: arXiv and PDF
+  buttons, `kargin2026wildmatch`; an arXiv button in the Home hero too).
+- [ ] Fill the Acknowledgements section on Paper & Code (authors).
+- [ ] Point `wildmatch.gmum.net` at GitHub Pages (DNS, user/GMUM); `docs/CNAME` is in place.
 - [x] Web display of dataset photos (decided 2026-10-06 by the user: keep all photos, with
   attribution). The Datasets page's licensing table lists each dataset's source and licence and the
   WildlifeReID-10k terms (no commercial use, no re-upload, attribution); Nyala's source states no

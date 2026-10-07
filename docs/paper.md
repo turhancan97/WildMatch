@@ -1,13 +1,28 @@
 # Paper & Code
 
 **WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife
-Re-Identification.** The manuscript is not yet publicly available; a preprint link will
-appear here when it is online.
+Re-Identification.** Turhan Can Kargin, Piotr Kubaty, Ekaterina Rostovskaya, Izabela Wierzbowska,
+Bartosz Zieliński, Marcin Przewięźlikowski. Preprint, arXiv:2610.07384, 2026.
+
+<div class="wm-buttons" markdown>
+[arXiv](https://arxiv.org/abs/2610.07384){ .md-button .md-button--primary }
+[PDF](https://arxiv.org/pdf/2610.07384){ .md-button }
+</div>
+
+The preprint is released under CC BY 4.0.
 
 ## Citation
 
 ```bibtex
-% BibTeX entry to be provided by the authors once the preprint is online.
+@misc{kargin2026wildmatch,
+  title={WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification},
+  author={Turhan Can Kargin and Piotr Kubaty and Ekaterina Rostovskaya and Izabela Wierzbowska and Bartosz Zieliński and Marcin Przewięźlikowski},
+  year={2026},
+  eprint={2610.07384},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={https://arxiv.org/abs/2610.07384}
+}
 ```
 
 ## Acknowledgements

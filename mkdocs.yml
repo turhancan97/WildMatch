@@ -1,19 +1,18 @@
-# Project page for the WildMatch manuscript. Source lives in docs/, the built site
-# goes to site/ (gitignored) and is deployed to the gh-pages branch with
-# `mkdocs gh-deploy`. While the manuscript is unpublished the repository is private and
-# the site must not be deployed or the repository made public (see AGENTS.md, "Project
-# page").
+# Project page for the WildMatch paper (arXiv:2610.07384). Source lives in docs/, the built
+# site goes to site/ (gitignored) and is deployed to the gh-pages branch with
+# `mkdocs gh-deploy`; docs/CNAME serves it at wildmatch.gmum.net, the address the preprint
+# gives. Until the decision date the repository stays private and the site is not deployed
+# (see AGENTS.md, "Project page").
 site_name: WildMatch
 site_description: Weakly supervised image matcher adaptation for wildlife re-identification
-# Placeholder until the repository rename; GitHub Pages URLs carry the repository name.
-site_url: https://turhancan97.github.io/WildMatch/
+site_url: https://wildmatch.gmum.net/
 repo_url: https://github.com/turhancan97/WildMatch
 repo_name: WildMatch
 edit_uri: ""
 docs_dir: docs
 site_dir: site
 strict: true
-copyright: Draft figures and text from an unpublished manuscript.
+copyright: © 2026 The WildMatch Authors
 
 theme:
   name: material

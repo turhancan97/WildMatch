@@ -12,8 +12,9 @@
 [![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
 [![license](https://img.shields.io/badge/License-Apache--2.0-green.svg?labelColor=gray)](LICENSE)
 [![ci](https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml/badge.svg)](https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml)
+[![arXiv](https://img.shields.io/badge/arXiv-2610.07384-b31b1b.svg)](https://arxiv.org/abs/2610.07384)
 
-[**Project Page**]() | [**Paper**]() | [**arXiv**]() | [**HuggingFace Model**](https://huggingface.co/turhancan97/wildmatch-checkpoints) | [**YouTube Video**]()
+[**Project Page**](https://wildmatch.gmum.net) | [**Paper**](https://arxiv.org/pdf/2610.07384) | [**arXiv**](https://arxiv.org/abs/2610.07384) | [**HuggingFace Model**](https://huggingface.co/turhancan97/wildmatch-checkpoints) | [**YouTube Video**]()
 
 [Turhan Can Kargin](https://turhancankargin.me/)\*, [Piotr Kubaty](https://www.linkedin.com/in/piotr-kubaty/)\*, [Ekaterina Rostovskaya](https://orcid.org/0000-0002-8421-1838), [Izabela Wierzbowska](https://www.researchgate.net/profile/Izabela-Wierzbowska), [Bartosz Zieliński](https://bartoszzielinski.github.io/), [Marcin Przewięźlikowski](https://mprzewie.github.io/)
 
@@ -27,11 +28,22 @@
 - *Mon. YYYY:* What happened, with a [link](https://...).
 -->
 
+- *Oct. 2026:* Paper is available on [arXiv](https://arxiv.org/abs/2610.07384).
+
 --------------------------------
 
 If you find this research useful, please consider citing:
 
 ```bibtex
+@misc{kargin2026wildmatch,
+  title={WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification},
+  author={Turhan Can Kargin and Piotr Kubaty and Ekaterina Rostovskaya and Izabela Wierzbowska and Bartosz Zieliński and Marcin Przewięźlikowski},
+  year={2026},
+  eprint={2610.07384},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={https://arxiv.org/abs/2610.07384}
+}
 ```
 
 ## About

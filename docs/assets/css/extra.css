@@ -93,10 +93,6 @@
   --md-accent-fg-color--transparent: rgba(226, 145, 132, 0.14);
 }
 
-.wm-announce {
-  font-weight: 600;
-}
-
 /* Landing-page hero (docs/index.md, rendered through md_in_html): a head row with
    the full-name logo beside the title, then authors and buttons full width. */
 .wm-hero {
@@ -137,10 +133,13 @@
   display: block;
 }
 
-/* Light and dark logo files (#only-light / #only-dark): the display above would otherwise
-   override Material's rule that hides the one for the other scheme. */
+/* Light and dark logo files (#only-light / #only-dark): `display: block` on the hero logo and
+   Material's own `.md-logo img` rule would otherwise beat Material's rule that hides the image of
+   the other scheme (in the light scheme both header marks showed, 2026-10-06 to 10-07). */
 [data-md-color-scheme="default"] .md-typeset img.wm-logo[src$="#only-dark"],
-[data-md-color-scheme="slate"] .md-typeset img.wm-logo[src$="#only-light"] {
+[data-md-color-scheme="slate"] .md-typeset img.wm-logo[src$="#only-light"],
+[data-md-color-scheme="default"] .md-logo img[src$="#only-dark"],
+[data-md-color-scheme="slate"] .md-logo img[src$="#only-light"] {
   display: none;
 }
 

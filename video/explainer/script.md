@@ -28,4 +28,4 @@ is on the page.
   so the ten photos and their scores are real mining output.
 - Scene 7's eight icons are the datasets in the paper's order; arrows have no numbers.
 - Captions: one line per shot, from this table; a plain-text transcript goes under the embed.
-- Output: 1920 x 1080, 30 fps, H.264, hosted unlisted; source and script stay in `video/explainer/`.
+- Output: 1920 x 1080, 30 fps, H.264, hosted on YouTube (public since 2026-10-07); source and script stay in `video/explainer/`.

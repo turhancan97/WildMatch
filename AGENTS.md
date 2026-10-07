@@ -129,13 +129,13 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `profile_vismatch.py`, the Vismatch cost breakdown read from completed runs' `timings.json`). Run them as `python paper/<group>/<script>.py`.
 - README.md and guides/: the README is short (2026-10-06, user decisions). Its header follows
   gmum/SpaRRTa (user request 2026-10-06): the logo (150 px, light/dark via `<picture>`) above the full paper title, badges, a links row (Project
-  Page, Paper, arXiv and YouTube Video left empty until they are public; the Hub checkpoint repo),
+  Page, Paper, arXiv, the Hub checkpoint repo and YouTube Video, which links the explainer since it went public on 2026-10-07),
   the six authors as confirmed by the paper session (Kargin and Kubaty equal contribution; links:
   personal pages for Kargin, Zielinski, Przewiezlikowski, LinkedIn for Kubaty, ORCID for
   Rostovskaya, ResearchGate for Wierzbowska), a NEWS list (template in an HTML comment; first entry
   "Oct. 2026: Paper is available on arXiv") and the BibTeX `kargin2026wildmatch`. Since 2026-10-07
   the links row points at the preprint (Paper = arXiv PDF, arXiv = abstract page, plus an arXiv
-  badge) and Project Page at `https://wildmatch.gmum.net`; YouTube Video stays empty. Never add the venue or the review status
+  badge) and Project Page at `https://wildmatch.gmum.net`; YouTube Video links `https://www.youtube.com/watch?v=9i3iE8Bs6n8`, with a NEWS entry for it (2026-10-07). Never add the venue or the review status
   (venue rule, see "Project page"); the repository is public since 2026-10-07. Below the header: About, overview, one quick start, a
   documentation table, a compact repository tree, troubleshooting, licence. The
   reference material lives in `guides/` (user-facing, linked from the README; never cluster paths or
@@ -1207,7 +1207,7 @@ pill says "Preprint available online"; the draft banner, the Home "Draft page" w
 draft `copyright` line are gone (`copyright: © 2026 The WildMatch Authors`); `site_url` is
 `https://wildmatch.gmum.net/` with `docs/CNAME`. The Hugging Face model card links the preprint and
 the project page and carries the BibTeX (Hub commit `ad3c6491`, 2026-10-07, licence text unchanged).
-Open: the YouTube description's "to follow" line (user), Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
+Open: Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
 
 **Public since 2026-10-07 (user decision; supersedes the deploy and visibility parts of the embargo
 below).** The user made the GitHub repository public and asked for the deploy: the page is live at
@@ -1221,7 +1221,7 @@ from github.io with a temporary `mkdocs.githubio.yml` (no `CNAME`), deleted the 
 `G-W9GXV5470E`, user request 2026-10-07) loads on every page without a consent banner (user decision;
 Material's `extra.consent` would add one). The only 404 on the live site is the theme's GitHub widget asking
 for a release (none existed; release `v0.1.0` was published on 2026-10-07). Still binding: never name the venue or the review status until the
-authors announce acceptance; the explainer video's visibility is the user's call (the page embeds it).
+authors announce acceptance; the explainer video is public on YouTube since 2026-10-07 (the user's decision; the page embeds it).
 
 **Embargo (until the conference decision, 2026-12-07; partly lifted 2026-10-07, see above).** The
 manuscript ("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification")
@@ -1229,7 +1229,7 @@ is in anonymous peer review. On 2026-10-03 the user made this
 GitHub repository private and fast-forwarded the former local `project-page` branch into
 `main`, so the page sources now live on `main`. Until the notification, without the user's
 explicit instruction: do not run `mkdocs gh-deploy` or push a `gh-pages` branch, do not
-make the repository public, and keep the explainer video unlisted. **Venue rule (user decision 2026-10-02):** the site never names
+make the repository public, and keep the explainer video unlisted (all three lifted by the user on 2026-10-07). **Venue rule (user decision 2026-10-02):** the site never names
 the venue or the submission status anywhere, not even in source comments; the status pill
 says "Preprint available online" (since 2026-10-07; before, "Manuscript · preprint to follow")
 and the Paper page links the arXiv preprint; the venue is announced only after acceptance. Since the repository is public (2026-10-07), the rule
@@ -1372,8 +1372,8 @@ Binding rules from that history:
 - Charts colour by matcher family (LoMa blue, RDD red, WildFusion gold), fine-tuned solid
   with filled markers, default dashed with hollow markers, baselines grey, and every value
   is also in a table.
-- The explainer MP4 is never committed and stays unlisted on YouTube (`9i3iE8Bs6n8`) until
-  the notification date; only its poster frame, narration MP3 and timings are tracked.
+- The explainer MP4 is never committed; it is public on YouTube (`9i3iE8Bs6n8`) since
+  2026-10-07 (user decision); only its poster frame, narration MP3 and timings are tracked.
 
 **Publication checklist (keep current; tick items as they close).**
 
@@ -1417,8 +1417,8 @@ Binding rules from that history:
   Desktop rendering at 1280 px is pixel-identical apart from anti-aliasing. Two console 404/403
   per page come from the theme's GitHub star widget while the repository is private.
 - [x] Upload the explainer unlisted and put the video ID in `data-youtube` on `docs/index.md`
-  (done 2026-10-03, `9i3iE8Bs6n8`). Before publication: replace the description's "to follow"
-  line with the page URL and switch the video from unlisted to public.
+  (done 2026-10-03, `9i3iE8Bs6n8`). Done 2026-10-07: the description links the project page and the
+  arXiv preprint, and the video is public (checked on YouTube: not unlisted, not private).
 - [x] Page sources on `main` (done 2026-10-03: the user fast-forwarded `project-page` into
   `main` and made the repository private).
 - [x] Few-shot views documented (2026-10-05, `docs/reproduce/fewshot.md`, user decisions): own page

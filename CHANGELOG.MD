@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: No test-split curves or selection during training (known issue closed; user decisions:
+  per-epoch test pass off by default, fine-tuning reports the final epoch). Probes:
+  `log_test_each_epoch: false` for the linear and efficient probes skips the per-epoch query pass;
+  the skipped pass still draws the DataLoader base seed, so final metrics and scores are
+  bit-identical with the option on or off (new integration test; without the draw they differ).
+  When on, a warning says they are test-split diagnostics, and the W&B and stdout keys are now
+  `test_*` instead of `val_*`. Backbone fine-tuning: `output.selection: final` (default) reports the
+  final-epoch model; `best_on_test` keeps the former behaviour and records `selected_on: test`
+  (metrics, run index `selection`). New `tests/test_finetune_integration.py` (two epochs on the demo
+  images, fake backbone, CPU). Reported numbers change only for new `finetune-backbone` runs, which
+  no paper result uses.
 - 2026-10-06: End-to-end probe test and config checks (closes two future-work items; plan approved
   by the user). `tests/test_probe_integration.py` runs `wildmatch evaluate` through Hydra on the 24
   bundled demo images with `get_model` patched to a tiny deterministic CNN: cosine (complete run

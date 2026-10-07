@@ -983,15 +983,18 @@ reproduction, and the measured impact so it can be picked up without re-investig
   is bit-identical to parity run 4 (scores and all 63 metrics); training 793 s against 808 s (small
   gallery, so the saving is small here; it is about a minute per epoch on CzechLynx-sized data).
 
-- **Probe per-epoch validation uses the query/test split.**
-  `run_linear_probe` and `run_efficient_probe` build their `[*][val]` loader from
-  `dataset_query`, logging test loss and test metrics every epoch. Reported metrics are not
-  affected: they come from the post-loop evaluation of the final-epoch model, and no
-  best-epoch selection occurs. The hazard is downstream, since per-epoch test curves in
-  W&B invite epoch or hyperparameter selection on the test split. Same class of limitation
-  as the finetune selection split, which also selects the best checkpoint on the test split.
-  Fix: give the probes a validation split distinct from the query/test split, or stop
-  logging per-epoch test metrics.
+- **Test split during training (fixed on branch `fix/test-split-selection`, 2026-10-06, user
+  decisions).** The linear and efficient probes evaluated the query (test) split after every epoch
+  and logged it to W&B and stdout; backbone fine-tuning reported `checkpoint-best.pth`, chosen on its
+  evaluation split, which is the test split. Now `benchmark.methods.{linear,efficient}_probe.log_test_each_epoch`
+  (default `false`) skips the per-epoch query pass; when on, it warns and logs `test_*` keys (the
+  former `val_*`). Skipping it draws the same DataLoader base seed (`_skip_loader_pass`), so the
+  shuffling RNG stream and every reported number are bit-identical either way
+  (`test_per_epoch_test_pass_does_not_change_results`; without the draw the scores differ).
+  Fine-tuning has `output.selection: final` (default; reports the final-epoch model) or
+  `best_on_test` (the former behaviour, labelled `selected_on: test` in metrics, manifest and run
+  index). This changes reported numbers of new `finetune-backbone` runs only; no paper result uses
+  that workflow. `tests/test_finetune_integration.py` runs fine-tuning end to end on the demo images.
 
 - **Fixed on branch `fix/small-known-bugs` (2026-10-04; merge after sweep 524499 finishes).**
   None of the three affected reported numbers; `tests/test_small_known_bugs.py` pins them.
@@ -1486,9 +1489,10 @@ applied at load time.
   (`start_epoch >= train.epochs`). A zero-epoch run would still write final checkpoints and
   a completed manifest, hiding an unraised `train.epochs`; the guard runs before training
   setup so nothing is written.
-- Finetune reports select and reload the best model-only checkpoint for primary metrics;
-  final-epoch metrics remain nested as `final_epoch_metrics`. The selection split is the
-  test split, a documented limitation (see "Known issues", probe per-epoch validation).
+- Finetune reports the final-epoch model by default (`output.selection: final`, 2026-10-06);
+  `best_on_test` reloads `checkpoint-best.pth`, selected on the evaluation split, which is the test
+  split, and labels the metrics `selected_on: test`. Final-epoch metrics are always kept as
+  `final_epoch_metrics`.
 - Accumulation divides each raw loss by the actual microbatch count in its group, including
   a partial final group; optimizer-step boundaries and scheduler behavior are unchanged.
 - WildFusion calibration excludes same-image diagonal pairs by default and warns on the

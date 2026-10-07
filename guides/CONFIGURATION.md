@@ -79,7 +79,10 @@ Key blocks:
 - `train`: epochs, batch size, AMP, deterministic mode, resume checkpoint
 - `loss`: ArcFace parameters
 - `scheduler`: cosine settings
-- `output`: experiment root, save frequency, best metric, and legacy aggregate CSV path
+- `output`: experiment root, save frequency, best metric, `selection`, and legacy aggregate CSV path.
+  The per-epoch evaluation split (`dataset.val_split_value`) is the test split, so `selection: final`
+  (default) reports the final-epoch model; `best_on_test` reports `checkpoint-best.pth`, chosen on
+  the test split, and the metrics say so (`selected_on: test`).
 - `reporting`: run-index path and reporting enablement
 - `benchmark`: validation retrieval metrics (`top_k`, `mAP`)
 - `safety_checks`: pre-run split validation (`enabled`)
@@ -217,6 +220,9 @@ Core options:
 - `class_weight_max`: cap after normalization (default `5.0`; no second normalization)
 - `epochs`, `batch_size`, `num_workers`, `accumulation_steps`
 - `optimizer`: `sgd` | `adam` | `adamw`
+- `log_test_each_epoch` (default `false`): also evaluate the query (test) split after every epoch and
+  log `test_*` loss and metrics; diagnostics only, never for choosing an epoch. Reported metrics
+  come from the final-epoch model and are identical either way.
 - `lr`, `momentum`, `weight_decay`, `eta_min_scale`
 - `eval_batch_size`, `eval_num_workers`
 - `resume_checkpoint`
@@ -264,7 +270,7 @@ benchmark:
 `efficient_probe` applies a softmax head on top of ViT patch-token outputs:
 - token source: `outputs.last_hidden_state[:, -number_of_patches:, :]`
 - supports train modes: `all` | `partial` | `classifier`
-- logs train/val loss and top-k metrics with tqdm progress bars
+- logs train loss and top-k metrics with tqdm progress bars (test-split curves only with `log_test_each_epoch`)
 - when `visualization.enabled: true`, also saves a single attention-overlay grid from query images
 
 Config path:
@@ -272,6 +278,9 @@ Config path:
 
 Core options:
 - `train_mode`, `epochs`, `log_every`
+- `log_test_each_epoch` (default `false`): also evaluate the query (test) split after every epoch and
+  log `test_*` loss and metrics; diagnostics only, never for choosing an epoch. Reported metrics
+  come from the final-epoch model and are identical either way.
 - `class_weighting`: `inverse_frequency` (default) | `none`
 - `class_weight_normalize`: normalize inverse-frequency weights to mean 1 (default `true`)
 - `class_weight_max`: cap after normalization (default `5.0`; no second normalization)

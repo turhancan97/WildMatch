@@ -44,8 +44,9 @@ output:
   experiment_root: "experiments"
   run_dir: "results/${dataset.name}/${dataset.animal}/mask_${dataset.no_background}"
   save_every: 10
-  save_best: true
+  save_best: true          # also write checkpoint-best*.pth (best `best_metric` on the evaluation split = test)
   best_metric: "top_1"
+  selection: "final"       # reported checkpoint: final (default) | best_on_test (selected on the test split)
   csv_path: "results/${dataset.name}/${dataset.animal}/mask_${dataset.no_background}/train_metrics.csv"
 
 benchmark:

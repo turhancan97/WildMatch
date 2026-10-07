@@ -120,6 +120,23 @@ class ProbeIntegrationTest(unittest.TestCase):
         for key in scores[0]:
             np.testing.assert_array_equal(scores[0][key], scores[1][key])
 
+    def test_per_epoch_test_pass_does_not_change_results(self):
+        results = []
+        for flag in ("false", "true"):
+            with tempfile.TemporaryDirectory() as tmp:
+                run_dir = run_probe(
+                    Path(tmp), [*LINEAR_PROBE, f"benchmark.methods.linear_probe.log_test_each_epoch={flag}"]
+                )
+                with np.load(run_dir / "scores.npz") as data:
+                    scores = {key: data[key].copy() for key in data.files}
+                metrics = json.loads((run_dir / "metrics.json").read_text())
+                results.append((scores, metrics))
+        (scores_off, metrics_off), (scores_on, metrics_on) = results
+        for key in scores_off:
+            np.testing.assert_array_equal(scores_off[key], scores_on[key])
+        for key in ("top_1", "top_5", "balanced_top_1", "classification_top_1"):
+            self.assertEqual(metrics_off[key], metrics_on[key], key)
+
     def test_linear_probe_run_is_complete(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp)

@@ -54,6 +54,7 @@ benchmark:
       class_weight_max: 5.0
       epochs: 50
       log_every: 1
+      log_test_each_epoch: false  # true: also evaluate the query (test) split every epoch (diagnostics only)
       batch_size: 16
       num_workers: 8
       accumulation_steps: 4
@@ -86,6 +87,7 @@ benchmark:
       class_weight_max: 5.0
       epochs: 50
       log_every: 1
+      log_test_each_epoch: false  # true: also evaluate the query (test) split every epoch (diagnostics only)
       batch_size: 64
       num_workers: 8
       accumulation_steps: 1

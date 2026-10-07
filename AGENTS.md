@@ -1146,8 +1146,14 @@ reproduction live under "Known issues" instead.
   GPU compute is only 73 s / 42 s (53 / 30 ms per image), so about 70-90 s go to reading and
   preprocessing images and writing the cache, outside the compute timer; RDD-LightGlue's extraction
   batch backed off from 8 to 4 (CUDA out of memory). Top-1 is identical cold and warm (0.3089 LoMa,
-  0.2764 RDD-LightGlue). Worth optimising: pair matching (both) and, for cold caches, image loading
-  and preprocessing. Any change must keep scores bit-identical.
+  0.2764 RDD-LightGlue). Cold-cache image loading is solved (branch `perf/vismatch-io-prefetch`,
+  2026-10-07): `benchmark.methods.vismatch.io_workers` (default 4) hashes, decodes and reads/writes
+  cache files in threads ahead of the GPU, in index order with a bounded window (`_ordered_prefetch`),
+  writing cache files in the background; `prepare_image` stays on the main thread. Rerun of the
+  profile (job 526011, same RTX 4090 setup): scores bit-identical to job 525920 for all four runs;
+  cold extraction 141 -> 91 s (LoMa) and 132 -> 78 s (RDD-LightGlue), cold runs 218 -> 155 s and
+  181 -> 123 s, warm cache loading 6 -> 2 s. `io_workers` is not part of any cache key. Still worth
+  optimising: pair matching. Any change must keep scores bit-identical.
 - [ ] Run the private Lynx golden-subset parity comparison for RDD-LightGlue before changing
   matcher defaults. The 2026-08-12 full-split comparison agreed on 65 of 66 top-1
   predictions, not 100 %, so this gate is still open (details under "Vismatch matcher policy").

@@ -1146,7 +1146,8 @@ reproduction, and the measured impact so it can be picked up without re-investig
   values feed the paper's `tab_rdd.tex` (Salamander at k = 250: Top-5 43.9 -> 46.0, +2.1, and balanced Top-1
   43.7 -> 44.0, +0.3; from the runs: 45.5, +1.6, and 43.3, -0.4) and the accuracy-versus-k figure, and the
   project page's data, which is exported from the same snapshot. The paper text quotes none of them. The
-  paper is frozen and nothing was changed; reported to the user for the authors (a later arXiv version).
+  paper is frozen and nothing was changed; the user decided (2026-10-07) to leave it
+  without further notice.
   When comparing new Salamander RDD runs, read the paper runs' `metrics.json`, not the snapshot.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found

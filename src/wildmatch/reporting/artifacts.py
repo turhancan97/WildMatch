@@ -18,7 +18,7 @@ from typing import Any, Dict, Mapping, Optional
 from omegaconf import DictConfig, OmegaConf
 
 from wildmatch.utils.fingerprints import sha256_file
-from wildmatch.utils.io import file_lock, write_csv_atomically
+from wildmatch.utils.io import atomic_write, file_lock, write_csv_atomically
 
 ARTIFACT_SCHEMA_VERSION = 1
 RUN_INDEX_COLUMNS = [
@@ -255,8 +255,9 @@ class RunContext:
             )
 
     def write_json(self, path: Path, payload: Mapping[str, Any]) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+        # Atomic: a full disk on 2026-10-04 left one run with an empty run_manifest.json.
+        text = json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n"
+        atomic_write(path, lambda temporary: temporary.write_text(text, encoding="utf-8"))
 
     def write_metrics(self, metrics: Mapping[str, Any]) -> None:
         self.write_json(self.metrics_path, dict(metrics))
@@ -391,6 +392,8 @@ def run_index_row(context: RunContext, payload: Mapping[str, Any]) -> Dict[str, 
         "manifest_path": context.manifest_path.as_posix(),
         "metrics_path": context.metrics_path.as_posix(),
         "visualization_dir": context.visualization_dir.as_posix(),
+        # The column existed since the index was created but was never filled (found 2026-10-06).
+        "git_commit": _git_commit(),
     }
     row.update({key: value for key, value in payload.items() if key not in row})
     return row

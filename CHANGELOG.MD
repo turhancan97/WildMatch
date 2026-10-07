@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: Read-only metadata audit (future-work item closed; user decision: report, never
+  rewrite). New `wildmatch audit-runs`: per provenance field, how many run manifests lack it (code
+  identity, `vismatch_device`, primary timing, `model`, `split_protocol`, `git_commit`, schema
+  version, fine-tuned checkpoint SHA-256, unreadable files), plus empty key columns of
+  `reports/runs.csv`; `--output` writes the per-run listing. Cluster result: 931 manifests, gaps
+  code block 930, `vismatch_device` 632, primary timing 200, model/split 11, checkpoint SHA-256 0;
+  one empty manifest from the full-disk night of 2026-10-04. Forward fixes found by it: run JSON
+  files are written atomically (`RunContext.write_json`), and `run_index_row` now fills
+  `git_commit`, which was empty in all 855 index rows.
 - 2026-10-06: Atomic checkpoint writes, optional retention, nested legacy discovery (two future-work
   items closed; user decision: keep all by default). `atomic_write`/`atomic_torch_save` in
   `wildmatch.utils.io` write under the target's own name in a hidden temporary folder and rename it

@@ -1,0 +1,1738 @@
+{
+ "generated_at": "2026-10-02T21:30:46+00:00",
+ "generated_by": "scripts/export_data_challenges.py",
+ "categories": [
+  {
+   "key": "overexposure",
+   "group": "noise",
+   "title": "Overexposure"
+  },
+  {
+   "key": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame"
+  },
+  {
+   "key": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail"
+  },
+  {
+   "key": "corruption",
+   "group": "noise",
+   "title": "Corruption"
+  },
+  {
+   "key": "blur",
+   "group": "noise",
+   "title": "Blur"
+  },
+  {
+   "key": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames"
+  },
+  {
+   "key": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion"
+  }
+ ],
+ "attribution": "Raw photographs from CzechLynx (Picek et al.), WildlifeReID-10k and SalamanderID2025 (AnimalCLEF 2025), the latter shown with the dataset team's permission.",
+ "items": [
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 38308,
+   "side": "database",
+   "identity": "lynx_200",
+   "note": "fully saturated IR frame (paper figure)",
+   "flags": [
+    "overexposed",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.554472,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 254.141,
+    "std_luma": 12.3936,
+    "saturated_fraction": 0.994254,
+    "sharpness": 0.00190901,
+    "grayscale": true,
+    "width": 904.0,
+    "height": 903.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_38308.jpg",
+    "width": 900,
+    "height": 899
+   },
+   "source_sha256": "669d6a7f24223304be9ffdc9d7c1c6caa5f412d93ed63a4b21b9e384b37591ff"
+  },
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 20211,
+   "side": "database",
+   "identity": "lynx_166",
+   "note": "saturated IR frame",
+   "flags": [
+    "overexposed",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.647298,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.999988,
+    "mean_luma": 254.208,
+    "std_luma": 11.5718,
+    "saturated_fraction": 0.994226,
+    "sharpness": 0.00481968,
+    "grayscale": true,
+    "width": 825.0,
+    "height": 825.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_20211.jpg",
+    "width": 825,
+    "height": 825
+   },
+   "source_sha256": "3f485e2db1beb382f4a82d1af02dfb78ac16f14355f0f1bbf07edeee10b503d1"
+  },
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 31806,
+   "side": "database",
+   "identity": "lynx_136",
+   "note": "colour frame, flash blast on the animal, scene visible",
+   "flags": [
+    "overexposed",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.293751,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 254.213,
+    "std_luma": 11.1487,
+    "saturated_fraction": 0.992664,
+    "sharpness": 0.165707,
+    "grayscale": true,
+    "width": 5127.0,
+    "height": 5126.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_31806.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "source_sha256": "cfe15a6dc003fb8785650d373b58c9c2ad12e438d847ce3d5a97b5a78af66a79"
+  },
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 36620,
+   "side": "database",
+   "identity": "lynx_034",
+   "note": "saturated IR frame",
+   "flags": [
+    "overexposed",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.424,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 254.034,
+    "std_luma": 11.9346,
+    "saturated_fraction": 0.992257,
+    "sharpness": 0.0162166,
+    "grayscale": true,
+    "width": 664.0,
+    "height": 664.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_36620.jpg",
+    "width": 664,
+    "height": 664
+   },
+   "source_sha256": "121050662f57e4caef20b0d4c5bb0d515b359a1d62d7670a4c917bd1a0d9ef04"
+  },
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 2824,
+   "side": "database",
+   "identity": "16ba6dc5-6ea0-47df-b912-53660db9e8cd",
+   "note": "IR flash glare (paper figure)",
+   "flags": [
+    "overexposed"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.414621,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.998237,
+    "mean_luma": 249.805,
+    "std_luma": 21.9688,
+    "saturated_fraction": 0.896852,
+    "sharpness": 60.922,
+    "grayscale": true,
+    "width": 565.0,
+    "height": 594.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_2824.jpg",
+    "width": 565,
+    "height": 594
+   },
+   "source_sha256": "022e51de3dd1a0c7d8b7a782f980a8e2556e5d8bca4dee0411795690d4ae6744"
+  },
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 3800,
+   "side": "database",
+   "identity": "f39b36c5-c265-4825-ba79-87f998ed6746",
+   "note": "IR flash, coat nearly white",
+   "flags": [
+    "overexposed"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.437506,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.999328,
+    "mean_luma": 247.626,
+    "std_luma": 18.6726,
+    "saturated_fraction": 0.804807,
+    "sharpness": 24.4554,
+    "grayscale": true,
+    "width": 936.0,
+    "height": 1076.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_3800.jpg",
+    "width": 783,
+    "height": 900
+   },
+   "source_sha256": "e6fb80351a9e0bff313dc64b7fb9407efd94c7cbca41da1016c9968c13249a18"
+  },
+  {
+   "category": "overexposure",
+   "group": "noise",
+   "title": "Overexposure",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 6395,
+   "side": "database",
+   "identity": "t_id_cRNfY6Ds",
+   "note": "shell washed out by flash",
+   "flags": [
+    "overexposed"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.731891,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.999767,
+    "mean_luma": 205.964,
+    "std_luma": 53.5799,
+    "saturated_fraction": 0.39618,
+    "sharpness": 35.6244,
+    "grayscale": false,
+    "width": 1428.0,
+    "height": 1775.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_6395.jpg",
+    "width": 724,
+    "height": 900
+   },
+   "source_sha256": "8da0ddda4042aa93fee0700868ad88c3bdac9c57ca2b6b9f6d42e6d945db63d6"
+  },
+  {
+   "category": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 36426,
+   "side": "database",
+   "identity": "lynx_098",
+   "note": "stick, no lynx (paper figure)",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.043146,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 69.2402,
+    "std_luma": 39.6647,
+    "saturated_fraction": 0.0,
+    "sharpness": 80.7551,
+    "grayscale": false,
+    "width": 368.0,
+    "height": 368.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_36426.jpg",
+    "width": 368,
+    "height": 368
+   },
+   "source_sha256": "4a559c54f45b3b4611326a16859b986f825dfb54491df66aac1db6517ebd7da6"
+  },
+  {
+   "category": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 16663,
+   "side": "query",
+   "identity": "lynx_278",
+   "note": "log and corner glare, one frame of a repeated sequence",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0106909,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.985011,
+    "mean_luma": 138.931,
+    "std_luma": 56.5345,
+    "saturated_fraction": 0.00642398,
+    "sharpness": 9.02588,
+    "grayscale": true,
+    "width": 1203.0,
+    "height": 1203.0
+   },
+   "query_runs": 28,
+   "query_top1_rate": 0.0,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_16663.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "source_sha256": "6492e385c0802f8486f5365b0e79543462f0ff0875586e57b711841ca0be1823"
+  },
+  {
+   "category": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 10928,
+   "side": "database",
+   "identity": "lynx_278",
+   "note": "forest scene, no animal",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0142774,
+    "mask_components": 5.0,
+    "largest_component_fraction": 0.511409,
+    "mean_luma": 65.2827,
+    "std_luma": 27.7953,
+    "saturated_fraction": 0.0,
+    "sharpness": 2176.4,
+    "grayscale": false,
+    "width": 1065.0,
+    "height": 1066.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_10928.jpg",
+    "width": 899,
+    "height": 900
+   },
+   "source_sha256": "637979b19523d9d145931456f88ae2697325d7d6a0cc6b47b3ab4347b3a73564"
+  },
+  {
+   "category": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 6327,
+   "side": "database",
+   "identity": "lynx_295",
+   "note": "snowy bushes, no animal",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0154028,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.747903,
+    "mean_luma": 46.6228,
+    "std_luma": 24.3648,
+    "saturated_fraction": 0.0,
+    "sharpness": 10.0867,
+    "grayscale": true,
+    "width": 895.0,
+    "height": 895.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_6327.jpg",
+    "width": 895,
+    "height": 895
+   },
+   "source_sha256": "6022f2f5617aba772b922c48d0f36a57cddcef1589008fc6ccc288d14890ed24"
+  },
+  {
+   "category": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 36092,
+   "side": "query",
+   "identity": "lynx_132",
+   "note": "snowy branches, no animal",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.02747,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.53075,
+    "mean_luma": 80.696,
+    "std_luma": 42.8731,
+    "saturated_fraction": 0.0,
+    "sharpness": 15.2893,
+    "grayscale": true,
+    "width": 2927.0,
+    "height": 2928.0
+   },
+   "query_runs": 28,
+   "query_top1_rate": 0.0,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_36092.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "source_sha256": "90b9f654cb902267d1795dfbc697849e9477e2ee5123d422c9f97a6aac09ccf6"
+  },
+  {
+   "category": "empty_frame",
+   "group": "noise",
+   "title": "Empty frame",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 14688,
+   "side": "database",
+   "identity": "lynx_252",
+   "note": "rock and snow, no animal",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0357672,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.575525,
+    "mean_luma": 195.544,
+    "std_luma": 42.051,
+    "saturated_fraction": 0.162989,
+    "sharpness": 7.49377,
+    "grayscale": true,
+    "width": 766.0,
+    "height": 767.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_14688.jpg",
+    "width": 766,
+    "height": 767
+   },
+   "source_sha256": "262f75891ec081999f18adcbbf468bd1ff0bb33afaa77e67eb12a39ff865b8d9"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 11453,
+   "side": "database",
+   "identity": "t_id_GjMbpCfw",
+   "note": "person holding the turtle far away; stored rotated (paper figure)",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0215457,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 91.8723,
+    "std_luma": 31.114,
+    "saturated_fraction": 0.0,
+    "sharpness": 1298.87,
+    "grayscale": false,
+    "width": 4000.0,
+    "height": 3000.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_11453.jpg",
+    "width": 900,
+    "height": 675
+   },
+   "source_sha256": "10f40081544ab6b7f863d0f89504ce4a6bbd77579149abcba6c5d37b9dffcdf1"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 5638,
+   "side": "database",
+   "identity": "t_id_MwnEYfqe",
+   "note": "handler and ID tag, turtle a few pixels",
+   "flags": [
+    "empty_foreground",
+    "tiny_foreground",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.000604135,
+    "mask_components": 3.0,
+    "largest_component_fraction": 0.97541,
+    "mean_luma": 29.2705,
+    "std_luma": 12.1305,
+    "saturated_fraction": 0.0,
+    "sharpness": 0.0,
+    "grayscale": false,
+    "width": 4608.0,
+    "height": 3456.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_5638.jpg",
+    "width": 900,
+    "height": 675
+   },
+   "source_sha256": "36e2113ed7b6dd82244d46b1c93bf6e962eb0f895532cc5acc1142549258b5e0"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 5256,
+   "side": "database",
+   "identity": "t_id_stWei2Uq",
+   "note": "people with the tag, turtle small",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.030749,
+    "mask_components": 3.0,
+    "largest_component_fraction": 0.894877,
+    "mean_luma": 34.6349,
+    "std_luma": 30.1444,
+    "saturated_fraction": 0.0,
+    "sharpness": 185.446,
+    "grayscale": false,
+    "width": 4608.0,
+    "height": 3456.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_5256.jpg",
+    "width": 900,
+    "height": 675
+   },
+   "source_sha256": "ce3ec3ebb6071c7b07e3224634115c969fccc3fd709cc5c67a19c63a644d248e"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 11220,
+   "side": "database",
+   "identity": "t_id_Z9ajSqxu",
+   "note": "turtle small in a wide scene",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0401995,
+    "mask_components": 4.0,
+    "largest_component_fraction": 0.56902,
+    "mean_luma": 103.629,
+    "std_luma": 45.8958,
+    "saturated_fraction": 0.00139435,
+    "sharpness": 3259.11,
+    "grayscale": false,
+    "width": 2272.0,
+    "height": 1704.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_11220.jpg",
+    "width": 900,
+    "height": 675
+   },
+   "source_sha256": "500d8d6e3f35e94a3a79cfafef835cfcc10ce8813a618a5e6b14020adaf2d717"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "whale_shark",
+   "dataset_label": "Whale Shark",
+   "row": 614,
+   "side": "database",
+   "identity": "e51ca99b-7f28-af3c-2fde-51e70deb5ab7",
+   "note": "hazy backlit silhouette, no spot pattern (paper figure)",
+   "flags": [],
+   "measurements": {
+    "foreground_fraction": 0.119717,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.999884,
+    "mean_luma": 106.345,
+    "std_luma": 14.9305,
+    "saturated_fraction": 0.0,
+    "sharpness": 17.7257,
+    "grayscale": false,
+    "width": 1551.0,
+    "height": 1886.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "whale_shark_614.jpg",
+    "width": 740,
+    "height": 900
+   },
+   "source_sha256": "1c1ae25a6609b191703c7444368005669bf8013f7aaa294e6b8987e8a0045507"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "whale_shark",
+   "dataset_label": "Whale Shark",
+   "row": 7214,
+   "side": "database",
+   "identity": "ba28928b-492b-a988-b74c-6956e85b9685",
+   "note": "distant fin at the surface",
+   "flags": [
+    "empty_foreground",
+    "tiny_foreground",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.000672602,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 69.6232,
+    "std_luma": 31.9221,
+    "saturated_fraction": 0.0,
+    "sharpness": 0.0,
+    "grayscale": false,
+    "width": 2297.0,
+    "height": 934.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "whale_shark_7214.jpg",
+    "width": 900,
+    "height": 366
+   },
+   "source_sha256": "cfb72fac937733ac0103306944e0d46d6792ff5017bcef0e219c8a583cbb69d5"
+  },
+  {
+   "category": "insufficient_detail",
+   "group": "noise",
+   "title": "Insufficient detail",
+   "dataset": "whale_shark",
+   "dataset_label": "Whale Shark",
+   "row": 3670,
+   "side": "query",
+   "identity": "ebe44261-6fad-1b64-b4cf-b332c4bfe1c8",
+   "note": "distant shark below the surface",
+   "flags": [
+    "empty_foreground",
+    "tiny_foreground",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.000823677,
+    "mask_components": 7.0,
+    "largest_component_fraction": 0.824324,
+    "mean_luma": 48.7027,
+    "std_luma": 28.9525,
+    "saturated_fraction": 0.0,
+    "sharpness": 0.0,
+    "grayscale": false,
+    "width": 2802.0,
+    "height": 1851.0
+   },
+   "query_runs": 30,
+   "query_top1_rate": 0.0,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "whale_shark_3670.jpg",
+    "width": 900,
+    "height": 595
+   },
+   "source_sha256": "a1513ad8ffb0ee3e5a2f437e17b8c80d25c838d22e08aa3617208cd88266fd60"
+  },
+  {
+   "category": "corruption",
+   "group": "noise",
+   "title": "Corruption",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 2307,
+   "side": "database",
+   "identity": "lynx_230",
+   "note": "colour banding (paper figure)",
+   "flags": [
+    "tiny_foreground"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.0365995,
+    "mask_components": 12.0,
+    "largest_component_fraction": 0.724682,
+    "mean_luma": 98.2174,
+    "std_luma": 63.0417,
+    "saturated_fraction": 0.0,
+    "sharpness": 200.821,
+    "grayscale": false,
+    "width": 552.0,
+    "height": 552.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_2307.jpg",
+    "width": 552,
+    "height": 552
+   },
+   "source_sha256": "faf35fae7fc9b7e6a293d0d8f78eb3cba6a11658ef0d72c779b703b236fa0579"
+  },
+  {
+   "category": "corruption",
+   "group": "noise",
+   "title": "Corruption",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 28881,
+   "side": "database",
+   "identity": "lynx_117",
+   "note": "posterised blue block",
+   "flags": [
+    "low_contrast",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.255841,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 28.0082,
+    "std_luma": 5.58401,
+    "saturated_fraction": 0.0,
+    "sharpness": 2.50042,
+    "grayscale": false,
+    "width": 220.0,
+    "height": 221.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_28881.jpg",
+    "width": 220,
+    "height": 221
+   },
+   "source_sha256": "4b601735dac70efaf17b68f2651377833e4165983a0ddaed2069906abd028536"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "hyena",
+   "dataset_label": "Hyena",
+   "row": 550,
+   "side": "database",
+   "identity": "ccf6e18f-f6bb-4cd7-8166-31a1a8cce2ce",
+   "note": "no fine detail (paper figure)",
+   "flags": [
+    "underexposed",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.432656,
+    "mask_components": 3.0,
+    "largest_component_fraction": 0.971185,
+    "mean_luma": 20.6638,
+    "std_luma": 10.9949,
+    "saturated_fraction": 0.0,
+    "sharpness": 5.29546,
+    "grayscale": false,
+    "width": 2177.0,
+    "height": 1600.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "hyena_550.jpg",
+    "width": 900,
+    "height": 661
+   },
+   "source_sha256": "0b9e2785a1e5a6bd7c9a1e346eca28712208e0dd46725c1299b30a9c888a68b3"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "hyena",
+   "dataset_label": "Hyena",
+   "row": 2606,
+   "side": "database",
+   "identity": "7e9d299f-be22-497a-9d79-a1e9d909c013",
+   "note": "blurred IR frame",
+   "flags": [
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.380703,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.999965,
+    "mean_luma": 66.7666,
+    "std_luma": 15.6906,
+    "saturated_fraction": 0.0,
+    "sharpness": 3.27802,
+    "grayscale": true,
+    "width": 1929.0,
+    "height": 1671.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "hyena_2606.jpg",
+    "width": 900,
+    "height": 780
+   },
+   "source_sha256": "7cfc158e170077518021849ff9df9d2323e92f62e1ddb0aa0b1e93e5965f14b8"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 249,
+   "side": "database",
+   "identity": "SalamanderID2025_195",
+   "note": "flash close-up out of focus (paper note)",
+   "flags": [
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.534252,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 84.7533,
+    "std_luma": 58.4091,
+    "saturated_fraction": 0.00339687,
+    "sharpness": 14.7528,
+    "grayscale": false,
+    "width": 452.0,
+    "height": 415.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": 1,
+   "image": {
+    "file": "salamander_249.jpg",
+    "width": 452,
+    "height": 415
+   },
+   "source_sha256": "82db958897032e1dec3d33037d304da32bc26efc9595e96ef906effc09245c1a"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 112,
+   "side": "database",
+   "identity": "SalamanderID2025_134",
+   "note": "flash close-up out of focus",
+   "flags": [
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.55368,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.99881,
+    "mean_luma": 58.2353,
+    "std_luma": 53.1554,
+    "saturated_fraction": 0.000139418,
+    "sharpness": 26.7077,
+    "grayscale": false,
+    "width": 561.0,
+    "height": 415.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": 1,
+   "image": {
+    "file": "salamander_112.jpg",
+    "width": 561,
+    "height": 415
+   },
+   "source_sha256": "c2bfc2e9294b48560790c9866b022f340b0f71fa2eb9bf086e75f2df05087ad3"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 423,
+   "side": "database",
+   "identity": "SalamanderID2025_279",
+   "note": "flash close-up out of focus",
+   "flags": [
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.534985,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 80.0572,
+    "std_luma": 56.386,
+    "saturated_fraction": 0.00148894,
+    "sharpness": 28.6203,
+    "grayscale": false,
+    "width": 459.0,
+    "height": 380.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": 1,
+   "image": {
+    "file": "salamander_423.jpg",
+    "width": 459,
+    "height": 380
+   },
+   "source_sha256": "4b873dfab04084b9887e6c9b0c59dd51340f159f18859313a13f47a2889191ac"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 2697,
+   "side": "database",
+   "identity": "t_id_Z18B7SuC",
+   "note": "blurred shell",
+   "flags": [
+    "underexposed",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.722579,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.995533,
+    "mean_luma": 20.3222,
+    "std_luma": 10.866,
+    "saturated_fraction": 0.0,
+    "sharpness": 5.74687,
+    "grayscale": false,
+    "width": 395.0,
+    "height": 363.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_2697.jpg",
+    "width": 395,
+    "height": 363
+   },
+   "source_sha256": "eaef47835d3da73be4f613ac1aa96c4dbd961f9a98771a84e0f6b51eabe4705d"
+  },
+  {
+   "category": "blur",
+   "group": "noise",
+   "title": "Blur",
+   "dataset": "whale_shark",
+   "dataset_label": "Whale Shark",
+   "row": 5910,
+   "side": "database",
+   "identity": "56c1cd62-8457-1958-fb2c-2859593c05f6",
+   "note": "soft spots through water",
+   "flags": [
+    "empty_foreground",
+    "tiny_foreground",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.000713517,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.992647,
+    "mean_luma": 102.25,
+    "std_luma": 37.894,
+    "saturated_fraction": 0.0,
+    "sharpness": 0.0,
+    "grayscale": false,
+    "width": 2991.0,
+    "height": 2095.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "whale_shark_5910.jpg",
+    "width": 900,
+    "height": 630
+   },
+   "source_sha256": "390f2383cecbcc50a6e8fffd46a3b1210619ce82a535c61ffef04e100bafb18a"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "hyena",
+   "dataset_label": "Hyena",
+   "row": 1356,
+   "side": "database",
+   "identity": "ace33278-b65f-43d4-9c12-530e420ddef5",
+   "note": "dark night frame, hyena identifiable",
+   "flags": [
+    "underexposed",
+    "low_contrast"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.264987,
+    "mask_components": 3.0,
+    "largest_component_fraction": 0.925137,
+    "mean_luma": 13.1737,
+    "std_luma": 2.84452,
+    "saturated_fraction": 0.0,
+    "sharpness": 6.82609,
+    "grayscale": false,
+    "width": 1112.0,
+    "height": 616.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "hyena_1356.jpg",
+    "width": 900,
+    "height": 499
+   },
+   "source_sha256": "b482c03ddedd30eccc2b3a932cf7a0958b6c7356a84155602a760e813615ff21"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "hyena",
+   "dataset_label": "Hyena",
+   "row": 0,
+   "side": "database",
+   "identity": "ace33278-b65f-43d4-9c12-530e420ddef5",
+   "note": "dark night frame, hyena identifiable",
+   "flags": [
+    "underexposed",
+    "low_contrast",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.234447,
+    "mask_components": 5.0,
+    "largest_component_fraction": 0.861637,
+    "mean_luma": 14.0413,
+    "std_luma": 3.12587,
+    "saturated_fraction": 0.0,
+    "sharpness": 5.74966,
+    "grayscale": false,
+    "width": 1335.0,
+    "height": 899.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "hyena_0.jpg",
+    "width": 900,
+    "height": 606
+   },
+   "source_sha256": "5b45b6fea1bb32923b8fe02765b8250638f71975ac0e88dacaf8cc6059fe5e41"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 14870,
+   "side": "database",
+   "identity": "lynx_278",
+   "note": "grey IR frame",
+   "flags": [
+    "low_contrast",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.228429,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 25.0531,
+    "std_luma": 6.54397,
+    "saturated_fraction": 0.0,
+    "sharpness": 2.66216,
+    "grayscale": true,
+    "width": 342.0,
+    "height": 342.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_14870.jpg",
+    "width": 342,
+    "height": 342
+   },
+   "source_sha256": "3bd65cf296878efbfd1492e2d01d5c3a93a4416a8579074e3c0df2bdc3407b41"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 35567,
+   "side": "database",
+   "identity": "lynx_108",
+   "note": "purple-cast IR frame",
+   "flags": [
+    "low_contrast"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.35258,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 25.1649,
+    "std_luma": 7.6916,
+    "saturated_fraction": 0.0,
+    "sharpness": 8.17477,
+    "grayscale": true,
+    "width": 1033.0,
+    "height": 1033.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_35567.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "source_sha256": "cb68711c5fba7904c496f1a68facd88bcf273fcd942b0d02c8fcd4795ad5dd79"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 18339,
+   "side": "database",
+   "identity": "lynx_139",
+   "note": "dark colour frame, lynx on a rock",
+   "flags": [],
+   "measurements": {
+    "foreground_fraction": 0.344071,
+    "mask_components": 1.0,
+    "largest_component_fraction": 1.0,
+    "mean_luma": 25.2681,
+    "std_luma": 14.0525,
+    "saturated_fraction": 0.0,
+    "sharpness": 18.6229,
+    "grayscale": true,
+    "width": 344.0,
+    "height": 344.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_18339.jpg",
+    "width": 344,
+    "height": 344
+   },
+   "source_sha256": "092b3459a23253fa1bd9f64433201e235065277975ea7cf55756395667347637"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 18272,
+   "side": "query",
+   "identity": "lynx_039",
+   "note": "IR close-up of the face",
+   "flags": [
+    "underexposed",
+    "low_contrast",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.224224,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.999966,
+    "mean_luma": 1.00804,
+    "std_luma": 1.95874,
+    "saturated_fraction": 0.0,
+    "sharpness": 0.95792,
+    "grayscale": true,
+    "width": 1677.0,
+    "height": 1677.0
+   },
+   "query_runs": 28,
+   "query_top1_rate": 0.0,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_18272.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "source_sha256": "a0d300bb5ed258416ff2d49c2c401f2728bcd8bf965da29349c3d6802cb3ec30"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 4742,
+   "side": "database",
+   "identity": "f54eeeb1-cab5-454a-adf3-fcd8c4a2b4a5",
+   "note": "dark frame, leopard visible",
+   "flags": [
+    "underexposed",
+    "low_contrast",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.224588,
+    "mask_components": 5.0,
+    "largest_component_fraction": 0.862604,
+    "mean_luma": 16.0981,
+    "std_luma": 6.05974,
+    "saturated_fraction": 0.0,
+    "sharpness": 11.4653,
+    "grayscale": true,
+    "width": 834.0,
+    "height": 545.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_4742.jpg",
+    "width": 834,
+    "height": 545
+   },
+   "source_sha256": "b6e0caa11e21b6bde31ff618190416bfbc9cf0d5d101caa7666a708a7199bdc6"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 4083,
+   "side": "database",
+   "identity": "f54eeeb1-cab5-454a-adf3-fcd8c4a2b4a5",
+   "note": "dusk frame",
+   "flags": [
+    "underexposed",
+    "low_contrast"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.316615,
+    "mask_components": 1.0,
+    "largest_component_fraction": 0.997908,
+    "mean_luma": 16.3681,
+    "std_luma": 5.15457,
+    "saturated_fraction": 0.0,
+    "sharpness": 23.93,
+    "grayscale": false,
+    "width": 628.0,
+    "height": 362.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_4083.jpg",
+    "width": 628,
+    "height": 362
+   },
+   "source_sha256": "47cda0ffa7a0d1c3ddcc5dbd45579787d9df798fc6978c8e7578ccacf0efaf31"
+  },
+  {
+   "category": "night_infrared",
+   "group": "difficulty",
+   "title": "Night and infrared frames",
+   "dataset": "turtle",
+   "dataset_label": "Turtle",
+   "row": 12714,
+   "side": "database",
+   "identity": "t_id_OOpFEFO0",
+   "note": "dark shell",
+   "flags": [
+    "underexposed",
+    "low_contrast",
+    "blurry"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.256829,
+    "mask_components": 5.0,
+    "largest_component_fraction": 0.812334,
+    "mean_luma": 16.341,
+    "std_luma": 5.77957,
+    "saturated_fraction": 0.0,
+    "sharpness": 7.21797,
+    "grayscale": true,
+    "width": 672.0,
+    "height": 767.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "turtle_12714.jpg",
+    "width": 672,
+    "height": 767
+   },
+   "source_sha256": "fbd9c55ff0b50a89d78bc35a28b0fd86bc6065b6742e24a888e19466fce6d45e"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 698,
+   "side": "database",
+   "identity": "8e37baa5-c486-4056-9db8-5d00863406bc",
+   "note": "grass in front of the coat",
+   "flags": [
+    "fragmented_mask"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.310842,
+    "mask_components": 16.0,
+    "largest_component_fraction": 0.227686,
+    "mean_luma": 101.044,
+    "std_luma": 49.2896,
+    "saturated_fraction": 3.98285e-05,
+    "sharpness": 198.877,
+    "grayscale": false,
+    "width": 1281.0,
+    "height": 1388.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_698.jpg",
+    "width": 831,
+    "height": 900
+   },
+   "source_sha256": "bb42468db366d4110894a8fcd0252b98bee7aa5af35a8f3d86c1d616c2145ba5"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 882,
+   "side": "query",
+   "identity": "a566ddcd-8bf8-4f8e-9a61-f434b01b0799",
+   "note": "foliage",
+   "flags": [
+    "fragmented_mask"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.329493,
+    "mask_components": 10.0,
+    "largest_component_fraction": 0.232862,
+    "mean_luma": 78.414,
+    "std_luma": 35.2011,
+    "saturated_fraction": 0.0,
+    "sharpness": 612.808,
+    "grayscale": false,
+    "width": 2102.0,
+    "height": 1600.0
+   },
+   "query_runs": 30,
+   "query_top1_rate": 0.833333,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_882.jpg",
+    "width": 900,
+    "height": 685
+   },
+   "source_sha256": "273a02e040ac201a542385f1c33af2a39df6b22adea35a8f3e21c4a202b8f586"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 2047,
+   "side": "database",
+   "identity": "81ad30d8-15c7-492e-918b-d9592d8f3f08",
+   "note": "branches",
+   "flags": [
+    "fragmented_mask"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.220651,
+    "mask_components": 9.0,
+    "largest_component_fraction": 0.267418,
+    "mean_luma": 124.697,
+    "std_luma": 45.8941,
+    "saturated_fraction": 0.0,
+    "sharpness": 287.586,
+    "grayscale": false,
+    "width": 2356.0,
+    "height": 1635.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_2047.jpg",
+    "width": 900,
+    "height": 625
+   },
+   "source_sha256": "91bda3090a86280a8b2b0aa63ac4fc2a7e32cabd8aec56f037af406e1c3dbf5b"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "leopard",
+   "dataset_label": "Leopard",
+   "row": 1124,
+   "side": "database",
+   "identity": "d2fe7415-883d-4fac-9509-a5c3bf48393d",
+   "note": "leaves",
+   "flags": [
+    "fragmented_mask"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.186689,
+    "mask_components": 15.0,
+    "largest_component_fraction": 0.269364,
+    "mean_luma": 96.6383,
+    "std_luma": 61.4145,
+    "saturated_fraction": 0.00857729,
+    "sharpness": 2564.08,
+    "grayscale": false,
+    "width": 1280.0,
+    "height": 699.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "leopard_1124.jpg",
+    "width": 900,
+    "height": 491
+   },
+   "source_sha256": "fbfd295f5d222388111c3cf63b285c40e0133cece1a02d961b688c8907a6facf"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 20994,
+   "side": "database",
+   "identity": "lynx_184",
+   "note": "branches in front of the lynx",
+   "flags": [
+    "fragmented_mask"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.210241,
+    "mask_components": 5.0,
+    "largest_component_fraction": 0.289621,
+    "mean_luma": 179.582,
+    "std_luma": 26.5663,
+    "saturated_fraction": 0.0,
+    "sharpness": 31.9377,
+    "grayscale": true,
+    "width": 636.0,
+    "height": 635.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_20994.jpg",
+    "width": 636,
+    "height": 635
+   },
+   "source_sha256": "145d4054f3573919f3b6ecea41746af3cf9f07b4e08e3e4d2c44936c1cd3b4ad"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "lynx_closed",
+   "dataset_label": "Lynx (closed)",
+   "row": 28185,
+   "side": "query",
+   "identity": "lynx_034",
+   "note": "tree trunk and branches in front",
+   "flags": [
+    "fragmented_mask"
+   ],
+   "measurements": {
+    "foreground_fraction": 0.173696,
+    "mask_components": 10.0,
+    "largest_component_fraction": 0.299954,
+    "mean_luma": 93.4498,
+    "std_luma": 41.9238,
+    "saturated_fraction": 0.000768606,
+    "sharpness": 1666.96,
+    "grayscale": false,
+    "width": 1330.0,
+    "height": 1330.0
+   },
+   "query_runs": 28,
+   "query_top1_rate": 0.0,
+   "sam3_n_instances": null,
+   "image": {
+    "file": "lynx_closed_28185.jpg",
+    "width": 900,
+    "height": 900
+   },
+   "source_sha256": "93ae2fcda5a539856028c7dcf3c547587e4af553e16b8d41f0a7b336826db1dd"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 1238,
+   "side": "query",
+   "identity": "SalamanderID2025_267",
+   "note": "handler's finger splits the pattern (paper note)",
+   "flags": [],
+   "measurements": {
+    "foreground_fraction": 0.152356,
+    "mask_components": 3.0,
+    "largest_component_fraction": 0.735425,
+    "mean_luma": 63.0769,
+    "std_luma": 66.6221,
+    "saturated_fraction": 0.00262407,
+    "sharpness": 788.293,
+    "grayscale": false,
+    "width": 1283.0,
+    "height": 1954.0
+   },
+   "query_runs": 36,
+   "query_top1_rate": 0.138889,
+   "sam3_n_instances": 3,
+   "image": {
+    "file": "salamander_1238.jpg",
+    "width": 591,
+    "height": 900
+   },
+   "source_sha256": "da8fff37b5281d70ecb414dc3ffaedb40708495f9c3d011e411bdeded05f9fe0"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 696,
+   "side": "database",
+   "identity": "SalamanderID2025_407",
+   "note": "handler's finger",
+   "flags": [],
+   "measurements": {
+    "foreground_fraction": 0.267302,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.889588,
+    "mean_luma": 80.8516,
+    "std_luma": 70.8225,
+    "saturated_fraction": 0.00214494,
+    "sharpness": 1049.63,
+    "grayscale": false,
+    "width": 1306.0,
+    "height": 1906.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": 3,
+   "image": {
+    "file": "salamander_696.jpg",
+    "width": 617,
+    "height": 900
+   },
+   "source_sha256": "9ebe86be15ba012877d8d43e3a636f12411b6c52f8ed5ad47f232998bb85798a"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 1274,
+   "side": "query",
+   "identity": "SalamanderID2025_346",
+   "note": "handler's finger",
+   "flags": [],
+   "measurements": {
+    "foreground_fraction": 0.243665,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.804239,
+    "mean_luma": 67.2265,
+    "std_luma": 67.2609,
+    "saturated_fraction": 0.00178964,
+    "sharpness": 2085.57,
+    "grayscale": false,
+    "width": 1112.0,
+    "height": 1821.0
+   },
+   "query_runs": 36,
+   "query_top1_rate": 0.833333,
+   "sam3_n_instances": 3,
+   "image": {
+    "file": "salamander_1274.jpg",
+    "width": 550,
+    "height": 900
+   },
+   "source_sha256": "df6c6cec1ad6f782ef49190720ec4022a4a535aa4fbf8e1f7bc3330bd7d8c698"
+  },
+  {
+   "category": "occlusion",
+   "group": "difficulty",
+   "title": "Occlusion",
+   "dataset": "salamander",
+   "dataset_label": "Salamander",
+   "row": 542,
+   "side": "database",
+   "identity": "SalamanderID2025_337",
+   "note": "handler's finger",
+   "flags": [],
+   "measurements": {
+    "foreground_fraction": 0.242799,
+    "mask_components": 2.0,
+    "largest_component_fraction": 0.801297,
+    "mean_luma": 48.9983,
+    "std_luma": 56.7202,
+    "saturated_fraction": 0.000777227,
+    "sharpness": 1795.03,
+    "grayscale": false,
+    "width": 1334.0,
+    "height": 2063.0
+   },
+   "query_runs": null,
+   "query_top1_rate": null,
+   "sam3_n_instances": 3,
+   "image": {
+    "file": "salamander_542.jpg",
+    "width": 582,
+    "height": 900
+   },
+   "source_sha256": "af661435d7cc8e599f27d526663b5c487727d60fd856f0bd90436909725caddb"
+  }
+ ]
+}

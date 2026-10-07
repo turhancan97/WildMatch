@@ -1,0 +1,1259 @@
+/* Project-page styling on top of MkDocs Material.
+
+   Brand palette (team decision 2026-09-28, recorded in the paper repository's
+   context.md): blue #3a7eab, red #cf4832, grey #d1d3d4. Validated extension:
+   tints 40 % / 75 % toward white, neutrals #6d6e71 (small text, 5.1:1 on white)
+   and #58595b (headings, 7.0:1); #d1d3d4 is decoration only (1.5:1). */
+
+:root {
+  --wm-blue: #3a7eab;
+  --wm-blue-dark: #2d6386;
+  --wm-blue-40: #89b2cd;
+  --wm-blue-75: #cedfea;
+  --wm-red: #cf4832;
+  --wm-red-dark: #a93a28;
+  --wm-red-40: #e29184;
+  --wm-red-75: #f3d1cc;
+  --wm-grey: #d1d3d4;
+  --wm-grey-text: #6d6e71;
+  --wm-grey-heading: #58595b;
+  /* Header bar (user request 2026-10-02): white with dark grey text, as the logo
+     package presents the mark; a blue bar hid the logo's blue head and a copper bar
+     clashed. The dark scheme uses the brand's dark neutral instead. */
+  --wm-header: #ffffff;
+  --wm-header-dark: #f2f3f3;
+  --wm-header-light: #ffffff;
+  --wm-hero-gap: 1.25rem;
+}
+
+/* Material palette hooks: `primary: custom` / `accent: custom` in mkdocs.yml. */
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: var(--wm-header);
+  --md-primary-fg-color--light: var(--wm-header-light);
+  --md-primary-fg-color--dark: var(--wm-header-dark);
+  /* Text and icons on the white bar. */
+  --md-primary-bg-color: var(--wm-grey-heading);
+  --md-primary-bg-color--light: var(--wm-grey-text);
+}
+
+/* White bar needs a hairline to separate from the page; Material only adds its shadow
+   after scrolling. Tabs underline in brand blue. */
+.md-header {
+  border-bottom: 1px solid var(--wm-grey);
+}
+
+.md-tabs {
+  border-bottom: 1px solid var(--wm-grey);
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: var(--wm-blue);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: #2b3036;
+  --md-primary-fg-color--light: #3b3f44;
+  --md-primary-fg-color--dark: #1e2227;
+  --md-primary-bg-color: #e6e7e8;
+  --md-primary-bg-color--light: #b3b5b8;
+}
+
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  border-bottom-color: #3b3f44;
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--wm-red);
+  --md-accent-fg-color--transparent: rgba(207, 72, 50, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+
+/* Light scheme: brand greys for text hierarchy, blue links. */
+[data-md-color-scheme="default"] {
+  --md-typeset-a-color: var(--wm-blue);
+  --md-default-fg-color--light: var(--wm-grey-text);
+  --md-default-fg-color--lighter: var(--wm-grey);
+  --md-typeset-table-color: var(--wm-grey);
+  --md-code-hl-color: var(--wm-blue-75);
+}
+
+[data-md-color-scheme="default"] .md-typeset h1,
+[data-md-color-scheme="default"] .md-typeset h2,
+[data-md-color-scheme="default"] .md-typeset h3 {
+  color: var(--wm-grey-heading);
+}
+
+/* Dark scheme: lighter tints keep contrast on the slate background. */
+[data-md-color-scheme="slate"] {
+  --md-typeset-a-color: var(--wm-blue-40);
+  --md-accent-fg-color: var(--wm-red-40);
+  --md-accent-fg-color--transparent: rgba(226, 145, 132, 0.14);
+}
+
+/* Landing-page hero (docs/index.md, rendered through md_in_html): a head row with
+   the full-name logo beside the title, then authors and buttons full width. */
+.wm-hero {
+  display: grid;
+  gap: var(--wm-hero-gap);
+  padding: 1.5rem 0 1rem;
+  border-bottom: 3px solid var(--wm-grey);
+  margin-bottom: 1.5rem;
+}
+
+.wm-hero-head {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.wm-hero-title {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+}
+
+.wm-hero-text {
+  display: grid;
+  gap: var(--wm-hero-gap);
+}
+
+.md-typeset .wm-hero-logo p,
+.md-typeset .wm-hero-title p {
+  margin: 0;
+}
+
+.md-typeset img.wm-logo {
+  width: 100%;
+  max-width: 11rem;
+  height: auto;
+  display: block;
+}
+
+/* Light and dark logo files (#only-light / #only-dark): `display: block` on the hero logo and
+   Material's own `.md-logo img` rule would otherwise beat Material's rule that hides the image of
+   the other scheme (in the light scheme both header marks showed, 2026-10-06 to 10-07). */
+[data-md-color-scheme="default"] .md-typeset img.wm-logo[src$="#only-dark"],
+[data-md-color-scheme="slate"] .md-typeset img.wm-logo[src$="#only-light"],
+[data-md-color-scheme="default"] .md-logo img[src$="#only-dark"],
+[data-md-color-scheme="slate"] .md-logo img[src$="#only-light"] {
+  display: none;
+}
+
+/* Header mark: the two-colour logo with its background removed (dark-scheme version in
+   overrides/partials/logo.html). */
+.md-header__button.md-logo img {
+  height: 1.9rem;
+  width: auto;
+}
+
+@media (max-width: 59.9375em) {
+  .wm-hero-head {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .wm-hero-title {
+    justify-items: center;
+  }
+
+  .wm-hero-text {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .wm-buttons {
+    justify-content: center;
+  }
+
+  .md-typeset img.wm-logo {
+    max-width: 9rem;
+  }
+}
+
+.md-typeset .wm-hero h1 {
+  margin: 0;
+  font-size: 2.1rem;
+  line-height: 1.2;
+  color: var(--wm-blue);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .wm-hero h1 {
+  color: var(--wm-blue-40);
+}
+
+.wm-hero .wm-subtitle {
+  font-size: 1.15rem;
+  color: var(--md-default-fg-color--light);
+  margin: 0;
+  max-width: 60rem;
+}
+
+.wm-authors {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.wm-authors sup {
+  font-size: 0.7em;
+  color: var(--wm-grey-text);
+}
+
+.wm-affiliations {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.6;
+}
+
+.wm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0;
+}
+
+.md-typeset .wm-buttons .md-button {
+  margin: 0;
+  border-color: var(--wm-blue);
+  color: var(--wm-blue);
+}
+
+.md-typeset .wm-buttons .md-button--primary {
+  background-color: var(--wm-blue);
+  color: #ffffff;
+}
+
+.md-typeset .wm-buttons .md-button:hover {
+  background-color: var(--wm-red);
+  border-color: var(--wm-red);
+  color: #ffffff;
+}
+
+.wm-status {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: var(--wm-red-75);
+  color: var(--wm-red-dark);
+}
+
+[data-md-color-scheme="slate"] .wm-status {
+  background: rgba(207, 72, 50, 0.25);
+  color: var(--wm-red-40);
+}
+
+/* Icon cards (paper icon set, blue variant). */
+.wm-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.wm-card {
+  border: 1px solid var(--wm-grey);
+  border-top: 4px solid var(--wm-blue);
+  border-radius: 0.3rem;
+  padding: 1rem 1rem 0.9rem;
+  background: var(--md-default-bg-color);
+}
+
+.wm-card img {
+  width: 2.6rem;
+  height: 2.6rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.md-typeset .wm-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .wm-card h3 {
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .wm-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Figure blocks with captions. */
+.wm-figure {
+  margin: 1.5rem 0;
+}
+
+.wm-figure img {
+  width: 100%;
+  height: auto;
+  border-radius: 0.2rem;
+}
+
+.wm-figure figcaption {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.5rem;
+}
+
+/* Mount points for the interactive components (filled by assets/js modules). */
+.wm-widget {
+  min-height: 24rem;
+  border: 1px dashed var(--wm-grey);
+  border-radius: 0.3rem;
+  display: grid;
+  place-items: center;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.85rem;
+  margin: 1rem 0 1.5rem;
+}
+
+/* Compact numeric tables; rows for our method carry the blue tint. */
+.wm-numeric td,
+.wm-numeric th {
+  white-space: nowrap;
+}
+
+.wm-ours {
+  background: var(--wm-blue-75);
+}
+
+[data-md-color-scheme="slate"] .wm-ours {
+  background: rgba(58, 126, 171, 0.3);
+}
+
+/* Admonitions in brand colours: notes blue, warnings red. */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-color: var(--wm-blue);
+}
+
+.md-typeset .note > .admonition-title,
+.md-typeset .note > summary {
+  background-color: var(--wm-blue-75);
+}
+
+.md-typeset .note > .admonition-title::before,
+.md-typeset .note > summary::before {
+  background-color: var(--wm-blue);
+}
+
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-color: var(--wm-red);
+}
+
+.md-typeset .warning > .admonition-title,
+.md-typeset .warning > summary {
+  background-color: var(--wm-red-75);
+}
+
+.md-typeset .warning > .admonition-title::before,
+.md-typeset .warning > summary::before {
+  background-color: var(--wm-red);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .note > .admonition-title,
+[data-md-color-scheme="slate"] .md-typeset .note > summary {
+  background-color: rgba(58, 126, 171, 0.25);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .warning > .admonition-title,
+[data-md-color-scheme="slate"] .md-typeset .warning > summary {
+  background-color: rgba(207, 72, 50, 0.25);
+}
+
+@media (max-width: 44.9375em) {
+  .md-typeset .wm-hero h1 {
+    font-size: 1.6rem;
+  }
+}
+
+/* Interactive components (docs/assets/js). */
+.wm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--wm-grey);
+  border-left: 4px solid var(--wm-blue);
+  border-radius: 0.3rem;
+}
+
+.wm-control {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-control--wide {
+  flex: 1 1 100%;
+}
+
+.wm-select {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color);
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.2rem;
+  padding: 0.3rem 0.5rem;
+  min-width: 11rem;
+}
+
+.wm-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+}
+
+.wm-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color);
+  cursor: pointer;
+}
+
+.wm-check input {
+  accent-color: var(--wm-blue);
+}
+
+.wm-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--wm-swatch, var(--wm-grey));
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.wm-plot {
+  width: 100%;
+  min-height: 24rem;
+}
+
+.wm-table-view {
+  margin: 0.5rem 0 1.5rem;
+  font-size: 0.8rem;
+}
+
+.wm-table-view summary {
+  cursor: pointer;
+  color: var(--wm-blue);
+}
+
+.wm-table-wrap {
+  overflow-x: auto;
+  margin: 0 0 0.5rem;
+}
+
+.md-typeset table.wm-results {
+  font-size: 0.72rem;
+}
+
+.md-typeset .wm-results th.wm-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.md-typeset .wm-results th.wm-sortable::after {
+  content: " ↕";
+  color: var(--wm-grey);
+}
+
+.md-typeset .wm-results th.is-asc::after {
+  content: " ↑";
+  color: var(--wm-blue);
+}
+
+.md-typeset .wm-results th.is-desc::after {
+  content: " ↓";
+  color: var(--wm-blue);
+}
+
+.wm-table-foot {
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .wm-button {
+  margin: 0;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.75rem;
+  border-color: var(--wm-blue);
+  color: var(--wm-blue);
+}
+
+.md-typeset .wm-button:hover {
+  background: var(--wm-blue);
+  color: #ffffff;
+}
+
+.wm-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wm-range input {
+  accent-color: var(--wm-blue);
+  width: 10rem;
+}
+
+.wm-range-value {
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+  color: var(--md-default-fg-color);
+}
+
+.wm-match-stage {
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.wm-match-canvas {
+  display: block;
+  border-radius: 0.2rem;
+}
+
+.wm-match-caption {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-widget--pending,
+.wm-widget--error {
+  min-height: 6rem;
+}
+
+.wm-widget--error {
+  border-color: var(--wm-red);
+  color: var(--wm-red-dark);
+}
+
+/* Synthetic match demo (docs/assets/js/synthetic-demo.js): two compact filmstrips. */
+.wm-demo-row {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.wm-demo-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem;
+  scrollbar-width: thin;
+}
+
+.wm-demo-card {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 0.1rem;
+  justify-items: center;
+  padding: 0.15rem;
+  border: 2px solid var(--wm-grey);
+  border-radius: 0.25rem;
+  background: var(--md-default-bg-color);
+  font: inherit;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+}
+
+.wm-demo-card:hover {
+  border-color: var(--wm-blue-40);
+}
+
+.wm-demo-card.is-active {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+/* The gallery render of the query's own individual: a thin inner line in brand red. */
+.wm-demo-card.is-same img {
+  outline: 2px solid var(--wm-red);
+  outline-offset: -2px;
+}
+
+.wm-demo-card img {
+  width: 3.6rem;
+  height: 3.6rem;
+  object-fit: cover;
+  border-radius: 0.15rem;
+}
+
+.wm-demo-cap {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--md-default-fg-color);
+}
+
+.wm-demo-verdict {
+  color: var(--wm-grey-text);
+}
+
+.wm-demo-verdict.is-same {
+  color: var(--wm-blue);
+  font-weight: 600;
+}
+
+.wm-demo-stage {
+  position: relative;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.wm-demo-stage .wm-match-canvas,
+.wm-match-stage .wm-match-canvas {
+  max-width: 100%;
+}
+
+.wm-demo-tooltip {
+  position: absolute;
+  pointer-events: none;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.2rem;
+  background: rgba(40, 44, 50, 0.92);
+  color: #ffffff;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.wm-demo-score {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.wm-controls--inline {
+  margin-top: 0.25rem;
+}
+
+.wm-demo-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .wm-demo-label {
+  color: var(--md-default-fg-color);
+}
+
+.wm-demo-strip--queries .wm-demo-card.is-active {
+  border-color: var(--wm-red);
+  box-shadow: 0 0 0 2px var(--wm-red-75);
+}
+
+/* Background-masking demo: the divider canvas is pointer-driven. */
+.wm-mask-stage .wm-match-canvas {
+  user-select: none;
+}
+
+/* Masking demo: group tabs (synthetic renders / real photographs). */
+.wm-demo-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.wm-demo-tab {
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--wm-grey);
+  border-radius: 999px;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  cursor: pointer;
+}
+
+.wm-demo-tab small {
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-demo-tab.is-active {
+  border-color: var(--wm-blue);
+  background: var(--wm-blue-75);
+}
+
+[data-md-color-scheme="slate"] .wm-demo-tab.is-active {
+  background: rgba(58, 126, 171, 0.3);
+}
+
+/* Before/after demo: matcher toggle and score cards. */
+.wm-ba-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.wm-ba-button {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: start;
+  font: inherit;
+  padding: 0.45rem 0.9rem;
+  border: 2px solid var(--wm-grey);
+  border-radius: 0.3rem;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  cursor: pointer;
+  min-width: 13rem;
+}
+
+.wm-ba-button .wm-ba-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.wm-ba-button .wm-ba-stat {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+  font-variant-numeric: tabular-nums;
+}
+
+.wm-ba-button.is-active {
+  border-color: var(--wm-grey-heading);
+  box-shadow: 0 0 0 2px var(--wm-grey);
+}
+
+.wm-ba-button.is-ours.is-active {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+.wm-ba-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0.4rem 0;
+  font-size: 0.85rem;
+}
+
+.wm-ba-score {
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-ba-score.is-active {
+  color: var(--md-default-fg-color);
+}
+
+.wm-ba-score-name {
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+/* Mined-pairs browser: two pools of five cards with score bars. */
+.wm-mp-pools {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+
+.wm-mp-pool {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.wm-mp-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.wm-mp-card {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border: 2px solid var(--wm-grey);
+  border-radius: 0.25rem;
+  background: var(--md-default-bg-color);
+  font: inherit;
+  font-size: 0.62rem;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.wm-mp-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.15rem;
+}
+
+.wm-mp-card.is-active {
+  box-shadow: 0 0 0 2px var(--wm-grey);
+}
+
+.wm-mp-card.is-pos.is-active {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+.wm-mp-card.is-neg.is-active {
+  border-color: var(--wm-red);
+  box-shadow: 0 0 0 2px var(--wm-red-75);
+}
+
+.wm-mp-bar {
+  display: block;
+  height: 4px;
+  background: var(--wm-grey);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.wm-mp-fill {
+  display: block;
+  height: 100%;
+  background: var(--wm-grey-text);
+}
+
+.wm-mp-card.is-pos .wm-mp-fill {
+  background: var(--wm-blue);
+}
+
+.wm-mp-card.is-neg .wm-mp-fill {
+  background: var(--wm-red);
+}
+
+.wm-demo-label.is-pos {
+  color: var(--wm-blue);
+}
+
+.wm-demo-label.is-neg {
+  color: var(--wm-red);
+}
+
+.wm-mp-card .wm-demo-cap {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+@media (max-width: 44.9375em) {
+  .wm-mp-row {
+    grid-template-columns: repeat(5, minmax(4rem, 1fr));
+    overflow-x: auto;
+  }
+}
+
+/* Rank-change explorer: three method columns of five ranked thumbnails. */
+.wm-rc-counts {
+  font-size: 0.8rem;
+  color: var(--md-default-fg-color--light);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.wm-rc-columns {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.6rem 0;
+}
+
+.wm-rc-col {
+  border: 1px solid var(--wm-grey);
+  border-left: 4px solid var(--wm-grey-text);
+  border-radius: 0.3rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.wm-rc-col.is-ours {
+  border-left-color: var(--wm-blue);
+}
+
+.wm-rc-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.3rem 1rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+.wm-rc-rank {
+  color: var(--wm-red-dark);
+}
+
+.wm-rc-rank.is-right {
+  color: var(--wm-blue);
+  font-weight: 600;
+}
+
+[data-md-color-scheme="slate"] .wm-rc-rank {
+  color: var(--wm-red-40);
+}
+
+.wm-rc-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.wm-rc-item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border: 2px solid transparent;
+  border-radius: 0.25rem;
+  font-size: 0.62rem;
+  color: var(--md-default-fg-color--light);
+  min-width: 0;
+}
+
+.wm-rc-item img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.15rem;
+}
+
+.wm-rc-item.is-correct {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0 0 2px var(--wm-blue-75);
+}
+
+.wm-rc-item.is-correct .wm-demo-cap {
+  color: var(--wm-blue);
+  font-weight: 600;
+}
+
+/* Demo hub: one card per demo page (docs/demo/index.md). */
+.wm-hub {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.md-typeset a.wm-hub-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  background: var(--md-default-bg-color);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.md-typeset a.wm-hub-card:hover,
+.md-typeset a.wm-hub-card:focus-visible {
+  border-color: var(--wm-blue);
+  box-shadow: 0 0.2rem 0.8rem rgba(58, 126, 171, 0.25);
+  transform: translateY(-2px);
+  color: inherit;
+}
+
+.md-typeset a.wm-hub-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-bottom: 3px solid var(--wm-blue);
+  margin: 0;
+}
+
+.md-typeset a.wm-hub-card h3 {
+  margin: 0.8rem 1rem 0.3rem;
+  font-size: 0.95rem;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .md-typeset a.wm-hub-card h3 {
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset a.wm-hub-card p {
+  margin: 0 1rem 0.8rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--md-default-fg-color--light);
+  flex: 1;
+}
+
+.md-typeset a.wm-hub-card .wm-hub-more {
+  margin: 0 1rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--wm-blue);
+}
+
+.md-typeset a.wm-hub-card .wm-hub-more::after {
+  content: " \2192";
+}
+
+/* The lead line under each demo page title. */
+.md-typeset .wm-lead {
+  color: var(--md-default-fg-color--light);
+  font-style: italic;
+  margin-top: -0.4rem;
+}
+
+/* Score-separation view: two histogram panels and a statistics table. */
+.wm-plot--short {
+  min-height: 20rem;
+}
+
+.md-typeset table.wm-ss-table {
+  font-size: 0.78rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.md-typeset table.wm-ss-table th:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.md-typeset table.wm-ss-table tr.wm-ss-ours th:first-child {
+  color: var(--wm-blue);
+}
+
+/* Candidate-budget trade-off: readout tiles and the wide k slider. */
+.wm-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.wm-kpi {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--wm-grey);
+  border-top: 3px solid var(--wm-grey-text, #6d6e71);
+  border-radius: 0.3rem;
+  background: var(--md-default-bg-color);
+}
+
+.wm-kpi--default {
+  border-top-color: var(--wm-blue);
+  border-top-style: dashed;
+}
+
+.wm-kpi--ours {
+  border-top-color: var(--wm-blue);
+}
+
+.wm-kpi-label {
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--wm-grey-heading);
+}
+
+[data-md-color-scheme="slate"] .wm-kpi-value {
+  color: var(--md-default-fg-color);
+}
+
+.wm-kpi--ours .wm-kpi-value {
+  color: var(--wm-blue);
+}
+
+.wm-kpi-note {
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.wm-range--wide input {
+  width: min(100%, 28rem);
+}
+
+.wm-kpi-k {
+  min-width: 5.5ch;
+  font-weight: 600;
+}
+
+.wm-range-ticks {
+  display: flex;
+  justify-content: space-between;
+  width: min(100%, 28rem);
+  font-size: 0.68rem;
+  color: var(--md-default-fg-color--light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Frequency-bin view: faint rows for small bins. */
+.md-typeset table.wm-ss-table tr.wm-fb-small td,
+.md-typeset table.wm-ss-table tr.wm-fb-small th {
+  color: var(--md-default-fg-color--light);
+}
+
+/* Data challenges: raw-photo example galleries and the audit table. */
+.wm-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.md-typeset figure.wm-gallery-item {
+  margin: 0;
+  width: auto;
+}
+
+.md-typeset .wm-gallery-item a {
+  display: block;
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  background: #000;
+}
+
+.md-typeset .wm-gallery-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  margin: 0;
+  transition: transform 0.15s ease;
+}
+
+.md-typeset .wm-gallery-item a:hover img {
+  transform: scale(1.03);
+}
+
+.md-typeset .wm-gallery-item figcaption {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  margin: 0.3rem 0 0;
+  color: var(--md-default-fg-color--light);
+  text-align: left;
+}
+
+.md-typeset table.wm-iq-table {
+  font-size: 0.7rem;
+}
+
+/* Results at-a-glance tiles. */
+.wm-kpis--glance {
+  margin: 0.25rem 0 1.25rem;
+}
+
+/* Explainer video facade and transcript. */
+.wm-video-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--wm-grey);
+  border-radius: 0.3rem;
+  overflow: hidden;
+  background: #000;
+}
+
+.wm-video-stage img,
+.wm-video-stage video,
+.wm-video-stage iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 0;
+  margin: 0;
+}
+
+.md-typeset .wm-video-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.1rem 0.6rem 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--wm-grey-heading);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.25);
+}
+
+.md-typeset .wm-video-play:hover:not(:disabled) {
+  background: var(--wm-blue);
+  color: #fff;
+}
+
+.md-typeset .wm-video-play:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.wm-video-play-icon {
+  width: 0;
+  height: 0;
+  border-left: 0.9rem solid currentColor;
+  border-top: 0.55rem solid transparent;
+  border-bottom: 0.55rem solid transparent;
+}
+
+.wm-transcript-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+.md-typeset .wm-transcript-list li {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  gap: 0.6rem;
+  margin: 0.3rem 0;
+  font-size: 0.8rem;
+}
+
+.wm-transcript-time {
+  color: var(--wm-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phones (checked at 390 px, 2026-10-05). Statistics tables scroll inside their wrapper
+   instead of wrapping every cell into tall rows. MathJax's hidden assistive MathML is
+   absolutely positioned and stuck out past the right edge, so the whole page scrolled
+   sideways; it gets the usual screen-reader-only size (still read aloud, never wider). */
+@media screen and (max-width: 600px) {
+  .md-typeset table.wm-ss-table th,
+  .md-typeset table.wm-ss-table td {
+    white-space: nowrap;
+  }
+}
+
+mjx-container mjx-assistive-mml {
+  width: 1px !important;
+  overflow: hidden !important;
+}

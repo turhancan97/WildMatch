@@ -1,0 +1,1706 @@
+{
+ "generated_at": "2026-10-02T20:51:34+00:00",
+ "generated_by": "scripts/export_budget_tradeoff.py",
+ "paper_commit": "277308976ba3",
+ "budgets": [
+  10,
+  50,
+  100,
+  250,
+  500,
+  1000
+ ],
+ "main_k": 250,
+ "matchers": [
+  {
+   "key": "default",
+   "label": "Default LoMa"
+  },
+  {
+   "key": "finetuned",
+   "label": "LoMa + WildMatch"
+  }
+ ],
+ "definitions": {
+  "shortlist_share": "share of queries with at least one image of their individual among the k MegaDescriptor-L candidates (candidate_recall_at_k); identical for both matchers.",
+  "top_5": "Top-5 accuracy of the matcher's ranking of the k candidates (paper tables).",
+  "matching_sec": "Vismatch feature-matching time over all query x candidate pairs (vismatch_rerank_sec); feature extraction, candidate selection, model setup and cache I/O excluded.",
+  "minutes_per_1000_queries": "matching_sec / 60 x 1000 / queries.",
+  "ms_per_pair": "1000 x matching_sec / (queries x k).",
+  "hardware": "Slurm partition of the run (sacct) mapped to a GPU name; 'not recorded' for runs that predate the launcher's task records."
+ },
+ "datasets": [
+  {
+   "key": "czechlynx",
+   "label": "CzechLynx",
+   "stem": "CzechLynx_split-time_closed",
+   "n_queries": 11924,
+   "dominant_gpu": "RTX 4090",
+   "runs_with_recorded_hardware": 12,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260919T223432Z_861ff392",
+      "finetuned": "20260919T223430Z_40c232b4"
+     },
+     "top_5": {
+      "default": 0.3444313988594431,
+      "finetuned": 0.3754612546125461
+     },
+     "matching_sec": {
+      "default": 217.09812259301543,
+      "finetuned": 221.30054792499868
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.4100972827910097,
+     "display": {
+      "matching_sec": 219.19933525900706,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 0.306383952894732,
+      "ms_per_pair": 1.838303717368392,
+      "pairs": 119240
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260920T122545Z_0e052185",
+      "finetuned": "20260920T122915Z_0015f14a"
+     },
+     "top_5": {
+      "default": 0.445320362294532,
+      "finetuned": 0.4773565917477356
+     },
+     "matching_sec": {
+      "default": 1077.0286306060152,
+      "finetuned": 1080.452764331014
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.6460080509896008,
+     "display": {
+      "matching_sec": 1078.7406974685146,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 1.5078003710562935,
+      "ms_per_pair": 1.809360445267552,
+      "pairs": 596200
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260920T124911Z_ffa69d1b",
+      "finetuned": "20260920T124911Z_d9d962c3"
+     },
+     "top_5": {
+      "default": 0.4923683327742368,
+      "finetuned": 0.5207983898020798
+     },
+     "matching_sec": {
+      "default": 2146.668186349969,
+      "finetuned": 2140.244714024011
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.7423683327742369,
+     "display": {
+      "matching_sec": 2143.45645018699,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 2.9959974983045257,
+      "ms_per_pair": 1.7975984989827156,
+      "pairs": 1192400
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260920T131759Z_daf95fda",
+      "finetuned": "20260920T131759Z_612b4791"
+     },
+     "top_5": {
+      "default": 0.5523314324052332,
+      "finetuned": 0.5834451526333445
+     },
+     "matching_sec": {
+      "default": 5519.342285199964,
+      "finetuned": 5446.636990342988
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.8453539080845354,
+     "display": {
+      "matching_sec": 5482.989637771476,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 7.663800790802131,
+      "ms_per_pair": 1.8393121897925113,
+      "pairs": 2981000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260920T132956Z_2a06434e",
+      "finetuned": "20260920T133318Z_308f8e3d"
+     },
+     "top_5": {
+      "default": 0.6057531029855753,
+      "finetuned": 0.6288158336128816
+     },
+     "matching_sec": {
+      "default": 10681.65370346501,
+      "finetuned": 10670.512065766961
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9003690036900369,
+     "display": {
+      "matching_sec": 10676.082884615986,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 14.922401437738994,
+      "ms_per_pair": 1.7906881725286792,
+      "pairs": 5962000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260920T154456Z_400f41bd",
+      "finetuned": "20260920T154507Z_538ec3e9"
+     },
+     "top_5": {
+      "default": 0.647349882589735,
+      "finetuned": 0.6708319355920832
+     },
+     "matching_sec": {
+      "default": 21749.188315901964,
+      "finetuned": 21773.121212486003
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9390305266689031,
+     "display": {
+      "matching_sec": 21761.154764193983,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 30.4164636645896,
+      "ms_per_pair": 1.824987819875376,
+      "pairs": 11924000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    }
+   ]
+  },
+  {
+   "key": "hyena",
+   "label": "Hyena",
+   "stem": "HyenaID2022_split",
+   "n_queries": 630,
+   "dominant_gpu": "RTX 4090",
+   "runs_with_recorded_hardware": 12,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260905T165919Z_e13559dd",
+      "finetuned": "20260905T165919Z_a698561d"
+     },
+     "top_5": {
+      "default": 0.834920634920635,
+      "finetuned": 0.8539682539682539
+     },
+     "matching_sec": {
+      "default": 11.4611654819455,
+      "finetuned": 11.550863204989582
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.8666666666666667,
+     "display": {
+      "matching_sec": 11.506014343467541,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 0.30439191384834763,
+      "ms_per_pair": 1.8263514830900858,
+      "pairs": 6300
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260905T170747Z_97fb9204",
+      "finetuned": "20260905T170746Z_cbd935ba"
+     },
+     "top_5": {
+      "default": 0.8666666666666667,
+      "finetuned": 0.8904761904761904
+     },
+     "matching_sec": {
+      "default": 57.01708061713725,
+      "finetuned": 57.5499477670528
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9380952380952381,
+     "display": {
+      "matching_sec": 57.283514192095026,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 1.5154368833887573,
+      "ms_per_pair": 1.8185242600665088,
+      "pairs": 31500
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260905T170932Z_b8ee51b6",
+      "finetuned": "20260905T170932Z_719865e6"
+     },
+     "top_5": {
+      "default": 0.8936507936507937,
+      "finetuned": 0.9111111111111112
+     },
+     "matching_sec": {
+      "default": 115.09418814303353,
+      "finetuned": 116.40738291991875
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9698412698412698,
+     "display": {
+      "matching_sec": 115.75078553147614,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 3.062190093425295,
+      "ms_per_pair": 1.8373140560551768,
+      "pairs": 63000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260905T171227Z_5ded6755",
+      "finetuned": "20260905T171322Z_69f6e9a4"
+     },
+     "top_5": {
+      "default": 0.9126984126984128,
+      "finetuned": 0.926984126984127
+     },
+     "matching_sec": {
+      "default": 286.4494222390931,
+      "finetuned": 290.056705749128
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9857142857142858,
+     "display": {
+      "matching_sec": 288.25306399411056,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 7.625742433706628,
+      "ms_per_pair": 1.8301781840895908,
+      "pairs": 157500
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260905T171532Z_d1413dd2",
+      "finetuned": "20260905T172630Z_9ea3e4cc"
+     },
+     "top_5": {
+      "default": 0.926984126984127,
+      "finetuned": 0.9396825396825396
+     },
+     "matching_sec": {
+      "default": 569.9845794131979,
+      "finetuned": 572.6017387139145
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9936507936507937,
+     "display": {
+      "matching_sec": 571.2931590635562,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 15.113575636602016,
+      "ms_per_pair": 1.813629076392242,
+      "pairs": 315000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260905T172655Z_55509dca",
+      "finetuned": "20260905T172727Z_698b18a4"
+     },
+     "top_5": {
+      "default": 0.9301587301587302,
+      "finetuned": 0.9412698412698411
+     },
+     "matching_sec": {
+      "default": 1146.0547383499797,
+      "finetuned": 1146.172977861017
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9968253968253968,
+     "display": {
+      "matching_sec": 1146.1138581054984,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 30.320472436653393,
+      "ms_per_pair": 1.8192283461992038,
+      "pairs": 630000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    }
+   ]
+  },
+  {
+   "key": "leopard",
+   "label": "Leopard",
+   "stem": "LeopardID2022_split",
+   "n_queries": 1433,
+   "dominant_gpu": "RTX 4090",
+   "runs_with_recorded_hardware": 12,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260905T164310Z_5ac93da6",
+      "finetuned": "20260905T164310Z_5974221c"
+     },
+     "top_5": {
+      "default": 0.743893928820656,
+      "finetuned": 0.7683182135380321
+     },
+     "matching_sec": {
+      "default": 25.72769045899622,
+      "finetuned": 26.77036211011
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.7899511514305653,
+     "display": {
+      "matching_sec": 26.24902628455311,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 0.30529223406086425,
+      "ms_per_pair": 1.8317534043651857,
+      "pairs": 14330
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260905T165838Z_5a118932",
+      "finetuned": "20260905T165838Z_4d56bf7d"
+     },
+     "top_5": {
+      "default": 0.776692254012561,
+      "finetuned": 0.8178646196789952
+     },
+     "matching_sec": {
+      "default": 129.32457187282853,
+      "finetuned": 129.39054798102006
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.8855547801814375,
+     "display": {
+      "matching_sec": 129.3575599269243,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 1.5045075590477357,
+      "ms_per_pair": 1.8054090708572825,
+      "pairs": 71650
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260905T165828Z_79c75147",
+      "finetuned": "20260905T165828Z_d63f7be3"
+     },
+     "top_5": {
+      "default": 0.8053035589672016,
+      "finetuned": 0.8387997208653175
+     },
+     "matching_sec": {
+      "default": 258.22219520108774,
+      "finetuned": 257.5228754479904
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9197487787857641,
+     "display": {
+      "matching_sec": 257.87253532453906,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 2.9992153445515126,
+      "ms_per_pair": 1.7995292067309077,
+      "pairs": 143300
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260905T165836Z_8cf7d788",
+      "finetuned": "20260905T170207Z_557a1f88"
+     },
+     "top_5": {
+      "default": 0.8415910676901605,
+      "finetuned": 0.8681088625261689
+     },
+     "matching_sec": {
+      "default": 655.141475147102,
+      "finetuned": 650.3266082580667
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9602233077459874,
+     "display": {
+      "matching_sec": 652.7340417025844,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 7.591696228222662,
+      "ms_per_pair": 1.8220070947734386,
+      "pairs": 358250
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260905T170336Z_fa95f634",
+      "finetuned": "20260905T170359Z_f2ce9cf0"
+     },
+     "top_5": {
+      "default": 0.8618283321702721,
+      "finetuned": 0.8667131891137474
+     },
+     "matching_sec": {
+      "default": 1288.636393725872,
+      "finetuned": 1304.3616822280455
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9762735519888346,
+     "display": {
+      "matching_sec": 1296.4990379769588,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 15.079076971120713,
+      "ms_per_pair": 1.8094892365344855,
+      "pairs": 716500
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260905T170532Z_0382c5b2",
+      "finetuned": "20260905T171051Z_a8a0a026"
+     },
+     "top_5": {
+      "default": 0.8729937194696441,
+      "finetuned": 0.8660153524075367
+     },
+     "matching_sec": {
+      "default": 2606.6766754488926,
+      "finetuned": 2615.584263526136
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.988834612700628,
+     "display": {
+      "matching_sec": 2611.1304694875143,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 30.369044771894796,
+      "ms_per_pair": 1.8221426863136876,
+      "pairs": 1433000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    }
+   ]
+  },
+  {
+   "key": "nyala",
+   "label": "Nyala",
+   "stem": "NyalaData_split",
+   "n_queries": 428,
+   "dominant_gpu": "not recorded",
+   "runs_with_recorded_hardware": 0,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260821T154720Z_d031daaf",
+      "finetuned": "20260821T154720Z_515886d6"
+     },
+     "top_5": {
+      "default": 0.5116822429906542,
+      "finetuned": 0.602803738317757
+     },
+     "matching_sec": {
+      "default": 7.773163222009316,
+      "finetuned": 7.713515772018582
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.6121495327102804,
+     "display": {
+      "matching_sec": 7.743339497013949,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 0.3015319118774903,
+      "ms_per_pair": 1.8091914712649413,
+      "pairs": 4280
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260821T154808Z_df51b7b9",
+      "finetuned": "20260821T154814Z_f4b5fd8f"
+     },
+     "top_5": {
+      "default": 0.6238317757009346,
+      "finetuned": 0.7102803738317757
+     },
+     "matching_sec": {
+      "default": 38.244886972010136,
+      "finetuned": 42.48343632603064
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.8177570093457944,
+     "display": {
+      "matching_sec": 40.36416164902039,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 1.571813148326339,
+      "ms_per_pair": 1.8861757779916069,
+      "pairs": 21400
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260821T155155Z_b9ecfd5a",
+      "finetuned": "20260821T155227Z_401d825e"
+     },
+     "top_5": {
+      "default": 0.677570093457944,
+      "finetuned": 0.764018691588785
+     },
+     "matching_sec": {
+      "default": 77.2029237439856,
+      "finetuned": 76.69189156393986
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.8925233644859814,
+     "display": {
+      "matching_sec": 76.94740765396273,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 2.9963943790483927,
+      "ms_per_pair": 1.7978366274290356,
+      "pairs": 42800
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260821T155324Z_8fe8b14b",
+      "finetuned": "20260821T155336Z_168ac779"
+     },
+     "top_5": {
+      "default": 0.7266355140186916,
+      "finetuned": 0.8130841121495327
+     },
+     "matching_sec": {
+      "default": 191.49407299794257,
+      "finetuned": 192.4710030410206
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.9579439252336449,
+     "display": {
+      "matching_sec": 191.98253801948158,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 7.4759555303536445,
+      "ms_per_pair": 1.7942293272848746,
+      "pairs": 107000
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260821T155437Z_027ea843",
+      "finetuned": "20260821T155450Z_ad3533f6"
+     },
+     "top_5": {
+      "default": 0.7453271028037384,
+      "finetuned": 0.8434579439252337
+     },
+     "matching_sec": {
+      "default": 384.5103714870056,
+      "finetuned": 384.8164683879586
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.985981308411215,
+     "display": {
+      "matching_sec": 384.6634199374821,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 14.979105137752416,
+      "ms_per_pair": 1.7974926165302902,
+      "pairs": 214000
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260821T155750Z_bf0c69b1",
+      "finetuned": "20260821T155802Z_93fcb36a"
+     },
+     "top_5": {
+      "default": 0.7476635514018691,
+      "finetuned": 0.8551401869158879
+     },
+     "matching_sec": {
+      "default": 782.8590154370759,
+      "finetuned": 780.9541452520061
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.9976635514018691,
+     "display": {
+      "matching_sec": 781.906580344541,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 30.448075558588048,
+      "ms_per_pair": 1.8268845335152828,
+      "pairs": 428000
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    }
+   ]
+  },
+  {
+   "key": "salamander",
+   "label": "Salamander",
+   "stem": "SalamanderID2025_split",
+   "n_queries": 246,
+   "dominant_gpu": "H100",
+   "runs_with_recorded_hardware": 12,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260930T063532Z_9ecdc517",
+      "finetuned": "20260930T082551Z_a2ca63c5"
+     },
+     "top_5": {
+      "default": 0.1382113821138211,
+      "finetuned": 0.1382113821138211
+     },
+     "matching_sec": {
+      "default": 3.54705155803822,
+      "finetuned": 3.456577440025285
+     },
+     "partition": {
+      "default": "dgxh100",
+      "finetuned": "dgxh100"
+     },
+     "shortlist_share": 0.13821138211382114,
+     "display": {
+      "matching_sec": 3.5018144990317523,
+      "partition": "dgxh100",
+      "source": "mean of both runs",
+      "gpu": "H100",
+      "minutes_per_1000_queries": 0.23725030481244935,
+      "ms_per_pair": 1.4235018288746961,
+      "pairs": 2460
+     },
+     "gpu": {
+      "default": "H100",
+      "finetuned": "H100"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260930T064002Z_fc961e4d",
+      "finetuned": "20260930T083009Z_57276f29"
+     },
+     "top_5": {
+      "default": 0.3170731707317073,
+      "finetuned": 0.3211382113821138
+     },
+     "matching_sec": {
+      "default": 17.39390109013766,
+      "finetuned": 17.362771918065846
+     },
+     "partition": {
+      "default": "dgxh100",
+      "finetuned": "dgxh100"
+     },
+     "shortlist_share": 0.32926829268292684,
+     "display": {
+      "matching_sec": 17.378336504101753,
+      "partition": "dgxh100",
+      "source": "mean of both runs",
+      "gpu": "H100",
+      "minutes_per_1000_queries": 1.1773940720936147,
+      "ms_per_pair": 1.4128728865123377,
+      "pairs": 12300
+     },
+     "gpu": {
+      "default": "H100",
+      "finetuned": "H100"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260930T064156Z_77acaed3",
+      "finetuned": "20260930T083009Z_87336e96"
+     },
+     "top_5": {
+      "default": 0.4105691056910569,
+      "finetuned": 0.4227642276422764
+     },
+     "matching_sec": {
+      "default": 34.42931519309059,
+      "finetuned": 33.98022231901996
+     },
+     "partition": {
+      "default": "dgxh100",
+      "finetuned": "dgxh100"
+     },
+     "shortlist_share": 0.43089430894308944,
+     "display": {
+      "matching_sec": 34.20476875605527,
+      "partition": "dgxh100",
+      "source": "mean of both runs",
+      "gpu": "H100",
+      "minutes_per_1000_queries": 2.3173962571853166,
+      "ms_per_pair": 1.3904377543111899,
+      "pairs": 24600
+     },
+     "gpu": {
+      "default": "H100",
+      "finetuned": "H100"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260930T064503Z_34886d20",
+      "finetuned": "20260930T083020Z_72511736"
+     },
+     "top_5": {
+      "default": 0.556910569105691,
+      "finetuned": 0.5813008130081301
+     },
+     "matching_sec": {
+      "default": 84.20341008598916,
+      "finetuned": 83.34383920603432
+     },
+     "partition": {
+      "default": "dgxh100",
+      "finetuned": "dgxh100"
+     },
+     "shortlist_share": 0.6138211382113821,
+     "display": {
+      "matching_sec": 83.77362464601174,
+      "partition": "dgxh100",
+      "source": "mean of both runs",
+      "gpu": "H100",
+      "minutes_per_1000_queries": 5.675719826965565,
+      "ms_per_pair": 1.3621727584717356,
+      "pairs": 61500
+     },
+     "gpu": {
+      "default": "H100",
+      "finetuned": "H100"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260930T065001Z_48452825",
+      "finetuned": "20260930T083122Z_ec4265cd"
+     },
+     "top_5": {
+      "default": 0.6341463414634146,
+      "finetuned": 0.6707317073170732
+     },
+     "matching_sec": {
+      "default": 168.7643221791368,
+      "finetuned": 168.80782685312442
+     },
+     "partition": {
+      "default": "dgxh100",
+      "finetuned": "dgxh100"
+     },
+     "shortlist_share": 0.7967479674796748,
+     "display": {
+      "matching_sec": 168.7860745161306,
+      "partition": "dgxh100",
+      "source": "mean of both runs",
+      "gpu": "H100",
+      "minutes_per_1000_queries": 11.43537090217687,
+      "ms_per_pair": 1.3722445082612245,
+      "pairs": 123000
+     },
+     "gpu": {
+      "default": "H100",
+      "finetuned": "H100"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260930T065757Z_fcef6362",
+      "finetuned": "20260930T083133Z_19edc2c4"
+     },
+     "top_5": {
+      "default": 0.6666666666666666,
+      "finetuned": 0.7032520325203252
+     },
+     "matching_sec": {
+      "default": 336.98588718590327,
+      "finetuned": 333.10059172916226
+     },
+     "partition": {
+      "default": "dgxh100",
+      "finetuned": "dgxh100"
+     },
+     "shortlist_share": 0.967479674796748,
+     "display": {
+      "matching_sec": 335.04323945753276,
+      "partition": "dgxh100",
+      "source": "mean of both runs",
+      "gpu": "H100",
+      "minutes_per_1000_queries": 22.699406467312517,
+      "ms_per_pair": 1.361964388038751,
+      "pairs": 246000
+     },
+     "gpu": {
+      "default": "H100",
+      "finetuned": "H100"
+     }
+    }
+   ]
+  },
+  {
+   "key": "sea_star",
+   "label": "Sea star",
+   "stem": "SeaStarReID2023_split",
+   "n_queries": 428,
+   "dominant_gpu": "RTX 4090",
+   "runs_with_recorded_hardware": 12,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260906T223832Z_4a1e41bb",
+      "finetuned": "20260906T223833Z_f9822c64"
+     },
+     "top_5": {
+      "default": 0.9135514018691588,
+      "finetuned": 0.9205607476635514
+     },
+     "matching_sec": {
+      "default": 7.661672060843557,
+      "finetuned": 7.753622871823609
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9299065420560748,
+     "display": {
+      "matching_sec": 7.707647466333583,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 0.3001420352933638,
+      "ms_per_pair": 1.8008522117601828,
+      "pairs": 4280
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260906T230044Z_03300e1b",
+      "finetuned": "20260906T230044Z_c1426a21"
+     },
+     "top_5": {
+      "default": 0.9579439252336448,
+      "finetuned": 0.9649532710280374
+     },
+     "matching_sec": {
+      "default": 39.14725485816598,
+      "finetuned": 39.085042838938534
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.985981308411215,
+     "display": {
+      "matching_sec": 39.11614884855226,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 1.5232145190246207,
+      "ms_per_pair": 1.8278574228295448,
+      "pairs": 21400
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260906T230045Z_2a9e4b67",
+      "finetuned": "20260906T230045Z_f92cfe65"
+     },
+     "top_5": {
+      "default": 0.9672897196261684,
+      "finetuned": 0.9742990654205608
+     },
+     "matching_sec": {
+      "default": 77.62139343237504,
+      "finetuned": 81.52130726817995
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9953271028037384,
+     "display": {
+      "matching_sec": 79.5713503502775,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 3.098572832954731,
+      "ms_per_pair": 1.8591436997728388,
+      "pairs": 42800
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260906T230148Z_d80cec3f",
+      "finetuned": "20260906T230257Z_0c58c261"
+     },
+     "top_5": {
+      "default": 0.97196261682243,
+      "finetuned": 0.9742990654205608
+     },
+     "matching_sec": {
+      "default": 198.2519312701188,
+      "finetuned": 194.33316846983507
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9953271028037384,
+     "display": {
+      "matching_sec": 196.29254986997694,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 7.643790882787264,
+      "ms_per_pair": 1.8345098118689434,
+      "pairs": 107000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260906T230358Z_ae443199",
+      "finetuned": "20260906T230418Z_5163845f"
+     },
+     "top_5": {
+      "default": 0.9742990654205608,
+      "finetuned": 0.9789719626168224
+     },
+     "matching_sec": {
+      "default": 389.5291710891761,
+      "finetuned": 384.77201873995364
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 1.0,
+     "display": {
+      "matching_sec": 387.15059491456486,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 15.07595774589427,
+      "ms_per_pair": 1.8091149295073123,
+      "pairs": 214000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260906T230846Z_d664cd37",
+      "finetuned": "20260906T230908Z_d4c1361c"
+     },
+     "top_5": {
+      "default": 0.9766355140186916,
+      "finetuned": 0.9789719626168224
+     },
+     "matching_sec": {
+      "default": 768.7172009530477,
+      "finetuned": 784.031715542078
+     },
+     "partition": {
+      "default": "rtx4090_batch",
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 1.0,
+     "display": {
+      "matching_sec": 776.3744582475629,
+      "partition": "rtx4090_batch",
+      "source": "mean of both runs",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 30.232650243285157,
+      "ms_per_pair": 1.8139590145971096,
+      "pairs": 428000
+     },
+     "gpu": {
+      "default": "RTX 4090",
+      "finetuned": "RTX 4090"
+     }
+    }
+   ]
+  },
+  {
+   "key": "whale_shark",
+   "label": "Whale shark",
+   "stem": "WhaleSharkID_split",
+   "n_queries": 1585,
+   "dominant_gpu": "not recorded",
+   "runs_with_recorded_hardware": 0,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260821T213315Z_6d96b4fb",
+      "finetuned": "20260821T221046Z_ef629da1"
+     },
+     "top_5": {
+      "default": 0.6384858044164038,
+      "finetuned": 0.6618296529968454
+     },
+     "matching_sec": {
+      "default": 28.609558005002327,
+      "finetuned": 24.24753174802754
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.6782334384858044,
+     "display": {
+      "matching_sec": 26.428544876514934,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 0.27790268008953667,
+      "ms_per_pair": 1.6674160805372198,
+      "pairs": 15850
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260821T221418Z_99746fa5",
+      "finetuned": "20260821T213729Z_5d10e41d"
+     },
+     "top_5": {
+      "default": 0.6845425867507886,
+      "finetuned": 0.7362776025236593
+     },
+     "matching_sec": {
+      "default": 114.87053102394566,
+      "finetuned": 142.17738154693507
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.8233438485804416,
+     "display": {
+      "matching_sec": 128.52395628544036,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 1.3514611596786579,
+      "ms_per_pair": 1.6217533916143894,
+      "pairs": 79250
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260821T222636Z_8662ab97",
+      "finetuned": "20260821T213906Z_1f04deed"
+     },
+     "top_5": {
+      "default": 0.7078864353312303,
+      "finetuned": 0.7602523659305994
+     },
+     "matching_sec": {
+      "default": 225.6951682639774,
+      "finetuned": 285.5984834540868
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.8712933753943217,
+     "display": {
+      "matching_sec": 255.6468258590321,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 2.688189546362062,
+      "ms_per_pair": 1.6129137278172372,
+      "pairs": 158500
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260821T214355Z_e38930b9",
+      "finetuned": "20260821T215114Z_8b54233d"
+     },
+     "top_5": {
+      "default": 0.7470031545741325,
+      "finetuned": 0.7817034700315457
+     },
+     "matching_sec": {
+      "default": 707.2102358459961,
+      "finetuned": 709.8093478200026
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.9293375394321767,
+     "display": {
+      "matching_sec": 708.5097918329993,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 7.450155539779174,
+      "ms_per_pair": 1.7880373295470016,
+      "pairs": 396250
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260821T215606Z_529c7bd6",
+      "finetuned": "20260821T215624Z_6311d224"
+     },
+     "top_5": {
+      "default": 0.7684542586750789,
+      "finetuned": 0.7981072555205048
+     },
+     "matching_sec": {
+      "default": 1422.3423481689533,
+      "finetuned": 1464.8387431539595
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.9570977917981073,
+     "display": {
+      "matching_sec": 1443.5905456614564,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 15.17971131084602,
+      "ms_per_pair": 1.8215653573015222,
+      "pairs": 792500
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260821T220204Z_ea2e8e07",
+      "finetuned": "20260821T220205Z_ad2d9e80"
+     },
+     "top_5": {
+      "default": 0.7873817034700316,
+      "finetuned": 0.8088328075709779
+     },
+     "matching_sec": {
+      "default": 2859.529743986088,
+      "finetuned": 2866.6663711889414
+     },
+     "partition": {
+      "default": null,
+      "finetuned": null
+     },
+     "shortlist_share": 0.9798107255520505,
+     "display": {
+      "matching_sec": 2863.0980575875146,
+      "partition": null,
+      "source": "mean of both runs",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 30.10618357084663,
+      "ms_per_pair": 1.8063710142507978,
+      "pairs": 1585000
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "not recorded"
+     }
+    }
+   ]
+  },
+  {
+   "key": "turtle",
+   "label": "Turtle",
+   "stem": "ZindiTurtleRecall_split",
+   "n_queries": 3082,
+   "dominant_gpu": "RTX 4090",
+   "runs_with_recorded_hardware": 6,
+   "runs_total": 12,
+   "budgets": [
+    {
+     "k": 10,
+     "runs": {
+      "default": "20260822T080343Z_e536151c",
+      "finetuned": "20260823T172844Z_c7d682ab"
+     },
+     "top_5": {
+      "default": 0.8419857235561323,
+      "finetuned": 0.8744321868916288
+     },
+     "matching_sec": {
+      "default": 55.40292040805798,
+      "finetuned": 87.96546931006014
+     },
+     "partition": {
+      "default": null,
+      "finetuned": "dgxa100"
+     },
+     "shortlist_share": 0.8776768332251784,
+     "display": {
+      "matching_sec": 55.40292040805798,
+      "partition": null,
+      "source": "default run",
+      "gpu": "not recorded",
+      "minutes_per_1000_queries": 0.2996048042832467,
+      "ms_per_pair": 1.7976288256994801,
+      "pairs": 30820
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "A100"
+     }
+    },
+    {
+     "k": 50,
+     "runs": {
+      "default": "20260822T082357Z_00d4f47a",
+      "finetuned": "20260823T181530Z_1ee24291"
+     },
+     "top_5": {
+      "default": 0.8747566515249838,
+      "finetuned": 0.9351070733290072
+     },
+     "matching_sec": {
+      "default": 277.10996605991386,
+      "finetuned": 278.1787087669363
+     },
+     "partition": {
+      "default": null,
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9532770927968851,
+     "display": {
+      "matching_sec": 278.1787087669363,
+      "partition": "rtx4090_batch",
+      "source": "finetuned run",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 1.5043192124536897,
+      "ms_per_pair": 1.8051830549444279,
+      "pairs": 154100
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 100,
+     "runs": {
+      "default": "20260822T082440Z_15a0a412",
+      "finetuned": "20260823T182622Z_0e433932"
+     },
+     "top_5": {
+      "default": 0.8919532770927969,
+      "finetuned": 0.9435431537962362
+     },
+     "matching_sec": {
+      "default": 560.447936223005,
+      "finetuned": 553.5595795449335
+     },
+     "partition": {
+      "default": null,
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9763140817650876,
+     "display": {
+      "matching_sec": 553.5595795449335,
+      "partition": "rtx4090_batch",
+      "source": "finetuned run",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 2.993508433619584,
+      "ms_per_pair": 1.7961050601717505,
+      "pairs": 308200
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 250,
+     "runs": {
+      "default": "20260822T083256Z_ea0daf40",
+      "finetuned": "20260823T183206Z_e0f9f8ef"
+     },
+     "top_5": {
+      "default": 0.8987670343932511,
+      "finetuned": 0.9289422452952628
+     },
+     "matching_sec": {
+      "default": 1398.285086666001,
+      "finetuned": 1391.3553507699398
+     },
+     "partition": {
+      "default": null,
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9876703439325114,
+     "display": {
+      "matching_sec": 1391.3553507699398,
+      "partition": "rtx4090_batch",
+      "source": "finetuned run",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 7.524093395900605,
+      "ms_per_pair": 1.8057824150161452,
+      "pairs": 770500
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 500,
+     "runs": {
+      "default": "20260822T083910Z_cf8f6b1b",
+      "finetuned": "20260823T183348Z_ba305f8c"
+     },
+     "top_5": {
+      "default": 0.8987670343932511,
+      "finetuned": 0.9153147306943544
+     },
+     "matching_sec": {
+      "default": 2745.681095739943,
+      "finetuned": 2791.244633664959
+     },
+     "partition": {
+      "default": null,
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9935107073329007,
+     "display": {
+      "matching_sec": 2791.244633664959,
+      "partition": "rtx4090_batch",
+      "source": "finetuned run",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 15.094336111101878,
+      "ms_per_pair": 1.8113203333322252,
+      "pairs": 1541000
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "RTX 4090"
+     }
+    },
+    {
+     "k": 1000,
+     "runs": {
+      "default": "20260822T090027Z_024b07c3",
+      "finetuned": "20260823T184046Z_48b1fd3a"
+     },
+     "top_5": {
+      "default": 0.8939000648929266,
+      "finetuned": 0.8961713173264114
+     },
+     "matching_sec": {
+      "default": 5539.956455035019,
+      "finetuned": 5643.513136290014
+     },
+     "partition": {
+      "default": null,
+      "finetuned": "rtx4090_batch"
+     },
+     "shortlist_share": 0.9941596365996106,
+     "display": {
+      "matching_sec": 5643.513136290014,
+      "partition": "rtx4090_batch",
+      "source": "finetuned run",
+      "gpu": "RTX 4090",
+      "minutes_per_1000_queries": 30.518673676671067,
+      "ms_per_pair": 1.831120420600264,
+      "pairs": 3082000
+     },
+     "gpu": {
+      "default": "not recorded",
+      "finetuned": "RTX 4090"
+     }
+    }
+   ]
+  }
+ ]
+}

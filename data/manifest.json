@@ -1,0 +1,165 @@
+{
+ "generated_at": "2026-10-02T12:09:17+00:00",
+ "paper_commit": "9e78102de698eeffbc655629b32190cb49a84799",
+ "paper_results_dir": "results",
+ "conventions": {
+  "datasets": [
+   "czechlynx",
+   "hyena",
+   "leopard",
+   "nyala",
+   "salamander",
+   "sea_star",
+   "whale_shark",
+   "turtle"
+  ],
+  "main_k": 250,
+  "budgets": [
+   10,
+   50,
+   100,
+   250,
+   500,
+   1000
+  ],
+  "unseen_budgets": [
+   10,
+   50,
+   100,
+   160
+  ],
+  "classifier_weighting": "weighted only",
+  "matcher_checkpoints": "default and matcher-only fine-tuned; descriptor and joint only in adapt.json",
+  "excluded": [
+   "BelugaID",
+   "split-time_open",
+   "unweighted and unknown-weighting probes"
+  ]
+ },
+ "sources": [
+  {
+   "file": "BelugaID_split_ablation.csv",
+   "sha256": "c2f02d1477f37b6f72f1f82c2b7fefdc14d0f54e8717da0437647461f7a5ee58"
+  },
+  {
+   "file": "BelugaID_split_main.csv",
+   "sha256": "1ef68065595c52b6704a6685a496d3b54ae15574e3f20d253b69c097ffa810bb"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_ablation.csv",
+   "sha256": "737ac2a50b37221ff74942d9583196e5f2f60a29db9c9bb66f5e6d3cd62f5fef"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_descriptor_loma_ablation.csv",
+   "sha256": "414a3ec61eb57f5088e746cd8e07bedc2f4ca77ddb99db4dd0efc40aae9654ad"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_descriptor_loma_main.csv",
+   "sha256": "a7794af1cc71d0ee55c34649b54a94683f3fb844f25d9cc80bb4ba7f49cd9907"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_descriptor_rdd_ablation.csv",
+   "sha256": "d2d7d9adcb73ab3f09ed2215eaf8d05b42e1e8f6560a85e476a9a8aa2efeac55"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_descriptor_rdd_main.csv",
+   "sha256": "b851cb09c2ac0e895f6edfc38dc4d61c7dba29a345551a653bf058c805dbba42"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_joint_loma_ablation.csv",
+   "sha256": "9df477cbbbfe806f757e493a03b7d885fb57f21f0b3856da6211a272566aef01"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_joint_loma_main.csv",
+   "sha256": "7efcf9c4ba51e3eb0c7d06d64f3e718b837059ff538e7078844f08bfddccea71"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_joint_rdd_ablation.csv",
+   "sha256": "6dc50b8f57d4733a1a0cd22569e83882fd00e89cb1941d8cd425f49746e72423"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_joint_rdd_main.csv",
+   "sha256": "7e01a4382adcb5bb29c1ff111b0470f34f7890caf5d17068f12e204b0f2f247d"
+  },
+  {
+   "file": "CzechLynx_split-time_closed_main.csv",
+   "sha256": "28d0d0efd336b61ae544d279d540bf79a5b4993df4fbf10924d1625752b8decc"
+  },
+  {
+   "file": "CzechLynx_split-time_open_ablation.csv",
+   "sha256": "05fa52aa1cca19518d8ddca99ad10e781051be13f717831dc42fe9fd253371d7"
+  },
+  {
+   "file": "CzechLynx_split-time_open_main.csv",
+   "sha256": "d2d4271fc5791a0d69a80eacad13f76487e1d52abdbd2987d7b60adab6b9b1d2"
+  },
+  {
+   "file": "CzechLynx_unseen_eval_split_ablation.csv",
+   "sha256": "82a67c10d394e4f66034a63f1ba1c47642b6a60bdc5def511fd35708b1a6673e"
+  },
+  {
+   "file": "CzechLynx_unseen_eval_split_main.csv",
+   "sha256": "41b32fca99781c203a72774f797df81fc5ef5d6bdad702ade14e4a91f6c23cee"
+  },
+  {
+   "file": "HyenaID2022_split_ablation.csv",
+   "sha256": "cfbab89cfb06eb3d382a4c242baf2c1f8c0c5fd63b7ab65dc9b89f7725901b2b"
+  },
+  {
+   "file": "HyenaID2022_split_main.csv",
+   "sha256": "88a991da6d25f7b8069f1387704a51f79da539182786b3723a60d36084a79119"
+  },
+  {
+   "file": "LeopardID2022_split_ablation.csv",
+   "sha256": "152a9d5961ff6c783b998c4fe62c9d760302cf849b27994fad48e4b1d4e5385b"
+  },
+  {
+   "file": "LeopardID2022_split_main.csv",
+   "sha256": "cd0995daee490d9106731b36281a84e17894966da3035d5c7a7b2eedc4c1e5ab"
+  },
+  {
+   "file": "NyalaData_split_ablation.csv",
+   "sha256": "037c10cb17d8a032fe738f38d2f5d650b7290e5a2a5ef0208174539beb67491a"
+  },
+  {
+   "file": "NyalaData_split_main.csv",
+   "sha256": "ba4d49c889284259bddc7efc4caebca4459f14c46fbad746852f3fdf2b787100"
+  },
+  {
+   "file": "SalamanderID2025_split_ablation.csv",
+   "sha256": "3a188b50934b372c2169a6a2d735ed4e9f2cdf1634e8ce81fdedb198ca8e5a1f"
+  },
+  {
+   "file": "SalamanderID2025_split_main.csv",
+   "sha256": "3eab09dd908455b456b96a2873ddab5aa40bdbd10ff57253226d7080c9a3b8da"
+  },
+  {
+   "file": "SeaStarReID2023_split_ablation.csv",
+   "sha256": "7689ec7548b237fe3cf0f4747edb262edf0b291d688d0df4958cdd570001e489"
+  },
+  {
+   "file": "SeaStarReID2023_split_main.csv",
+   "sha256": "f0fa5220b0e7be74b27466c70587066fb4ad38cdc94fe0cbfa639464c3261d56"
+  },
+  {
+   "file": "WhaleSharkID_split_ablation.csv",
+   "sha256": "2e80d942a56554d78867239a16316b3ffc5197296283a58d6aba4f06dd6ac7f0"
+  },
+  {
+   "file": "WhaleSharkID_split_main.csv",
+   "sha256": "c0b7f19c7a573a08d11a055b826f5d0a8535e5277fac078c7ae53d8ee45929f7"
+  },
+  {
+   "file": "ZindiTurtleRecall_split_ablation.csv",
+   "sha256": "4605ab8134fa0967b1e9a55691f9af430124505e76a08d4c90e9fd790eae94a7"
+  },
+  {
+   "file": "ZindiTurtleRecall_split_main.csv",
+   "sha256": "e04e5481f3c0047e77e4096d146529c7f50a126421773a45338afe750f3f7540"
+  },
+  {
+   "file": "training_cost_k250_balanced_top5.csv",
+   "sha256": "aa2da8afa64006c4a653aa60e22102e4b58793eeaea6561c5d54cc06d84d6ba9"
+  }
+ ]
+}

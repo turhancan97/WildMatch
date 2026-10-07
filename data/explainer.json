@@ -1,0 +1,42 @@
+{
+ "generated_from": "video/explainer/audio/timings.json",
+ "duration_s": 78.0,
+ "voice_note": "Kokoro-82M (open weights, stock voice af_heart)",
+ "shots": [
+  {
+   "shot": 1,
+   "start": 0.0,
+   "text": "Telling individual animals apart means comparing the markings in two photos. Image matchers already do this: they find keypoints and connect the ones that correspond."
+  },
+  {
+   "shot": 2,
+   "start": 11.62,
+   "text": "But these matchers were trained on buildings and streets, not on fur, and wildlife datasets have no keypoint labels to retrain them."
+  },
+  {
+   "shot": 3,
+   "start": 20.7,
+   "text": "What every monitoring project does have is identity labels: which photos show the same animal. WildMatch uses nothing else."
+  },
+  {
+   "shot": 4,
+   "start": 29.95,
+   "text": "The pretrained matcher scores each photo against the rest. Its highest-scoring photos of the same animal become positives. Its highest-scoring photos of other animals become hard negatives: the pairs it gets wrong."
+  },
+  {
+   "shot": 5,
+   "start": 44.88,
+   "text": "Training then asks for one thing: the score with a positive must beat the score with a hard negative by a margin. Only the matching module changes; the keypoints and descriptors stay as they were."
+  },
+  {
+   "shot": 6,
+   "start": 57.73,
+   "text": "After adaptation the matcher finds many more correspondences on the animal, and photos of the right individual fill the top of the candidate list."
+  },
+  {
+   "shot": 7,
+   "start": 68.08,
+   "text": "Across eight wildlife datasets, accuracy improves with about five GPU-hours of training, and every match can be inspected, line by line."
+  }
+ ]
+}

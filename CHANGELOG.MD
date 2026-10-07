@@ -7,6 +7,15 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: RDD-LightGlue fine-tuning with RDD unfrozen (descriptor, joint, `rdd`, `lg+rdd`) on
+  several GPUs no longer fails in backward with "modified by an inplace operation" (NativeBatchNormBackward0,
+  64-element BatchNorm buffer; the CzechLynx closed descriptor retrain, job 527031). One step runs the
+  descriptor forward for anchor, positive and negatives before one backward, and DDP re-broadcast the
+  BatchNorm buffers before each forward. `ddp_kwargs` now sets `broadcast_buffers=False` when RDD trains
+  (each rank keeps its own BatchNorm statistics; rank 0's model is saved); matcher-only runs, which
+  produced the published checkpoints, keep the former settings. Smoke test (job 527325, 2 GPUs,
+  64-pair index): the old code failed at the first step, the fix trained a full epoch (32 steps).
+  `tests/matcher_finetune/test_ddp_kwargs.py` pins both settings.
 - 2026-10-07: JaguarReID grid run (research use authorized): new packaged sweep `jaguar_grid` (k = 50,
   100, 250, 500, 1000 with cosine, WildFusion, default LoMa and RDD-LightGlue, plus the frozen weighted
   linear probe), array 526001, 21/21 completed. At k = 250, Top-1 / Top-5: LoMa 83.4 / 87.5,

@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: The explainer video is public on YouTube (user decision; checked: not unlisted, not
+  private; its description links the project page and the arXiv preprint). The README's YouTube Video
+  link and a NEWS entry point at it; AGENTS.md and the explainer sources no longer say it stays unlisted.
 - 2026-10-07: RDD-LightGlue fine-tuning with RDD unfrozen (descriptor, joint, `rdd`, `lg+rdd`) on
   several GPUs no longer fails in backward with "modified by an inplace operation" (NativeBatchNormBackward0,
   64-element BatchNorm buffer; the CzechLynx closed descriptor retrain, job 527031). One step runs the

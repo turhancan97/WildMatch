@@ -14,7 +14,7 @@
 [![ci](https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml/badge.svg)](https://github.com/turhancan97/WildMatch/actions/workflows/ci.yml)
 [![arXiv](https://img.shields.io/badge/arXiv-2610.07384-b31b1b.svg)](https://arxiv.org/abs/2610.07384)
 
-[**Project Page**](https://wildmatch.gmum.net) | [**Paper**](https://arxiv.org/pdf/2610.07384) | [**arXiv**](https://arxiv.org/abs/2610.07384) | [**HuggingFace Model**](https://huggingface.co/turhancan97/wildmatch-checkpoints) | [**YouTube Video**]()
+[**Project Page**](https://wildmatch.gmum.net) | [**Paper**](https://arxiv.org/pdf/2610.07384) | [**arXiv**](https://arxiv.org/abs/2610.07384) | [**HuggingFace Model**](https://huggingface.co/turhancan97/wildmatch-checkpoints) | [**YouTube Video**](https://www.youtube.com/watch?v=9i3iE8Bs6n8)
 
 [Turhan Can Kargin](https://turhancankargin.me/)\*, [Piotr Kubaty](https://www.linkedin.com/in/piotr-kubaty/)\*, [Ekaterina Rostovskaya](https://orcid.org/0000-0002-8421-1838), [Izabela Wierzbowska](https://www.researchgate.net/profile/Izabela-Wierzbowska), [Bartosz Zieliński](https://bartoszzielinski.github.io/), [Marcin Przewięźlikowski](https://mprzewie.github.io/)
 
@@ -28,6 +28,7 @@
 - *Mon. YYYY:* What happened, with a [link](https://...).
 -->
 
+- *Oct. 2026:* A 78-second explainer video is on [YouTube](https://www.youtube.com/watch?v=9i3iE8Bs6n8).
 - *Oct. 2026:* Paper is available on [arXiv](https://arxiv.org/abs/2610.07384).
 
 --------------------------------

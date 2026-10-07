@@ -6,7 +6,7 @@
     python build.py
 
 Outputs: ``out/wildmatch_explainer.mp4`` (H.264 + AAC), ``out/wildmatch_explainer.srt`` and
-``out/transcript.md``. The MP4 is hosted unlisted and never committed.
+``out/transcript.md``. The MP4 is hosted on YouTube and never committed.
 """
 from __future__ import annotations
 

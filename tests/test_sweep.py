@@ -66,7 +66,15 @@ class SpecTests(unittest.TestCase):
         for name in S.packaged_specs():
             spec = S.load_spec(S.resolve_spec_path(name))
             for profile in ("gmum", "default"):
-                self.assertTrue(S.build_tasks(spec, profile), f"{name} under {profile}")
+                with self.subTest(spec=name, profile=profile):
+                    try:
+                        self.assertTrue(S.build_tasks(spec, profile), f"{name} under {profile}")
+                    except S.SweepError as exc:
+                        # The unseen-identity entry needs its generated metadata, which exists only
+                        # where the split was built (the cluster); every other failure is real.
+                        if "metadata file does not exist" not in str(exc):
+                            raise
+                        self.skipTest(f"{name} under {profile}: unseen-eval metadata not on this machine")
 
     def test_parity_spec_is_the_reference_set(self):
         tasks = S.build_tasks(S.load_spec(S.resolve_spec_path("parity")), "gmum")
@@ -239,6 +247,8 @@ class SpecTests(unittest.TestCase):
                 (dict(_spec(), extra=1), "unknown sweep keys"),
                 (_spec(max_concurrent=0), "max_concurrent"),
                 (_spec(inputs="old"), "inputs must be one of"),
+                (_spec(experiment_root=""), "experiment_root must be a non-empty path"),
+                (_spec(experiment_root="experiments"), "must differ from the default"),
             ):
                 path.write_text(yaml.safe_dump(content), encoding="utf-8")
                 with self.subTest(message), self.assertRaisesRegex(S.SweepError, message):
@@ -415,6 +425,25 @@ class ProbeArgumentTests(_TempDir):
         )
         self.assertIn("benchmark.candidate_k=50", default)
         self.assertEqual(runner.evaluate_command(["x=1"])[1:], ["-m", "wildmatch", "evaluate", "x=1"])
+
+    def test_experiment_root_reaches_every_task_only_when_set(self):
+        payload, tasks = self.payload_and_tasks([{"method": "cosine"}])
+        self.assertNotIn("experiment_root", payload)
+        plain = runner.probe_arguments(payload, tasks[0])
+        self.assertFalse([a for a in plain if a.startswith("output.experiment_root=")])
+        manifest = M.create_submission(
+            _build(variants=[{"method": "cosine"}]),
+            self.tmp / "rooted",
+            "s",
+            self.write_spec(),
+            "gmum",
+            experiment_root="experiments/rdd-relaxed",
+        )
+        rooted = json.loads(manifest.read_text())
+        self.assertEqual(rooted["experiment_root"], "experiments/rdd-relaxed")
+        arguments = runner.probe_arguments(rooted, runner.task_from_record(rooted["tasks"][0]))
+        self.assertEqual(arguments[2:-1], plain[2:])  # [0:2] is --config-path <snapshot folder>
+        self.assertEqual(arguments[-1], "output.experiment_root=experiments/rdd-relaxed")
 
     def test_older_manifests_keep_their_own_configuration(self):
         payload, (task,) = self.payload_and_tasks([{"method": "cosine"}])

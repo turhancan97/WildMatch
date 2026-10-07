@@ -229,7 +229,14 @@ tag). A sweep spec is a YAML file, packaged under `src/wildmatch/conf/sweep/` (`
 rows (`method`, `matcher`, `checkpoint`, `train_mode`, `class_weighting`, optional
 `checkpoint_path`/`components`), `inputs` (`current`, the default, or `paper`: the registry's
 `paper_inputs` table, i.e. the WildlifeReID-10k team masks the paper's runs read), plus optional
-`dataset_overrides` (`checkpoints`, `checkpoint_owner`, `evaluation_animal`, `inputs`). The spec is the source of truth for its grid.
+`dataset_overrides` (`checkpoints`, `checkpoint_owner`, `evaluation_animal`, `inputs`), and an optional
+`experiment_root` (2026-10-07): stored in the submission manifest only when set, it adds
+`output.experiment_root=<root>` to every task so the runs land in `<root>/probe/...` and never replace
+the paper's rows in `wildmatch tables` (which picks the newest run per identity under `experiments/`);
+`experiments` itself is refused. Spec files are not interpolated, so checkpoint paths in a spec are
+absolute. The packaged `rdd_relaxed`, `rdd_relaxed_czechlynx` and `rdd_relaxed_descriptor` evaluate the
+shared-recipe RDD retrains (2026-10-07; new `*-relaxed` folders, published checkpoints untouched) into
+`experiments/rdd-relaxed/` on the paper's input tables. The spec is the source of truth for its grid.
 Modes: `--list-tasks` (writes nothing), `--dry-run` (freezes the submission and prints the
 `sbatch` command), `--submit` (array job; extra options through `--sbatch-arg=...`), `--local`
 (runs every task here, one after another). The task table, Hydra overrides, manifest task

@@ -130,6 +130,9 @@ def probe_arguments(payload: Mapping[str, Any], task: Mapping[str, str]) -> List
             ]
         else:
             arguments.append("benchmark.methods.vismatch.checkpoint_source=default")
+    if payload.get("experiment_root"):
+        # Spec key `experiment_root`: runs go to <root>/probe/... instead of experiments/probe/...
+        arguments.append(f"output.experiment_root={payload['experiment_root']}")
     return arguments
 
 
@@ -417,6 +420,7 @@ def sweep_main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None)
             spec_path,
             profile,
             config_file=args.config,
+            experiment_root=spec.get("experiment_root"),
         )
     except ValueError as exc:
         parser.exit(2, f"{parser.prog}: {exc}\n")

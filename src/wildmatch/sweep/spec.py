@@ -74,7 +74,16 @@ CHECKPOINT_LABELS = ("default", *COMPONENTS)
 LOMA_ARCH = "LoMa-B"
 UNSEEN_EVAL_KEY = "czechlynx_unseen_eval"
 _VARIANT_KEYS = {"method", "matcher", "checkpoint", "checkpoint_path", "components", "train_mode", "class_weighting"}
-_SPEC_KEYS = {"datasets", "candidate_k", "max_concurrent", "variants", "dataset_overrides", "description", "inputs"}
+_SPEC_KEYS = {
+    "datasets",
+    "candidate_k",
+    "max_concurrent",
+    "variants",
+    "dataset_overrides",
+    "description",
+    "inputs",
+    "experiment_root",
+}
 _OVERRIDE_KEYS = {"checkpoints", "checkpoint_owner", "evaluation_animal", "inputs"}
 # current: the registry's metadata_file; paper: registry.paper_inputs.metadata_file, the table the
 # paper's runs read (WildlifeReID-10k team masks; entries without paper_inputs use metadata_file).
@@ -128,6 +137,14 @@ def load_spec(path: Path) -> Dict[str, Any]:
             raise SweepError(f"inputs must be one of {', '.join(INPUTS)}")
     if spec.setdefault("inputs", "current") not in INPUTS:
         raise SweepError(f"inputs must be one of {', '.join(INPUTS)}; got {spec['inputs']!r}")
+    root = spec.get("experiment_root")
+    if root is not None:
+        # A separate run tree keeps runs that must not enter the paper's tables (the exporters pick the
+        # newest run per dataset, method, checkpoint label and k under experiments/probe/) apart.
+        if not isinstance(root, str) or not root.strip():
+            raise SweepError("experiment_root must be a non-empty path")
+        if Path(root).resolve() == Path("experiments").resolve():
+            raise SweepError("experiment_root must differ from the default 'experiments'; omit the key instead")
     return spec
 
 

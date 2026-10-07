@@ -86,6 +86,10 @@ variants:
   - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
 ```
 
+`experiment_root: <folder>` in a spec sends every run of the sweep to `<folder>/probe/...` instead of
+`experiments/probe/...`, for runs that must stay out of the paper tables (the table and figure
+exporters pick the newest run per configuration).
+
 `inputs: paper` in a spec (or per dataset in `dataset_overrides`) runs on the tables the paper's
 runs read instead of the current ones (WildlifeReID-10k: the team's masks instead of SAM 3).
 Classifier probes run once, at the first budget. Fine-tuned rows take their checkpoint from the

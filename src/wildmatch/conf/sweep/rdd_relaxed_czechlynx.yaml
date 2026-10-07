@@ -1,0 +1,13 @@
+# CzechLynx part of the shared-recipe RDD retrain (see rdd_relaxed.yaml): the open-split matcher on the
+# paper's unseen-identity protocol (its gallery has 160 images, hence k <= 160). Own run tree.
+# Checkpoint paths are the gmum cluster's (spec files are not interpolated against the path profile).
+description: RDD-LightGlue retrained with the shared recipe (CzechLynx unseen-identity protocol)
+experiment_root: experiments/rdd-relaxed
+datasets: [czechlynx_unseen_eval]
+candidate_k: [10, 50, 100, 160]
+max_concurrent: 12
+variants:
+  - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}
+dataset_overrides:
+  czechlynx_unseen_eval:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/czechlynx-time-open/rdd-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors"}}

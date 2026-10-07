@@ -112,7 +112,8 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   from `86f0e38`, LoMa pinned as a git dependency (`5e541b8` or `7043bac`, chosen by parity);
   parity ladder L0-L6, L6 (every `weights.yaml` checkpoint evaluates unchanged) mandatory.
 - slurm/: `sweep_task.sbatch` (one sweep array element), `evaluate.sbatch`,
-  `finetune_backbone.sbatch`, and `eval_loma_epoch_curve.sh` (training-cost ablation).
+  `finetune_backbone.sbatch`, `eval_loma_epoch_curve.sh` (training-cost ablation) and
+  `profile_vismatch.sbatch` (Vismatch cold/warm cost profile into `experiments/profile/`).
 - paper/: paper and project-page tooling run from a checkout (not part of the package):
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
@@ -1126,9 +1127,17 @@ reproduction live under "Known issues" instead.
   median 1.8 ms per candidate pair for both LoMa and RDD-LightGlue and takes 73-85 % of a run;
   feature extraction 31-34 ms per image (LoMa) and 42-47 ms (RDD-LightGlue), paid only on a cold
   cache; a cache hit costs 4.3-4.6 ms to load; model setup about 6 s (LoMa) and 1.3 s (RDD). These
-  runs mix GPU types (none records `vismatch_device`, which started 2026-10-05), so a per-GPU figure
-  needs new runs. Matching is the only cost worth optimising; any change must keep scores
-  bit-identical.
+  runs mix GPU types (none records `vismatch_device`, which started 2026-10-05). Single-GPU profile
+  (job 525920, `sbatch slurm/profile_vismatch.sbatch`, 2026-10-07, RTX 4090, SalamanderID2025, k=50,
+  12,300 pairs, default weights, outputs only under `experiments/profile/job-525920/`): matching
+  1.85 ms per pair for LoMa (22.8 s) and 3.4 ms for RDD-LightGlue (42.0 s); warm runs take 41 s and
+  55 s, of which matching is 56 % and 76 %, cache loading 5.8 s (4.2 ms per image) and setup 7 s /
+  1.3 s. Cold runs take 218 s and 181 s: extraction wall time is 141 s / 133 s, of which the timed
+  GPU compute is only 73 s / 42 s (53 / 30 ms per image), so about 70-90 s go to reading and
+  preprocessing images and writing the cache, outside the compute timer; RDD-LightGlue's extraction
+  batch backed off from 8 to 4 (CUDA out of memory). Top-1 is identical cold and warm (0.3089 LoMa,
+  0.2764 RDD-LightGlue). Worth optimising: pair matching (both) and, for cold caches, image loading
+  and preprocessing. Any change must keep scores bit-identical.
 - [ ] Run the private Lynx golden-subset parity comparison for RDD-LightGlue before changing
   matcher defaults. The 2026-08-12 full-split comparison agreed on 65 of 66 top-1
   predictions, not 100 %, so this gate is still open (details under "Vismatch matcher policy").

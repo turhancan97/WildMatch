@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: Single-GPU Vismatch cost profile (user request; job 525920, RTX 4090, 9.7 min).
+  New `slurm/profile_vismatch.sbatch` runs SalamanderID2025 at k=50 with default LoMa and RDD-LightGlue,
+  each on a fresh feature cache (cold) and again (warm). All outputs, including the run index and
+  CSV, go under `experiments/profile/job-<id>/`. Matching costs 1.85 ms per pair for LoMa and 3.4 ms
+  for RDD-LightGlue, and takes 56 % and 76 % of a warm run (41 s and 55 s). Cold runs take 218 s and
+  181 s, of which 70-90 s is image reading, preprocessing and cache writing, outside the GPU
+  compute timer (73 s and 42 s). RDD-LightGlue's extraction batch backed off from 8 to 4. Top-1 is
+  identical cold and warm. Recorded under the AGENTS.md future-work item "Optimize Vismatch matching".
 - 2026-10-06: Vismatch cost profile (future-work item narrowed to optimisation; user decision:
   instrument and profile, no optimisation). The timing fields were already complete: every Vismatch
   run keeps extraction compute, cache hits, misses and lookup time, matching time and batch sizes in

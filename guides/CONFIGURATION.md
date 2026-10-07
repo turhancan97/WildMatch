@@ -347,6 +347,9 @@ Core options:
 - `batch_mode`: `batched` (production default) or `serial` (parity/debug reference)
 - `match_batch_size`: candidate-pair batch size (default `16`)
 - `extract_batch_size`: cached feature-extraction batch size (default `8`)
+- `io_workers`: threads that hash, decode and cache images ahead of the GPU, in order (default `4`;
+  `0` runs it inline). Features and scores are identical for every value; it shortens cold-cache runs
+  by about a third
 - `oom_backoff`: halve and retry the active CUDA batch on OOM (default `true`)
 - Batched and serial matching show a pair-counted progress bar with throughput and ETA; OOM retries advance it only after successful completion.
 - `stage_a_method`: `cosine` | `wildfusion` | `local_lightglue` | `linear_probe` | `efficient_probe`

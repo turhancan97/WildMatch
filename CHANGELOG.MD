@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: Faster cold-cache Vismatch extraction: `benchmark.methods.vismatch.io_workers` (default 4)
+  hashes, decodes and loads/saves cache files in worker threads ahead of the GPU, in index order with a
+  bounded look-ahead, so batches and features are unchanged; cache files are written in the background
+  and every write is checked before the split returns; `0` keeps the inline path. GPU check (job 526011
+  against job 525920, RTX 4090, SalamanderID2025, k=50): scores bit-identical in all four runs; cold
+  extraction 141 -> 91 s (LoMa) and 132 -> 78 s (RDD-LightGlue), whole cold runs -29 % and -32 %, warm
+  cache loading 6 -> 2 s. Tests: features, batches and cache contents equal for 0 and 4 workers; the
+  prefetch keeps order and its window.
 - 2026-10-07: Fix: live-image (descriptor and joint) RDD fine-tuning crashed at its first evaluation with
   "not enough values to unpack (expected 3, got 1)" (job 526000, the shared-recipe CzechLynx closed
   descriptor retrain). Pinned-memory loading (`pin_memory=True`) turns each pseudo-evaluation sample tuple

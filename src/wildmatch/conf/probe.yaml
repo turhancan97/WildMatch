@@ -135,6 +135,7 @@ benchmark:
       match_batch_size: 16
       extract_batch_size: 8
       oom_backoff: true
+      io_workers: 4               # threads for image hashing, decoding and cache files; 0 = inline (features identical)
       cache_dir: "${paths.cache_root}/${dataset.name}/${dataset.animal}/cache/vismatch"
       stage_a_method: "cosine"   # cosine | wildfusion | local_lightglue | linear_probe | efficient_probe
 

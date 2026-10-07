@@ -227,3 +227,132 @@ class VismatchBatchingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAS_VISMATCH_RUNTIME, "Vismatch runtime dependencies are not available")
+class VismatchIoWorkersTests(unittest.TestCase):
+    """`io_workers` only parallelises file work: features, batches and cache contents are unchanged."""
+
+    class Dataset:
+        def __init__(self, paths):
+            self.df = __import__("pandas").DataFrame({"path": paths})
+
+        def __len__(self):
+            return len(self.df)
+
+    class Backend:
+        def __init__(self):
+            self.batches = []
+            self.batch_diagnostics = {
+                "extract_batches": 0,
+                "effective_extract_batch_size": None,
+                "configured_extract_batch_size": None,
+                "feature_extraction_compute_sec": 0.0,
+                "feature_cache_lookup_sec": 0.0,
+                "feature_cache_hits": 0,
+                "feature_cache_misses": 0,
+            }
+
+        @staticmethod
+        def prepare_image(image):
+            shape = tuple(int(value) for value in image.shape[-2:])
+            return vismatch_module.PreparedImage(tensor=image.unsqueeze(0), source_size=shape, processed_size=shape)
+
+        @staticmethod
+        def _feature(image):
+            pixels = image.tensor[0].reshape(3, -1)
+            keypoints = torch.stack([pixels.mean(1)[:2], pixels.std(1)[:2]]).numpy().astype(np.float32)
+            return FrameFeatures(
+                keypoints=keypoints,
+                descriptors=pixels[:2, :4].numpy().astype(np.float32),
+                scores=np.ones(2, dtype=np.float32),
+                image_size=np.asarray(image.processed_size, dtype=np.int32),
+            )
+
+        def extract_prepared_batch(self, images):
+            self.batches.append([tuple(image.processed_size) for image in images])
+            return [self._feature(image) for image in images]
+
+        def extract_prepared(self, image):
+            return self._feature(image)
+
+    def _run(self, root, cache, workers):
+        backend = self.Backend()
+        with redirect_stderr(io.StringIO()):
+            features = vismatch_module._extract_split_features(
+                self.Dataset(sorted(p.name for p in root.glob("*.png"))),
+                "query",
+                backend,
+                torch.device("cpu"),
+                top_k=8,
+                resize_max=64,
+                cache_dir=cache,
+                dataset_root=root,
+                no_background=False,
+                mask_col="mask",
+                path_col="path",
+                cfg_tag="io-workers",
+                batch_mode="batched",
+                extract_batch_size=3,
+                oom_backoff=True,
+                io_workers=workers,
+            )
+        return features, backend
+
+    def test_io_workers_do_not_change_features_batches_or_cache(self):
+        from PIL import Image
+
+        rng = np.random.default_rng(0)
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "images"
+            root.mkdir()
+            for index in range(11):
+                size = (24, 16) if index % 3 else (16, 24)  # two shape buckets
+                Image.fromarray(rng.integers(0, 255, (*size, 3), dtype=np.uint8)).save(root / f"{index:02d}.png")
+            runs = {}
+            for workers in (0, 4):
+                cache = Path(temp_dir) / f"cache-{workers}"
+                runs[workers] = self._run(root, cache, workers) + (cache,)
+            (f0, b0, c0), (f4, b4, c4) = runs[0], runs[4]
+            self.assertEqual(b0.batches, b4.batches)
+            self.assertEqual(len(f0), 11)
+            for a, b in zip(f0, f4):
+                np.testing.assert_array_equal(a.keypoints, b.keypoints)
+                np.testing.assert_array_equal(a.descriptors, b.descriptors)
+            names0 = sorted(p.name for p in c0.rglob("*.npz"))
+            self.assertEqual(names0, sorted(p.name for p in c4.rglob("*.npz")))
+            self.assertEqual(len(names0), 11)
+            self.assertFalse([p for p in c4.rglob("*") if ".tmp" in p.name])
+            for name in names0:
+                a = np.load(next(c0.rglob(name)))
+                b = np.load(next(c4.rglob(name)))
+                for key in a.files:
+                    np.testing.assert_array_equal(a[key], b[key])
+            self.assertEqual(b4.batch_diagnostics["feature_cache_misses"], 11)
+            warm, warm_backend = self._run(root, c4, 4)
+            self.assertEqual(warm_backend.batch_diagnostics["feature_cache_hits"], 11)
+            self.assertEqual(warm_backend.batches, [])
+            for a, b in zip(f0, warm):
+                np.testing.assert_array_equal(a.keypoints, b.keypoints)
+
+    def test_ordered_prefetch_keeps_order_and_bounds_the_window(self):
+        import threading
+        import time
+
+        in_flight, peak, lock = [0], [0], threading.Lock()
+
+        def fetch(index):
+            with lock:
+                in_flight[0] += 1
+                peak[0] = max(peak[0], in_flight[0])
+            time.sleep(0.002 * (index % 3))
+            with lock:
+                in_flight[0] -= 1
+            return index * 10
+
+        out = list(vismatch_module._ordered_prefetch(20, fetch, workers=4, window=5))
+        self.assertEqual(out, [(i, i * 10) for i in range(20)])
+        self.assertLessEqual(peak[0], 5)
+        self.assertEqual(
+            list(vismatch_module._ordered_prefetch(3, fetch, workers=0, window=5)), [(0, 0), (1, 10), (2, 20)]
+        )

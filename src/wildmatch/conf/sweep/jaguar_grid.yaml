@@ -1,0 +1,15 @@
+# JaguarReID split_v2, the rest of the candidate-budget grid with default weights (research use
+# authorized by the competition's authors, 2026-10-07): k = 50, 100, 250, 500, 1000 (k = 10 ran in
+# `jaguar_default`, 2026-10-04) and the frozen class-weighted linear probe, the paper's classifier
+# baseline (runs once, at the first budget). No efficient probe: it needs ViT patch tokens and
+# MegaDescriptor-L is a Swin model. No fine-tuned rows: no Jaguar matchers are trained.
+description: JaguarReID default-weight grid and linear probe
+datasets: [jaguar]
+candidate_k: [50, 100, 250, 500, 1000]
+max_concurrent: 12
+variants:
+  - {method: cosine}
+  - {method: wildfusion}
+  - {method: vismatch, matcher: loma}
+  - {method: vismatch, matcher: rdd-lightglue}
+  - {method: linear_probe, train_mode: classifier, class_weighting: weighted}

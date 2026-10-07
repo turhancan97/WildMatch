@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: The AnimalCLEF2025 permission's conditions recorded (follow-up email from the organisers):
+  a small portion (about 10 images), non-commercial, used to show results on the competition data. The
+  page shows 9. AGENTS.md (no further Salamander photos without asking again), THIRD_PARTY_LICENSES.md
+  and the `salamander` registry licence note.
 - 2026-10-07: Project page deployed (user request; the user made the repository public). Live at
   https://turhancan97.github.io/WildMatch/ via `mkdocs gh-deploy` to `gh-pages` (GitHub Pages enabled
   automatically). `wildmatch.gmum.net` has no DNS record yet, so the deploy uses the new

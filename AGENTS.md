@@ -1157,7 +1157,8 @@ reproduction live under "Known issues" instead.
   fine) but forbids publishing the data outside the competition (section 4b), so the Salamander photos
   on the page needed the organisers' written permission: granted by email on 2026-10-07 (the
   AnimalCLEF2025 organisers have no objection to showing some photos in the repository or on the
-  project page; the user keeps the email). The JaguarReID authorization was granted the same day
+  project page; a follow-up from Lukas the same day sets the conditions: a small portion (about 10 images), non-commercial, used to show results on the competition data; the user keeps
+  both emails). Do not add Salamander photos beyond the current 9 without asking them again. The JaguarReID authorization was granted the same day
   (see "JaguarReID").
 
 
@@ -1399,7 +1400,7 @@ Binding rules from that history:
   evaluate command was checked by loading its splits (HyenaID2022, 1/4: 625 gallery, 630 queries).
   `slurm/mining/fewshot/` stays reference only.
 - [x] Permission for the Salamander photos (granted by email 2026-10-07 by the AnimalCLEF2025
-  organisers, University of West Bohemia; requested because competition rule 4b forbids publishing
+  organisers, University of West Bohemia, on condition of a small portion (about 10 images), non-commercial, used to show results on the competition data; requested because competition rule 4b forbids publishing
   the data outside the competition). The page shows 9 SalamanderID2025 photos in 15 files: 7 on Data
   challenges (`datasets/challenges/salamander_*.jpg`) and one query/gallery pair in `match/`,
   `demo/before_after/` and `demo/masking/` (raw and SAM 3 masked).

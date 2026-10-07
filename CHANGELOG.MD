@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: Project page deployed (user request; the user made the repository public). Live at
+  https://turhancan97.github.io/WildMatch/ via `mkdocs gh-deploy` to `gh-pages` (GitHub Pages enabled
+  automatically). `wildmatch.gmum.net` has no DNS record yet, so the deploy uses the new
+  `mkdocs.githubio.yml` (inherits `mkdocs.yml`, github.io `site_url`, no `CNAME`, which would redirect
+  to the unresolved domain). Checked live: home, paper, results, demo, datasets, method and reproduce
+  return 200 and render; the only failed request is the theme's GitHub widget asking for a release
+  (none exists). `og:image`/`twitter:image` are now absolute URLs from `site_url` (relative ones break
+  link previews), plus `og:url`. AGENTS.md: the "public since" decision and the checklist updated.
 - 2026-10-07: Permissions recorded. The AnimalCLEF2025 organisers (University of West Bohemia)
   answered the request (drafted from competition rule 4b, which forbids publishing the data outside
   the competition) by email: no objection to showing some photos in the repository or on the project

@@ -8,13 +8,16 @@
   <meta property="og:site_name" content="{{ config.site_name }}">
   <meta property="og:title" content="{{ page_title }} · {{ config.site_name }}">
   <meta property="og:description" content="{{ config.site_description }}">
-  <meta property="og:image" content="{{ 'assets/logo/wildmatch-social.png' | url }}">
+  {# Link previews need an absolute image URL; site_url is set for every build (mkdocs.yml). #}
+  {% set social_image = (config.site_url or '') ~ 'assets/logo/wildmatch-social.png' %}
+  <meta property="og:url" content="{{ page.canonical_url if page and page.canonical_url else config.site_url }}">
+  <meta property="og:image" content="{{ social_image }}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ page_title }} · {{ config.site_name }}">
   <meta name="twitter:description" content="{{ config.site_description }}">
-  <meta name="twitter:image" content="{{ 'assets/logo/wildmatch-social.png' | url }}">
+  <meta name="twitter:image" content="{{ social_image }}">
   {# Light and dark favicons follow the visitor's OS/browser theme (Safari ignores media). #}
   <link rel="icon" type="image/png" sizes="32x32" href="{{ 'assets/logo/favicon-32.png' | url }}" media="(prefers-color-scheme: light)">
   <link rel="icon" type="image/png" sizes="192x192" href="{{ 'assets/logo/favicon-192.png' | url }}" media="(prefers-color-scheme: light)">

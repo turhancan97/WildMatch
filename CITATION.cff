@@ -6,7 +6,7 @@ version: 0.1.0
 date-released: 2026-10-07
 license: Apache-2.0
 repository-code: "https://github.com/turhancan97/WildMatch"
-url: "https://turhancan97.github.io/WildMatch/"
+url: "https://wildmatch.gmum.net/"
 keywords:
   - wildlife re-identification
   - image matching

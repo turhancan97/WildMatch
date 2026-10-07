@@ -1188,6 +1188,17 @@ the project page and carries the BibTeX (Hub commit `ad3c6491`, 2026-10-07, lice
 Open: DNS for wildmatch.gmum.net (the user asks the GMUM admin), the YouTube description's
 "to follow" line (user), Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
 
+**Public since 2026-10-07 (user decision; supersedes the deploy and visibility parts of the embargo
+below).** The user made the GitHub repository public and asked for the deploy: the page is live at
+`https://turhancan97.github.io/WildMatch/` (branch `gh-pages`, GitHub Pages from `gh-pages` `/`,
+enabled automatically on the first push). Because `wildmatch.gmum.net` has no DNS record yet, it is
+deployed with `mkdocs gh-deploy --strict -f mkdocs.githubio.yml` (inherits `mkdocs.yml`; github.io
+`site_url`, no `CNAME`). Once the GMUM admin points the domain at GitHub Pages, deploy with
+`mkdocs.yml` (keeps `docs/CNAME`) and delete `mkdocs.githubio.yml`. Link previews use an absolute
+`og:image` built from `site_url`. The only 404 on the live site is the theme's GitHub widget asking
+for a release (none exists). Still binding: never name the venue or the review status until the
+authors announce acceptance; the explainer video's visibility is the user's call (the page embeds it).
+
 **Embargo (binding until the ECIR 2027 notification, 2026-12-07).** The manuscript
 ("WildMatch: Weakly Supervised Image Matcher Adaptation for Wildlife Re-Identification",
 submitted to ECIR 2027, under review) is double-blind. On 2026-10-03 the user made this
@@ -1392,8 +1403,10 @@ Binding rules from that history:
   the data outside the competition). The page shows 9 SalamanderID2025 photos in 15 files: 7 on Data
   challenges (`datasets/challenges/salamander_*.jpg`) and one query/gallery pair in `match/`,
   `demo/before_after/` and `demo/masking/` (raw and SAM 3 masked).
-- [ ] After the notification date only: make the repository public (or deploy from it),
-  run `mkdocs gh-deploy` (user), and verify the social card and favicon on the live URL.
+- [x] Make the repository public and deploy (done 2026-10-07 at the user's request, earlier than
+  the notification date; github.io until the DNS exists, see "Public since 2026-10-07"). Favicon and
+  social image return 200 on the live URL; the social image URL is absolute since the same day.
+- [ ] Switch the deploy to `wildmatch.gmum.net` once its DNS exists (deploy with `mkdocs.yml`).
 
 
 ## Vismatch matcher policy

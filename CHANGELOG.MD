@@ -31,6 +31,10 @@ kept under Unreleased until a project version is assigned.
   metrics; see the next entry),
   Leopard -2.0 to -6.3 from k = 50 on. Details in AGENTS.md ("Fine-tuned matcher objective"). The
   CzechLynx closed descriptor retrain (job 527423) is queued.
+- 2026-10-07: The Hugging Face checkpoint repository `turhancan97/wildmatch-checkpoints` is public (user
+  request). An anonymous `wildmatch weights download --dataset salamander` (no token) fetched both files
+  and passed the SHA-256 check. README troubleshooting, `guides/INSTALLATION.md`, the `conf/weights.yaml`
+  comment and AGENTS.md no longer say a token is needed.
 - 2026-10-07: The explainer video is public on YouTube (user decision; checked: not unlisted, not
   private; its description links the project page and the arXiv preprint). The README's YouTube Video
   link and a NEWS entry point at it; AGENTS.md and the explainer sources no longer say it stays unlisted.

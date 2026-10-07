@@ -63,7 +63,7 @@ prepared separately with `wildmatch prepare`; see [DATASET.md](DATASET.md).
 
 ```bash
 wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
-wildmatch weights download --dataset salamander   # from turhancan97/wildmatch-checkpoints (private for now: HF_TOKEN)
+wildmatch weights download --dataset salamander   # from turhancan97/wildmatch-checkpoints (public; no token needed)
 wildmatch weights verify
 ```
 

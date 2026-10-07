@@ -521,9 +521,19 @@ def _is_live_pseudo_batch(batch) -> bool:
     cached features *also* returns a list — [query_batch, cand_batch,
     idx_batch] — so `isinstance(batch, list)` alone misroutes every cached
     batch into the live path (the 2026-09-27 regression that crashed cached
-    matcher runs at their first evaluation). Only the live batch holds tuples.
+    matcher runs at their first evaluation). Only the live batch holds per-sample
+    sequences; a cached batch starts with a feature dict. Pinned-memory loading
+    (`pin_memory=True`, as in training) turns each sample tuple into a list, so a
+    list counts too: with only tuples, every live descriptor/joint run crashed at
+    its first evaluation ("expected 3, got 1", found 2026-10-07).
     """
-    return isinstance(batch, list) and bool(batch) and isinstance(batch[0], tuple)
+    return (
+        isinstance(batch, list)
+        and bool(batch)
+        and isinstance(batch[0], (tuple, list))
+        and len(batch[0]) == 3
+        and not isinstance(batch[0][0], dict)
+    )
 
 
 def _score_live_pseudo_batch(

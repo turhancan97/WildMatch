@@ -412,6 +412,10 @@ def test_pseudo_eval_routes_cached_batches_to_the_vectorized_path():
     assert not _is_live_pseudo_batch(cached_batch)
     assert _is_live_pseudo_batch(collate_pseudo_accuracy_images([live_sample, live_sample]))
     assert not _is_live_pseudo_batch([])
+    # pin_memory=True (training) hands each live sample over as a list, not a tuple.
+    pinned_live = [list(live_sample)]
+    assert _is_live_pseudo_batch(collate_pseudo_accuracy_images(pinned_live))
+    assert not _is_live_pseudo_batch([list(cached_sample)])  # starts with a feature dict
 
 
 # ── checkpoint retention (--keep_every) ───────────────────────────────────────

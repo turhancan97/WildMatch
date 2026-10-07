@@ -67,6 +67,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   JSON, part of the checkpoint fingerprint, is left unchanged.
   Live-image evaluation (descriptor and joint components) needed a fix on 2026-10-07: pinned loading
   hands samples over as lists, which `_is_live_pseudo_batch` now accepts (job 526000 had crashed).
+  Multi-GPU RDD training with RDD unfrozen (descriptor, joint, `rdd`, `lg+rdd`) runs DDP with
+  `broadcast_buffers=False` (`ddp_kwargs`, 2026-10-07): several descriptor forwards precede one backward,
+  and re-broadcasting BatchNorm buffers between them failed backward (job 527031; a 2-GPU smoke on 64
+  pairs failed before and trained a full epoch after). Each rank keeps its own BatchNorm statistics;
+  rank 0 saves. Matcher-only runs are unchanged.
   `tests/matcher_finetune/test_launch.py` checks it against `czechlynx_protocol.sh` and, on the
   cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
   4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers

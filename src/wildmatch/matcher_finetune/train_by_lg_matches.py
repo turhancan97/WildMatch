@@ -2658,6 +2658,20 @@ def read_resume_state(resume_dir: Path, identity: dict) -> dict:
     return state
 
 
+def ddp_kwargs(train_rdd: bool) -> DistributedDataParallelKwargs:
+    """DDP settings of the RDD-LightGlue trainer.
+
+    find_unused_parameters=True: see run_training_lg. broadcast_buffers=False when RDD itself trains
+    (descriptor, joint, rdd, lg+rdd): one step runs the descriptor forward several times (anchor,
+    positive, negatives) before a single backward, and DDP's default re-broadcast of the BatchNorm
+    buffers before every forward modifies tensors the pending backward still needs ("modified by an
+    inplace operation" in NativeBatchNormBackward0, job 527031, 2026-10-07). Each rank then keeps its
+    own BatchNorm running statistics and the saved model is rank 0's. Matcher-only runs (frozen RDD in
+    eval mode, the published checkpoints) keep the former default.
+    """
+    return DistributedDataParallelKwargs(find_unused_parameters=True, broadcast_buffers=not train_rdd)
+
+
 # ── full training run ─────────────────────────────────────────────────────────
 def run_training_lg(args: argparse.Namespace) -> None:
     seed_all(args.seed)
@@ -2686,7 +2700,7 @@ def run_training_lg(args: argparse.Namespace) -> None:
     accelerator = Accelerator(
         split_batches=False,
         log_with="wandb" if args.project else None,
-        kwargs_handlers=[DistributedDataParallelKwargs(find_unused_parameters=True)],
+        kwargs_handlers=[ddp_kwargs(train_rdd)],
     )
     device = accelerator.device
 

@@ -50,7 +50,14 @@ from wildmatch.train.checkpointing import resolve_configured_model_checkpoint, r
 from wildmatch.train.class_weights import compute_identity_class_weights
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
 from wildmatch.utils.fingerprints import file_digest_cache, mask_digest, model_fingerprint, sha256_file
-from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file
+from wildmatch.utils.io import (
+    append_csv_row,
+    atomic_torch_save,
+    atomic_write,
+    ensure_dir,
+    ensure_file,
+    prune_epoch_files,
+)
 from wildmatch.utils.repro import set_reproducible
 
 
@@ -467,10 +474,11 @@ class FeatureCache:
         return self._normalize_features(loaded)
 
     def _save(self, path: Path, data: np.ndarray) -> None:
+        # Parallel sweep tasks may read a cache file while another writes it: never a partial file.
         if self.fmt == "pt":
-            torch.save(torch.from_numpy(data), path)
+            atomic_torch_save(torch.from_numpy(data), path)
         else:
-            np.savez_compressed(path, features=data)
+            atomic_write(path, lambda temporary: np.savez_compressed(temporary, features=data))
 
     def _to_numpy(self, value: Any) -> np.ndarray:
         if isinstance(value, np.ndarray):
@@ -1433,7 +1441,7 @@ def run_linear_probe(
         if bool(lp_cfg.save_checkpoint) and ((epoch + 1) % int(lp_cfg.save_every) == 0):
             run_dir.mkdir(parents=True, exist_ok=True)
             ckpt_path = run_dir / f"linear_probe_epoch_{epoch + 1}.pth"
-            torch.save(
+            atomic_torch_save(
                 {
                     "model": model.state_dict(),
                     "objective": objective.state_dict(),
@@ -1443,6 +1451,9 @@ def run_linear_probe(
                     "label_to_index": label_to_index,
                 },
                 ckpt_path,
+            )
+            prune_epoch_files(
+                run_dir, r"linear_probe_epoch_(\d+)\.pth", getattr(lp_cfg, "keep_last_epoch_checkpoints", None)
             )
 
     timings["linear_probe_train_sec"] = time.perf_counter() - t_train
@@ -1490,7 +1501,7 @@ def run_linear_probe(
     if bool(lp_cfg.save_checkpoint):
         run_dir.mkdir(parents=True, exist_ok=True)
         final_path = run_dir / str(lp_cfg.final_checkpoint_name)
-        torch.save(
+        atomic_torch_save(
             {
                 "model": model.state_dict(),
                 "objective": objective.state_dict(),
@@ -1720,7 +1731,7 @@ def run_efficient_probe(
         if bool(ep_cfg.save_checkpoint) and ((epoch + 1) % int(ep_cfg.save_every) == 0):
             run_dir.mkdir(parents=True, exist_ok=True)
             ckpt_path = run_dir / f"efficient_probe_epoch_{epoch + 1}.pth"
-            torch.save(
+            atomic_torch_save(
                 {
                     "model": model.state_dict(),
                     "objective": objective.state_dict(),
@@ -1730,6 +1741,9 @@ def run_efficient_probe(
                     "label_to_index": label_to_index,
                 },
                 ckpt_path,
+            )
+            prune_epoch_files(
+                run_dir, r"efficient_probe_epoch_(\d+)\.pth", getattr(ep_cfg, "keep_last_epoch_checkpoints", None)
             )
 
     timings["efficient_probe_train_sec"] = time.perf_counter() - t_train
@@ -1804,7 +1818,7 @@ def run_efficient_probe(
     if bool(ep_cfg.save_checkpoint):
         run_dir.mkdir(parents=True, exist_ok=True)
         final_path = run_dir / str(ep_cfg.final_checkpoint_name)
-        torch.save(
+        atomic_torch_save(
             {
                 "model": model.state_dict(),
                 "objective": objective.state_dict(),

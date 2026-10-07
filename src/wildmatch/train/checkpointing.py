@@ -3,6 +3,8 @@ from typing import Any, Optional
 
 import torch
 
+from wildmatch.utils.io import atomic_torch_save
+
 
 def resolve_configured_model_checkpoint(
     explicit_path: Optional[Path],
@@ -33,8 +35,8 @@ def _is_full_checkpoint_name(filename: str) -> bool:
 def resolve_model_checkpoint(results_dir: Path, filename: str = "checkpoint-final.pth") -> Path:
     """Find a model-only checkpoint, preferring completed modern runs.
 
-    Modern experiment runs may be nested several levels below the search root;
-    legacy one-level result directories remain supported.
+    Modern experiment runs may be nested several levels below the search root; legacy result
+    directories without a manifest count as completed at any depth.
     """
     results_dir = Path(results_dir)
     if not results_dir.is_dir():
@@ -65,8 +67,10 @@ def resolve_model_checkpoint(results_dir: Path, filename: str = "checkpoint-fina
                 completed = False
             if not completed:
                 continue
-        elif candidate.parent.parent == results_dir:
-            # Historical result directories have no manifest and are still valid.
+        else:
+            # Historical result directories have no manifest and are still valid, at any depth:
+            # the legacy layout is results/<dataset>/<animal>/mask_<..>/run_<..>/. Modern runs
+            # always write run_manifest.json (status "running" first), so they never land here.
             completed = True
         candidates.append(
             (
@@ -104,7 +108,7 @@ def save_full_checkpoint(
         state["scheduler"] = scheduler.state_dict()
     if scaler is not None:
         state["scaler"] = scaler.state_dict()
-    torch.save(state, path)
+    atomic_torch_save(state, path)
 
 
 def validate_resume_epochs(start_epoch: int, total_epochs: int, resume_path: Any) -> None:

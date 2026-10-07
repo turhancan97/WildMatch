@@ -70,6 +70,7 @@ benchmark:
       resume_checkpoint: null
       save_checkpoint: false
       save_every: 1
+      keep_last_epoch_checkpoints: null  # null keeps every *_epoch_<n>.pth; N keeps the newest N
       final_checkpoint_name: "linear_probe_final.pth"
       partial_rules:
         default: ["layers.3", "norm"]
@@ -106,6 +107,7 @@ benchmark:
       resume_checkpoint: null
       save_checkpoint: false
       save_every: 1
+      keep_last_epoch_checkpoints: null  # null keeps every *_epoch_<n>.pth; N keeps the newest N
       final_checkpoint_name: "efficient_probe_final.pth"
       partial_rules:
         default: ["layers.3", "norm"]

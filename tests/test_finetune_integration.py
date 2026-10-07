@@ -84,6 +84,16 @@ class FinetuneIntegrationTest(unittest.TestCase):
             for name in ("checkpoint-final.pth", "checkpoint-final-full.pth", "checkpoint-epoch-2.pth"):
                 self.assertTrue((run_dir / name).is_file(), name)
 
+    def test_epoch_checkpoint_retention_and_no_temporary_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = run_finetune(Path(tmp), ["output.keep_last_epoch_checkpoints=1"])
+            names = {path.name for path in run_dir.iterdir()}
+            self.assertNotIn("checkpoint-epoch-1.pth", names)
+            self.assertIn("checkpoint-epoch-2.pth", names)
+            for name in ("checkpoint-final.pth", "checkpoint-latest-full.pth", "checkpoint-best.pth"):
+                self.assertIn(name, names)
+            self.assertFalse([name for name in names if name.startswith(".")], names)
+
     def test_best_on_test_is_labelled(self):
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = run_finetune(Path(tmp), ["output.selection=best_on_test"])

@@ -113,6 +113,35 @@ class ConfigurationTests(unittest.TestCase):
 
 @unittest.skipUnless(HAS_CHECKPOINT_DEPS, "checkpoint dependencies not available")
 class CheckpointResolutionTests(unittest.TestCase):
+    def test_nested_legacy_checkpoint_without_manifest_counts_as_completed(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            legacy = root / "CzechLynx_v2" / "CzechLynx" / "mask_True" / "run_20260801"
+            legacy.mkdir(parents=True)
+            checkpoint = legacy / "checkpoint-final.pth"
+            checkpoint.touch()
+            # A newer tagged file in a failed modern run must not win over the legacy run.
+            failed = root / "failed-run"
+            failed.mkdir()
+            (failed / "checkpoint-final_x.pth").touch()
+            (failed / "run_manifest.json").write_text('{"status": "failed"}')
+            self.assertEqual(resolve_model_checkpoint(root), checkpoint)
+
+    def test_nested_legacy_run_is_ranked_like_a_one_level_legacy_run(self):
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            nested = root / "ds" / "animal" / "mask_False" / "run_1" / "checkpoint-final.pth"
+            nested.parent.mkdir(parents=True)
+            nested.touch()
+            one_level = root / "run_2" / "checkpoint-final_ds.pth"
+            one_level.parent.mkdir()
+            one_level.touch()
+            os.utime(nested, (1, 1))
+            os.utime(one_level, (2, 2))
+            # Before 2026-10-06 only the one-level run counted as completed, so its newer tagged file
+            # won over the nested canonical one; both are completed legacy runs now.
+            self.assertEqual(resolve_model_checkpoint(root), nested)
+
     def test_canonical_checkpoint_is_preferred_in_newest_run(self):
         with TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -337,3 +366,72 @@ class VismatchProfileTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AtomicWriteTests(unittest.TestCase):
+    def test_atomic_torch_save_matches_direct_save_and_leaves_no_temporary(self):
+        import hashlib
+
+        import torch
+
+        from wildmatch.utils.io import atomic_torch_save
+
+        with TemporaryDirectory() as temp_dir:
+            folder = Path(temp_dir)
+            state = {"weight": torch.arange(6.0)}
+            (folder / "direct").mkdir()
+            torch.save(state, folder / "direct" / "model.pth")
+            atomic_torch_save(state, folder / "model.pth")
+
+            def digest(path):
+                return hashlib.sha256(path.read_bytes()).hexdigest()
+
+            # torch.save stores the file name in its archive: same name, same bytes.
+            self.assertEqual(digest(folder / "model.pth"), digest(folder / "direct" / "model.pth"))
+            self.assertEqual(sorted(p.name for p in folder.iterdir()), ["direct", "model.pth"])
+
+    def test_failed_write_keeps_the_old_file(self):
+        from wildmatch.utils.io import atomic_write
+
+        with TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir) / "checkpoint-latest-full.pth"
+            target.write_bytes(b"old")
+
+            def broken(temporary):
+                temporary.write_bytes(b"partial")
+                raise RuntimeError("disk full")
+
+            with self.assertRaises(RuntimeError):
+                atomic_write(target, broken)
+            self.assertEqual(target.read_bytes(), b"old")
+            self.assertEqual([p.name for p in Path(temp_dir).iterdir()], ["checkpoint-latest-full.pth"])
+
+    def test_prune_keeps_newest_epochs_and_never_other_checkpoints(self):
+        from wildmatch.utils.io import prune_epoch_files
+
+        with TemporaryDirectory() as temp_dir:
+            folder = Path(temp_dir)
+            names = [f"checkpoint-epoch-{n}{tag}.pth" for n in (5, 10, 15, 20) for tag in ("", "_lynx")]
+            names += ["checkpoint-final.pth", "checkpoint-best.pth", "checkpoint-latest-full.pth"]
+            for name in names:
+                (folder / name).touch()
+            pattern = r"checkpoint-epoch-(\d+)(?:_.+)?\.pth"
+            self.assertEqual(prune_epoch_files(folder, pattern, None), [])
+            removed = prune_epoch_files(folder, pattern, 2)
+            self.assertEqual(len(removed), 4)
+            self.assertEqual(
+                sorted(p.name for p in folder.iterdir()),
+                sorted(
+                    [
+                        "checkpoint-best.pth",
+                        "checkpoint-epoch-15.pth",
+                        "checkpoint-epoch-15_lynx.pth",
+                        "checkpoint-epoch-20.pth",
+                        "checkpoint-epoch-20_lynx.pth",
+                        "checkpoint-final.pth",
+                        "checkpoint-latest-full.pth",
+                    ]
+                ),
+            )
+            with self.assertRaises(ValueError):
+                prune_epoch_files(folder, pattern, 0)

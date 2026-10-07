@@ -742,6 +742,16 @@ Canonical finetune outputs are:
 - checkpoint-best-full.pth
 - checkpoint-epoch-<n>.pth
 
+Every checkpoint is written atomically (branch `fix/checkpoint-writes`, 2026-10-06):
+`wildmatch.utils.io.atomic_torch_save` saves under the target's own name inside a hidden temporary
+folder next to it and renames it into place, so a crash keeps the previous file (the per-epoch
+`checkpoint-latest-full.pth` was the only resume point) and the bytes, hence SHA-256s, equal a
+direct `torch.save` (which stores the file name in its archive). The same applies to the probe
+checkpoints, the standard feature cache files and the first write of the legacy CSVs.
+`output.keep_last_epoch_checkpoints` (finetune) and `benchmark.methods.*.keep_last_epoch_checkpoints`
+(probes) keep only the newest N epoch checkpoints; default `null` keeps all, and final, best and
+latest files are never pruned.
+
 Tagged model-only files such as checkpoint-final_<dataset_tag>.pth remain readable
 for compatibility with historical runs. Explicit checkpoint paths take precedence;
 automatic probe discovery searches the newest run for canonical model-only
@@ -1097,8 +1107,6 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Make legacy checkpoint discovery recursive for the existing nested no-manifest
-  `results/<dataset>/<animal>/mask_<...>/run_<...>` layout.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Profile and optimize cached Vismatch feature extraction/reranking costs.
 - [ ] Run the private Lynx golden-subset parity comparison for RDD-LightGlue before changing
@@ -1118,7 +1126,6 @@ reproduction live under "Known issues" instead.
   fine) but forbids publishing the data outside the competition, so the Salamander photos on the page
   need the sponsor's written permission (publication checklist). Still open: the JaguarReID
   authorization (see "JaguarReID").
-- [ ] Consider atomic checkpoint writes and explicit checkpoint retention.
 - [ ] Reconcile historical experiment metadata and stale generated CSV schemas.
 
 
@@ -1481,7 +1488,9 @@ applied at load time.
 - Automatic inference checkpoint discovery searches recursively under modern finetune
   experiments, ignores failed/incomplete manifests and `*-full.pth`, prefers completed
   canonical model-only files, then tagged legacy files, and preserves explicit-path priority.
-  Nested legacy runs without manifests are not yet discovered (see "Future-work checklist").
+  Legacy runs without a manifest count as completed at any depth (2026-10-06; before, only one
+  level below the root, so the nested `results/<dataset>/<animal>/mask_<..>/run_<..>/` layout ranked
+  as incomplete).
 - Finetune resume fails closed when the checkpoint leaves no epochs to run
   (`start_epoch >= train.epochs`). A zero-epoch run would still write final checkpoints and
   a completed manifest, hiding an unraised `train.epochs`; the guard runs before training

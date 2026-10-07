@@ -7,6 +7,17 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: Atomic checkpoint writes, optional retention, nested legacy discovery (two future-work
+  items closed; user decision: keep all by default). `atomic_write`/`atomic_torch_save` in
+  `wildmatch.utils.io` write under the target's own name in a hidden temporary folder and rename it
+  into place; `torch.save` stores the file name in its archive, so the bytes and SHA-256 equal a
+  direct save (tested). Used for every fine-tuning and probe checkpoint (`save_full_checkpoint`
+  included), the standard feature cache files (`.pt` and `.npz`) and the first write of a legacy
+  CSV. `keep_last_epoch_checkpoints` (`output.` for fine-tuning, `benchmark.methods.*.` for the
+  probes; default `null` = keep all) prunes older epoch checkpoints, never final, best or latest.
+  `resolve_model_checkpoint` counts manifest-less legacy runs as completed at any depth, so the
+  nested `results/<dataset>/<animal>/mask_<..>/run_<..>/` layout ranks like one-level legacy runs
+  (new test fails on the old code).
 - 2026-10-06: Opt-in disjoint calibration for WildFusion and Local LightGlue (future-work item
   closed; user decision: default kept). `benchmark.calibration.mode: same_set | disjoint` and
   `seed`. `disjoint` builds two image sets sharing identities but no image (two images of one

@@ -37,7 +37,14 @@ from wildmatch.train.checkpointing import (
 from wildmatch.train.results import build_final_training_metrics, resolve_selection
 from wildmatch.utils.cache_identity import build_dataset_cache_identity
 from wildmatch.utils.fingerprints import file_digest_cache
-from wildmatch.utils.io import append_csv_row, ensure_dir, ensure_file, update_csv_rows
+from wildmatch.utils.io import (
+    append_csv_row,
+    atomic_torch_save,
+    ensure_dir,
+    ensure_file,
+    prune_epoch_files,
+    update_csv_rows,
+)
 from wildmatch.utils.repro import set_reproducible
 
 
@@ -353,8 +360,8 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
         if metric_value > best_metric_value and bool(cfg.output.save_best):
             best_metric_value = metric_value
             best_epoch = epoch + 1
-            torch.save(model.state_dict(), output_folder / "checkpoint-best.pth")
-            torch.save(model.state_dict(), output_folder / f"checkpoint-best_{dataset_tag}.pth")
+            atomic_torch_save(model.state_dict(), output_folder / "checkpoint-best.pth")
+            atomic_torch_save(model.state_dict(), output_folder / f"checkpoint-best_{dataset_tag}.pth")
             save_full_checkpoint(
                 output_folder / "checkpoint-best-full.pth",
                 model,
@@ -375,8 +382,13 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
             )
 
         if (epoch + 1) % int(cfg.output.save_every) == 0:
-            torch.save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch + 1}.pth")
-            torch.save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch + 1}_{dataset_tag}.pth")
+            atomic_torch_save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch + 1}.pth")
+            atomic_torch_save(model.state_dict(), output_folder / f"checkpoint-epoch-{epoch + 1}_{dataset_tag}.pth")
+            prune_epoch_files(
+                output_folder,
+                r"checkpoint-epoch-(\d+)(?:_.+)?\.pth",
+                getattr(cfg.output, "keep_last_epoch_checkpoints", None),
+            )
         save_full_checkpoint(
             output_folder / "checkpoint-latest-full.pth",
             model,
@@ -436,8 +448,8 @@ def _run_finetune(cfg: DictConfig, context: Any) -> None:
             metrics_str = " ".join([f"{k}={metrics[k]:.6f}" for k in metrics])
             print(f"Epoch {epoch + 1}: train_loss={row.get('train_loss_epoch_avg', float('nan')):.6f} {metrics_str}")
 
-    torch.save(model.state_dict(), output_folder / "checkpoint-final.pth")
-    torch.save(model.state_dict(), output_folder / f"checkpoint-final_{dataset_tag}.pth")
+    atomic_torch_save(model.state_dict(), output_folder / "checkpoint-final.pth")
+    atomic_torch_save(model.state_dict(), output_folder / f"checkpoint-final_{dataset_tag}.pth")
     save_full_checkpoint(
         output_folder / "checkpoint-final-full.pth",
         model,

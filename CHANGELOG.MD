@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-06: Vismatch cost profile (future-work item narrowed to optimisation; user decision:
+  instrument and profile, no optimisation). The timing fields were already complete: every Vismatch
+  run keeps extraction compute, cache hits, misses and lookup time, matching time and batch sizes in
+  `timings.json`, the run index and the legacy CSV. New `paper/tools/profile_vismatch.py` reads them
+  for every completed Vismatch run. Over the cluster's 564 runs: matching takes a median 1.8 ms per
+  candidate pair (both matchers) and 73-85 % of a run; extraction takes 31-34 ms per image (LoMa) or
+  42-47 ms (RDD-LightGlue), on a cold cache only; a cache hit takes about 4.3 ms; setup takes about 6 s
+  (LoMa) or 1.3 s. These runs predate `vismatch_device`, so the figures mix GPU types.
 - 2026-10-06: Read-only metadata audit (future-work item closed; user decision: report, never
   rewrite). New `wildmatch audit-runs`: per provenance field, how many run manifests lack it (code
   identity, `vismatch_device`, primary timing, `model`, `split_protocol`, `git_commit`, schema

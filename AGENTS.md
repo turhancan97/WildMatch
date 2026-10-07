@@ -117,7 +117,8 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
   new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
-  `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`). Run them as `python paper/<group>/<script>.py`.
+  `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`;
+  `profile_vismatch.py`, the Vismatch cost breakdown read from completed runs' `timings.json`). Run them as `python paper/<group>/<script>.py`.
 - README.md and guides/: the README is short (2026-10-06, user decisions). Its header follows
   gmum/SpaRRTa (user request 2026-10-06): the logo (150 px, light/dark via `<picture>`) above the full paper title, badges, a links row (Project
   Page, Paper, arXiv and YouTube Video left empty until they are public; the Hub checkpoint repo),
@@ -1120,7 +1121,14 @@ Open items only; completed items are recorded in CHANGELOG.MD. Defects with a kn
 reproduction live under "Known issues" instead.
 
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
-- [ ] Profile and optimize cached Vismatch feature extraction/reranking costs.
+- [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
+  experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a
+  median 1.8 ms per candidate pair for both LoMa and RDD-LightGlue and takes 73-85 % of a run;
+  feature extraction 31-34 ms per image (LoMa) and 42-47 ms (RDD-LightGlue), paid only on a cold
+  cache; a cache hit costs 4.3-4.6 ms to load; model setup about 6 s (LoMa) and 1.3 s (RDD). These
+  runs mix GPU types (none records `vismatch_device`, which started 2026-10-05), so a per-GPU figure
+  needs new runs. Matching is the only cost worth optimising; any change must keep scores
+  bit-identical.
 - [ ] Run the private Lynx golden-subset parity comparison for RDD-LightGlue before changing
   matcher defaults. The 2026-08-12 full-split comparison agreed on 65 of 66 top-1
   predictions, not 100 %, so this gate is still open (details under "Vismatch matcher policy").

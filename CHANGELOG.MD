@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: `CITATION.cff` (user request): GitHub shows "Cite this repository" with the arXiv preprint
+  (DOI 10.48550/arXiv.2610.07384) as the preferred citation; software version 0.1.0, Apache-2.0, the
+  six authors (ORCIDs from the manuscript; none for Piotr Kubaty). Validated with `cffconvert`;
+  `tests/test_citation.py` keeps its version equal to `pyproject.toml`.
 - 2026-10-07: Google Analytics 4 on the project page (user request): `extra.analytics` in `mkdocs.yml`
   (provider `google`, Measurement ID `G-W9GXV5470E`), inherited by `mkdocs.githubio.yml`. No consent
   banner (user decision; Material's `extra.consent` adds one if needed).

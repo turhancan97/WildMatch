@@ -310,7 +310,9 @@ and `weights.yaml` are unchanged. Evaluated with the sweeps `rdd_relaxed` (array
 fine-tuned RDD-LightGlue rows, k = 10 / 50 / 100 / 250 / 500 / 1000: Zindi +3.5 / +10.8 / +12.8 / +14.4 /
 +13.2 / +12.9 (balanced Top-1 +4.5 to +15.7; the filtered checkpoint lost Top-1 as k grew, 71.6 -> 20.5,
 the retrained one still does, 75.2 -> 33.5), Whale shark +1.1 to +5.2 (gain grows with k), Hyena -0.8 to
-+0.2, Sea star -0.5 to +0.9, Salamander -0.9 to +0.9 up to k = 500 and -4.3 at k = 1000, Leopard +0.2 at
++0.2, Sea star -0.5 to +0.9, Salamander 0.0 / 0.0 / +1.2 / +2.0 / +1.2 / +1.6 against the paper runs' own
+`metrics.json` (the snapshot's Salamander fine-tuned RDD rows do not match their runs, see "Known issues";
+`compare_with_paper.py` reads the snapshot and shows -0.9 to -4.3 at k >= 500), Leopard +0.2 at
 k = 10 and then -2.0 / -2.2 / -3.0 / -4.8 / -6.3 (balanced Top-1 down to -8.3); CzechLynx unseen-identity
 (k = 10-160) Top-1 +0.3 to +1.5, balanced Top-1 -0.6 to -1.4. Whether the paper's RDD rows should move to
 the retrained checkpoints is open (authors). The CzechLynx closed descriptor retrain (job 527423, into
@@ -1133,6 +1135,19 @@ reproduction, and the measured impact so it can be picked up without re-investig
   paper's sea star numbers are lowered by 12 practically blank query images, not by a weaker method.
   differences of this size are acceptable. The remaining budgets (k = 10, 50, 100, 500, 1000) run
   with sweep `wildlife_sam3_grid` (150 tasks, user request 2026-10-04).
+
+- **The paper snapshot's SalamanderID2025 fine-tuned RDD-LightGlue rows do not match their runs
+  (found 2026-10-07).** In the paper repository's `results/SalamanderID2025_split_ablation.csv` (and
+  `_main.csv`), the six fine-tuned RDD-LightGlue rows (k = 10 to 1000, added in its commit `5492960`,
+  2026-09-30) carry values rounded to two digits that differ from the `metrics.json` of the run ids they
+  cite: Top-1 0.364 / 0.430 / 0.460 / 0.490 against 0.354 / 0.419 / 0.439 / 0.431 at k = 100 / 250 / 500 /
+  1000 (k = 10 and 50 agree after rounding); Top-5 and balanced Top-1 likewise (k = 250: 0.460 / 0.440
+  against 0.455 / 0.433). All other 29 Salamander rows and every HyenaID2022 row match their runs. These
+  values feed the paper's `tab_rdd.tex` (Salamander at k = 250: Top-5 43.9 -> 46.0, +2.1, and balanced Top-1
+  43.7 -> 44.0, +0.3; from the runs: 45.5, +1.6, and 43.3, -0.4) and the accuracy-versus-k figure, and the
+  project page's data, which is exported from the same snapshot. The paper text quotes none of them. The
+  paper is frozen and nothing was changed; reported to the user for the authors (a later arXiv version).
+  When comparing new Salamander RDD runs, read the paper runs' `metrics.json`, not the snapshot.
 
 - **Vismatch features depend on the GPU type and the cache key does not record it (found
   2026-10-04).** On SalamanderID2025 at k=50, features extracted on an H100 (`dgxh100`, cache

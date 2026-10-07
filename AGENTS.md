@@ -1735,8 +1735,16 @@ database/query, and land in `experiments/probe/JaguarReID/JaguarReID/split_v2/`.
 results (2026-10-04, k=10, shortlist ceiling 68.4 %): cosine 45.2 / 60.0 Top-1 / Top-5
 (balanced Top-1 41.5), WildFusion 60.4 / 65.3 (57.8), default LoMa 61.8 / 66.9 (58.9),
 default RDD-LightGlue 60.0 / 66.1 (56.4). Shortlist ceilings from cosine: 81.5 % at k=50,
-87.1 % at k=100, 91.8 % at k=250, 95.3 % at k=500, 100 % at k=1000. The full k grid and the
-linear probes have not been run yet. The registry entry `jaguar` (sweep `jaguar_default`) runs
+87.1 % at k=100, 91.8 % at k=250, 95.3 % at k=500, 100 % at k=1000. The rest of the grid ran on 2026-10-07 (sweep `jaguar_grid`, array 526001, 21 tasks, all completed;
+default weights, frozen MegaDescriptor-L candidates). Top-1 / Top-5 / balanced Top-1 in %: cosine
+45.2 / 60.0 / 41.5 (k-independent); frozen weighted linear probe 34.3 / 69.6 / 35.0; at k = 50, 250,
+1000: WildFusion 71.3 / 75.8 / 66.7, 81.3 / 84.8 / 78.1, 88.3 / 90.8 / 86.0; LoMa 73.7 / 76.8 / 66.7,
+83.4 / 87.5 / 77.8, 90.3 / 93.2 / 85.9; RDD-LightGlue 69.8 / 73.7 / 62.2, 80.1 / 82.5 / 73.5,
+88.7 / 90.1 / 83.1 (k = 100 and 500 in the run records). The gallery has 1,408 photos, so k = 1000
+covers about 70 % of it; k = 250 is the representative budget. No efficient probe (it needs ViT
+patch tokens; MegaDescriptor-L is Swin). One task (the linear probe, started 11:36:13) may record an
+uncommitted `vismatch.py` edit in its manifest (a work-in-progress branch was checked out at that
+moment); the probe does not use Vismatch extraction, so its numbers are unaffected. The registry entry `jaguar` (sweep `jaguar_default`) runs
 it; no fine-tuned matchers exist yet, so only default rows can run until `lynx-finetuning` gets a
 Jaguar config (shared recipe, both matchers on LoMa-mined pairs, checkpoints under
 `wildlife-reid-10k/JaguarReID/{loma,rdd}-finetuned/legacy-loma-mined/`, the paths the

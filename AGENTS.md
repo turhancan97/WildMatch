@@ -144,7 +144,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   Update it whenever `wildmatch prepare`, `sam3_masks.py` or a registry entry's data changes.
 - pyproject.toml, uv.lock: package metadata and the locked environment; requirements/*.txt:
   pip/conda pins exported from the lock by `requirements/export.sh`; environment.yml: conda route.
-- tests/: dependency-light regression tests (pytest).
+- tests/: dependency-light regression tests (pytest). `tests/test_probe_integration.py` runs
+  `wildmatch evaluate` end to end (cosine, linear probe) on the bundled demo images with the backbone
+  factory patched to a tiny CNN (CPU, no download, part of CI); reuse its `run_probe` helper to check
+  that a change keeps final metrics unchanged. `tests/test_conf_files.py` parses every packaged YAML,
+  checks the `weights.yaml` schema and composes `finetune_matcher` with both recipes (2026-10-06).
 - experiments/, reports/, logs/, benchmark_runs/, and wandb/: generated
   artifacts (ignored); do not edit them manually. results/, cache/, and visualizations/ are
   legacy locations that only old workflows create; none exists at the root today.
@@ -1090,9 +1094,6 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Add optional integration tests with a fake/local backbone and synthetic images.
-- [ ] Extend CI with YAML/config validation beyond the tests (lint, format, CPU tests and the
-  page build run in `.github/workflows/ci.yml` since 2026-10-04).
 - [ ] Implement truly disjoint calibration inputs for WildFusion and local matcher
   calibration; the current split setting selects one dataset and passes it to both
   sides of calibration.

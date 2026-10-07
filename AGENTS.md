@@ -1196,7 +1196,9 @@ enabled automatically on the first push). Because `wildmatch.gmum.net` has no DN
 deployed with `mkdocs gh-deploy --strict -f mkdocs.githubio.yml` (inherits `mkdocs.yml`; github.io
 `site_url`, no `CNAME`). Once the GMUM admin points the domain at GitHub Pages, deploy with
 `mkdocs.yml` (keeps `docs/CNAME`) and delete `mkdocs.githubio.yml`. Link previews use an absolute
-`og:image` built from `site_url`. The only 404 on the live site is the theme's GitHub widget asking
+`og:image` built from `site_url`. Google Analytics 4 (`extra.analytics`, Measurement ID
+`G-W9GXV5470E`, user request 2026-10-07) loads on every page without a consent banner (user decision;
+Material's `extra.consent` would add one). The only 404 on the live site is the theme's GitHub widget asking
 for a release (none existed; release `v0.1.0` was published on 2026-10-07). Still binding: never name the venue or the review status until the
 authors announce acceptance; the explainer video's visibility is the user's call (the page embeds it).
 

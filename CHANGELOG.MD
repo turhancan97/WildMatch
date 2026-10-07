@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: Google Analytics 4 on the project page (user request): `extra.analytics` in `mkdocs.yml`
+  (provider `google`, Measurement ID `G-W9GXV5470E`), inherited by `mkdocs.githubio.yml`. No consent
+  banner (user decision; Material's `extra.consent` adds one if needed).
 - 2026-10-07: First release `v0.1.0` (user decision): package version 0.1.0.dev0 -> 0.1.0 in
   `pyproject.toml` and `uv.lock` (only the project's own entry changed), tag `v0.1.0` and a GitHub
   release pointing to the preprint, the Hub checkpoints and the project page (the page's GitHub

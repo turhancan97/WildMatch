@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wildmatch"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Weakly supervised image matcher adaptation for wildlife re-identification"
 readme = "README.md"
 license = "Apache-2.0"

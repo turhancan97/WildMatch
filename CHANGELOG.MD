@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-07: First release `v0.1.0` (user decision): package version 0.1.0.dev0 -> 0.1.0 in
+  `pyproject.toml` and `uv.lock` (only the project's own entry changed), tag `v0.1.0` and a GitHub
+  release pointing to the preprint, the Hub checkpoints and the project page (the page's GitHub
+  widget had been asking for a release and getting a 404). The Results page's provenance note names
+  the exporter's current path, `paper/page/export_project_page_data.py` (was `scripts/...`).
 - 2026-10-07: The AnimalCLEF2025 permission's conditions recorded (follow-up email from the organisers):
   a small portion (about 10 images), non-commercial, used to show results on the competition data. The
   page shows 9. AGENTS.md (no further Salamander photos without asking again), THIRD_PARTY_LICENSES.md

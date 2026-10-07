@@ -14,7 +14,7 @@ single-label animal-species classifier: identity labels represent individual ani
 ## Repository map
 
 The code is the installable `wildmatch` package (`pyproject.toml`, `src/` layout, environment
-locked in `uv.lock`), run through the `wildmatch` command; "Package refactor" records how it
+locked in `uv.lock`; version 0.1.0, first GitHub release `v0.1.0` on 2026-10-07), run through the `wildmatch` command; "Package refactor" records how it
 was built from the paper code (`paper-v1`) and how parity was verified.
 
 - src/wildmatch/cli.py: the `wildmatch` command (`[project.scripts]`; `python -m wildmatch` is the
@@ -1197,7 +1197,7 @@ deployed with `mkdocs gh-deploy --strict -f mkdocs.githubio.yml` (inherits `mkdo
 `site_url`, no `CNAME`). Once the GMUM admin points the domain at GitHub Pages, deploy with
 `mkdocs.yml` (keeps `docs/CNAME`) and delete `mkdocs.githubio.yml`. Link previews use an absolute
 `og:image` built from `site_url`. The only 404 on the live site is the theme's GitHub widget asking
-for a release (none exists). Still binding: never name the venue or the review status until the
+for a release (none existed; release `v0.1.0` was published on 2026-10-07). Still binding: never name the venue or the review status until the
 authors announce acceptance; the explainer video's visibility is the user's call (the page embeds it).
 
 **Embargo (binding until the ECIR 2027 notification, 2026-12-07).** The manuscript

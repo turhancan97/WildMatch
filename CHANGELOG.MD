@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-08: Analysis of the RDD retrain's Leopard drop and Zindi gain (both runs' `scores.npz`, same
+  shortlists, so the matcher alone): the difference is how far candidates are scored. On Leopard the retrain lets
+  more low-cosine gallery images win Top-1 as k grows (wrong Top-1 from outside the k = 10 shortlist: 280-336
+  queries vs 236-253 for the paper's checkpoint); on Zindi it does so less (2,001 vs 2,367 at k = 1000). Losses
+  are spread over many identities. Recorded in AGENTS.md; outputs in the ignored `reports/rdd_relaxed_analysis/`.
 - 2026-10-08: `slurm/finetune_matcher.sbatch` sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
   by default (an existing value wins). The CzechLynx closed RDD descriptor retrain hit CUDA out-of-memory
   errors on 24 GB RTX 4090s in epochs 6 and 10 (jobs 527423, 528063), each time with about 5 GB reserved

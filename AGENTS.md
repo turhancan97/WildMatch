@@ -318,7 +318,17 @@ the retrained one still does, 75.2 -> 33.5), Whale shark +1.1 to +5.2 (gain grow
 `metrics.json` (the snapshot's Salamander fine-tuned RDD rows do not match their runs, see "Known issues";
 `compare_with_paper.py` reads the snapshot and shows -0.9 to -4.3 at k >= 500), Leopard +0.2 at
 k = 10 and then -2.0 / -2.2 / -3.0 / -4.8 / -6.3 (balanced Top-1 down to -8.3); CzechLynx unseen-identity
-(k = 10-160) Top-1 +0.3 to +1.5, balanced Top-1 -0.6 to -1.4. Whether the paper's RDD rows should move to
+(k = 10-160) Top-1 +0.3 to +1.5, balanced Top-1 -0.6 to -1.4. Why Leopard drops and Zindi gains (query-level
+analysis of both runs' `scores.npz`, 2026-10-08, `reports/rdd_relaxed_analysis/`): at every k both checkpoints
+score exactly the same shortlist, so the difference is the matcher alone, and the losses are spread thin (k = 250:
+71 lost vs 28 gained queries over 54 identities, at most 3 each; the true match of a lost query sits at rank 2).
+The cause is how each checkpoint scores far candidates, gallery images ranked low by MegaDescriptor-L that only
+enter at larger k: on Leopard the wrong Top-1 comes from outside the k = 10 shortlist for 236-253 queries with the
+paper's checkpoint at every k but for 280-336 with the retrain, rising with k, and its median margin between the
+best true and best false score falls faster (0.155 vs 0.089 at k = 1000). On Zindi both checkpoints suffer from
+far distractors (Top-1 falls with k for both), the retrain less (2,001 vs 2,367 such queries of 3,082 at k = 1000).
+So the shared recipe changes negative suppression on far candidates, for better or worse per dataset, while the
+k = 10 results barely move. Whether the paper's RDD rows should move to
 the retrained checkpoints is open (authors). The CzechLynx closed descriptor retrain (job 527423, into
 `czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix) and its
 `rdd_relaxed_descriptor` evaluation follow. Two relaxed-score RDD runs from 2026-09-29 exist under

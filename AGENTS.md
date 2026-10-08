@@ -985,9 +985,10 @@ private repository), rejects a file whose SHA-256 differs and keeps valid local 
 copies the verified local files into a folder with the Hub layout and `SHA256SUMS.md`, for the
 user to upload with `hf upload <repo> <folder> . --repo-type model --private`. All 22 files
 verified on 2026-10-04. Hub repository (user decision 2026-10-04): `turhancan97/wildmatch-checkpoints`,
-private until the release (the user's personal account; an organisation was considered), the
-default `repo_id` in `conf/weights.yaml` (override with `WILDMATCH_HUB_REPO`; private access needs
-`HF_TOKEN` or `hf auth login`). Uploaded 2026-10-04 (commit `b15cf351`): 18 checkpoints, 4 protocol
+private until 2026-10-07 and public since then (user request; an anonymous `wildmatch weights
+download --dataset salamander` fetched and verified both files the same day; the user's personal
+account; an organisation was considered), the default `repo_id` in `conf/weights.yaml` (override with
+`WILDMATCH_HUB_REPO`; a token is needed only for a private fork or higher rate limits). Uploaded 2026-10-04 (commit `b15cf351`): 18 checkpoints, 4 protocol
 files, `SHA256SUMS.md` and a README; a full download into an empty folder matched every recorded
 SHA-256. The model card states CC BY-NC 4.0 since 2026-10-06 (Hub commit `4d1744fe`, card metadata
 `license: cc-by-nc-4.0`; before, `license: other` and "still being settled").

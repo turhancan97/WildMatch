@@ -7,7 +7,7 @@
 # czechlynx_open also serves czechlynx_unseen_eval (the paper's unseen-identity protocol).
 # Not published: descriptor-only and joint checkpoints, and datasets outside the paper.
 # Release licence of these checkpoints: CC BY-NC 4.0 (user decision 2026-10-06; THIRD_PARTY_LICENSES.md).
-repo_id: ${oc.env:WILDMATCH_HUB_REPO,turhancan97/wildmatch-checkpoints}   # private until the release; HF_TOKEN needed
+repo_id: ${oc.env:WILDMATCH_HUB_REPO,turhancan97/wildmatch-checkpoints}   # public since 2026-10-07; no token needed
 revision: main
 entries:
   - dataset: hyenaid2022

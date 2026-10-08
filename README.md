@@ -166,8 +166,8 @@ figures), `logs/`, `benchmark_runs/`, `wandb/` and `site/` (page build).
 
 - `ModuleNotFoundError: wildmatch`: install the package (`uv sync ...` or the conda route in
   [Installation](guides/INSTALLATION.md)); the code does not patch `sys.path`.
-- `wildmatch weights download` is refused: the checkpoint repository is private for now; set
-  `HF_TOKEN` or run `hf auth login`.
+- `wildmatch weights download` is slow or rate-limited: the checkpoint repository is public, but
+  anonymous Hub requests have lower limits; set `HF_TOKEN` or run `hf auth login`.
 - Mask decoding errors with `dataset.no_background=true`: the metadata's `mask` column must hold
   valid COCO-RLE (a JSON string or dict) matching the image size.
 - CUDA mismatch or availability issues: install the matching PyTorch build (`--extra cu126` or

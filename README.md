@@ -20,6 +20,8 @@
 
 <sub>\* Equal contribution</sub>
 
+<a href="https://wildmatch.gmum.net"><img src="docs/assets/qr/wildmatch-qr.png" alt="QR code linking to the WildMatch project page" width="140"/></a>
+
 </div>
 
 :newspaper: **NEWS**:

@@ -1,0 +1,15 @@
+# Matcher ablation (2026-10-08): ALIKED-LightGlue and SuperPoint-LightGlue with their default weights
+# over the same MegaDescriptor-L candidates as the paper, on the eight paper datasets at the paper's
+# default budget k = 250 and on the paper's input tables. Compare with the paper's default LoMa and
+# RDD-LightGlue rows at k = 250. The runs go to their own tree (`experiment_root`) so `wildmatch tables`
+# for the paper is unchanged. The CzechLynx unseen-identity protocol is left out: its 160-image gallery
+# is smaller than k = 250.
+description: ALIKED-LightGlue and SuperPoint-LightGlue (default weights) on the paper datasets, k = 250
+experiment_root: experiments/matcher-ablation
+inputs: paper
+datasets: [czechlynx_closed, hyenaid2022, leopardid2022, nyala, seastarreid2023, whaleshark, zindi, salamander]
+candidate_k: [250]
+max_concurrent: 8
+variants:
+  - {method: vismatch, matcher: aliked-lightglue}
+  - {method: vismatch, matcher: superpoint-lightglue}

@@ -252,7 +252,9 @@ the paper's rows in `wildmatch tables` (which picks the newest run per identity 
 `experiments` itself is refused. Spec files are not interpolated, so checkpoint paths in a spec are
 absolute. The packaged `rdd_relaxed`, `rdd_relaxed_czechlynx` and `rdd_relaxed_descriptor` evaluate the
 shared-recipe RDD retrains (2026-10-07; new `*-relaxed` folders, published checkpoints untouched) into
-`experiments/rdd-relaxed/` on the paper's input tables. The spec is the source of truth for its grid.
+`experiments/rdd-relaxed/` on the paper's input tables. The packaged `matcher_ablation` (2026-10-08) runs
+ALIKED-LightGlue and SuperPoint-LightGlue with default weights on the eight paper datasets at k = 250 into
+`experiments/matcher-ablation/`. The spec is the source of truth for its grid.
 Modes: `--list-tasks` (writes nothing), `--dry-run` (freezes the submission and prints the
 `sbatch` command), `--submit` (array job; extra options through `--sbatch-arg=...`), `--local`
 (runs every task here, one after another). The task table, Hydra overrides, manifest task
@@ -264,7 +266,9 @@ at the first budget, and need `train_mode` (`classifier`, `partial`, `all`) and
 `class_weighting` (`weighted` -> `inverse_frequency`, `unweighted` -> `none`), which other
 methods must not set; fine-tuned rows are Vismatch only, and each label loads one component
 mode (`custom` = `matcher_only`, `descriptor-fine-tuned` = `descriptor_only`,
-`joint-fine-tuned` = `full`); `loma` always runs as `LoMa-B`; a repeated task fails. Fine-tuned
+`joint-fine-tuned` = `full`); Vismatch rows take `loma` or `rdd-lightglue`, and with default weights also
+`aliked-lightglue` or `superpoint-lightglue` (no fine-tuned checkpoints exist for those two; 2026-10-08);
+`loma` always runs as `LoMa-B`; a repeated task fails. Fine-tuned
 paths come from the registry (`registry.checkpoints.<label>.<matcher>`), so a label without an
 entry (for example joint checkpoints outside the CzechLynx closed split) fails closed.
 Checkpoint owners are the dataset's animal, except a declared descriptor
@@ -1509,6 +1513,12 @@ WildFusion and Local LightGlue derive their refinement `B` from `benchmark.candi
 Custom Vismatch checkpoints are selected with `benchmark.methods.vismatch.checkpoint_source`, `checkpoint_path`, and `checkpoint_components`. `default` preserves Vismatch-managed weights; `custom` accepts an exact model file or epoch directory. Component discovery uses tensor schemas and optional `checkpoint_manifest.json`, never filename ordering. RDD-LightGlue can load custom `rdd_extractor` and/or `lightglue` components, falling back to the default component in `auto` mode when one is absent. `descriptor_only` applies only `descriptor.*` RDD tensors and retains the default detector/LightGlue; detector tensors in the file are shape-validated and recorded as ignored. LoMa `descriptor_only` applies only `_descriptor.*` tensors and retains the default detector/matcher. Protocol metadata in `czechlynx_protocol.json` is validated and recorded when available. LoMa requires a validated LoMa-compatible checkpoint and explicit `loma_arch`; generic RDD/LightGlue files are rejected. Optimizer, scheduler, RNG, and scaler files are never loaded for probing. Component SHA-256 identities, applied/ignored prefixes, protocol metadata, and effective component mode are part of Vismatch feature-cache keys and run manifests.
 The Vismatch `resize_max` field is the target long-side resolution, not a downscaling-only cap; the shipped default is 512. RDD-family Vismatch profiles use preprocessing identity `lynx_finetuning_v1` and `/32` dimensions. LoMa uses `lynx_loma_finetuning_v1` and `/14` dimensions. Changing the preprocessing identity or target resolution invalidates Vismatch feature caches. Cosine, WildFusion, local LightGlue, linear probe, and efficient probe retain their existing square-resize protocols.
 LoMa match visualizations must use the processed-image coordinate space shown on the canvas: convert normalized keypoints to `FrameFeatures.image_size` coordinates and apply the Vismatch/LoMa half-pixel convention, without scaling points back to `original_image_size` unless the visualization also displays raw images.
+ALIKED-LightGlue and SuperPoint-LightGlue had never run through the pipeline before 2026-10-08 and
+could not: LightGlue's own extractors take one image per call, but `extract_prepared_batch` sent them
+batches, and the one-image path kept the keypoint scores' batch dimension (`(1, N)`). Batched extraction
+is now limited to `BATCHED_EXTRACTION_MATCHERS` (`rdd-lightglue`, `loma`, code paths unchanged), the
+others go image by image, and `_drop_score_batch` drops the scores' batch dimension
+(`tests/test_vismatch_lightglue_extractors.py`; both ran the CPU demo end to end).
 The production batching defaults are `batch_mode: batched`, `match_batch_size: 16`,
 and `extract_batch_size: 8`; `batch_mode: serial` remains the diagnostic/reference
 workflow for parity checks. Matching displays a pair-counted tqdm progress bar with

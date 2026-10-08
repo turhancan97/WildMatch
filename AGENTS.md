@@ -139,7 +139,10 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   Rostovskaya, ResearchGate for Wierzbowska), a NEWS list (template in an HTML comment; first entry
   "Oct. 2026: Paper is available on arXiv") and the BibTeX `kargin2026wildmatch`. Since 2026-10-07
   the links row points at the preprint (Paper = arXiv PDF, arXiv = abstract page, plus an arXiv
-  badge) and Project Page at `https://wildmatch.gmum.net`; YouTube Video links `https://www.youtube.com/watch?v=9i3iE8Bs6n8`, with a NEWS entry for it (2026-10-07). Never add the venue or the review status
+  badge) and Project Page at `https://wildmatch.gmum.net`; under the authors a 140 px QR code
+  (`docs/assets/qr/wildmatch-qr.png`, 600 px, 64 colours, 47 KB) links to the project page (user request
+  2026-10-08; made by `paper/tools/make_qr.py`: blue-to-red dots, logo badge, error correction H; zxing-cpp
+  decodes it down to 120 px); YouTube Video links `https://www.youtube.com/watch?v=9i3iE8Bs6n8`, with a NEWS entry for it (2026-10-07). Never add the venue or the review status
   (venue rule, see "Project page"); the repository is public since 2026-10-07. Below the header: About, overview, one quick start, a
   documentation table, a compact repository tree, troubleshooting, licence. The
   reference material lives in `guides/` (user-facing, linked from the README; never cluster paths or

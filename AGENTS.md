@@ -71,7 +71,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `broadcast_buffers=False` (`ddp_kwargs`, 2026-10-07): several descriptor forwards precede one backward,
   and re-broadcasting BatchNorm buffers between them failed backward (job 527031; a 2-GPU smoke on 64
   pairs failed before and trained a full epoch after). Each rank keeps its own BatchNorm statistics;
-  rank 0 saves. Matcher-only runs are unchanged.
+  rank 0 saves. Matcher-only runs are unchanged. `slurm/finetune_matcher.sbatch` exports
+  `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` unless the caller sets it (2026-10-08): the
+  CzechLynx closed descriptor retrain ran out of memory on RTX 4090s in epochs 6 and 10 (jobs 527423,
+  528063) with about 5 GB reserved but unused, i.e. allocator fragmentation from varying image sizes;
+  the setting changes only memory reservation, not the computation (`test_sbatch_allocator.py`).
   `tests/matcher_finetune/test_launch.py` checks it against `czechlynx_protocol.sh` and, on the
   cluster, against the arguments and protocol files the paper's runs recorded. The paper recipe is
   4 GPUs x 8 (effective 32) everywhere except SalamanderID2025 LoMa (2 x 16). The original wrappers

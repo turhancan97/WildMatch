@@ -20,4 +20,10 @@ nvidia-smi -L
 WILDMATCH_ENV="${WILDMATCH_ENV:-${UV_ENV_ROOT:-/shared/results/common/kargin/projects/uv-environment}/wildmatch}"
 source "${WILDMATCH_ENV}/bin/activate"
 
+# Descriptor and joint RDD runs feed full-resolution CzechLynx images of varying size, which fragments
+# the CUDA caching allocator until a 24 GB RTX 4090 runs out of memory with about 5 GB reserved but
+# unused (jobs 527423 and 528063, 2026-10-07/08). Expandable segments only change how memory is
+# reserved, not what is computed; set PYTORCH_CUDA_ALLOC_CONF yourself to override.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+
 wildmatch finetune-matcher paths=gmum "$@"

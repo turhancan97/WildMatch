@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-08: Matcher ablation run (sweep `matcher_ablation`, array 528423, 16/16 on RTX 4090s, default
+  weights, paper inputs, k = 250). Mean Top-1 / Top-5 / balanced Top-1 over the eight paper datasets: LoMa 72.8 /
+  77.6 / 63.9 and RDD-LightGlue 66.5 / 70.7 / 56.4 (the paper's default rows), SuperPoint-LightGlue 60.3 / 67.0 /
+  50.1, ALIKED-LightGlue 57.3 / 65.7 / 49.5. Per-dataset values in AGENTS.md (future-work checklist).
 - 2026-10-08: ALIKED-LightGlue and SuperPoint-LightGlue run through the Vismatch pipeline. Neither had
   run before, and both failed: LightGlue's own extractors accept one image per call but received batches,
   and the one-image path kept the keypoint scores' batch dimension. Batched extraction is now limited to

@@ -1219,6 +1219,15 @@ reproduction live under "Known issues" instead.
   matcher defaults. The 2026-08-12 full-split comparison agreed on 65 of 66 top-1
   predictions, not 100 %, so this gate is still open (details under "Vismatch matcher policy").
 - [ ] Complete matcher ablations for RDD-LightGlue, ALIKED-LightGlue, SuperPoint-LightGlue, and LoMa-B.
+  First pass done 2026-10-08 (sweep `matcher_ablation`, array 528423, 16/16 completed on RTX 4090s; default
+  weights, paper inputs, k = 250; `reports/matcher_ablation/k250.csv`, `compare.py`): Top-1 / Top-5 /
+  balanced Top-1 averaged over the eight paper datasets, with the paper's default rows for comparison: LoMa
+  72.8 / 77.6 / 63.9, RDD-LightGlue 66.5 / 70.7 / 56.4, SuperPoint-LightGlue 60.3 / 67.0 / 50.1,
+  ALIKED-LightGlue 57.3 / 65.7 / 49.5. Default LoMa leads on six datasets and is within 1.5 points of the
+  best on the other two (CzechLynx closed, Leopard, where RDD-LightGlue is ahead); ALIKED matches LoMa and
+  RDD only on Leopard (81.1 Top-1) and Sea star (93.0); SuperPoint is close to LoMa on Whale shark (68.8 vs
+  70.0) and above RDD on Whale shark and Salamander. Matching costs 1.7-4.5 ms per pair (median about 2),
+  like LoMa and RDD. Open: other budgets, and whether fine-tuning helps these matchers (no trainer exists).
 - [ ] Licences (decided and recorded 2026-10-06, see `THIRD_PARTY_LICENSES.md`): code Apache-2.0;
   fine-tuned checkpoints CC BY-NC 4.0 (training data with non-commercial terms, MegaDescriptor-L
   non-commercial too); SAM 3 masks released as a recipe, not as files (WildlifeReID-10k forbids

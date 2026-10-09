@@ -14,6 +14,7 @@ import { mountChallenge, mountImageQualityTable } from "./data-challenges.js";
 import { mountResultsGlance } from "./results-glance.js";
 import { mountExplainerVideo } from "./explainer-video.js";
 import { mountMatcherAblation } from "./matcher-ablation.js";
+import { mountBeyondRdd } from "./beyond-rdd.js";
 
 const MOUNTS = [
   ["wm-accuracy-explorer", mountExplorer],
@@ -38,6 +39,7 @@ const MOUNTS = [
   ["wm-results-glance", mountResultsGlance],
   ["wm-explainer", mountExplainerVideo],
   ["wm-matcher-ablation", mountMatcherAblation],
+  ["wm-beyond-rdd", mountBeyondRdd],
 ];
 
 function mountAll() {

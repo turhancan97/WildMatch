@@ -65,7 +65,9 @@ TASK_FIELDS = (
 
 METHODS = ("cosine", "wildfusion", "local_lightglue", "linear_probe", "efficient_probe", "vismatch")
 PROBE_METHODS = ("linear_probe", "efficient_probe")
-MATCHERS = ("loma", "rdd-lightglue")
+MATCHERS = ("loma", "rdd-lightglue")  # matchers with fine-tuned checkpoints
+# Matchers evaluated with their default (Vismatch-managed) weights only (matcher ablation, 2026-10-08).
+DEFAULT_ONLY_MATCHERS = ("aliked-lightglue", "superpoint-lightglue")
 TRAIN_MODES = ("classifier", "partial", "all")
 CLASS_WEIGHTINGS = ("weighted", "unweighted")
 # Each fine-tuned checkpoint label loads exactly one component mode.
@@ -166,8 +168,10 @@ def _variant(row: Mapping[str, Any]) -> Dict[str, str]:
     method = variant["method"]
     if method not in METHODS:
         raise SweepError(f"unknown method {method!r}; expected one of {', '.join(METHODS)}")
-    if method == "vismatch" and variant["matcher"] not in MATCHERS:
-        raise SweepError(f"vismatch rows need matcher {' or '.join(MATCHERS)}; got {variant['matcher']!r}")
+    if method == "vismatch" and variant["matcher"] not in MATCHERS + DEFAULT_ONLY_MATCHERS:
+        raise SweepError(
+            f"vismatch rows need matcher {', '.join(MATCHERS + DEFAULT_ONLY_MATCHERS)}; got {variant['matcher']!r}"
+        )
     if method != "vismatch" and variant["matcher"] != "-":
         raise SweepError(f"only vismatch rows take a matcher; got {variant['matcher']!r} for {method}")
     if method in PROBE_METHODS:
@@ -193,6 +197,8 @@ def _variant(row: Mapping[str, Any]) -> Dict[str, str]:
     else:
         if method != "vismatch":
             raise SweepError("custom checkpoint variants are only valid for vismatch")
+        if variant["matcher"] not in MATCHERS:
+            raise SweepError(f"{variant['matcher']} has no fine-tuned checkpoints; only its default weights can run")
         expected = COMPONENTS[label]
         if variant["components"] == "-":
             variant["components"] = expected

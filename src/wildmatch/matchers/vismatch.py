@@ -132,9 +132,21 @@ def _as_numpy(value: Any) -> np.ndarray:
     return np.asarray(value)
 
 
+# Matchers whose extractor takes a batch of same-shape images in one call; the others go image by image.
+BATCHED_EXTRACTION_MATCHERS = frozenset({"rdd-lightglue", "loma"})
+
+
 def _drop_batch(value: Any) -> np.ndarray:
     array = _as_numpy(value)
     if array.ndim >= 3 and array.shape[0] == 1:
+        return array[0]
+    return array
+
+
+def _drop_score_batch(value: Any) -> np.ndarray:
+    """Per-keypoint scores of one image: (N,), also when the extractor returns (1, N)."""
+    array = _drop_batch(value)
+    if array.ndim == 2 and array.shape[0] == 1:
         return array[0]
     return array
 
@@ -314,7 +326,7 @@ class VismatchMatcherBackend:
             keypoints = _drop_batch(output["keypoints"]).astype(np.float32, copy=False)
             descriptors = _drop_batch(output["descriptors"]).astype(np.float32, copy=False)
             raw_scores = output.get("scores", output.get("keypoint_scores", np.ones(keypoints.shape[0])))
-            scores = _drop_batch(raw_scores).astype(np.float32, copy=False)
+            scores = _drop_score_batch(raw_scores).astype(np.float32, copy=False)
             image_size = np.asarray([processed_height, processed_width], dtype=np.int32)
             coordinate_convention = "pixel"
             original_image_size = np.asarray([source_height, source_width], dtype=np.int32)
@@ -343,6 +355,9 @@ class VismatchMatcherBackend:
             return []
         if len(images) == 1:
             return [self.extract_prepared(images[0])]
+        if self.matcher_name not in BATCHED_EXTRACTION_MATCHERS:
+            # LightGlue's own extractors (ALIKED, SuperPoint) accept one image per call.
+            return [self.extract_prepared(item) for item in images]
         if len({item.processed_size for item in images}) != 1:
             return [self.extract_prepared(item) for item in images]
 

@@ -92,7 +92,9 @@ exporters pick the newest run per configuration).
 
 `inputs: paper` in a spec (or per dataset in `dataset_overrides`) runs on the tables the paper's
 runs read instead of the current ones (WildlifeReID-10k: the team's masks instead of SAM 3).
-Classifier probes run once, at the first budget. Fine-tuned rows take their checkpoint from the
+Classifier probes run once, at the first budget. Vismatch rows take `loma` or `rdd-lightglue`, and
+`aliked-lightglue` or `superpoint-lightglue` with their default weights only (packaged spec
+`matcher_ablation`). Fine-tuned rows take their checkpoint from the
 dataset's registry entry (`custom` = matcher only, `descriptor-fine-tuned`, `joint-fine-tuned`)
 unless the row or `dataset_overrides` names a path; a missing checkpoint fails before
 submission. Every non-listing mode freezes an immutable submission under

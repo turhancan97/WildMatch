@@ -156,6 +156,8 @@ class SpecTests(unittest.TestCase):
             "unknown label": {"method": "vismatch", "matcher": "loma", "checkpoint": "finetuned"},
             "unknown key": {"method": "cosine", "budget": 3},
             "unknown method": {"method": "knn"},
+            "unknown matcher": {"method": "vismatch", "matcher": "disk-lightglue"},
+            "fine-tuned aliked": {"method": "vismatch", "matcher": "aliked-lightglue", "checkpoint": "custom"},
         }
         for name, variant in bad_variants.items():
             with self.subTest(name), self.assertRaises(S.SweepError):
@@ -166,6 +168,15 @@ class SpecTests(unittest.TestCase):
             _build(variants=[{"method": "cosine"}, {"method": "cosine"}])
         with self.assertRaisesRegex(S.SweepError, "not in the sweep"):
             _build(dataset_overrides={"jaguar": {"evaluation_animal": "x"}})
+
+    def test_ablation_matchers_run_with_default_weights(self):
+        rows = [{"method": "vismatch", "matcher": m} for m in ("aliked-lightglue", "superpoint-lightglue")]
+        tasks = _build(variants=rows)
+        self.assertEqual({t["matcher"] for t in tasks}, {"aliked-lightglue", "superpoint-lightglue"})
+        self.assertEqual({t["checkpoint_label"] for t in tasks}, {"default"})
+        self.assertEqual({t["loma_arch"] for t in tasks}, {"-"})
+        with self.assertRaisesRegex(S.SweepError, "no fine-tuned checkpoints"):
+            _build(variants=[{"method": "vismatch", "matcher": "superpoint-lightglue", "checkpoint": "custom"}])
 
     def test_joint_checkpoints_exist_for_the_closed_split_only(self):
         row = {"method": "vismatch", "matcher": "rdd-lightglue", "checkpoint": "joint-fine-tuned"}

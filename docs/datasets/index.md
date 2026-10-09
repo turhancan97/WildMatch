@@ -87,6 +87,7 @@ its published source.
 | Turtle | WildlifeReID-10k (Kaggle), from Zindi Turtle Recall | CC BY-SA 4.0 |
 | Nyala | WildlifeReID-10k (Kaggle) | no license stated by the source |
 | Salamander | AnimalCLEF 2025 (Kaggle competition) | competition rules; shown with the dataset team's permission |
+| Jaguar ([Beyond the paper](../results/beyond.md) only) | Kaggle Jaguar Re-ID competition | competition rules; research use authorized by the competition's authors |
 
 WildlifeReID-10k additionally forbids commercial use and re-uploading, and asks users to
 attribute WildlifeReID-10k and each of its source datasets.

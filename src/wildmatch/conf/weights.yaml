@@ -17,7 +17,7 @@ entries:
   - dataset: hyenaid2022
     matcher: rdd-lightglue
     files:
-      - {hub: hyenaid2022/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/HyenaID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 06499866d7fcfb0349e273f51d19b1a7d3b9ba8163cbf5b0cad669b6ac9c1a37}
+      - {hub: hyenaid2022/rdd-lightglue-shared-recipe/model.safetensors, local: wildlife-reid-10k/HyenaID2022/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors, sha256: 98cc1623240c4dfac6755f81bf3e030ce6321b136bcd6bcf51d9504ebea2a651}
   - dataset: leopardid2022
     matcher: loma
     files:
@@ -25,7 +25,7 @@ entries:
   - dataset: leopardid2022
     matcher: rdd-lightglue
     files:
-      - {hub: leopardid2022/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/LeopardID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 6a18b876d661b48a66a72660ec46c1be7d0f5dcc85ef4ef138ff3c35ce5e4f59}
+      - {hub: leopardid2022/rdd-lightglue-shared-recipe/model.safetensors, local: wildlife-reid-10k/LeopardID2022/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors, sha256: ba555d1b47e760ebe38b1904d05adcf8597403cc6f6323449e69894a58165de5}
   - dataset: nyala
     matcher: loma
     files:
@@ -41,7 +41,7 @@ entries:
   - dataset: seastarreid2023
     matcher: rdd-lightglue
     files:
-      - {hub: seastarreid2023/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/SeaStarReID2023/rdd-finetuned/legacy/epoch_299/model.safetensors, sha256: 6e7b99d7553526bc6dea404455bb3ec2e40ab61294355a9c7123857c0d6877df}
+      - {hub: seastarreid2023/rdd-lightglue-shared-recipe/model.safetensors, local: wildlife-reid-10k/SeaStarReID2023/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors, sha256: 775fe95ff277ca8129bc577e1c13d734972d67ac8307bee4b16eedede825b93b}
   - dataset: whaleshark
     matcher: loma
     files:
@@ -49,7 +49,7 @@ entries:
   - dataset: whaleshark
     matcher: rdd-lightglue
     files:
-      - {hub: whaleshark/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: 25490a6bf2d1dd6144584d57dadfd230d58c45f040900d1bb109d874556df4e5}
+      - {hub: whaleshark/rdd-lightglue-shared-recipe/model.safetensors, local: wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors, sha256: 786790a480f68e4dc5b80c7e33614ce996feba762b9bfc5250421e49217c805d}
   - dataset: zindi
     matcher: loma
     files:
@@ -57,7 +57,7 @@ entries:
   - dataset: zindi
     matcher: rdd-lightglue
     files:
-      - {hub: zindi/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 016b5874972498abcec2002197ec1fe3fc7108ed83dab80e1911f937596d9d2f}
+      - {hub: zindi/rdd-lightglue-shared-recipe/model.safetensors, local: wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors, sha256: 699abeadf9d416da70ba980c25afab315156c274e90c25fd68f5c521dc9c7fa3}
   - dataset: salamander
     matcher: loma
     files:
@@ -65,7 +65,7 @@ entries:
   - dataset: salamander
     matcher: rdd-lightglue
     files:
-      - {hub: salamander/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: bdf41cddbb49fdf0a3ab0259b7e57540d0892c833b93e570d29f0c9c9d76dee4}
+      - {hub: salamander/rdd-lightglue-shared-recipe/model.safetensors, local: wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors, sha256: f9819033083fc743da4e0d42abbac20744b79b2d72084e41cc30b4498e42c358}
   - dataset: czechlynx_closed
     matcher: loma
     files:
@@ -83,6 +83,45 @@ entries:
       - {hub: czechlynx_open/loma/czechlynx_protocol.json, local: czechlynx-time-open/loma-b-finetuned-loma-mined-legacy/czechlynx_protocol.json, sha256: f09b2f9135979fbc505838d5a7728ccf21133ebd04059e206268766086492ce6}
   - dataset: czechlynx_open
     matcher: rdd-lightglue
+    files:
+      - {hub: czechlynx_open/rdd-lightglue-shared-recipe/model.safetensors, local: czechlynx-time-open/rdd-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors, sha256: 2c34534ca944b8e08cb63b6b5a904e0e0ab59b1341a92d1c70a7c61785fd13df}
+      - {hub: czechlynx_open/rdd-lightglue-shared-recipe/czechlynx_protocol.json, local: czechlynx-time-open/rdd-finetuned-loma-mined-legacy-relaxed/czechlynx_protocol.json, sha256: e20aff940339bdbf3d76430623dbc2f80987cf36c1a9afc1a4afd3208995eae6}
+  # The paper's RDD-LightGlue checkpoints for the seven entries above (set `paper`; `wildmatch weights
+  # download --set paper`). They reproduce the paper's RDD rows; the defaults above are the shared-recipe
+  # retrains (2026-10-07, user decision 2026-10-09).
+  - dataset: hyenaid2022
+    matcher: rdd-lightglue
+    set: paper
+    files:
+      - {hub: hyenaid2022/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/HyenaID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 06499866d7fcfb0349e273f51d19b1a7d3b9ba8163cbf5b0cad669b6ac9c1a37}
+  - dataset: leopardid2022
+    matcher: rdd-lightglue
+    set: paper
+    files:
+      - {hub: leopardid2022/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/LeopardID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 6a18b876d661b48a66a72660ec46c1be7d0f5dcc85ef4ef138ff3c35ce5e4f59}
+  - dataset: seastarreid2023
+    matcher: rdd-lightglue
+    set: paper
+    files:
+      - {hub: seastarreid2023/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/SeaStarReID2023/rdd-finetuned/legacy/epoch_299/model.safetensors, sha256: 6e7b99d7553526bc6dea404455bb3ec2e40ab61294355a9c7123857c0d6877df}
+  - dataset: whaleshark
+    matcher: rdd-lightglue
+    set: paper
+    files:
+      - {hub: whaleshark/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: 25490a6bf2d1dd6144584d57dadfd230d58c45f040900d1bb109d874556df4e5}
+  - dataset: zindi
+    matcher: rdd-lightglue
+    set: paper
+    files:
+      - {hub: zindi/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors, sha256: 016b5874972498abcec2002197ec1fe3fc7108ed83dab80e1911f937596d9d2f}
+  - dataset: salamander
+    matcher: rdd-lightglue
+    set: paper
+    files:
+      - {hub: salamander/rdd-lightglue/model.safetensors, local: wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors, sha256: bdf41cddbb49fdf0a3ab0259b7e57540d0892c833b93e570d29f0c9c9d76dee4}
+  - dataset: czechlynx_open
+    matcher: rdd-lightglue
+    set: paper
     files:
       - {hub: czechlynx_open/rdd-lightglue/model.safetensors, local: czechlynx-time-open/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors, sha256: c7cc7575fd66b9b27045b23c4ccc42f454e0e8b1c0c045c84113fbe1573b7fad}
       - {hub: czechlynx_open/rdd-lightglue/czechlynx_protocol.json, local: czechlynx-time-open/rdd-finetuned-loma-mined-legacy/czechlynx_protocol.json, sha256: eb08547f728999b33428f1d735db7caf47d711d69a3913297dd3fea9e2c1ebd0}

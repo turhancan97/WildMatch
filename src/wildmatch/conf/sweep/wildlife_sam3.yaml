@@ -14,3 +14,16 @@ variants:
   - {method: vismatch, matcher: rdd-lightglue}
   - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}
   - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
+# The paper's RDD-LightGlue checkpoints, pinned (2026-10-09): the registry default became the shared-recipe
+# retrain, and this sweep reproduces or extends the paper's runs.
+dataset_overrides:
+  hyenaid2022:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/HyenaID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"}}
+  leopardid2022:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/LeopardID2022/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"}}
+  seastarreid2023:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/SeaStarReID2023/rdd-finetuned/legacy/epoch_299/model.safetensors"}}
+  whaleshark:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/WhaleSharkID/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors"}}
+  zindi:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"}}

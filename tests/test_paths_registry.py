@@ -209,6 +209,8 @@ LAUNCHER_PROFILES = {
 # Registry entries whose launcher checkpoint default was a renamed or overwritten folder; since
 # 2026-10-04 they name the file each paper run recorded by SHA-256 (tests/test_weights.py).
 RELOCATED_CHECKPOINTS = {"beluga", "hyenaid2022", "leopardid2022", "nyala", "whaleshark", "zindi"}
+# RDD-LightGlue defaults replaced by the shared-recipe retrain (2026-10-09); their LoMa folders keep the launchers'.
+SHARED_RECIPE_RDD = {"hyenaid2022", "leopardid2022", "seastarreid2023", "whaleshark", "zindi", "salamander"}
 # WildlifeReID-10k launcher checkpoint folders (LoMa, RDD) under <animal>/{loma,rdd}-finetuned/.
 LAUNCHER_CHECKPOINT_DIRS = {
     "atrw": ("legacy", "legacy"),
@@ -309,6 +311,8 @@ class RegistryTests(unittest.TestCase):
                 base = f"{GMUM_DATA}/checkpoints/wildlife-reid-10k/{entry.animal}"
                 custom = entry.registry.checkpoints.custom
                 self.assertEqual(custom.loma, f"{base}/loma-finetuned/{loma_dir}/epoch_299/model.safetensors")
+                if key in SHARED_RECIPE_RDD:
+                    rdd_dir = "legacy-loma-mined-relaxed"
                 self.assertEqual(custom["rdd-lightglue"], f"{base}/rdd-finetuned/{rdd_dir}/epoch_299/model.safetensors")
 
     def test_czechlynx_checkpoints_match_the_launcher_defaults(self):
@@ -336,7 +340,8 @@ class RegistryTests(unittest.TestCase):
             expected[key] = {
                 "custom": {
                     "loma": f"{open_}/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
-                    "rdd-lightglue": f"{open_}/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors",
+                    # shared-recipe retrain since 2026-10-09 (the paper's: rdd-finetuned-loma-mined-legacy)
+                    "rdd-lightglue": f"{open_}/rdd-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors",
                 }
             }
         for key, checkpoints in expected.items():

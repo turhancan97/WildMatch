@@ -25,7 +25,7 @@ registry:
   checkpoints:
     custom:
       loma: "${paths.checkpoint_root}/wildlife-reid-10k/ZindiTurtleRecall/loma-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
-      rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors"
+      rdd-lightglue: "${paths.checkpoint_root}/wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined-relaxed/epoch_299/model.safetensors"  # shared-recipe retrain (2026-10-09); paper: wildlife-reid-10k/ZindiTurtleRecall/rdd-finetuned/legacy-loma-mined/epoch_299/model.safetensors
   licence: "WildlifeReID-10k terms (no commercial use, no re-upload, attribution) and source licence: CC BY-SA 4.0"  # checked 2026-10-06 (THIRD_PARTY_LICENSES.md)
   # How `wildmatch prepare build/finish` rebuilds this entry (wildmatch.data.prepare.sources).
   prepare:

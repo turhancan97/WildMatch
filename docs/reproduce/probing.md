@@ -80,9 +80,11 @@ Unscored gallery positions are set to minus infinity, so a matcher can never ran
 it did not score.
 
 The fine-tuned checkpoints come from one of two places: `wildmatch weights download` fetches the
-published paper checkpoints into the locations the dataset registry names, or
+published checkpoints into the locations the dataset registry names, or
 [`wildmatch finetune-matcher`](finetuning.md) trains new ones on pairs from
-[`wildmatch mine`](mining.md).
+[`wildmatch mine`](mining.md). The registry's RDD-LightGlue defaults for seven datasets are retrains
+with the shared recipe, which postdate the paper (see [Beyond the paper](../results/beyond.md));
+`wildmatch weights download --set paper` fetches the paper's RDD-LightGlue files.
 
 ## Benchmark grids
 

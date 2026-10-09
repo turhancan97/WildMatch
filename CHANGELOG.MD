@@ -7,6 +7,19 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-09: Retrained RDD-LightGlue checkpoints become the default, and the project page gets Results > Beyond
+  the paper (user decisions). Registry `checkpoints.custom.rdd-lightglue` of Hyena, Leopard, Sea star, Whale
+  shark, Zindi, Salamander, CzechLynx open and unseen-eval now names the shared-recipe `*-relaxed` files (paper
+  path kept in a comment); `conf/weights.yaml` gains `set: default|paper` (the seven replaced entries are
+  `paper`, the retrains are published as `<key>/rdd-lightglue-shared-recipe/...`, Hub commit `ac865965`) and
+  `wildmatch weights ... --set default|paper|all`; the sweeps `parity`, `wildlife_sam3` and `wildlife_sam3_grid`
+  pin the paper files so their tasks are unchanged. New page `docs/results/beyond.md`: the RDD retrain against
+  the paper's fine-tuned and default RDD-LightGlue (chart `beyond-rdd.js`), the SAM 3 mask rerun with the Sea
+  star story and a mask figure, and JaguarReID numbers with four seeded-random match examples. Exporters
+  `paper/page/export_beyond_paper.py`, `export_seastar_masks.py`, `export_jaguar_examples.py` (GPU), test
+  `test_export_beyond_paper`; JaguarReID row in the Datasets licensing table; INSTALLATION and Reproduce >
+  Probing describe the two checkpoint sets.
+
 - 2026-10-09: Project page: new Results > Other matchers page (extension, not in the paper). ALIKED-LightGlue
   and SuperPoint-LightGlue with default weights next to the paper's default LoMa and RDD-LightGlue on the eight
   paper datasets over the whole budget grid: an accuracy-vs-k chart (`docs/assets/js/matcher-ablation.js`,

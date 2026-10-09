@@ -25,7 +25,7 @@ registry:
   checkpoints:
     custom:
       loma: "${paths.checkpoint_root}/czechlynx-time-open/loma-b-finetuned-loma-mined-legacy/epoch_299/model.safetensors"
-      rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-open/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors"
+      rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-open/rdd-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors"  # shared-recipe retrain (2026-10-09); paper: czechlynx-time-open/rdd-finetuned-loma-mined-legacy/epoch_299/model.safetensors
   licence: "CC BY 4.0 (Kaggle picekl/czechlynx)"  # checked 2026-10-06 (THIRD_PARTY_LICENSES.md)
   prepare:
     builder: unseen  # wildmatch prepare unseen-split

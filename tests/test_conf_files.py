@@ -38,10 +38,11 @@ class ConfFilesTest(unittest.TestCase):
         hub_names, pairs = [], []
         for entry in manifest["entries"]:
             with self.subTest(entry=f"{entry.get('dataset')}/{entry.get('matcher')}"):
-                self.assertEqual(set(entry), {"dataset", "matcher", "files"})
+                self.assertIn(set(entry), ({"dataset", "matcher", "files"}, {"dataset", "matcher", "set", "files"}))
+                self.assertIn(entry.get("set", "default"), {"default", "paper"})
                 self.assertIn(entry["dataset"], known)
                 self.assertIn(entry["matcher"], {"loma", "rdd-lightglue"})
-                pairs.append((entry["dataset"], entry["matcher"]))
+                pairs.append((entry["dataset"], entry["matcher"], entry.get("set", "default")))
                 self.assertTrue(entry["files"])
                 for item in entry["files"]:
                     self.assertEqual(set(item), {"hub", "local", "sha256"})
@@ -52,7 +53,7 @@ class ConfFilesTest(unittest.TestCase):
                         self.assertNotIn("..", path.parts, item[key])
                     hub_names.append(item["hub"])
         self.assertEqual(len(hub_names), len(set(hub_names)), "duplicate Hub file names")
-        self.assertEqual(len(pairs), len(set(pairs)), "duplicate dataset/matcher entries")
+        self.assertEqual(len(pairs), len(set(pairs)), "duplicate dataset/matcher/set entries")
 
     def test_finetune_matcher_composes_with_both_recipes(self):
         for recipe in ("loma", "rdd"):

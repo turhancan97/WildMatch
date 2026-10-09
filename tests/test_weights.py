@@ -26,7 +26,7 @@ def _sha(data: bytes) -> str:
 class ManifestTests(unittest.TestCase):
     def test_every_paper_dataset_has_both_matchers(self):
         manifest = W.load_manifest()
-        published = {(e["dataset"], e["matcher"]) for e in manifest["entries"]}
+        published = {(e["dataset"], e["matcher"]) for e in W.select(manifest["entries"])}
         keys = {
             key
             for key in (
@@ -47,8 +47,24 @@ class ManifestTests(unittest.TestCase):
         paper_animals = {p.animal for p in PAPER_PROFILES} - {"BelugaID"}
         self.assertEqual(paper_animals, {load_dataset(k, "gmum").animal for k in keys})
 
+    def test_paper_set_holds_the_replaced_rdd_checkpoints(self):
+        entries = W.load_manifest()["entries"]
+        paper = W.select(entries, set_name="paper")
+        self.assertEqual(
+            {e["dataset"] for e in paper},
+            {"hyenaid2022", "leopardid2022", "seastarreid2023", "whaleshark", "zindi", "salamander", "czechlynx_open"},
+        )
+        self.assertEqual({e["matcher"] for e in paper}, {"rdd-lightglue"})
+        defaults = {(e["dataset"], e["matcher"]): e for e in W.select(entries)}
+        for entry in paper:
+            new = defaults[(entry["dataset"], entry["matcher"])]
+            self.assertNotEqual(entry["files"][0]["local"], new["files"][0]["local"])
+            self.assertIn("relaxed", new["files"][0]["local"])
+            self.assertIn("shared-recipe", new["files"][0]["hub"])
+        self.assertEqual(len(W.select(entries, set_name="all")), len(entries))
+
     def test_manifest_matches_the_registry(self):
-        for entry in W.load_manifest()["entries"]:
+        for entry in W.select(W.load_manifest()["entries"]):
             checkpoint = entry["files"][0]
             self.assertTrue(checkpoint["hub"].endswith("model.safetensors"))
             self.assertEqual(len(checkpoint["sha256"]), 64)

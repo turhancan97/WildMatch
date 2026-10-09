@@ -2,78 +2,82 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://wildmatch.gmum.net/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/method/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/paper/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/datasets/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/datasets/challenges/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/demo/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/demo/before-after/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/demo/masking/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/demo/mined-pairs/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/demo/rank-changes/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/demo/synthetic/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/reproduce/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/reproduce/fewshot/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/reproduce/finetuning/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/reproduce/mining/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/reproduce/probing/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/results/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
+    </url>
+    <url>
+         <loc>https://wildmatch.gmum.net/results/matchers/</loc>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/results/qualitative/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
     <url>
          <loc>https://wildmatch.gmum.net/results/training-cost/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-09</lastmod>
     </url>
 </urlset>

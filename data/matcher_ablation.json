@@ -1,0 +1,1845 @@
+{
+ "generated_at": "2026-10-09T19:27:52+00:00",
+ "paper_commit": "9e78102de698eeffbc655629b32190cb49a84799",
+ "note": "Extension, not in the paper: default weights, paper input tables, same MegaDescriptor-L candidates.",
+ "ks": [
+  10,
+  50,
+  100,
+  250,
+  500,
+  1000
+ ],
+ "metrics": [
+  "top_1",
+  "top_5",
+  "top_10",
+  "balanced_top_1"
+ ],
+ "metric_labels": {
+  "top_1": "Top-1",
+  "top_5": "Top-5",
+  "top_10": "Top-10",
+  "balanced_top_1": "Balanced top-1"
+ },
+ "series_order": [
+  "loma_default",
+  "rdd_default",
+  "superpoint_default",
+  "aliked_default"
+ ],
+ "ablation_devices": [
+  "cuda:NVIDIA GeForce RTX 4090:sm89"
+ ],
+ "datasets": {
+  "czechlynx": {
+   "label": "CzechLynx",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.252348,
+       "top_5": 0.344431,
+       "top_10": 0.410097,
+       "balanced_top_1": 0.142225
+      },
+      "50": {
+       "top_1": 0.356759,
+       "top_5": 0.44532,
+       "top_10": 0.490943,
+       "balanced_top_1": 0.220284
+      },
+      "100": {
+       "top_1": 0.401292,
+       "top_5": 0.492368,
+       "top_10": 0.534301,
+       "balanced_top_1": 0.262636
+      },
+      "250": {
+       "top_1": 0.459577,
+       "top_5": 0.552331,
+       "top_10": 0.596612,
+       "balanced_top_1": 0.31256
+      },
+      "500": {
+       "top_1": 0.511657,
+       "top_5": 0.605753,
+       "top_10": 0.647266,
+       "balanced_top_1": 0.365541
+      },
+      "1000": {
+       "top_1": 0.552918,
+       "top_5": 0.64735,
+       "top_10": 0.688276,
+       "balanced_top_1": 0.417807
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.252516,
+       "top_5": 0.339651,
+       "top_10": 0.410097,
+       "balanced_top_1": 0.141561
+      },
+      "50": {
+       "top_1": 0.363133,
+       "top_5": 0.442553,
+       "top_10": 0.487001,
+       "balanced_top_1": 0.226308
+      },
+      "100": {
+       "top_1": 0.411523,
+       "top_5": 0.493626,
+       "top_10": 0.535139,
+       "balanced_top_1": 0.273251
+      },
+      "250": {
+       "top_1": 0.475679,
+       "top_5": 0.560047,
+       "top_10": 0.59678,
+       "balanced_top_1": 0.334343
+      },
+      "500": {
+       "top_1": 0.521805,
+       "top_5": 0.611037,
+       "top_10": 0.646427,
+       "balanced_top_1": 0.383162
+      },
+      "1000": {
+       "top_1": 0.562898,
+       "top_5": 0.65624,
+       "top_10": 0.692888,
+       "balanced_top_1": 0.434524
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.350637,
+       "top_5": 0.468048,
+       "top_10": 0.527927,
+       "balanced_top_1": 0.246634,
+       "ms_per_pair": 1.886,
+       "run_id": "20261008T135919Z_b735c9d1",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.285978,
+       "top_5": 0.394582,
+       "top_10": 0.454965,
+       "balanced_top_1": 0.177863,
+       "ms_per_pair": 2.306,
+       "run_id": "20261009T130001Z_935db170",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.222073,
+       "top_5": 0.328916,
+       "top_10": 0.410097,
+       "balanced_top_1": 0.125643,
+       "ms_per_pair": 2.706,
+       "run_id": "20261009T130001Z_b75d0a28",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.312982,
+       "top_5": 0.427373,
+       "top_10": 0.484233,
+       "balanced_top_1": 0.209269,
+       "ms_per_pair": 2.148,
+       "run_id": "20261009T130006Z_42d05007",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.375629,
+       "top_5": 0.502097,
+       "top_10": 0.561137,
+       "balanced_top_1": 0.279544,
+       "ms_per_pair": 1.854,
+       "run_id": "20261009T130006Z_96f9f835",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.393995,
+       "top_5": 0.522727,
+       "top_10": 0.58311,
+       "balanced_top_1": 0.312667,
+       "ms_per_pair": 1.783,
+       "run_id": "20261009T132829Z_df8c2383",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.303757,
+       "top_5": 0.43794,
+       "top_10": 0.505032,
+       "balanced_top_1": 0.233594,
+       "ms_per_pair": 1.918,
+       "run_id": "20261008T135919Z_40b92385",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.262076,
+       "top_5": 0.38737,
+       "top_10": 0.454042,
+       "balanced_top_1": 0.175313,
+       "ms_per_pair": 4.155,
+       "run_id": "20261009T130001Z_05bc2e44",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.284133,
+       "top_5": 0.407246,
+       "top_10": 0.472996,
+       "balanced_top_1": 0.204803,
+       "ms_per_pair": 2.945,
+       "run_id": "20261009T130001Z_b4ee66bf",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.212009,
+       "top_5": 0.331768,
+       "top_10": 0.410097,
+       "balanced_top_1": 0.125092,
+       "ms_per_pair": 7.279,
+       "run_id": "20261009T130001Z_d61061d5",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.320949,
+       "top_5": 0.456307,
+       "top_10": 0.524405,
+       "balanced_top_1": 0.260177,
+       "ms_per_pair": 1.569,
+       "run_id": "20261009T130006Z_24132afd",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.330007,
+       "top_5": 0.468635,
+       "top_10": 0.543106,
+       "balanced_top_1": 0.276354,
+       "ms_per_pair": 1.392,
+       "run_id": "20261009T131455Z_32484ec1",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "hyena": {
+   "label": "Hyena",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.760317,
+       "top_5": 0.834921,
+       "top_10": 0.866667,
+       "balanced_top_1": 0.645221
+      },
+      "50": {
+       "top_1": 0.82381,
+       "top_5": 0.866667,
+       "top_10": 0.88254,
+       "balanced_top_1": 0.737582
+      },
+      "100": {
+       "top_1": 0.855556,
+       "top_5": 0.893651,
+       "top_10": 0.901587,
+       "balanced_top_1": 0.788596
+      },
+      "250": {
+       "top_1": 0.884127,
+       "top_5": 0.912698,
+       "top_10": 0.925397,
+       "balanced_top_1": 0.826589
+      },
+      "500": {
+       "top_1": 0.901587,
+       "top_5": 0.926984,
+       "top_10": 0.933333,
+       "balanced_top_1": 0.848594
+      },
+      "1000": {
+       "top_1": 0.909524,
+       "top_5": 0.930159,
+       "top_10": 0.94127,
+       "balanced_top_1": 0.860781
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.766667,
+       "top_5": 0.819048,
+       "top_10": 0.866667,
+       "balanced_top_1": 0.651933
+      },
+      "50": {
+       "top_1": 0.834921,
+       "top_5": 0.866667,
+       "top_10": 0.880952,
+       "balanced_top_1": 0.754082
+      },
+      "100": {
+       "top_1": 0.869841,
+       "top_5": 0.884127,
+       "top_10": 0.9,
+       "balanced_top_1": 0.807932
+      },
+      "250": {
+       "top_1": 0.907937,
+       "top_5": 0.919048,
+       "top_10": 0.925397,
+       "balanced_top_1": 0.857293
+      },
+      "500": {
+       "top_1": 0.920635,
+       "top_5": 0.936508,
+       "top_10": 0.938095,
+       "balanced_top_1": 0.873374
+      },
+      "1000": {
+       "top_1": 0.925397,
+       "top_5": 0.942857,
+       "top_10": 0.947619,
+       "balanced_top_1": 0.879791
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.747619,
+       "top_5": 0.844444,
+       "top_10": 0.868254,
+       "balanced_top_1": 0.650948,
+       "ms_per_pair": 1.87,
+       "run_id": "20261008T135916Z_5fd9a787",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.722222,
+       "top_5": 0.811111,
+       "top_10": 0.866667,
+       "balanced_top_1": 0.601596,
+       "ms_per_pair": 2.196,
+       "run_id": "20261009T133433Z_3f9476d8",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.744444,
+       "top_5": 0.830159,
+       "top_10": 0.855556,
+       "balanced_top_1": 0.632839,
+       "ms_per_pair": 1.946,
+       "run_id": "20261009T133859Z_de05988d",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.750794,
+       "top_5": 0.842857,
+       "top_10": 0.865079,
+       "balanced_top_1": 0.645284,
+       "ms_per_pair": 1.903,
+       "run_id": "20261009T134533Z_f031a302",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.72381,
+       "top_5": 0.84127,
+       "top_10": 0.871429,
+       "balanced_top_1": 0.633311,
+       "ms_per_pair": 1.811,
+       "run_id": "20261009T134841Z_83093da4",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.701587,
+       "top_5": 0.822222,
+       "top_10": 0.865079,
+       "balanced_top_1": 0.612307,
+       "ms_per_pair": 1.776,
+       "run_id": "20261009T135853Z_3db88428",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.722222,
+       "top_5": 0.828571,
+       "top_10": 0.855556,
+       "balanced_top_1": 0.672677,
+       "ms_per_pair": 3.26,
+       "run_id": "20261008T135919Z_62e55167",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.733333,
+       "top_5": 0.812698,
+       "top_10": 0.866667,
+       "balanced_top_1": 0.607907,
+       "ms_per_pair": 5.559,
+       "run_id": "20261009T133217Z_7931ee76",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.749206,
+       "top_5": 0.819048,
+       "top_10": 0.847619,
+       "balanced_top_1": 0.658735,
+       "ms_per_pair": 4.189,
+       "run_id": "20261009T133605Z_c43006d9",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.747619,
+       "top_5": 0.828571,
+       "top_10": 0.852381,
+       "balanced_top_1": 0.674007,
+       "ms_per_pair": 3.792,
+       "run_id": "20261009T134043Z_18c78924",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.692063,
+       "top_5": 0.809524,
+       "top_10": 0.849206,
+       "balanced_top_1": 0.636716,
+       "ms_per_pair": 2.985,
+       "run_id": "20261009T134827Z_47e62212",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.612698,
+       "top_5": 0.777778,
+       "top_10": 0.820635,
+       "balanced_top_1": 0.546265,
+       "ms_per_pair": 2.555,
+       "run_id": "20261009T135212Z_a94af6f0",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "leopard": {
+   "label": "Leopard",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.689463,
+       "top_5": 0.743894,
+       "top_10": 0.789951,
+       "balanced_top_1": 0.388492
+      },
+      "50": {
+       "top_1": 0.754361,
+       "top_5": 0.776692,
+       "top_10": 0.798325,
+       "balanced_top_1": 0.477144
+      },
+      "100": {
+       "top_1": 0.783671,
+       "top_5": 0.805304,
+       "top_10": 0.820656,
+       "balanced_top_1": 0.507263
+      },
+      "250": {
+       "top_1": 0.817167,
+       "top_5": 0.841591,
+       "top_10": 0.852059,
+       "balanced_top_1": 0.545683
+      },
+      "500": {
+       "top_1": 0.832519,
+       "top_5": 0.861828,
+       "top_10": 0.872296,
+       "balanced_top_1": 0.579988
+      },
+      "1000": {
+       "top_1": 0.847174,
+       "top_5": 0.872994,
+       "top_10": 0.881368,
+       "balanced_top_1": 0.59306
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.691556,
+       "top_5": 0.7418,
+       "top_10": 0.789951,
+       "balanced_top_1": 0.389763
+      },
+      "50": {
+       "top_1": 0.757851,
+       "top_5": 0.785066,
+       "top_10": 0.799721,
+       "balanced_top_1": 0.476342
+      },
+      "100": {
+       "top_1": 0.789253,
+       "top_5": 0.808095,
+       "top_10": 0.817865,
+       "balanced_top_1": 0.509281
+      },
+      "250": {
+       "top_1": 0.823447,
+       "top_5": 0.841591,
+       "top_10": 0.849965,
+       "balanced_top_1": 0.549937
+      },
+      "500": {
+       "top_1": 0.847174,
+       "top_5": 0.863922,
+       "top_10": 0.871598,
+       "balanced_top_1": 0.594039
+      },
+      "1000": {
+       "top_1": 0.857641,
+       "top_5": 0.875785,
+       "top_10": 0.883461,
+       "balanced_top_1": 0.607301
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.757851,
+       "top_5": 0.798325,
+       "top_10": 0.822052,
+       "balanced_top_1": 0.453488,
+       "ms_per_pair": 1.941,
+       "run_id": "20261008T135916Z_1b0f893b",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.674808,
+       "top_5": 0.726448,
+       "top_10": 0.789951,
+       "balanced_top_1": 0.372194,
+       "ms_per_pair": 2.271,
+       "run_id": "20261009T140551Z_2eca0a3b",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.715283,
+       "top_5": 0.757153,
+       "top_10": 0.786462,
+       "balanced_top_1": 0.419761,
+       "ms_per_pair": 2.077,
+       "run_id": "20261009T140903Z_491c535a",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.737613,
+       "top_5": 0.778088,
+       "top_10": 0.798325,
+       "balanced_top_1": 0.438512,
+       "ms_per_pair": 2.033,
+       "run_id": "20261009T141237Z_953deda2",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.769714,
+       "top_5": 0.813678,
+       "top_10": 0.835311,
+       "balanced_top_1": 0.479831,
+       "ms_per_pair": 1.88,
+       "run_id": "20261009T141818Z_e94e4018",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.768318,
+       "top_5": 0.817865,
+       "top_10": 0.834613,
+       "balanced_top_1": 0.475793,
+       "ms_per_pair": 1.833,
+       "run_id": "20261009T141954Z_70e89d65",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.810886,
+       "top_5": 0.843685,
+       "top_10": 0.847872,
+       "balanced_top_1": 0.539674,
+       "ms_per_pair": 2.179,
+       "run_id": "20261008T135916Z_503c2301",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.681786,
+       "top_5": 0.732729,
+       "top_10": 0.789951,
+       "balanced_top_1": 0.372456,
+       "ms_per_pair": 2.686,
+       "run_id": "20261009T140504Z_a05d2454",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.755059,
+       "top_5": 0.776692,
+       "top_10": 0.790649,
+       "balanced_top_1": 0.459486,
+       "ms_per_pair": 2.252,
+       "run_id": "20261009T140852Z_ba595099",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.780879,
+       "top_5": 0.809491,
+       "top_10": 0.81926,
+       "balanced_top_1": 0.496327,
+       "ms_per_pair": 2.132,
+       "run_id": "20261009T141223Z_333dc9ca",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.833915,
+       "top_5": 0.86462,
+       "top_10": 0.871598,
+       "balanced_top_1": 0.573762,
+       "ms_per_pair": 1.933,
+       "run_id": "20261009T141817Z_7d9c2809",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.836706,
+       "top_5": 0.865318,
+       "top_10": 0.877181,
+       "balanced_top_1": 0.584496,
+       "ms_per_pair": 1.878,
+       "run_id": "20261009T141833Z_a6ff79f0",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "nyala": {
+   "label": "Nyala",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.422897,
+       "top_5": 0.511682,
+       "top_10": 0.61215,
+       "balanced_top_1": 0.299576
+      },
+      "50": {
+       "top_1": 0.549065,
+       "top_5": 0.623832,
+       "top_10": 0.642523,
+       "balanced_top_1": 0.410169
+      },
+      "100": {
+       "top_1": 0.588785,
+       "top_5": 0.67757,
+       "top_10": 0.700935,
+       "balanced_top_1": 0.449859
+      },
+      "250": {
+       "top_1": 0.628505,
+       "top_5": 0.726636,
+       "top_10": 0.752336,
+       "balanced_top_1": 0.484746
+      },
+      "500": {
+       "top_1": 0.649533,
+       "top_5": 0.745327,
+       "top_10": 0.775701,
+       "balanced_top_1": 0.497952
+      },
+      "1000": {
+       "top_1": 0.63785,
+       "top_5": 0.747664,
+       "top_10": 0.768692,
+       "balanced_top_1": 0.489336
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.434579,
+       "top_5": 0.488318,
+       "top_10": 0.61215,
+       "balanced_top_1": 0.307133
+      },
+      "50": {
+       "top_1": 0.53972,
+       "top_5": 0.607477,
+       "top_10": 0.64486,
+       "balanced_top_1": 0.4125
+      },
+      "100": {
+       "top_1": 0.584112,
+       "top_5": 0.672897,
+       "top_10": 0.696262,
+       "balanced_top_1": 0.461935
+      },
+      "250": {
+       "top_1": 0.61215,
+       "top_5": 0.700935,
+       "top_10": 0.719626,
+       "balanced_top_1": 0.484816
+      },
+      "500": {
+       "top_1": 0.614486,
+       "top_5": 0.71729,
+       "top_10": 0.752336,
+       "balanced_top_1": 0.484251
+      },
+      "1000": {
+       "top_1": 0.61215,
+       "top_5": 0.726636,
+       "top_10": 0.745327,
+       "balanced_top_1": 0.478037
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.483645,
+       "top_5": 0.623832,
+       "top_10": 0.686916,
+       "balanced_top_1": 0.371328,
+       "ms_per_pair": 1.734,
+       "run_id": "20261008T135921Z_9ef56564",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.39486,
+       "top_5": 0.490654,
+       "top_10": 0.61215,
+       "balanced_top_1": 0.279096,
+       "ms_per_pair": 1.875,
+       "run_id": "20261009T144303Z_7f41fd56",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.450935,
+       "top_5": 0.577103,
+       "top_10": 0.621495,
+       "balanced_top_1": 0.33185,
+       "ms_per_pair": 1.778,
+       "run_id": "20261009T144355Z_f05757c4",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.485981,
+       "top_5": 0.614486,
+       "top_10": 0.658879,
+       "balanced_top_1": 0.363277,
+       "ms_per_pair": 1.762,
+       "run_id": "20261009T144506Z_8ad01c4f",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.469626,
+       "top_5": 0.628505,
+       "top_10": 0.67757,
+       "balanced_top_1": 0.361088,
+       "ms_per_pair": 1.744,
+       "run_id": "20261009T144711Z_bad42994",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.457944,
+       "top_5": 0.619159,
+       "top_10": 0.672897,
+       "balanced_top_1": 0.350282,
+       "ms_per_pair": 1.746,
+       "run_id": "20261009T145450Z_847220d9",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.5,
+       "top_5": 0.623832,
+       "top_10": 0.67757,
+       "balanced_top_1": 0.377684,
+       "ms_per_pair": 2.18,
+       "run_id": "20261008T135916Z_acf3161c",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.392523,
+       "top_5": 0.476636,
+       "top_10": 0.61215,
+       "balanced_top_1": 0.278743,
+       "ms_per_pair": 2.94,
+       "run_id": "20261009T144224Z_ef93f859",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.46028,
+       "top_5": 0.558411,
+       "top_10": 0.61215,
+       "balanced_top_1": 0.348658,
+       "ms_per_pair": 2.476,
+       "run_id": "20261009T144329Z_ac8b97d6",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.488318,
+       "top_5": 0.61215,
+       "top_10": 0.661215,
+       "balanced_top_1": 0.375847,
+       "ms_per_pair": 2.351,
+       "run_id": "20261009T144456Z_dfa33d8f",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.492991,
+       "top_5": 0.626168,
+       "top_10": 0.696262,
+       "balanced_top_1": 0.372387,
+       "ms_per_pair": 2.067,
+       "run_id": "20261009T144654Z_e770d803",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.455607,
+       "top_5": 0.619159,
+       "top_10": 0.656542,
+       "balanced_top_1": 0.342938,
+       "ms_per_pair": 1.93,
+       "run_id": "20261009T145400Z_84b1d871",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "salamander": {
+   "label": "Salamander",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.138211,
+       "top_5": 0.138211,
+       "top_10": 0.138211,
+       "balanced_top_1": 0.14178
+      },
+      "50": {
+       "top_1": 0.308943,
+       "top_5": 0.317073,
+       "top_10": 0.321138,
+       "balanced_top_1": 0.322021
+      },
+      "100": {
+       "top_1": 0.394309,
+       "top_5": 0.410569,
+       "top_10": 0.414634,
+       "balanced_top_1": 0.414781
+      },
+      "250": {
+       "top_1": 0.536585,
+       "top_5": 0.556911,
+       "top_10": 0.573171,
+       "balanced_top_1": 0.56184
+      },
+      "500": {
+       "top_1": 0.597561,
+       "top_5": 0.634146,
+       "top_10": 0.658537,
+       "balanced_top_1": 0.610106
+      },
+      "1000": {
+       "top_1": 0.634146,
+       "top_5": 0.666667,
+       "top_10": 0.703252,
+       "balanced_top_1": 0.646305
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.126016,
+       "top_5": 0.126016,
+       "top_10": 0.138211,
+       "balanced_top_1": 0.128205
+      },
+      "50": {
+       "top_1": 0.276423,
+       "top_5": 0.276423,
+       "top_10": 0.276423,
+       "balanced_top_1": 0.285822
+      },
+      "100": {
+       "top_1": 0.357724,
+       "top_5": 0.361789,
+       "top_10": 0.361789,
+       "balanced_top_1": 0.371795
+      },
+      "250": {
+       "top_1": 0.422764,
+       "top_5": 0.439024,
+       "top_10": 0.447154,
+       "balanced_top_1": 0.437406
+      },
+      "500": {
+       "top_1": 0.45935,
+       "top_5": 0.479675,
+       "top_10": 0.48374,
+       "balanced_top_1": 0.466063
+      },
+      "1000": {
+       "top_1": 0.48374,
+       "top_5": 0.50813,
+       "top_10": 0.50813,
+       "balanced_top_1": 0.486425
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.434959,
+       "top_5": 0.443089,
+       "top_10": 0.447154,
+       "balanced_top_1": 0.448718,
+       "ms_per_pair": 1.964,
+       "run_id": "20261008T141848Z_ad3572ba",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.126016,
+       "top_5": 0.126016,
+       "top_10": 0.138211,
+       "balanced_top_1": 0.128205,
+       "ms_per_pair": 2.704,
+       "run_id": "20261009T163659Z_1a3d46b5",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.276423,
+       "top_5": 0.276423,
+       "top_10": 0.276423,
+       "balanced_top_1": 0.285822,
+       "ms_per_pair": 2.233,
+       "run_id": "20261009T163910Z_0189ac8a",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.357724,
+       "top_5": 0.365854,
+       "top_10": 0.365854,
+       "balanced_top_1": 0.371795,
+       "ms_per_pair": 2.12,
+       "run_id": "20261009T164054Z_c2078b0b",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.471545,
+       "top_5": 0.479675,
+       "top_10": 0.48374,
+       "balanced_top_1": 0.476621,
+       "ms_per_pair": 1.916,
+       "run_id": "20261009T164250Z_39d09326",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.495935,
+       "top_5": 0.50813,
+       "top_10": 0.50813,
+       "balanced_top_1": 0.494721,
+       "ms_per_pair": 1.847,
+       "run_id": "20261009T164814Z_6a87bed7",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.361789,
+       "top_5": 0.406504,
+       "top_10": 0.422764,
+       "balanced_top_1": 0.374057,
+       "ms_per_pair": 2.789,
+       "run_id": "20261008T141630Z_03b7d0bd",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.126016,
+       "top_5": 0.126016,
+       "top_10": 0.138211,
+       "balanced_top_1": 0.128205,
+       "ms_per_pair": 4.46,
+       "run_id": "20261009T163601Z_d5592491",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.256098,
+       "top_5": 0.264228,
+       "top_10": 0.276423,
+       "balanced_top_1": 0.263198,
+       "ms_per_pair": 3.412,
+       "run_id": "20261009T163750Z_b149a4cd",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.321138,
+       "top_5": 0.345528,
+       "top_10": 0.353659,
+       "balanced_top_1": 0.335596,
+       "ms_per_pair": 3.109,
+       "run_id": "20261009T164014Z_c35871b1",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.402439,
+       "top_5": 0.45122,
+       "top_10": 0.463415,
+       "balanced_top_1": 0.404223,
+       "ms_per_pair": 2.521,
+       "run_id": "20261009T164231Z_1e00e9d0",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.418699,
+       "top_5": 0.45935,
+       "top_10": 0.479675,
+       "balanced_top_1": 0.417798,
+       "ms_per_pair": 2.224,
+       "run_id": "20261009T164720Z_66cfc6c2",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "sea_star": {
+   "label": "Sea star",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.885514,
+       "top_5": 0.913551,
+       "top_10": 0.929907,
+       "balanced_top_1": 0.904812
+      },
+      "50": {
+       "top_1": 0.948598,
+       "top_5": 0.957944,
+       "top_10": 0.964953,
+       "balanced_top_1": 0.957356
+      },
+      "100": {
+       "top_1": 0.957944,
+       "top_5": 0.96729,
+       "top_10": 0.971963,
+       "balanced_top_1": 0.966128
+      },
+      "250": {
+       "top_1": 0.962617,
+       "top_5": 0.971963,
+       "top_10": 0.976636,
+       "balanced_top_1": 0.970514
+      },
+      "500": {
+       "top_1": 0.969626,
+       "top_5": 0.974299,
+       "top_10": 0.981308,
+       "balanced_top_1": 0.977531
+      },
+      "1000": {
+       "top_1": 0.971963,
+       "top_5": 0.976636,
+       "top_10": 0.981308,
+       "balanced_top_1": 0.979286
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.829439,
+       "top_5": 0.89486,
+       "top_10": 0.929907,
+       "balanced_top_1": 0.856028
+      },
+      "50": {
+       "top_1": 0.885514,
+       "top_5": 0.92757,
+       "top_10": 0.955607,
+       "balanced_top_1": 0.899361
+      },
+      "100": {
+       "top_1": 0.911215,
+       "top_5": 0.936916,
+       "top_10": 0.953271,
+       "balanced_top_1": 0.923045
+      },
+      "250": {
+       "top_1": 0.936916,
+       "top_5": 0.946262,
+       "top_10": 0.96729,
+       "balanced_top_1": 0.944724
+      },
+      "500": {
+       "top_1": 0.953271,
+       "top_5": 0.964953,
+       "top_10": 0.976636,
+       "balanced_top_1": 0.959987
+      },
+      "1000": {
+       "top_1": 0.962617,
+       "top_5": 0.974299,
+       "top_10": 0.983645,
+       "balanced_top_1": 0.970514
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.908879,
+       "top_5": 0.929907,
+       "top_10": 0.943925,
+       "balanced_top_1": 0.923922,
+       "ms_per_pair": 3.772,
+       "run_id": "20261008T140516Z_fdd054f0",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.792056,
+       "top_5": 0.878505,
+       "top_10": 0.929907,
+       "balanced_top_1": 0.818835,
+       "ms_per_pair": 6.697,
+       "run_id": "20261009T150520Z_367ec13e",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.857477,
+       "top_5": 0.899533,
+       "top_10": 0.922897,
+       "balanced_top_1": 0.87787,
+       "ms_per_pair": 5.563,
+       "run_id": "20261009T150719Z_a318048e",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.873832,
+       "top_5": 0.901869,
+       "top_10": 0.936916,
+       "balanced_top_1": 0.895414,
+       "ms_per_pair": 4.715,
+       "run_id": "20261009T150806Z_51081973",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.92757,
+       "top_5": 0.941589,
+       "top_10": 0.948598,
+       "balanced_top_1": 0.941817,
+       "ms_per_pair": 2.804,
+       "run_id": "20261009T151024Z_778cc230",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.934579,
+       "top_5": 0.943925,
+       "top_10": 0.953271,
+       "balanced_top_1": 0.948484,
+       "ms_per_pair": 2.281,
+       "run_id": "20261009T151235Z_92763466",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.929907,
+       "top_5": 0.948598,
+       "top_10": 0.955607,
+       "balanced_top_1": 0.940338,
+       "ms_per_pair": 1.671,
+       "run_id": "20261008T140438Z_7c9b5c02",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.803738,
+       "top_5": 0.897196,
+       "top_10": 0.929907,
+       "balanced_top_1": 0.82911,
+       "ms_per_pair": 1.912,
+       "run_id": "20261009T150459Z_094b7676",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.864486,
+       "top_5": 0.911215,
+       "top_10": 0.941589,
+       "balanced_top_1": 0.882256,
+       "ms_per_pair": 1.745,
+       "run_id": "20261009T150645Z_12984cca",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.892523,
+       "top_5": 0.922897,
+       "top_10": 0.946262,
+       "balanced_top_1": 0.908571,
+       "ms_per_pair": 1.699,
+       "run_id": "20261009T150754Z_8623ccc4",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.941589,
+       "top_5": 0.950935,
+       "top_10": 0.969626,
+       "balanced_top_1": 0.952093,
+       "ms_per_pair": 1.648,
+       "run_id": "20261009T150838Z_e921ea7e",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.953271,
+       "top_5": 0.96028,
+       "top_10": 0.971963,
+       "balanced_top_1": 0.964373,
+       "ms_per_pair": 1.658,
+       "run_id": "20261009T151033Z_e62eec6e",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "whale_shark": {
+   "label": "Whale shark",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.566562,
+       "top_5": 0.638486,
+       "top_10": 0.678233,
+       "balanced_top_1": 0.474776
+      },
+      "50": {
+       "top_1": 0.632177,
+       "top_5": 0.684543,
+       "top_10": 0.711672,
+       "balanced_top_1": 0.539391
+      },
+      "100": {
+       "top_1": 0.668139,
+       "top_5": 0.707886,
+       "top_10": 0.733123,
+       "balanced_top_1": 0.568452
+      },
+      "250": {
+       "top_1": 0.699685,
+       "top_5": 0.747003,
+       "top_10": 0.766562,
+       "balanced_top_1": 0.59451
+      },
+      "500": {
+       "top_1": 0.726814,
+       "top_5": 0.768454,
+       "top_10": 0.784227,
+       "balanced_top_1": 0.611632
+      },
+      "1000": {
+       "top_1": 0.744479,
+       "top_5": 0.787382,
+       "top_10": 0.804416,
+       "balanced_top_1": 0.621782
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.549527,
+       "top_5": 0.623975,
+       "top_10": 0.678233,
+       "balanced_top_1": 0.455542
+      },
+      "50": {
+       "top_1": 0.593691,
+       "top_5": 0.65489,
+       "top_10": 0.688959,
+       "balanced_top_1": 0.491563
+      },
+      "100": {
+       "top_1": 0.612618,
+       "top_5": 0.673817,
+       "top_10": 0.701577,
+       "balanced_top_1": 0.505267
+      },
+      "250": {
+       "top_1": 0.635962,
+       "top_5": 0.684543,
+       "top_10": 0.717981,
+       "balanced_top_1": 0.519978
+      },
+      "500": {
+       "top_1": 0.639117,
+       "top_5": 0.700946,
+       "top_10": 0.723659,
+       "balanced_top_1": 0.517423
+      },
+      "1000": {
+       "top_1": 0.646688,
+       "top_5": 0.707256,
+       "top_10": 0.728707,
+       "balanced_top_1": 0.520976
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.688328,
+       "top_5": 0.738801,
+       "top_10": 0.75205,
+       "balanced_top_1": 0.584807,
+       "ms_per_pair": 2.547,
+       "run_id": "20261008T141031Z_60839d18",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.560883,
+       "top_5": 0.612618,
+       "top_10": 0.678233,
+       "balanced_top_1": 0.462585,
+       "ms_per_pair": 3.649,
+       "run_id": "20261009T152037Z_7bd86d93",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.6347,
+       "top_5": 0.673186,
+       "top_10": 0.695899,
+       "balanced_top_1": 0.540577,
+       "ms_per_pair": 3.147,
+       "run_id": "20261009T152319Z_53051179",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.664984,
+       "top_5": 0.701577,
+       "top_10": 0.723659,
+       "balanced_top_1": 0.569249,
+       "ms_per_pair": 2.886,
+       "run_id": "20261009T152935Z_acac1c21",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.704101,
+       "top_5": 0.750158,
+       "top_10": 0.767823,
+       "balanced_top_1": 0.59603,
+       "ms_per_pair": 2.208,
+       "run_id": "20261009T153124Z_d50133df",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.711672,
+       "top_5": 0.757098,
+       "top_10": 0.774763,
+       "balanced_top_1": 0.596817,
+       "ms_per_pair": 2.009,
+       "run_id": "20261009T154201Z_be90a869",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.564038,
+       "top_5": 0.644164,
+       "top_10": 0.680126,
+       "balanced_top_1": 0.475337,
+       "ms_per_pair": 4.527,
+       "run_id": "20261008T140655Z_0cc1cb75",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.533754,
+       "top_5": 0.622713,
+       "top_10": 0.678233,
+       "balanced_top_1": 0.439054,
+       "ms_per_pair": 9.016,
+       "run_id": "20261009T151535Z_6976db3d",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.567192,
+       "top_5": 0.637855,
+       "top_10": 0.68265,
+       "balanced_top_1": 0.473058,
+       "ms_per_pair": 7.014,
+       "run_id": "20261009T152113Z_854ffa0b",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.567192,
+       "top_5": 0.637224,
+       "top_10": 0.680126,
+       "balanced_top_1": 0.47628,
+       "ms_per_pair": 6.304,
+       "run_id": "20261009T152421Z_b0a95646",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.560252,
+       "top_5": 0.637855,
+       "top_10": 0.678233,
+       "balanced_top_1": 0.475061,
+       "ms_per_pair": 3.268,
+       "run_id": "20261009T152958Z_9f4be267",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.564038,
+       "top_5": 0.640379,
+       "top_10": 0.66877,
+       "balanced_top_1": 0.479454,
+       "ms_per_pair": 2.343,
+       "run_id": "20261009T153810Z_41b09f40",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  },
+  "turtle": {
+   "label": "Turtle",
+   "series": {
+    "loma_default": {
+     "label": "LoMa (default)",
+     "points": {
+      "10": {
+       "top_1": 0.774497,
+       "top_5": 0.841986,
+       "top_10": 0.877677,
+       "balanced_top_1": 0.739397
+      },
+      "50": {
+       "top_1": 0.822518,
+       "top_5": 0.874757,
+       "top_10": 0.898443,
+       "balanced_top_1": 0.794543
+      },
+      "100": {
+       "top_1": 0.835821,
+       "top_5": 0.891953,
+       "top_10": 0.907203,
+       "balanced_top_1": 0.813092
+      },
+      "250": {
+       "top_1": 0.835496,
+       "top_5": 0.898767,
+       "top_10": 0.910448,
+       "balanced_top_1": 0.813573
+      },
+      "500": {
+       "top_1": 0.831278,
+       "top_5": 0.898767,
+       "top_10": 0.91207,
+       "balanced_top_1": 0.80802
+      },
+      "1000": {
+       "top_1": 0.825114,
+       "top_5": 0.8939,
+       "top_10": 0.910123,
+       "balanced_top_1": 0.801259
+      }
+     }
+    },
+    "rdd_default": {
+     "label": "RDD-LightGlue (default)",
+     "points": {
+      "10": {
+       "top_1": 0.516223,
+       "top_5": 0.736535,
+       "top_10": 0.877677,
+       "balanced_top_1": 0.403479
+      },
+      "50": {
+       "top_1": 0.506165,
+       "top_5": 0.576574,
+       "top_10": 0.639195,
+       "balanced_top_1": 0.387878
+      },
+      "100": {
+       "top_1": 0.506165,
+       "top_5": 0.571382,
+       "top_10": 0.599286,
+       "balanced_top_1": 0.388372
+      },
+      "250": {
+       "top_1": 0.504867,
+       "top_5": 0.564568,
+       "top_10": 0.585983,
+       "balanced_top_1": 0.387425
+      },
+      "500": {
+       "top_1": 0.498053,
+       "top_5": 0.559053,
+       "top_10": 0.577223,
+       "balanced_top_1": 0.381357
+      },
+      "1000": {
+       "top_1": 0.490915,
+       "top_5": 0.550941,
+       "top_10": 0.570084,
+       "balanced_top_1": 0.373939
+      }
+     }
+    },
+    "superpoint_default": {
+     "label": "SuperPoint-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.45133,
+       "top_5": 0.512654,
+       "top_10": 0.532771,
+       "balanced_top_1": 0.324687,
+       "ms_per_pair": 1.761,
+       "run_id": "20261008T141514Z_84bebfff",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.463011,
+       "top_5": 0.710578,
+       "top_10": 0.877677,
+       "balanced_top_1": 0.336068,
+       "ms_per_pair": 1.861,
+       "run_id": "20261009T154855Z_9b4ed878",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.459442,
+       "top_5": 0.530824,
+       "top_10": 0.580143,
+       "balanced_top_1": 0.330257,
+       "ms_per_pair": 1.807,
+       "run_id": "20261009T160128Z_df4d28f0",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.45782,
+       "top_5": 0.520441,
+       "top_10": 0.546723,
+       "balanced_top_1": 0.329936,
+       "ms_per_pair": 1.784,
+       "run_id": "20261009T160852Z_a7d95ca9",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.447112,
+       "top_5": 0.508112,
+       "top_10": 0.522064,
+       "balanced_top_1": 0.322055,
+       "ms_per_pair": 1.734,
+       "run_id": "20261009T161356Z_8fabc559",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.441921,
+       "top_5": 0.50292,
+       "top_10": 0.514276,
+       "balanced_top_1": 0.316982,
+       "ms_per_pair": 1.749,
+       "run_id": "20261009T161915Z_c69da47e",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    },
+    "aliked_default": {
+     "label": "ALIKED-LightGlue (default)",
+     "points": {
+      "250": {
+       "top_1": 0.395198,
+       "top_5": 0.523361,
+       "top_10": 0.583712,
+       "balanced_top_1": 0.347056,
+       "ms_per_pair": 2.096,
+       "run_id": "20261008T141443Z_f290010d",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "10": {
+       "top_1": 0.56035,
+       "top_5": 0.766385,
+       "top_10": 0.877677,
+       "balanced_top_1": 0.470059,
+       "ms_per_pair": 2.768,
+       "run_id": "20261009T154446Z_57564fca",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "50": {
+       "top_1": 0.485075,
+       "top_5": 0.620376,
+       "top_10": 0.707657,
+       "balanced_top_1": 0.401976,
+       "ms_per_pair": 2.522,
+       "run_id": "20261009T155303Z_631a04c7",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "100": {
+       "top_1": 0.44841,
+       "top_5": 0.584036,
+       "top_10": 0.640818,
+       "balanced_top_1": 0.381188,
+       "ms_per_pair": 2.378,
+       "run_id": "20261009T160203Z_05820cc5",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "500": {
+       "top_1": 0.354964,
+       "top_5": 0.470798,
+       "top_10": 0.528228,
+       "balanced_top_1": 0.316062,
+       "ms_per_pair": 2.023,
+       "run_id": "20261009T161335Z_18993e27",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      },
+      "1000": {
+       "top_1": 0.319273,
+       "top_5": 0.430889,
+       "top_10": 0.475341,
+       "balanced_top_1": 0.286724,
+       "ms_per_pair": 1.873,
+       "run_id": "20261009T161713Z_c89fc94e",
+       "device": "cuda:NVIDIA GeForce RTX 4090:sm89"
+      }
+     }
+    }
+   }
+  }
+ },
+ "mean": {
+  "label": "Mean of the eight datasets",
+  "series": {
+   "loma_default": {
+    "label": "LoMa (default)",
+    "points": {
+     "10": {
+      "top_1": 0.561226,
+      "top_5": 0.620895,
+      "top_10": 0.662862,
+      "balanced_top_1": 0.467035
+     },
+     "50": {
+      "top_1": 0.649529,
+      "top_5": 0.693353,
+      "top_10": 0.713817,
+      "balanced_top_1": 0.557311
+     },
+     "100": {
+      "top_1": 0.68569,
+      "top_5": 0.730824,
+      "top_10": 0.74805,
+      "balanced_top_1": 0.596351
+     },
+     "250": {
+      "top_1": 0.72797,
+      "top_5": 0.775988,
+      "top_10": 0.794153,
+      "balanced_top_1": 0.638752
+     },
+     "500": {
+      "top_1": 0.752572,
+      "top_5": 0.801945,
+      "top_10": 0.820592,
+      "balanced_top_1": 0.66242
+     },
+     "1000": {
+      "top_1": 0.765396,
+      "top_5": 0.815344,
+      "top_10": 0.834838,
+      "balanced_top_1": 0.676202
+     }
+    }
+   },
+   "rdd_default": {
+    "label": "RDD-LightGlue (default)",
+    "points": {
+     "10": {
+      "top_1": 0.520815,
+      "top_5": 0.596275,
+      "top_10": 0.662862,
+      "balanced_top_1": 0.416706
+     },
+     "50": {
+      "top_1": 0.594677,
+      "top_5": 0.642153,
+      "top_10": 0.67159,
+      "balanced_top_1": 0.491732
+     },
+     "100": {
+      "top_1": 0.630306,
+      "top_5": 0.675331,
+      "top_10": 0.695649,
+      "balanced_top_1": 0.53011
+     },
+     "250": {
+      "top_1": 0.664965,
+      "top_5": 0.707002,
+      "top_10": 0.726272,
+      "balanced_top_1": 0.56449
+     },
+     "500": {
+      "top_1": 0.681736,
+      "top_5": 0.729173,
+      "top_10": 0.746214,
+      "balanced_top_1": 0.582457
+     },
+     "1000": {
+      "top_1": 0.692756,
+      "top_5": 0.742768,
+      "top_10": 0.757483,
+      "balanced_top_1": 0.593938
+     }
+    }
+   },
+   "superpoint_default": {
+    "label": "SuperPoint-LightGlue (default)",
+    "points": {
+     "10": {
+      "top_1": 0.494491,
+      "top_5": 0.585606,
+      "top_10": 0.662862,
+      "balanced_top_1": 0.390528
+     },
+     "50": {
+      "top_1": 0.553085,
+      "top_5": 0.61737,
+      "top_10": 0.64923,
+      "balanced_top_1": 0.449605
+     },
+     "100": {
+      "top_1": 0.580216,
+      "top_5": 0.644068,
+      "top_10": 0.672458,
+      "balanced_top_1": 0.477842
+     },
+     "250": {
+      "top_1": 0.602906,
+      "top_5": 0.669887,
+      "top_10": 0.697631,
+      "balanced_top_1": 0.500567
+     },
+     "500": {
+      "top_1": 0.611138,
+      "top_5": 0.683136,
+      "top_10": 0.708459,
+      "balanced_top_1": 0.511287
+     },
+     "1000": {
+      "top_1": 0.613244,
+      "top_5": 0.686756,
+      "top_10": 0.713267,
+      "balanced_top_1": 0.513507
+     }
+    }
+   },
+   "aliked_default": {
+    "label": "ALIKED-LightGlue (default)",
+    "points": {
+     "10": {
+      "top_1": 0.505439,
+      "top_5": 0.595768,
+      "top_10": 0.662862,
+      "balanced_top_1": 0.406328
+     },
+     "50": {
+      "top_1": 0.549934,
+      "top_5": 0.621899,
+      "top_10": 0.664097,
+      "balanced_top_1": 0.457835
+     },
+     "100": {
+      "top_1": 0.566276,
+      "top_5": 0.643393,
+      "top_10": 0.67834,
+      "balanced_top_1": 0.481577
+     },
+     "250": {
+      "top_1": 0.573475,
+      "top_5": 0.657082,
+      "top_10": 0.69103,
+      "balanced_top_1": 0.495052
+     },
+     "500": {
+      "top_1": 0.574895,
+      "top_5": 0.658428,
+      "top_10": 0.697622,
+      "balanced_top_1": 0.49881
+     },
+     "1000": {
+      "top_1": 0.561287,
+      "top_5": 0.652724,
+      "top_10": 0.686652,
+      "balanced_top_1": 0.4873
+     }
+    }
+   }
+  }
+ }
+}

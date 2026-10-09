@@ -254,7 +254,8 @@ absolute. The packaged `rdd_relaxed`, `rdd_relaxed_czechlynx` and `rdd_relaxed_d
 shared-recipe RDD retrains (2026-10-07; new `*-relaxed` folders, published checkpoints untouched) into
 `experiments/rdd-relaxed/` on the paper's input tables. The packaged `matcher_ablation` (2026-10-08) runs
 ALIKED-LightGlue and SuperPoint-LightGlue with default weights on the eight paper datasets at k = 250 into
-`experiments/matcher-ablation/`. The spec is the source of truth for its grid.
+`experiments/matcher-ablation/`; `matcher_ablation_grid` (2026-10-09) adds k = 10, 50, 100, 500, 1000 to the
+same tree. The spec is the source of truth for its grid.
 Modes: `--list-tasks` (writes nothing), `--dry-run` (freezes the submission and prints the
 `sbatch` command), `--submit` (array job; extra options through `--sbatch-arg=...`), `--local`
 (runs every task here, one after another). The task table, Hydra overrides, manifest task
@@ -1223,11 +1224,17 @@ reproduction live under "Known issues" instead.
   weights, paper inputs, k = 250; `reports/matcher_ablation/k250.csv`, `compare.py`): Top-1 / Top-5 /
   balanced Top-1 averaged over the eight paper datasets, with the paper's default rows for comparison: LoMa
   72.8 / 77.6 / 63.9, RDD-LightGlue 66.5 / 70.7 / 56.4, SuperPoint-LightGlue 60.3 / 67.0 / 50.1,
-  ALIKED-LightGlue 57.3 / 65.7 / 49.5. Default LoMa leads on six datasets and is within 1.5 points of the
-  best on the other two (CzechLynx closed, Leopard, where RDD-LightGlue is ahead); ALIKED matches LoMa and
+  ALIKED-LightGlue 57.3 / 65.7 / 49.5. Default LoMa has the best Top-1 on five datasets; RDD-LightGlue is
+  ahead on CzechLynx closed, Hyena and Leopard by 0.6-2.4 points (corrected 2026-10-09: the first note said
+  six datasets); ALIKED matches LoMa and
   RDD only on Leopard (81.1 Top-1) and Sea star (93.0); SuperPoint is close to LoMa on Whale shark (68.8 vs
   70.0) and above RDD on Whale shark and Salamander. Matching costs 1.7-4.5 ms per pair (median about 2),
-  like LoMa and RDD. Open: other budgets, and whether fine-tuning helps these matchers (no trainer exists).
+  like LoMa and RDD. Rest of the grid done 2026-10-09 (sweep `matcher_ablation_grid`, array 528695, 80/80,
+  RTX 4090): mean Top-1 over the eight datasets at k = 10 / 50 / 100 / 250 / 500 / 1000 is LoMa 56 / 65 / 69 /
+  73 / 75 / 77, RDD-LightGlue 52 / 59 / 63 / 66 / 68 / 69, SuperPoint 49 / 55 / 58 / 60 / 61 / 61, ALIKED
+  51 / 55 / 57 / 57 / 57 / 56; ALIKED and SuperPoint stop improving with k early and fall on Hyena and Turtle
+  (ALIKED Turtle 56 -> 32), the far-candidate effect seen with the RDD retrain. Shown on the project page as
+  an extension (Results > Other matchers). Open: whether fine-tuning helps these matchers (no trainer exists).
 - [ ] Licences (decided and recorded 2026-10-06, see `THIRD_PARTY_LICENSES.md`): code Apache-2.0;
   fine-tuned checkpoints CC BY-NC 4.0 (training data with non-commercial terms, MegaDescriptor-L
   non-commercial too); SAM 3 masks released as a recipe, not as files (WildlifeReID-10k forbids
@@ -1414,6 +1421,7 @@ results: `notes/history.md`, "Project page: build history".
 | Data challenges | `export_data_challenges.py` | `docs/assets/datasets/challenges/`, `docs/data/image_quality_summary.json` | `test_export_data_challenges` |
 | Demo hub cards | `build_demo_cards.py` | `docs/assets/demo/cards/` | `test_build_demo_cards` |
 | Explainer video | `video/explainer/build.py` (`wm-video`) | poster, `docs/data/explainer.json` | `test_project_page_numbers` |
+| Other matchers (extension, 2026-10-09) | `export_matcher_ablation.py` (reads `docs/data/curves.json` and `experiments/matcher-ablation/`) | `docs/data/matcher_ablation.json` | `test_export_matcher_ablation` |
 
 Binding rules from that history:
 - `export_project_page_data.py` reads the paper repository's frozen `results/` snapshot,

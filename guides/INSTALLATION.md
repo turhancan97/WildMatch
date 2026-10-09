@@ -62,13 +62,22 @@ The fine-tuned matcher checkpoints of the paper are on the Hugging Face Hub. Dat
 prepared separately with `wildmatch prepare`; see [DATASET.md](DATASET.md).
 
 ```bash
-wildmatch weights list                        # the paper's fine-tuned matcher checkpoints
+wildmatch weights list                        # the default fine-tuned matcher checkpoints
 wildmatch weights download --dataset salamander   # from turhancan97/wildmatch-checkpoints (public; no token needed)
-wildmatch weights verify
+wildmatch weights download --set paper        # the paper's RDD-LightGlue checkpoints, where they differ
+wildmatch weights verify --set all
 ```
 
 Downloaded checkpoints land where the dataset registry expects them (under the profile's
 `checkpoint_root`), so fine-tuned sweep rows find them without extra settings.
+
+There are two sets. The **default** set is what the registry uses: the paper's LoMa checkpoints
+and, for seven datasets (Hyena, Leopard, Sea star, Whale shark, Turtle, Salamander, CzechLynx open),
+RDD-LightGlue retrained with the same recipe as LoMa (shared recipe, not in the paper). The
+**paper** set (`--set paper`) holds the paper's RDD-LightGlue checkpoints for those seven datasets;
+use it, and name the files with `checkpoint_path` or `dataset_overrides` in a sweep, to reproduce
+the paper's RDD-LightGlue numbers. The packaged sweeps that reproduce paper runs (`parity`,
+`wildlife_sam3`, `wildlife_sam3_grid`) already pin the paper's files.
 
 ## Testing
 

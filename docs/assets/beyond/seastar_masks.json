@@ -1,0 +1,14 @@
+{
+ "generated_by": "paper/page/export_seastar_masks.py",
+ "selection": "seeded random (seed 0) among 12 test queries whose paper-input mask keeps < 1% of the photo",
+ "candidates": 12,
+ "chosen": {
+  "raw": "images/SeaStarReID2023/sea-star-re-id/Asru78/IMG_0278_c78505c609007fcf.jpg",
+  "paper_input": "masked_images/SeaStarReID2023/sea-star-re-id/Asru78/IMG_0278_c78505c609007fcf.jpg",
+  "sam3_input": "masked_images_sam3/SeaStarReID2023/sea-star-re-id/Asru78/IMG_0278_c78505c609007fcf.jpg"
+ },
+ "foreground_share": {
+  "paper_input": 0.00254,
+  "sam3_input": 1.0
+ }
+}

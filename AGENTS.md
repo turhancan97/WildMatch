@@ -336,8 +336,13 @@ paper's checkpoint at every k but for 280-336 with the retrain, rising with k, a
 best true and best false score falls faster (0.155 vs 0.089 at k = 1000). On Zindi both checkpoints suffer from
 far distractors (Top-1 falls with k for both), the retrain less (2,001 vs 2,367 such queries of 3,082 at k = 1000).
 So the shared recipe changes negative suppression on far candidates, for better or worse per dataset, while the
-k = 10 results barely move. Whether the paper's RDD rows should move to
-the retrained checkpoints is open (authors). The CzechLynx closed descriptor retrain (job 527423, into
+k = 10 results barely move. **Retrained RDD checkpoints are the default (user decision 2026-10-09).** The paper
+stays as published; the registry's `checkpoints.custom.rdd-lightglue` of Hyena, Leopard, Sea star, Whale shark,
+Zindi, Salamander, CzechLynx open and unseen-eval now names the `*-relaxed` files (each line keeps the paper
+path in a comment), `weights.yaml` publishes them as the default set (see "Paper checkpoints and data
+preparation"), and the project page shows them on Results > Beyond the paper. The sweeps that reproduce paper
+rows (`parity`, `wildlife_sam3`, `wildlife_sam3_grid`) pin the paper RDD files through `dataset_overrides`, so
+their tasks are unchanged (`--list-tasks` checked). The CzechLynx closed descriptor retrain (job 527423, into
 `czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix) and its
 `rdd_relaxed_descriptor` evaluation follow. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
@@ -1000,6 +1005,14 @@ account; an organisation was considered), the default `repo_id` in `conf/weights
 files, `SHA256SUMS.md` and a README; a full download into an empty folder matched every recorded
 SHA-256. The model card states CC BY-NC 4.0 since 2026-10-06 (Hub commit `4d1744fe`, card metadata
 `license: cc-by-nc-4.0`; before, `license: other` and "still being settled").
+**Two sets (2026-10-09, user decision: the retrained RDD checkpoints are the new default).** Entries carry
+`set: default` (implicit) or `set: paper`; the seven replaced RDD-LightGlue entries (Hyena, Leopard, Sea star,
+Whale shark, Zindi, Salamander, CzechLynx open with its protocol file) moved to `set: paper` and the default set
+names the shared-recipe retrains, on the Hub as `<key>/rdd-lightglue-shared-recipe/...` (uploaded 2026-10-09,
+Hub commit `ac865965`; `SHA256SUMS.md` lists both sets; an anonymous download of both verified).
+`wildmatch weights list|verify|download|stage --set default|paper|all` (default `default`). The registry check
+in `tests/test_weights.py` covers the default set only. The Hub README update that links the page's
+"Beyond the paper" section waits for the page deploy.
 `wildmatch prepare status` checks each registry entry (root, metadata, split values, a sample of
 images, the mask column when masks are applied at load) and prints its `registry.download`
 block (`raw` source, `derived` files, `reproducible`); all 17 entries are ready on the cluster.
@@ -1421,6 +1434,10 @@ results: `notes/history.md`, "Project page: build history".
 | Data challenges | `export_data_challenges.py` | `docs/assets/datasets/challenges/`, `docs/data/image_quality_summary.json` | `test_export_data_challenges` |
 | Demo hub cards | `build_demo_cards.py` | `docs/assets/demo/cards/` | `test_build_demo_cards` |
 | Explainer video | `video/explainer/build.py` (`wm-video`) | poster, `docs/data/explainer.json` | `test_project_page_numbers` |
+| Other matchers | `export_matcher_ablation.py` | `docs/data/matcher_ablation.json` | `test_export_matcher_ablation` |
+| Beyond the paper (RDD retrain, SAM 3 rerun, JaguarReID) | `export_beyond_paper.py` | `docs/data/beyond.json` | `test_export_beyond_paper` |
+| Sea star mask figure | `export_seastar_masks.py` | `docs/assets/beyond/seastar_masks.*` | `test_export_beyond_paper` |
+| Jaguar match examples | `export_jaguar_examples.py` (GPU) | `docs/assets/beyond/jaguar_matches.*` | `test_export_beyond_paper` |
 | Other matchers (extension, 2026-10-09) | `export_matcher_ablation.py` (reads `docs/data/curves.json` and `experiments/matcher-ablation/`) | `docs/data/matcher_ablation.json` | `test_export_matcher_ablation` |
 
 Binding rules from that history:
@@ -1754,8 +1771,9 @@ the data had to be deleted within 30 days after the competition ended on 2026-03
 authorized. Requested 2026-10-06 (user decision); the authors answered by email on 2026-10-07 that
 research use is no problem (the user keeps the email). This covers the work below (split,
 embeddings, probe runs, 2026-10-03/04) and further research runs; the earlier pause is lifted.
-JaguarReID stays a benchmark-only dataset with nothing on the project page or the Hub; ask the user
-before publishing any Jaguar photo or result. The March 2026 Kaggle runs were competition use.
+JaguarReID stays a benchmark-only dataset with nothing on the Hub. The project page may show its numbers and a
+few match examples (user decision 2026-10-09: Results > Beyond the paper, four seeded-random correct pairs);
+ask the user before adding more photos or anything on the Hub. The March 2026 Kaggle runs were competition use.
 
 JaguarReID (added 2026-10-03) is the labelled part of the Kaggle Jaguar Re-ID data at
 `/shared/sets/datasets/vision/czechlynx/jaguar` (repository symlink
@@ -1842,8 +1860,9 @@ Evaluation: packaged sweep `jaguar_finetuned` (array 528818, 12/12). Top-1 defau
 k = 10 / 50 / 100 / 250 / 500 / 1000: LoMa 61.8 -> 63.4, 73.7 -> 76.0, 77.4 -> 79.1, 83.4 -> 84.8,
 86.7 -> 87.7, 90.3 -> 90.1; RDD-LightGlue 60.0 -> 60.0, 69.8 -> 70.8, 74.1 -> 73.9, 80.1 -> 80.1,
 84.4 -> 84.2, 88.7 -> 87.9. Balanced Top-1 at k = 250: LoMa 77.8 -> 78.7, RDD-LightGlue 73.5 -> 76.3 (RDD
-gains 1.4 to 2.8 points of balanced Top-1 up to k = 500, so it helps the rarely photographed jaguars).
-Gains are smaller than on the paper datasets. Benchmark-only: nothing goes to the page or the Hub. The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
+gains 1.5 to 2.8 points of balanced Top-1 up to k = 500, so it helps the rarely photographed jaguars).
+Gains are smaller than on the paper datasets. Benchmark-only: nothing goes to the Hub; the page shows these
+numbers and four match examples (Results > Beyond the paper, 2026-10-09). The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
 dataset. The image-quality audit (2026-10-03, RLE mask foreground) flagged 80 of 1,895
 photos by heuristics; none has been checked by eye.
 **Kaggle submission workflow deleted (user decision 2026-10-04).** The former standalone

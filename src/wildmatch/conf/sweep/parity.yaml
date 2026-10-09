@@ -12,3 +12,8 @@ variants:
   - {method: vismatch, matcher: rdd-lightglue}
   - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}
   - {method: linear_probe, train_mode: classifier, class_weighting: weighted}
+# The paper's RDD-LightGlue checkpoints, pinned (2026-10-09): the registry default became the shared-recipe
+# retrain, and this sweep reproduces or extends the paper's runs.
+dataset_overrides:
+  salamander:
+    checkpoints: {custom: {rdd-lightglue: "/shared/sets/datasets/vision/czechlynx/checkpoints/wildlife-reid-10k/SalamanderID2025/rdd-finetuned/legacy-rdd-mined/epoch_299/model.safetensors"}}

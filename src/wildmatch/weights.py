@@ -6,6 +6,10 @@ registry's ``checkpoints.custom.<matcher>`` names) and its SHA-256. ``download``
 files into that place, so sweeps find them without extra settings; every file is checked
 against its SHA-256 and a mismatch is deleted and reported. ``stage`` copies the local files
 into a folder laid out like the Hub repository, for the maintainers to upload.
+
+Entries belong to a set: the default set (no ``set`` key) holds the checkpoints the registry uses;
+``set: paper`` holds the paper's RDD-LightGlue checkpoints where a shared-recipe retrain replaced them as
+the default (2026-10-09), so the paper's rows stay reproducible (``--set paper``; ``--set all`` for both).
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ from omegaconf import OmegaConf
 from wildmatch.paths import active_profile, load_paths
 
 MATCHERS = ("loma", "rdd-lightglue")
+SETS = ("default", "paper")
 
 
 class WeightsError(RuntimeError):
@@ -36,13 +41,18 @@ def load_manifest() -> Dict[str, Any]:
     for entry in manifest["entries"]:
         if entry["matcher"] not in MATCHERS:
             raise WeightsError(f"unknown matcher in weights.yaml: {entry['matcher']}")
+        if entry.get("set", "default") not in SETS:
+            raise WeightsError(f"unknown set in weights.yaml: {entry['set']}")
     return manifest
 
 
 def select(
-    entries: Iterable[Dict[str, Any]], datasets: Sequence[str] = (), matchers: Sequence[str] = ()
+    entries: Iterable[Dict[str, Any]],
+    datasets: Sequence[str] = (),
+    matchers: Sequence[str] = (),
+    set_name: str = "default",
 ) -> List[Dict[str, Any]]:
-    entries = list(entries)
+    entries = [e for e in entries if set_name == "all" or e.get("set", "default") == set_name]
     known = {entry["dataset"] for entry in entries}
     unknown = set(datasets) - known
     if unknown:
@@ -153,6 +163,13 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
         command.add_argument("--dataset", action="append", default=[], help="registry key (repeatable; default all)")
         command.add_argument("--matcher", action="append", default=[], choices=MATCHERS)
         command.add_argument("--paths", help="path profile that sets checkpoint_root")
+        command.add_argument(
+            "--set",
+            dest="set_name",
+            default="default",
+            choices=[*SETS, "all"],
+            help="default: the registry's checkpoints; paper: the paper's RDD-LightGlue files where they differ",
+        )
         if name == "download":
             command.add_argument("--repo", help="Hub repository (default: weights.yaml repo_id or WILDMATCH_HUB_REPO)")
             command.add_argument("--revision", help="Hub revision (default: weights.yaml revision)")
@@ -165,7 +182,7 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
     args = parser.parse_args(argv)
     try:
         manifest = load_manifest()
-        entries = select(manifest["entries"], args.dataset, args.matcher)
+        entries = select(manifest["entries"], args.dataset, args.matcher, args.set_name)
         root = checkpoint_root(active_profile(args.paths))
         if args.action in {"list", "verify"}:
             bad = 0
@@ -173,7 +190,8 @@ def main(argv: Optional[Sequence[str]] = None, prog: Optional[str] = None) -> in
                 for item in entry["files"]:
                     status = file_status(root, item)
                     bad += status != "ok"
-                    print(f"{status:<9} {entry['dataset']:<16} {entry['matcher']:<14} {item['local']}")
+                    label = entry.get("set", "default")
+                    print(f"{status:<9} {entry['dataset']:<16} {entry['matcher']:<14} {label:<8} {item['local']}")
             print(f"checkpoint_root: {root}")
             return 1 if args.action == "verify" and bad else 0
         if args.action == "download":

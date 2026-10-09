@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-09: JaguarReID fine-tuned matchers (benchmark only). New `registry.mining.split_column:
+  split_train_test` for Jaguar; LoMa-mined pairs (310 training queries); LoMa and RDD-LightGlue fine-tuned with
+  the shared recipe into the registry's `legacy-loma-mined/` paths (LoMa with W&B disabled: `wandb` is not
+  installed); new packaged sweep `jaguar_finetuned` (array 528818, 12/12). Top-1 at k = 250: LoMa 83.4 -> 84.8,
+  RDD-LightGlue 80.1 -> 80.1 (balanced Top-1 73.5 -> 76.3). Details in AGENTS.md ("JaguarReID").
 - 2026-10-08: Matcher ablation run (sweep `matcher_ablation`, array 528423, 16/16 on RTX 4090s, default
   weights, paper inputs, k = 250). Mean Top-1 / Top-5 / balanced Top-1 over the eight paper datasets: LoMa 72.8 /
   77.6 / 63.9 and RDD-LightGlue 66.5 / 70.7 / 56.4 (the paper's default rows), SuperPoint-LightGlue 60.3 / 67.0 /

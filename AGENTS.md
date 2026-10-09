@@ -1819,10 +1819,23 @@ covers about 70 % of it; k = 250 is the representative budget. No efficient prob
 patch tokens; MegaDescriptor-L is Swin). One task (the linear probe, started 11:36:13) may record an
 uncommitted `vismatch.py` edit in its manifest (a work-in-progress branch was checked out at that
 moment); the probe does not use Vismatch extraction, so its numbers are unaffected. The registry entry `jaguar` (sweep `jaguar_default`) runs
-it; no fine-tuned matchers exist yet, so only default rows can run until `lynx-finetuning` gets a
-Jaguar config (shared recipe, both matchers on LoMa-mined pairs, checkpoints under
-`wildlife-reid-10k/JaguarReID/{loma,rdd}-finetuned/legacy-loma-mined/`, the paths the
-registry expects). The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
+it. **Fine-tuned matchers (2026-10-09, user request).** Built with the package end to end:
+`wildmatch mine view|cache|submit --dataset jaguar --backend loma` (the view reads `split_train_test`
+through the new `registry.mining.split_column`; 1,408 train and 487 test photos, 31 jaguars on both sides;
+mining array 528715/528716, aggregation 528717: 310 training queries), the RDD keypoint cache
+(`mine cache --backend rdd`; the RTX 4090 ran out of memory at batch 8 after about 600 frames, the rest
+was built on a `dgxa100` A100 with the same settings, job 528712), then `wildmatch finetune-matcher
+dataset=jaguar matcher_finetune={loma,rdd}` with the shared recipe into the registry's
+`legacy-loma-mined/` folders (RDD job 528783, 11 min; LoMa job 528794, 26 min, with
+`matcher_finetune.wandb.mode=disabled` because `wandb` is an optional extra the environment lacks and the
+LoMa recipe defaults to online logging; the first LoMa job 528782 failed on the import). The training loss
+reaches about 0 within 100 epochs (burst-like near-duplicate positives make the mined triplets easy).
+Evaluation: packaged sweep `jaguar_finetuned` (array 528818, 12/12). Top-1 default -> fine-tuned at
+k = 10 / 50 / 100 / 250 / 500 / 1000: LoMa 61.8 -> 63.4, 73.7 -> 76.0, 77.4 -> 79.1, 83.4 -> 84.8,
+86.7 -> 87.7, 90.3 -> 90.1; RDD-LightGlue 60.0 -> 60.0, 69.8 -> 70.8, 74.1 -> 73.9, 80.1 -> 80.1,
+84.4 -> 84.2, 88.7 -> 87.9. Balanced Top-1 at k = 250: LoMa 77.8 -> 78.7, RDD-LightGlue 73.5 -> 76.3 (RDD
+gains 1.4 to 2.8 points of balanced Top-1 up to k = 500, so it helps the rarely photographed jaguars).
+Gains are smaller than on the paper datasets. Benchmark-only: nothing goes to the page or the Hub. The profile is in `BENCHMARK_ONLY_PROFILES`; JaguarReID is not a paper
 dataset. The image-quality audit (2026-10-03, RLE mask foreground) flagged 80 of 1,895
 photos by heuristics; none has been checked by eye.
 **Kaggle submission workflow deleted (user decision 2026-10-04).** The former standalone

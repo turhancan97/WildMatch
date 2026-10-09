@@ -1,0 +1,12 @@
+# JaguarReID with fine-tuned matchers (2026-10-09): LoMa and RDD-LightGlue fine-tuned with the shared recipe
+# on LoMa-mined pairs (view and mining `wildmatch mine --dataset jaguar --backend loma`, training
+# `wildmatch finetune-matcher dataset=jaguar`), checkpoints at the registry's `custom` paths
+# (`legacy-loma-mined/epoch_299`). Same k grid as `jaguar_grid`, whose default-weight rows they pair with.
+# Benchmark-only dataset: nothing from these runs goes to the project page or the Hub.
+description: JaguarReID, fine-tuned LoMa and RDD-LightGlue (matcher only), k = 10-1000
+datasets: [jaguar]
+candidate_k: [10, 50, 100, 250, 500, 1000]
+max_concurrent: 6
+variants:
+  - {method: vismatch, matcher: loma, checkpoint: custom}
+  - {method: vismatch, matcher: rdd-lightglue, checkpoint: custom}

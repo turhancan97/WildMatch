@@ -1,0 +1,13 @@
+# Matcher ablation, rest of the budget grid (2026-10-09): ALIKED-LightGlue and SuperPoint-LightGlue with their
+# default weights at k = 10, 50, 100, 500 and 1000 on the eight paper datasets and the paper's input tables. k = 250
+# ran in `matcher_ablation` (array 528423); together they cover the paper's ablation grid. Same output tree, so
+# `wildmatch tables` for the paper is unchanged.
+description: ALIKED-LightGlue and SuperPoint-LightGlue (default weights) on the paper datasets, k = 10-1000 except 250
+experiment_root: experiments/matcher-ablation
+inputs: paper
+datasets: [czechlynx_closed, hyenaid2022, leopardid2022, nyala, seastarreid2023, whaleshark, zindi, salamander]
+candidate_k: [10, 50, 100, 500, 1000]
+max_concurrent: 8
+variants:
+  - {method: vismatch, matcher: aliked-lightglue}
+  - {method: vismatch, matcher: superpoint-lightglue}

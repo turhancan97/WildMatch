@@ -109,6 +109,7 @@ nav:
       - results/index.md
       - Qualitative: results/qualitative.md
       - Training cost: results/training-cost.md
+      - Other matchers: results/matchers.md
   - Reproduce:
       - reproduce/index.md
       - Pair mining: reproduce/mining.md

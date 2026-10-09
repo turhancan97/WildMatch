@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-09: Project page: new Results > Other matchers page (extension, not in the paper). ALIKED-LightGlue
+  and SuperPoint-LightGlue with default weights next to the paper's default LoMa and RDD-LightGlue on the eight
+  paper datasets over the whole budget grid: an accuracy-vs-k chart (`docs/assets/js/matcher-ablation.js`,
+  `#wm-matcher-ablation`), a k = 250 table and short findings. Data from the new sweep `matcher_ablation_grid`
+  (array 528695, 80/80) plus `matcher_ablation`; exporter `paper/page/export_matcher_ablation.py` (default rows
+  from `docs/data/curves.json`, so they equal the page's other numbers), test `test_export_matcher_ablation`.
+  Checked in headless Chromium at 1280 and 390 px, light and dark. Also corrected AGENTS.md: default LoMa leads
+  on five of the eight datasets at k = 250, not six.
 - 2026-10-09: JaguarReID fine-tuned matchers (benchmark only). New `registry.mining.split_column:
   split_train_test` for Jaguar; LoMa-mined pairs (310 training queries); LoMa and RDD-LightGlue fine-tuned with
   the shared recipe into the registry's `legacy-loma-mined/` paths (LoMa with W&B disabled: `wandb` is not

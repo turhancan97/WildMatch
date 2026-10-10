@@ -142,7 +142,8 @@ class SpaceCardTests(unittest.TestCase):
         self.assertIn("torch==2.8.0", lines)
         self.assertIn("torchvision==0.23.0", lines)
         self.assertFalse([line for line in lines if line.startswith("--extra-index-url")])
-        self.assertFalse([line for line in lines if line.startswith(("uniception", "nvidia-")) or " @ git+" in line])
+        self.assertFalse([line for line in lines if line.startswith(("uniception", "gradio==", "spaces==")) or " @ git+" in line])
+        self.assertIn("nvidia-cublas-cu12==12.8.4.1", lines)  # the CUDA 12.8 libraries of PyPI's torch 2.8.0
 
     def test_no_deps_packages_are_the_locked_git_commits_plus_sam3(self):
         lock = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8")

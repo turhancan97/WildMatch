@@ -1577,7 +1577,11 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   `app.py` at start-up with `--no-deps`: the first Space build failed because pip cannot reconcile glue-factory's
   unpinned LightGlue URL with the pinned commit (the reason the conda route uses `--no-deps`), and with dependencies
   pip would add vismatch's `uniception` and SAM 3's `numpy<2` pin (SAM 3 runs on numpy 2; its own environment has
-  2.5.1). All their dependencies are pinned in `requirements.txt`. SAM 3 needs only iopath, ftfy, portalocker, wcwidth and decord
+  2.5.1). All their dependencies are pinned in `requirements.txt`. The Hub build installs `requirements.txt` together
+  with `gradio[oauth,mcp]` at the card's `sdk_version` and `spaces`, so `export.sh` resolves the pins with that stack
+  (`uv pip compile`, Linux, Python 3.12) and writes the full result without the gradio/spaces lines; the second build
+  failed on pydantic (the lock's 2.13.5 against gradio's mcp extra, <= 2.12.5), the only pin left to the resolver
+  (2.12.5). No other locked version changes. SAM 3 needs only iopath, ftfy, portalocker, wcwidth and decord
   beyond the evaluation environment (spike 2026-10-10: SAM 3 and LoMa in one torch-2.8 process, H100, 12 s SAM 3 load,
   0.1-0.6 s per photo).
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs

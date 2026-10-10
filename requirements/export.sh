@@ -33,7 +33,10 @@ SOFT='^(pydantic|pydantic-core)=='
 tmp=$(mktemp -d)
 {
   echo "$space_pins" | grep -v ' @ git+' | grep -vE "$SOFT"
-  printf '%s\n' "iopath==0.1.10" "ftfy==6.1.1" "portalocker==4.4.0" "wcwidth==0.9.2" "decord==0.6.0"
+  # SAM 3's imports beyond the evaluation pins; it also imports psutil and pkg_resources (setuptools < 81), which
+  # the evaluation environment has from other packages (the third Space build failed on psutil).
+  printf '%s\n' "iopath==0.1.10" "ftfy==6.1.1" "portalocker==4.4.0" "wcwidth==0.9.2" "decord==0.6.0" \
+    "psutil==7.2.2" "setuptools==80.10.2"
 } > "$tmp/pins.txt"
 printf '%s\n' "gradio[oauth,mcp]==${GRADIO}" "spaces" "uvicorn>=0.14.0" "websockets>=10.4" > "$tmp/hub.txt"
 uv pip compile "$tmp/pins.txt" "$tmp/hub.txt" --python-version 3.12 --python-platform x86_64-manylinux_2_28 \

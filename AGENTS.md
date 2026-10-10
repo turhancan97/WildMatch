@@ -1581,8 +1581,10 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   with `gradio[oauth,mcp]` at the card's `sdk_version` and `spaces`, so `export.sh` resolves the pins with that stack
   (`uv pip compile`, Linux, Python 3.12) and writes the full result without the gradio/spaces lines; the second build
   failed on pydantic (the lock's 2.13.5 against gradio's mcp extra, <= 2.12.5), the only pin left to the resolver
-  (2.12.5). No other locked version changes. SAM 3 needs only iopath, ftfy, portalocker, wcwidth and decord
-  beyond the evaluation environment (spike 2026-10-10: SAM 3 and LoMa in one torch-2.8 process, H100, 12 s SAM 3 load,
+  (2.12.5). No other locked version changes. SAM 3 needs iopath, ftfy, portalocker, wcwidth, decord, psutil and
+  `pkg_resources` (setuptools < 81) beyond the evaluation pins (the last two the environment has from other packages;
+  the third Space build failed on psutil, after which every module the app imports was checked against the Space
+  pins: only transformers' optional `accelerate` import is absent) (spike 2026-10-10: SAM 3 and LoMa in one torch-2.8 process, H100, 12 s SAM 3 load,
   0.1-0.6 s per photo).
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs
   infrared pair: LoMa 0.166 -> 0.714, RDD-LightGlue 0.052 -> 0.735 (default -> fine-tuned score); a photo without an

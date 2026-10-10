@@ -13,15 +13,16 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-# Installed without their dependencies, which requirements.txt already pins: plain pip would add vismatch's
-# `uniception` (excluded in the repository's uv lock) and SAM 3's numpy<2 pin (SAM 3 runs on numpy 2).
-NO_DEPS = {
-    "vismatch": "vismatch @ git+https://github.com/gmberton/vismatch.git@4a743b75749a3770af59d275483ed341dea51ff0",
-    "sam3": "sam3 @ git+https://github.com/facebookresearch/sam3.git@f6e51f59500a87c576c2df2323ce56b9fd7a12de",
-}
-for module, requirement in NO_DEPS.items():
-    if importlib.util.find_spec(module) is None:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", requirement])
+# Git-only packages, installed without their dependencies (all pinned in requirements.txt); see
+# requirements/export.sh for why pip cannot install them normally.
+NO_DEPS = [
+    line.strip()
+    for line in (Path(__file__).resolve().parent / "no_deps.txt").read_text().splitlines()
+    if line.strip() and not line.startswith("#")
+]
+missing = [req for req in NO_DEPS if importlib.util.find_spec(req.split(" @ ")[0].replace("-", "_")) is None]
+if missing:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", *missing])
 
 import gradio as gr  # noqa: E402
 import numpy as np  # noqa: E402

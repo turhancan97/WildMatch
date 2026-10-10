@@ -142,12 +142,16 @@ class SpaceCardTests(unittest.TestCase):
         self.assertIn("torch==2.8.0", lines)
         self.assertIn("torchvision==0.23.0", lines)
         self.assertFalse([line for line in lines if line.startswith("--extra-index-url")])
-        self.assertFalse([line for line in lines if line.startswith(("vismatch", "uniception", "nvidia-"))])
+        self.assertFalse([line for line in lines if line.startswith(("uniception", "nvidia-")) or " @ git+" in line])
 
-    def test_no_deps_commits_match_the_lock(self):
-        app = (SPACE / "app.py").read_text(encoding="utf-8")
-        vismatch = re.search(r"vismatch\.git@([0-9a-f]{40})", app).group(1)
-        self.assertIn(f"vismatch.git?rev={vismatch}", (REPO_ROOT / "uv.lock").read_text(encoding="utf-8"))
+    def test_no_deps_packages_are_the_locked_git_commits_plus_sam3(self):
+        lock = (REPO_ROOT / "uv.lock").read_text(encoding="utf-8")
+        lines = [line for line in (SPACE / "no_deps.txt").read_text().splitlines() if line and not line.startswith("#")]
+        names = [line.split(" @ ")[0] for line in lines]
+        self.assertEqual(names, ["gluefactory", "lightglue", "vismatch", "wildlife-datasets", "wildlife-tools", "sam3"])
+        for line in lines[:-1]:
+            url, commit = line.split(" @ git+")[1].rsplit("@", 1)
+            self.assertIn(f"{url}?rev={commit}", lock)
 
 
 if __name__ == "__main__":

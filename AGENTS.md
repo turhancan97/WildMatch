@@ -1570,11 +1570,14 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   the paper's k = 160 numbers (fine-tuned LoMa top-1 33.5 %, top-5 46.1 %; default 29.0 % / 40.4 %).
 - Packaging: plain pip cannot install `wildmatch` from git (its git-only dependencies are uv sources), so
   `deploy_space.py` copies `src/wildmatch` next to `app.py` and records the commit in `WILDMATCH_COMMIT` (refuses a
-  dirty `src/` or `space/`). `requirements.txt` is the lock's evaluation pins without `train`, the project, vismatch
-  and the NVIDIA wheels (left to pip for the cu128 torch); `uv pip compile` resolves it for Linux/Python 3.12 (171
-  packages, no `uniception`, no torchaudio). vismatch (commit of the lock) and SAM 3 (`f6e51f5`) are installed by
-  `app.py` at start-up with `--no-deps`: pip would add vismatch's `uniception` and SAM 3's `numpy<2` pin, and SAM 3
-  runs on numpy 2 (its own environment has 2.5.1). SAM 3 needs only iopath, ftfy, portalocker, wcwidth and decord
+  dirty `src/` or `space/`). `requirements.txt` is the lock's evaluation pins without `train`, the project, the NVIDIA
+  wheels (left to pip for torch) and every git-only package; `uv pip compile` resolves it for Linux/Python 3.12
+  (no `uniception`, no torchaudio). The git packages (glue-factory, LightGlue, vismatch, wildlife-datasets,
+  wildlife-tools at the lock's commits, plus SAM 3 `f6e51f5`) are listed in `space/no_deps.txt` and installed by
+  `app.py` at start-up with `--no-deps`: the first Space build failed because pip cannot reconcile glue-factory's
+  unpinned LightGlue URL with the pinned commit (the reason the conda route uses `--no-deps`), and with dependencies
+  pip would add vismatch's `uniception` and SAM 3's `numpy<2` pin (SAM 3 runs on numpy 2; its own environment has
+  2.5.1). All their dependencies are pinned in `requirements.txt`. SAM 3 needs only iopath, ftfy, portalocker, wcwidth and decord
   beyond the evaluation environment (spike 2026-10-10: SAM 3 and LoMa in one torch-2.8 process, H100, 12 s SAM 3 load,
   0.1-0.6 s per photo).
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs

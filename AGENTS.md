@@ -1590,6 +1590,12 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   uploads with their background and says so on the page (the bundled galleries are masked already). The first live
   start with `HF_TOKEN` set stopped there because the account's `facebook/sam3` access request was still pending
   (2026-10-10); once access is granted, restarting the Space turns SAM 3 on.
+- Live (2026-10-10, private `turhancan97/wildmatch`, ZeroGPU, without SAM 3): a pair call 9-18 s and a whole-gallery
+  retrieval about 17 s including the queue; lynx_096 pair, LoMa fine-tuned on CzechLynx closed, unmasked: 0.606 (0.599
+  on the cluster). The Leopard RDD-LightGlue checkpoint (the shared-recipe retrain, now the default) gives 0 matches
+  on that lynx pair, on the cluster too, while Leopard LoMa gives 0.548 and Hyena RDD 0.240: a cross-species effect of
+  the retrain's stronger negative suppression (see "Fine-tuned matcher objective"), not a Space bug; on Leopard it
+  scores 77.3 % Top-1 at k = 250.
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs
   infrared pair: LoMa 0.166 -> 0.714, RDD-LightGlue 0.052 -> 0.735 (default -> fine-tuned score); a photo without an
   animal falls back to the whole frame; peak GPU memory 8.8 GB. The staged Space (the copied package) through a

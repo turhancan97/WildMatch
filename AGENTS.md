@@ -1206,6 +1206,10 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
+- [ ] Prepare a Hugging Face Space for the project (user request 2026-10-10; scope, hardware and demo
+  content to be decided). Constraints already recorded elsewhere apply: only data the page may show
+  (Salamander photos limited to the current 9, no Jaguar photos without asking, WildlifeReID-10k terms),
+  the published CC BY-NC 4.0 checkpoints from `turhancan97/wildmatch-checkpoints`, and never the venue.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a

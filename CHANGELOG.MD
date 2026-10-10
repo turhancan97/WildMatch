@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: New open task in AGENTS.md (future-work checklist): prepare a Hugging Face Space for the
+  project (user request; scope still to be decided).
+
 - 2026-10-09: Deployed the project page with Results > Other matchers and Results > Beyond the paper
   (`mkdocs gh-deploy --strict` from `main` at `0d04ed8`; both pages return 200 on `wildmatch.gmum.net`).
   Hugging Face model card updated (Hub commit `5523a2dd`): the default and paper RDD-LightGlue sets, `--set

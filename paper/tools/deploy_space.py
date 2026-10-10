@@ -51,6 +51,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--repo", default="turhancan97/wildmatch", help="Space repository id")
     parser.add_argument("--dry-run", action="store_true", help="stage and list only; upload nothing")
     parser.add_argument("--private", action="store_true", help="create the Space private")
+    parser.add_argument("--hardware", default="zero-a10g", help="Space hardware requested at creation (ZeroGPU)")
     parser.add_argument("--allow-dirty", action="store_true", help="stage uncommitted changes (dry runs only)")
     args = parser.parse_args(argv)
     if args.allow_dirty and not args.dry_run:
@@ -66,7 +67,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         from huggingface_hub import HfApi
 
         api = HfApi()
-        api.create_repo(args.repo, repo_type="space", space_sdk="gradio", private=args.private, exist_ok=True)
+        # ZeroGPU at creation: the Hub refuses Gradio Spaces on free CPU hardware without PRO (2026-10-10), while
+        # free accounts may host two ZeroGPU Spaces.
+        api.create_repo(
+            args.repo,
+            repo_type="space",
+            space_sdk="gradio",
+            space_hardware=args.hardware,
+            private=args.private,
+            exist_ok=True,
+        )
         info = api.upload_folder(
             folder_path=tmp,
             repo_id=args.repo,

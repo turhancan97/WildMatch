@@ -101,12 +101,31 @@ class BundledDataTests(unittest.TestCase):
                 self.assertTrue((gallery.root / "ATTRIBUTION.md").is_file())
         self.assertEqual(len(retrieval.load("czechlynx_unseen").metadata), 160)
 
-    def test_only_czechlynx_photos_are_bundled(self):
+    def test_lynx_examples_are_czechlynx_photos(self):
         examples = pd.read_csv(SPACE / "examples" / "examples.csv")
         self.assertTrue(examples["source"].str.startswith("CzechLynx").all())
         self.assertTrue((SPACE / "examples" / "ATTRIBUTION.md").is_file())
         photos = {p.name for p in (SPACE / "examples").glob("*.jpg")}
         self.assertEqual(photos - set(examples["file"]), {f"synthetic_query_{k}.jpg" for k in range(6)})
+
+    def test_species_examples_come_from_original_releases(self):
+        folder = SPACE / "examples" / "species"
+        table = pd.read_csv(folder / "species.csv")
+        self.assertTrue((folder / "ATTRIBUTION.md").is_file())
+        self.assertEqual({p.name for p in folder.glob("*.jpg")}, set(table["file"]))
+        # One query/gallery pair per species with a dropdown entry; no WildlifeReID-10k file and no Nyala.
+        self.assertEqual(sorted(table.groupby("species")["side"].apply(sorted).tolist()), [["gallery", "query"]] * 6)
+        self.assertTrue(set(table["species"]) <= set(SPECIES))
+        self.assertNotIn("Nyala", set(table["species"]))
+        self.assertFalse(table["source"].str.contains("WildlifeReID|masked_images", regex=True).any())
+        licences = dict(zip(table["species"], table["licence"]))
+        for label in ("Leopard", "Spotted hyena", "Whale shark", "Sea star"):
+            self.assertEqual(licences[label], "CDLA-Permissive-1.0")
+        self.assertEqual(licences["Sea turtle"], "CC BY-SA 4.0")
+        # SalamanderID2025: only the pair the project page already shows (organisers' permission for about 10 photos).
+        page = (REPO_ROOT / "docs" / "assets" / "demo" / "before_after" / "before_after.json").read_text()
+        for source in table[table["species"] == "Fire salamander"]["source"]:
+            self.assertIn(Path(source.split(": ", 1)[1]).name, page)
 
     def test_no_cluster_paths_or_venue(self):
         for path in sorted(p for p in SPACE.rglob("*") if p.suffix in TEXT_SUFFIXES):

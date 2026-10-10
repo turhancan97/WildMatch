@@ -25,8 +25,9 @@ tags:
 WildMatch adapts pretrained feature matchers (LoMa, RDD-LightGlue) to individual animals using only identity
 labels. This Space shows what the adapted matchers match:
 
-- **Match two photos**: upload two photos, pick the species and compare the default matcher with its fine-tuned
-  WildMatch checkpoint. Lines show strong, spread-out correspondences.
+- **Match two photos**: upload two photos, or pick an example pair (a lynx by day and by night, then one
+  individual each of leopard, hyena, whale shark, sea star, sea turtle and fire salamander). Pick the species and
+  compare the default matcher with its fine-tuned WildMatch checkpoint. Lines show strong, spread-out correspondences.
 - **Find this lynx**: one lynx photo against a gallery of 160 photos of 44 lynx from the paper's unseen-individual
   test (none of them was in the fine-tuning data), or against synthetic lynx renders.
 
@@ -41,8 +42,14 @@ Code: <https://github.com/turhancan97/WildMatch> · Checkpoints:
 
 - Fine-tuned checkpoints: CC BY-NC 4.0, non-commercial use only. MegaDescriptor-L (candidate list): CC BY-NC 4.0.
 - Background removal: SAM 3 (Meta), under the SAM License.
-- Gallery and example photos: CzechLynx dataset (Picek et al.; Kaggle `picekl/czechlynx`) and its synthetic subset
-  (Zenodo record 17592004), both CC BY 4.0; see `gallery/*/ATTRIBUTION.md` and `examples/ATTRIBUTION.md`.
+- Gallery and lynx example photos: CzechLynx dataset (Picek et al.; Kaggle `picekl/czechlynx`) and its synthetic
+  subset (Zenodo record 17592004), both CC BY 4.0; see `gallery/*/ATTRIBUTION.md` and `examples/ATTRIBUTION.md`.
+- One example pair for each other species, taken from each dataset's original release: Leopard ID 2022 and Hyena ID
+  2022 (Botswana Predator Conservation Trust, African Carnivore Wildbook), Whale Shark ID (Holmberg, Norman and
+  Arzoumanian 2009) and Sea Star Re-ID 2023 (Wahltinez and Wahltinez 2024), all via LILA BC under
+  CDLA-Permissive-1.0; Turtle Recall (Zindi, Local Ocean Conservation, Google DeepMind) under CC BY-SA 4.0; two
+  SalamanderID2025 photos (AnimalCLEF 2025) shown with the organisers' permission, non-commercial. Cropped and
+  resized; see `examples/species/ATTRIBUTION.md`.
 - Code: Apache-2.0, The WildMatch Authors.
 
 ## Privacy

@@ -2,7 +2,9 @@
 """Build the Hugging Face Space's galleries and examples (GPU recommended for the embeddings; run once).
 
 Two galleries, both CC BY 4.0, so they may be redistributed with attribution (the Space must not carry
-WildlifeReID-10k, SalamanderID2025 or JaguarReID photos; see AGENTS.md, "Future-work checklist"):
+WildlifeReID-10k files or JaguarReID photos; see AGENTS.md, "Hugging Face Space"). The per-species pair examples in
+``space/examples/species/`` come from the datasets' original releases (``build_space_species_examples.py``) and
+are kept on ``--overwrite``:
 
 ``czechlynx_unseen``
     The database side of the CzechLynx unseen-individual split (registry entry ``czechlynx_unseen_eval``,
@@ -172,9 +174,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if existing and not args.overwrite:
         raise SystemExit(f"refusing to replace {', '.join(map(str, existing))} without --overwrite")
     for target in targets:
-        if target.exists():
-            shutil.rmtree(target)
-        target.mkdir(parents=True)
+        target.mkdir(parents=True, exist_ok=True)
+        for child in target.iterdir():
+            if child.name == "species":  # from build_space_species_examples.py, not rebuilt here
+                continue
+            if child.is_dir():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
     unseen = SPACE / "gallery" / "czechlynx_unseen"
     write_embeddings(unseen, build_unseen(unseen, SPACE / "examples", args.queries, args.seed))
     synthetic = SPACE / "gallery" / "synthetic"

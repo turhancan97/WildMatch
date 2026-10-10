@@ -7,6 +7,16 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: Hugging Face Space: one example pair per species on the pair tab (user decision): Leopard, Hyena, Whale
+  shark and Sea star from their original LILA BC releases (CDLA-Permissive-1.0), Sea turtle from Zindi's Turtle
+  Recall release (CC BY-SA 4.0), never the WildlifeReID-10k files; seeded random pairs (seed 0) built by the new
+  `paper/tools/build_space_species_examples.py`, except Leopard and Sea star, re-picked by appearance (user decision)
+  because their random pairs shared little visible pattern; Fire salamander reuses the two photos the page already shows (user
+  decision; still 9 Salamander photos in total); Nyala stays upload-only (no licence). Credits in the app, the Space
+  card and `examples/species/ATTRIBUTION.md`; `tests/test_space.py` checks sources, licences and the Salamander pair.
+  The app's start-up self-install now runs only on the Space (`SPACE_ID`): a smoke job without its environment had
+  installed six packages into the base miniconda, removed again at once.
+
 - 2026-10-10: Hugging Face Space public (user decision): `turhancan97/wildmatch`, linked from the README (badge, links
   row, NEWS), the Home hero ("Live demo"), Paper & Code ("Live demo") and the Demo hub page; `tests/test_space.py`
   reformatted with ruff (CI checks `src paper tests`, the earlier local check covered `space/` only).

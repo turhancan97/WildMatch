@@ -322,3 +322,9 @@ The project page builds with `mkdocs build --strict` (dependencies in
 `requirements-docs.txt`). The explainer video is built from `video/explainer/`; see
 `video/explainer/ENVIRONMENT.md`. AGENTS.md ("Project page") holds the page's rules and
 publication checklist.
+
+Hugging Face Space (`space/`, a Gradio demo of pair matching and lynx retrieval):
+
+- `python paper/tools/build_space_gallery.py` (GPU): rebuilds `space/gallery/` and `space/examples/` (CzechLynx photos only, CC BY 4.0).
+- `requirements/export.sh`: also writes `space/requirements.txt` from the lock.
+- `python paper/tools/deploy_space.py --dry-run`: stages the Space with the `wildmatch` package of the current commit; without `--dry-run` it uploads to the Space repository (write token needed).

@@ -131,6 +131,11 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`;
   `profile_vismatch.py`, the Vismatch cost breakdown read from completed runs' `timings.json`). Run them as `python paper/<group>/<script>.py`.
+- space/: the Hugging Face Space (Gradio, ZeroGPU; 2026-10-10, see "Hugging Face Space"): `app.py`,
+  `wildmatch_space/` (`species`, `masking` (SAM 3), `matching`, `retrieval`, `drawing`), the bundled galleries and
+  examples (`gallery/`, `examples/`, built by `paper/tools/build_space_gallery.py`), `requirements.txt` (written by
+  `requirements/export.sh`) and the Space card `README.md`; `paper/tools/deploy_space.py` stages it with the
+  `wildmatch` package and uploads it; `tests/test_space.py`.
 - README.md and guides/: the README is short (2026-10-06, user decisions). Its header follows
   gmum/SpaRRTa (user request 2026-10-06): the logo (150 px, light/dark via `<picture>`) above the full paper title, badges, a links row (Project
   Page, Paper, arXiv, the Hub checkpoint repo and YouTube Video, which links the explainer since it went public on 2026-10-07),
@@ -1206,10 +1211,10 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Prepare a Hugging Face Space for the project (user request 2026-10-10; scope, hardware and demo
-  content to be decided). Constraints already recorded elsewhere apply: only data the page may show
-  (Salamander photos limited to the current 9, no Jaguar photos without asking, WildlifeReID-10k terms),
-  the published CC BY-NC 4.0 checkpoints from `turhancan97/wildmatch-checkpoints`, and never the venue.
+- [ ] Hugging Face Space (user request 2026-10-10): built and smoke-tested on the cluster (see "Hugging Face
+  Space"); open: the first deploy (the user's go-ahead, ZeroGPU hardware and the `HF_TOKEN` secret with
+  `facebook/sam3` access set in the Space settings), a check on the live Space, then the README badge and the
+  page button.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a
@@ -1530,6 +1535,56 @@ Binding rules from that history:
   social image return 200 on the live URL; the social image URL is absolute since the same day.
 - [x] Switch the deploy to `wildmatch.gmum.net` (done 2026-10-07; `mkdocs.githubio.yml` deleted).
 
+
+## Hugging Face Space
+
+User decisions of 2026-10-10 (ten yes/no questions plus follow-ups): two tabs, "Match two photos" (two photos ->
+correspondence lines and match score) and "Find this lynx" (one query against a bundled gallery); visitors may
+upload photos; a species dropdown picks the fine-tuned checkpoint (the eight paper datasets + CzechLynx open, default
+set of `weights.yaml`) and a toggle compares it with the default weights; both matchers (LoMa, RDD-LightGlue); SAM 3
+removes the background in the Space; ZeroGPU under the personal account (`turhancan97/wildmatch` by default); code
+in this repository; uploads are never stored; gallery and examples only from CzechLynx and its synthetic subset (both
+CC BY 4.0), because WildlifeReID-10k forbids re-uploading, SalamanderID2025 photos are capped at the page's 9 and
+JaguarReID photos need the user's approval. ZeroGPU (docs read 2026-10-10): free personal accounts in good standing may
+host 2 ZeroGPU Spaces; Python 3.12.12 and torch 2.8.0 to 2.13 are supported; the GPUs are RTX Pro 6000 Blackwell
+(48 GB `large` slices), which the torch 2.8 cu126 build has no kernels for, so the Space installs the same 2.8.0 /
+0.23.0 from the cu128 index; models are placed on CUDA at module level (`app.preload`); the default GPU call limit is
+60 s (the Space asks for 60 s per pair and 120 s per retrieval).
+
+- Masking (`wildmatch_space/masking.py`) follows `sam3_masks.run_segmentation`: the species' prompts (species name,
+  the registry's `retry_prompts`, then "Animal") at threshold 0.5 and then 0.25, merged with `merge_instances` (the
+  registry's `merge`; lynx prompts "lynx", "big cat" are the Space's choice since CzechLynx ships its own masks); no
+  detection keeps the whole photo and says so. Matching runs on the masked photo; lines are drawn on the original
+  (page rule). Infrared frames often need the "Animal" fallback (lynx_096 night frame).
+- Matching (`matching.py`): `VismatchMatcherBackend` with the probe defaults (512 px, 512 keypoints, LoMa-B,
+  profile threshold), fine-tuned = `custom` + `matcher_only`, files fetched with `wildmatch.weights.download` (SHA-256
+  checked, CzechLynx protocol JSON beside the weights). On ZeroGPU only the start-up matchers (both defaults and the
+  CzechLynx open fine-tuned pair) stay resident; other species' matchers are rebuilt per call.
+- Retrieval (`retrieval.py`): gallery `czechlynx_unseen` is the database side of the unseen-individual split (160
+  photos, 44 lynx, dataset masks applied), matched with the CzechLynx open checkpoints, which never saw these lynx;
+  `synthetic` is the 18 `wildmatch demo` gallery renders. MegaDescriptor-L embeddings are precomputed; the default k is
+  160 (the whole gallery). At k = 10 the four seeded example queries all miss: the true lynx is not in
+  MegaDescriptor-L's top 10, exactly as in the paper's run `20260923T134525Z_f588a16d` (same top-1 lynx for all three
+  checked, scores within about 0.02; paper top-1 at k = 10 is 16.9 %), so the Space matches the whole gallery and quotes
+  the paper's k = 160 numbers (fine-tuned LoMa top-1 33.5 %, top-5 46.1 %; default 29.0 % / 40.4 %).
+- Packaging: plain pip cannot install `wildmatch` from git (its git-only dependencies are uv sources), so
+  `deploy_space.py` copies `src/wildmatch` next to `app.py` and records the commit in `WILDMATCH_COMMIT` (refuses a
+  dirty `src/` or `space/`). `requirements.txt` is the lock's evaluation pins without `train`, the project, vismatch
+  and the NVIDIA wheels (left to pip for the cu128 torch); `uv pip compile` resolves it for Linux/Python 3.12 (171
+  packages, no `uniception`, no torchaudio). vismatch (commit of the lock) and SAM 3 (`f6e51f5`) are installed by
+  `app.py` at start-up with `--no-deps`: pip would add vismatch's `uniception` and SAM 3's `numpy<2` pin, and SAM 3
+  runs on numpy 2 (its own environment has 2.5.1). SAM 3 needs only iopath, ftfy, portalocker, wcwidth and decord
+  beyond the evaluation environment (spike 2026-10-10: SAM 3 and LoMa in one torch-2.8 process, H100, 12 s SAM 3 load,
+  0.1-0.6 s per photo).
+- Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs
+  infrared pair: LoMa 0.166 -> 0.714, RDD-LightGlue 0.052 -> 0.735 (default -> fine-tuned score); a photo without an
+  animal falls back to the whole frame; peak GPU memory 8.8 GB. The staged Space (the copied package) through a
+  real Gradio server and `gradio_client`: start-up 40 s with the preload, a pair call 7 s, whole-gallery retrieval
+  14-15 s, 9.2 GB; the first example query finds its lynx (lynx_059) at k = 160. Local test runs put SAM 3's extra packages and Gradio
+  (6.30.0, resolved against the environment's pins) in a scratch folder on `PYTHONPATH`, never in the environment.
+- Licences shown in the Space: checkpoints and MegaDescriptor-L CC BY-NC 4.0, SAM 3 under the SAM License, photos
+  CzechLynx CC BY 4.0 with attribution files; no venue (pinned by `tests/test_space.py`, which also checks the species
+  table against the registry and `weights.yaml`, the ranking tie rule, the bundled data and the Space card).
 
 ## Vismatch matcher policy
 

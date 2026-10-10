@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: Hugging Face Space (`space/`, user decisions): Gradio app with "Match two photos" (species dropdown,
+  LoMa or RDD-LightGlue, default vs fine-tuned, SAM 3 background removal) and "Find this lynx" (the CzechLynx
+  unseen-individual gallery, 160 photos of 44 lynx, or synthetic renders; whole-gallery matching by default),
+  `paper/tools/build_space_gallery.py`, `paper/tools/deploy_space.py`, a Space `requirements.txt` step in
+  `requirements/export.sh` (torch 2.8.0 from the cu128 index for ZeroGPU's Blackwell GPUs) and `tests/test_space.py`.
+  Smoke-tested on an H100; not deployed yet. Details in AGENTS.md ("Hugging Face Space").
+
 - 2026-10-10: New open task in AGENTS.md (future-work checklist): prepare a Hugging Face Space for the
   project (user request; scope still to be decided).
 

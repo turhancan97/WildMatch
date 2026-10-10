@@ -1596,6 +1596,12 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   on that lynx pair, on the cluster too, while Leopard LoMa gives 0.548 and Hyena RDD 0.240: a cross-species effect of
   the retrain's stronger negative suppression (see "Fine-tuned matcher objective"), not a Space bug; on Leopard it
   scores 77.3 % Top-1 at k = 250.
+- Live with SAM 3 (2026-10-10, after Meta granted `facebook/sam3` access and the Space was restarted): lynx_096 pair,
+  LoMa fine-tuned, masked: 0.712 (prompts "lynx" and "Animal"; 0.714 on the cluster); the first example query finds
+  lynx_059 at k = 160 (without SAM 3 it had picked another lynx). The next call failed on the ZeroGPU quota: ZeroGPU
+  charges the declared `duration` (x1.5 on the large GPU, "180s requested" for 120 s) against the caller's daily
+  quota before the call runs, so a free visitor could not run even two searches. Durations lowered to 30 s (pair)
+  and 45 s (search), still about twice the measured cost.
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs
   infrared pair: LoMa 0.166 -> 0.714, RDD-LightGlue 0.052 -> 0.735 (default -> fine-tuned score); a photo without an
   animal falls back to the whole frame; peak GPU memory 8.8 GB. The staged Space (the copied package) through a

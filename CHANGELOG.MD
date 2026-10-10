@@ -7,6 +7,10 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: Hugging Face Space: SAM 3 verified live after `facebook/sam3` access was granted (lynx pair 0.712 with
+  masks, first example query found); ZeroGPU durations lowered from 60/120 s to 30/45 s because ZeroGPU charges the
+  declared duration against each visitor's daily quota before a call runs.
+
 - 2026-10-10: Hugging Face Space (`space/`, user decisions): Gradio app with "Match two photos" (species dropdown,
   LoMa or RDD-LightGlue, default vs fine-tuned, SAM 3 background removal) and "Find this lynx" (the CzechLynx
   unseen-individual gallery, 160 photos of 44 lynx, or synthetic renders; whole-gallery matching by default),

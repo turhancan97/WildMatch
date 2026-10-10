@@ -77,7 +77,9 @@ def _matcher(matcher_label: str, weights: str, dataset: str):
     return matching.matcher(name, dataset if weights.startswith("Fine-tuned") else None)
 
 
-@gpu(duration=60)
+# ZeroGPU checks the declared duration (x1.5 on the default large GPU) against the visitor's daily quota before a
+# call starts, so keep it near the measured cost: pair 7-18 s, whole-gallery search 15-17 s (2026-10-10).
+@gpu(duration=30)
 def match_pair(left, right, species_label, matcher_label, weights, use_sam3, lines):
     if left is None or right is None:
         raise gr.Error("Add two photos.")
@@ -103,7 +105,7 @@ def match_pair(left, right, species_label, matcher_label, weights, use_sam3, lin
     return figure, summary
 
 
-@gpu(duration=120)
+@gpu(duration=45)
 def find_lynx(query, gallery_label, matcher_label, weights, use_sam3, k):
     if query is None:
         raise gr.Error("Add a photo of a lynx.")

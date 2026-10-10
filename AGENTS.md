@@ -1211,9 +1211,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 (see "Hugging Face Space"); open: the
-  page deploy after the links reach `main`, and a live re-check of the lowered ZeroGPU durations once the account's
-  daily quota resets.
+- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 and linked from the deployed page (see
+  "Hugging Face Space"); open: a live re-check of the lowered ZeroGPU durations and the per-species examples once the
+  account's daily quota resets.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a

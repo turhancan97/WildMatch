@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: Project page deployed from `main` `ea87252` (`gh-pages` `11df4da`, user request): the "Live demo" links
+  to the Hugging Face Space are live on Home, Paper & Code and Demo.
+
 - 2026-10-10: Hugging Face Space: one example pair per species on the pair tab (user decision): Leopard, Hyena, Whale
   shark and Sea star from their original LILA BC releases (CDLA-Permissive-1.0), Sea turtle from Zindi's Turtle
   Recall release (CC BY-SA 4.0), never the WildlifeReID-10k files; seeded random pairs (seed 0) built by the new

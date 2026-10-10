@@ -48,6 +48,7 @@ Marcin Przewięźlikowski<sup>1,4</sup>
 <div class="wm-buttons" markdown>
 [Paper & Code](paper.md){ .md-button .md-button--primary }
 [arXiv](https://arxiv.org/abs/2610.07384){ .md-button }
+[Live demo](https://huggingface.co/spaces/turhancan97/wildmatch){ .md-button }
 [Results](results/index.md){ .md-button }
 [Demo](demo/index.md){ .md-button }
 [Reproduce](reproduce/index.md){ .md-button }

@@ -7,6 +7,9 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: Hugging Face Space public (user decision): `turhancan97/wildmatch`, linked from the README (badge, links
+  row, NEWS), the Home hero ("Live demo"), Paper & Code ("Live demo") and the Demo hub page.
+
 - 2026-10-10: Hugging Face Space: SAM 3 verified live after `facebook/sam3` access was granted (lynx pair 0.712 with
   masks, first example query found); ZeroGPU durations lowered from 60/120 s to 30/45 s because ZeroGPU charges the
   declared duration against each visitor's daily quota before a call runs.

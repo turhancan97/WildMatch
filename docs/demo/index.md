@@ -7,6 +7,10 @@ from, the background-masking step every image passes through, and finally a play
 on synthetic renders. Use the arrows at the bottom of each page to walk through them in
 order.
 
+!!! tip "Try it on your own photos"
+    The [WildMatch Space on Hugging Face](https://huggingface.co/spaces/turhancan97/wildmatch) matches two photos of your choice with the
+    default or the fine-tuned matcher, and finds a lynx in the gallery of 44 individuals the matcher never saw.
+
 <div class="wm-hub">
 
 <a class="wm-hub-card" href="before-after/">

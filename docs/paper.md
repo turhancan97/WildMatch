@@ -7,6 +7,7 @@ Bartosz Zieliński, Marcin Przewięźlikowski. Preprint, arXiv:2610.07384, 2026.
 <div class="wm-buttons" markdown>
 [arXiv](https://arxiv.org/abs/2610.07384){ .md-button .md-button--primary }
 [PDF](https://arxiv.org/pdf/2610.07384){ .md-button }
+[Live demo](https://huggingface.co/spaces/turhancan97/wildmatch){ .md-button }
 </div>
 
 The preprint is released under CC BY 4.0.

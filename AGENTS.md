@@ -138,7 +138,7 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   `wildmatch` package and uploads it; `tests/test_space.py`.
 - README.md and guides/: the README is short (2026-10-06, user decisions). Its header follows
   gmum/SpaRRTa (user request 2026-10-06): the logo (150 px, light/dark via `<picture>`) above the full paper title, badges, a links row (Project
-  Page, Paper, arXiv, the Hub checkpoint repo and YouTube Video, which links the explainer since it went public on 2026-10-07),
+  Page, Paper, arXiv, the Hub checkpoint repo, the Hugging Face Space demo (2026-10-10) and YouTube Video, which links the explainer since it went public on 2026-10-07),
   the six authors as confirmed by the paper session (Kargin and Kubaty equal contribution; links:
   personal pages for Kargin, Zielinski, Przewiezlikowski, LinkedIn for Kubaty, ORCID for
   Rostovskaya, ResearchGate for Wierzbowska), a NEWS list (template in an HTML comment; first entry
@@ -1211,10 +1211,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Hugging Face Space (user request 2026-10-10): built and smoke-tested on the cluster (see "Hugging Face
-  Space"); open: the first deploy (the user's go-ahead, ZeroGPU hardware and the `HF_TOKEN` secret with
-  `facebook/sam3` access set in the Space settings), a check on the live Space, then the README badge and the
-  page button.
+- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 (see "Hugging Face Space"); open: the
+  page deploy after the links reach `main`, and a live re-check of the lowered ZeroGPU durations once the account's
+  daily quota resets.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a
@@ -1602,6 +1601,9 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   charges the declared `duration` (x1.5 on the large GPU, "180s requested" for 120 s) against the caller's daily
   quota before the call runs, so a free visitor could not run even two searches. Durations lowered to 30 s (pair)
   and 45 s (search), still about twice the measured cost.
+- Public since 2026-10-10 (user decision, after the live SAM 3 check): <https://huggingface.co/spaces/turhancan97/wildmatch>.
+  Linked from the README (a Space badge, "HuggingFace Demo" in the links row, a NEWS entry), the project page's Home
+  hero ("Live demo"), Paper & Code ("Live demo") and a tip on the Demo hub page.
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs
   infrared pair: LoMa 0.166 -> 0.714, RDD-LightGlue 0.052 -> 0.735 (default -> fine-tuned score); a photo without an
   animal falls back to the whole frame; peak GPU memory 8.8 GB. The staged Space (the copied package) through a

@@ -58,9 +58,14 @@ LINKS = (
 
 def _prepare(image: Image.Image, species, use_sam3: bool) -> Tuple[masking.MaskResult, str]:
     image = image.convert("RGB")
-    if not use_sam3:
+    if not use_sam3 or masking.unavailable():
         whole = np.ones((image.height, image.width), dtype=bool)
-        return masking.MaskResult(whole, image, None, 0), "background kept (SAM 3 off)"
+        note = (
+            "background kept (SAM 3 off)"
+            if not use_sam3
+            else "**SAM 3 is not available here; the whole photo was used.**"
+        )
+        return masking.MaskResult(whole, image, None, 0), note
     result = masking.segment(image, species.prompts, species.merge)
     if result.prompt is None:
         return result, "**SAM 3 found no animal; the whole photo was used.**"
@@ -168,6 +173,12 @@ def build() -> gr.Blocks:
             "checkpoint, and see which spots, stripes and markings it matches. SAM 3 removes the background "
             "first, as in the paper: matching runs on the masked photos, and the lines are drawn on the originals."
         )
+        if masking.unavailable():
+            gr.Markdown(
+                "**SAM 3 is not available on this Space right now, so uploaded photos are matched with their "
+                "background.** Fine-tuned matchers expect masked photos; results on uploads are worse until it is back. "
+                "The gallery photos are already masked."
+            )
         with gr.Tab("Match two photos"):
             with gr.Row():
                 left = gr.Image(type="pil", label="Photo 1", height=320)
@@ -223,8 +234,12 @@ def build() -> gr.Blocks:
 
 
 def preload() -> None:
-    """On ZeroGPU, build the models used most at start-up, outside any GPU call, so they stay resident."""
-    masking.processor()
+    """On ZeroGPU, build the models used most at start-up, outside any GPU call, so they stay resident.
+
+    SAM 3 failing to load (its checkpoint is gated) does not stop the Space: matching then uses whole photos.
+    """
+    if not masking.load():
+        print(f"SAM 3 not loaded, running without background removal: {masking.unavailable()}", flush=True)
     retrieval.embedder()
     for name in MATCHERS.values():
         matching.matcher(name, None, keep=True)

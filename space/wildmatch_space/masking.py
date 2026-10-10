@@ -23,6 +23,7 @@ THRESHOLD = 0.5
 FALLBACK_THRESHOLD = 0.25
 
 _processor = None
+_unavailable: Optional[str] = None  # why SAM 3 could not be loaded, if it could not
 
 
 @dataclass
@@ -42,9 +43,27 @@ def _checkpoint() -> str:
     return hf_hub_download("facebook/sam3", "sam3.pt", token=os.environ.get("HF_TOKEN"))
 
 
+def unavailable() -> Optional[str]:
+    """Why SAM 3 is not available (for example a gated-access request not yet approved), or None."""
+    return _unavailable
+
+
+def load() -> bool:
+    """Build SAM 3 now; on failure remember the reason so the app runs without background removal."""
+    global _unavailable
+    try:
+        processor()
+        _unavailable = None
+    except Exception as error:  # the gated checkpoint (401/403), a missing package or CUDA
+        _unavailable = f"{type(error).__name__}: {str(error).strip().splitlines()[-1][:200]}"
+    return _unavailable is None
+
+
 def processor():
     """The SAM 3 image processor, built once on CUDA."""
     global _processor
+    if _unavailable is not None:
+        raise RuntimeError(f"SAM 3 is not available: {_unavailable}")
     if _processor is None:
         from sam3.model.sam3_image_processor import Sam3Processor
         from sam3.model_builder import build_sam3_image_model

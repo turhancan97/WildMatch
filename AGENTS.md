@@ -1586,6 +1586,10 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   the third Space build failed on psutil, after which every module the app imports was checked against the Space
   pins: only transformers' optional `accelerate` import is absent) (spike 2026-10-10: SAM 3 and LoMa in one torch-2.8 process, H100, 12 s SAM 3 load,
   0.1-0.6 s per photo).
+- SAM 3 is optional at run time (`masking.load`): if its checkpoint cannot be loaded, the Space still starts, matches
+  uploads with their background and says so on the page (the bundled galleries are masked already). The first live
+  start with `HF_TOKEN` set stopped there because the account's `facebook/sam3` access request was still pending
+  (2026-10-10); once access is granted, restarting the Space turns SAM 3 on.
 - Checks (2026-10-10, H100 `dgxh100 --qos=big`): both tabs, both matchers, default and fine-tuned; lynx_096 colour vs
   infrared pair: LoMa 0.166 -> 0.714, RDD-LightGlue 0.052 -> 0.735 (default -> fine-tuned score); a photo without an
   animal falls back to the whole frame; peak GPU memory 8.8 GB. The staged Space (the copied package) through a

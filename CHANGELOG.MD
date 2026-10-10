@@ -11,7 +11,7 @@ kept under Unreleased until a project version is assigned.
   LoMa or RDD-LightGlue, default vs fine-tuned, SAM 3 background removal) and "Find this lynx" (the CzechLynx
   unseen-individual gallery, 160 photos of 44 lynx, or synthetic renders; whole-gallery matching by default),
   `paper/tools/build_space_gallery.py`, `paper/tools/deploy_space.py`, a Space `requirements.txt` step in
-  `requirements/export.sh` (torch 2.8.0 from the cu128 index for ZeroGPU's Blackwell GPUs) and `tests/test_space.py`.
+  `requirements/export.sh` (plain torch 2.8.0 pins, whose PyPI wheels are the CUDA 12.8 build that ZeroGPU's Blackwell GPUs need) and `tests/test_space.py`.
   Smoke-tested on an H100; not deployed yet. Details in AGENTS.md ("Hugging Face Space").
 
 - 2026-10-10: New open task in AGENTS.md (future-work checklist): prepare a Hugging Face Space for the

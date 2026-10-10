@@ -1547,8 +1547,9 @@ in this repository; uploads are never stored; gallery and examples only from Cze
 CC BY 4.0), because WildlifeReID-10k forbids re-uploading, SalamanderID2025 photos are capped at the page's 9 and
 JaguarReID photos need the user's approval. ZeroGPU (docs read 2026-10-10): free personal accounts in good standing may
 host 2 ZeroGPU Spaces; Python 3.12.12 and torch 2.8.0 to 2.13 are supported; the GPUs are RTX Pro 6000 Blackwell
-(48 GB `large` slices), which the torch 2.8 cu126 build has no kernels for, so the Space installs the same 2.8.0 /
-0.23.0 from the cu128 index; models are placed on CUDA at module level (`app.preload`); the default GPU call limit is
+(48 GB `large` slices), which the torch 2.8 cu126 build has no kernels for; ZeroGPU accepts only plain pins
+(`torch==2.8.0+cu128` failed with a configuration error on the first deploy), so the Space pins plain 2.8.0 / 0.23.0,
+whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at module level (`app.preload`); the default GPU call limit is
 60 s (the Space asks for 60 s per pair and 120 s per retrieval).
 
 - Masking (`wildmatch_space/masking.py`) follows `sam3_masks.run_segmentation`: the species' prompts (species name,

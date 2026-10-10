@@ -132,14 +132,16 @@ class SpaceCardTests(unittest.TestCase):
         ours = pattern.search((SPACE / "README.md").read_text(encoding="utf-8")).group(0)
         self.assertEqual(ours, pattern.search((REPO_ROOT / "README.md").read_text(encoding="utf-8")).group(0))
 
-    def test_requirements_use_blackwell_torch_and_leave_out_no_deps_packages(self):
+    def test_requirements_use_plain_torch_pins_and_leave_out_no_deps_packages(self):
         lines = [
             line.split(";")[0].strip()
             for line in (SPACE / "requirements.txt").read_text().splitlines()
             if line and not line.startswith("#") and "sys_platform == 'never'" not in line
         ]
-        self.assertIn("torch==2.8.0+cu128", lines)
-        self.assertIn("torchvision==0.23.0+cu128", lines)
+        # ZeroGPU accepts only plain supported torch pins; PyPI's 2.8.0 Linux wheels are the CUDA 12.8 build.
+        self.assertIn("torch==2.8.0", lines)
+        self.assertIn("torchvision==0.23.0", lines)
+        self.assertFalse([line for line in lines if line.startswith("--extra-index-url")])
         self.assertFalse([line for line in lines if line.startswith(("vismatch", "uniception", "nvidia-"))])
 
     def test_no_deps_commits_match_the_lock(self):

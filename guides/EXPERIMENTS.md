@@ -326,5 +326,6 @@ publication checklist.
 Hugging Face Space (`space/`, a Gradio demo of pair matching and lynx retrieval):
 
 - `python paper/tools/build_space_gallery.py` (GPU): rebuilds `space/gallery/` and `space/examples/` (CzechLynx photos only, CC BY 4.0).
+- `python paper/tools/build_space_species_examples.py select|fetch|build --work <dir>`: one example pair per other species for the Space, taken from each dataset's original release (CDLA-Permissive-1.0 or CC BY-SA 4.0) and written to `space/examples/species/` with attribution.
 - `requirements/export.sh`: also writes `space/requirements.txt` from the lock.
 - `python paper/tools/deploy_space.py --dry-run`: stages the Space with the `wildmatch` package of the current commit; without `--dry-run` it uploads to the Space repository (write token needed).

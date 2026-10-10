@@ -1,0 +1,13 @@
+file,species,side,identity,source,chosen,licence
+leopard_query.jpg,Leopard,query,f2abff83-5163-4560-be53-9421cac22d71,"Leopard ID 2022: Botswana Predator Conservation Trust (2022), African Carnivore Wildbook, via Wild Me and LILA BC: 000000006296.jpg",by appearance,CDLA-Permissive-1.0
+leopard_gallery.jpg,Leopard,gallery,f2abff83-5163-4560-be53-9421cac22d71,"Leopard ID 2022: Botswana Predator Conservation Trust (2022), African Carnivore Wildbook, via Wild Me and LILA BC: 000000006126.jpg",by appearance,CDLA-Permissive-1.0
+hyena_query.jpg,Spotted hyena,query,d653ccd7-98af-4641-bdad-47dd2242501a,"Hyena ID 2022: Botswana Predator Conservation Trust (2022), African Carnivore Wildbook, via Wild Me and LILA BC: 000000002246.jpg",seeded random (seed 0),CDLA-Permissive-1.0
+hyena_gallery.jpg,Spotted hyena,gallery,d653ccd7-98af-4641-bdad-47dd2242501a,"Hyena ID 2022: Botswana Predator Conservation Trust (2022), African Carnivore Wildbook, via Wild Me and LILA BC: 000000002056.jpg",seeded random (seed 0),CDLA-Permissive-1.0
+whaleshark_query.jpg,Whale shark,query,da2f4fd2-5ede-a6fc-42b5-52f3e6a720d7,"Whale Shark ID: Holmberg, Norman and Arzoumanian (2009), Endangered Species Research 7, via Wild Me and LILA BC: 000000005164.jpg",seeded random (seed 0),CDLA-Permissive-1.0
+whaleshark_gallery.jpg,Whale shark,gallery,da2f4fd2-5ede-a6fc-42b5-52f3e6a720d7,"Whale Shark ID: Holmberg, Norman and Arzoumanian (2009), Endangered Species Research 7, via Wild Me and LILA BC: 000000001789.jpg",seeded random (seed 0),CDLA-Permissive-1.0
+seastar_query.jpg,Sea star,query,Anau14,"Sea Star Re-ID 2023: Wahltinez and Wahltinez (2024), Methods in Ecology and Evolution, via LILA BC: Anau14/IMG_3470.jpg",by appearance,CDLA-Permissive-1.0
+seastar_gallery.jpg,Sea star,gallery,Anau14,"Sea Star Re-ID 2023: Wahltinez and Wahltinez (2024), Methods in Ecology and Evolution, via LILA BC: Anau14/IMG_3466.jpg",by appearance,CDLA-Permissive-1.0
+turtle_query.jpg,Sea turtle,query,t_id_qlJgCqE1,"Turtle Recall Conservation Challenge (Zindi, Local Ocean Conservation and Google DeepMind): ID_9CXW6PF8.JPG",seeded random (seed 0),CC BY-SA 4.0
+turtle_gallery.jpg,Sea turtle,gallery,t_id_qlJgCqE1,"Turtle Recall Conservation Challenge (Zindi, Local Ocean Conservation and Google DeepMind): ID_YNWBAJ6M.JPG",seeded random (seed 0),CC BY-SA 4.0
+salamander_query.jpg,Fire salamander,query,,SalamanderID2025 (AnimalCLEF 2025): query/images/616e46c4c91594a7_795.jpg,the project page's pair,AnimalCLEF2025 rules; shown with the organisers' permission (non-commercial)
+salamander_gallery.jpg,Fire salamander,gallery,,SalamanderID2025 (AnimalCLEF 2025): database/images/25372f49baf1e44c_305.jpg,the project page's pair,AnimalCLEF2025 rules; shown with the organisers' permission (non-commercial)

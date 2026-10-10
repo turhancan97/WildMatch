@@ -21,6 +21,9 @@ NO_DEPS = [
     if line.strip() and not line.startswith("#")
 ]
 missing = [req for req in NO_DEPS if importlib.util.find_spec(req.split(" @ ")[0].replace("-", "_")) is None]
+if missing and not os.environ.get("SPACE_ID"):
+    # Only the Space installs packages itself; elsewhere this would change whatever environment runs the app.
+    raise SystemExit(f"missing packages (pip install --no-deps -r no_deps.txt in your own environment): {missing}")
 if missing:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-deps", *missing])
 
@@ -102,6 +105,14 @@ def match_pair(left, right, species_label, matcher_label, weights, use_sam3, lin
         f"**Match score {result.score:.3f}** · {result.match_count} matches ({drawn} drawn) · "
         f"{matcher_label}, {which}\n\nLeft: {note_l}. Right: {note_r}."
     )
+    if result.match_count == 0 and weights.startswith("Fine-tuned"):
+        # Not an error: the retrained RDD-LightGlue checkpoints (Leopard, Sea star) score most pairs 0 in the
+        # evaluation too, true pairs included, while still ranking the right individual first most of the time.
+        summary += (
+            "\n\nNo confident correspondence. Fine-tuned matchers reject pairs they cannot match reliably; "
+            "some checkpoints (RDD-LightGlue for Leopard and Sea star) score many true pairs 0 in the evaluation "
+            "as well. Try the other matcher."
+        )
     return figure, summary
 
 
@@ -158,6 +169,21 @@ def _examples(pattern: str) -> List[str]:
     return sorted(str(p) for p in EXAMPLES.glob(pattern))
 
 
+def _pair_examples() -> List[list]:
+    """The lynx day/night pair, then one query/gallery pair per species from ``examples/species/``."""
+    pair = _examples("lynx_pair_*.jpg")
+    rows = [[pair[0], pair[1], DEFAULT_SPECIES]] if len(pair) == 2 else []
+    table = EXAMPLES / "species" / "species.csv"
+    if table.is_file():
+        species = pd.read_csv(table)
+        for label, group in species.groupby("species", sort=False):
+            files = dict(zip(group["side"], group["file"]))
+            rows.append(
+                [str(EXAMPLES / "species" / files["query"]), str(EXAMPLES / "species" / files["gallery"]), label]
+            )
+    return rows
+
+
 def _query_examples() -> List[list]:
     table = EXAMPLES / "examples.csv"
     lynx = pd.read_csv(table)["file"].tolist() if table.is_file() else []
@@ -195,12 +221,13 @@ def build() -> gr.Blocks:
             run = gr.Button("Match", variant="primary")
             figure = gr.Image(label="Correspondences", type="pil")
             summary = gr.Markdown()
-            pair = _examples("lynx_pair_*.jpg")
-            if len(pair) == 2:
+            pair_examples = _pair_examples()
+            if pair_examples:
                 gr.Examples(
-                    [[pair[0], pair[1], DEFAULT_SPECIES]],
+                    pair_examples,
                     [left, right, species],
-                    label="Example: one lynx, day and night",
+                    label="Examples: one individual per species (a lynx by day and by night first)",
+                    examples_per_page=len(pair_examples),
                 )
             run.click(match_pair, [left, right, species, matcher, weights, use_sam3, lines], [figure, summary])
         with gr.Tab("Find this lynx"):
@@ -229,8 +256,11 @@ def build() -> gr.Blocks:
         gr.Markdown(
             "Fine-tuned checkpoints: CC BY-NC 4.0, non-commercial use only. MegaDescriptor-L, which picks the "
             "gallery candidates, was trained on six of the paper's eight datasets (not on CzechLynx). Background "
-            "removal uses SAM 3 (Meta, SAM License). Gallery and example photos: CzechLynx dataset (Picek et al.), "
-            "CC BY 4.0. Uploaded photos are processed in memory and not stored."
+            "removal uses SAM 3 (Meta, SAM License). Gallery and lynx photos: CzechLynx dataset (Picek et al.), "
+            "CC BY 4.0. Other species' example pairs: the original releases of Leopard ID 2022, Hyena ID 2022, Whale "
+            "Shark ID and Sea Star Re-ID 2023 (LILA BC, CDLA-Permissive-1.0), Turtle Recall (Zindi, CC BY-SA 4.0) and "
+            "SalamanderID2025 (AnimalCLEF 2025, shown with the organisers' permission); see "
+            "`examples/species/ATTRIBUTION.md`. Uploaded photos are processed in memory and not stored."
         )
     return demo
 

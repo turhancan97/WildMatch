@@ -1211,9 +1211,9 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 (see "Hugging Face Space"); open: the
-  page deploy after the links reach `main`, and a live re-check of the lowered ZeroGPU durations once the account's
-  daily quota resets.
+- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 and linked from the deployed page (see
+  "Hugging Face Space"); open: a live re-check of the lowered ZeroGPU durations and the per-species examples once the
+  account's daily quota resets.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a
@@ -1594,13 +1594,43 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   on the cluster). The Leopard RDD-LightGlue checkpoint (the shared-recipe retrain, now the default) gives 0 matches
   on that lynx pair, on the cluster too, while Leopard LoMa gives 0.548 and Hyena RDD 0.240: a cross-species effect of
   the retrain's stronger negative suppression (see "Fine-tuned matcher objective"), not a Space bug; on Leopard it
-  scores 77.3 % Top-1 at k = 250.
+  scores 77.3 % Top-1 at k = 250. Correction (2026-10-10): it is not only cross-species. On the same-view Leopard and
+  Sea star example pairs the retrained RDD-LightGlue checkpoints also give 0 matches, and the `rdd_relaxed` sweep's
+  own `scores.npz` (same files, SHA-256 `ba555d1b...`, `775fe95f...`) scores exactly these pairs 0.0 too: these two
+  checkpoints score most candidate pairs 0 (89 % of Leopard's), true pairs included, yet rank the right individual
+  first often enough. The app explains a fine-tuned 0-match result instead of leaving an empty figure.
 - Live with SAM 3 (2026-10-10, after Meta granted `facebook/sam3` access and the Space was restarted): lynx_096 pair,
   LoMa fine-tuned, masked: 0.712 (prompts "lynx" and "Animal"; 0.714 on the cluster); the first example query finds
   lynx_059 at k = 160 (without SAM 3 it had picked another lynx). The next call failed on the ZeroGPU quota: ZeroGPU
   charges the declared `duration` (x1.5 on the large GPU, "180s requested" for 120 s) against the caller's daily
   quota before the call runs, so a free visitor could not run even two searches. Durations lowered to 30 s (pair)
   and 45 s (search), still about twice the measured cost.
+- Per-species pair examples (2026-10-10, user decision: one example pair per species so visitors can try the
+  checkpoints without their own photos). The WildlifeReID-10k files may not be re-uploaded, but the original releases
+  allow redistribution with attribution (checked on the source pages 2026-10-10): Leopard ID 2022, Hyena ID 2022,
+  Whale Shark ID (Wild Me on LILA BC) and Sea Star Re-ID 2023 (LILA BC) under CDLA-Permissive-1.0, Turtle Recall
+  under CC BY-SA 4.0 (Zindi's competition rules). `paper/tools/build_space_species_examples.py` (`select`, `fetch`,
+  `build`) draws one identity on both sides of the split per species (seed 0, never by score; no whole-photo SAM 3
+  fallbacks), one query (test) and one database (train) photo, except Leopard and Sea star (user decision, same day):
+  their seed-0 draws (a head close-up against a whole body; two close-ups of different parts of a star) gave the
+  fine-tuned matchers almost no matches (LoMa 0.006 / 0.006, RDD-LightGlue 0 matches), an honest failure of photos
+  that share little visible pattern but a misleading one-click example, so their pairs were re-picked by appearance
+  (`BY_APPEARANCE`) from contact sheets of 8 seeded random individuals (seed 1), by eye and before any matcher ran; streams only those files out of the source archives
+  (tar streams, the sea star zip by HTTP range; 27 GB of archives, nothing large kept), crops the Wild Me photos with
+  the release's own box (looked up by photo and individual, `name` field; the WildlifeReID-10k file suffix is the
+  0-based annotation index) and checks the crop size against the WildlifeReID-10k file (within 1 px: some boxes end a
+  pixel past the photo). Outputs: `space/examples/species/` (640 px JPEGs, `species.csv` with source and licence,
+  `ATTRIBUTION.md` with each source's requested citation), about 1 MB. Nyala has no stated licence and stays
+  upload-only. SalamanderID2025: the user allowed 2 photos without asking the organisers again, so the Space reuses
+  the pair the page already shows (`before_after.json`; still 9 distinct Salamander photos overall).
+  `build_space_gallery.py --overwrite` keeps `examples/species/`. The pair tab lists the lynx pair first, then the six
+  species pairs.
+- App start-up installs the git-only packages only on the Space (`SPACE_ID` set) and stops elsewhere (2026-10-10):
+  a cluster smoke job whose `--wrap` ran under `/bin/sh` (`source: not found`) used the base miniconda Python, and
+  the app's self-install put gluefactory, lightglue, vismatch, wildlife-datasets, wildlife-tools and sam3 into the
+  base miniconda; nothing was replaced (no uninstall in the log), so the six were uninstalled again the same minute
+  and the base is as before. The uv environment was not touched. Start smoke jobs with a `#!/bin/bash` wrap that
+  exits when activation fails.
 - Public since 2026-10-10 (user decision, after the live SAM 3 check): <https://huggingface.co/spaces/turhancan97/wildmatch>.
   Linked from the README (a Space badge, "HuggingFace Demo" in the links row, a NEWS entry), the project page's Home
   hero ("Live demo"), Paper & Code ("Live demo") and a tip on the Demo hub page.

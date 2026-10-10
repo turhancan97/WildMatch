@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-09: Deployed the project page with Results > Other matchers and Results > Beyond the paper
+  (`mkdocs gh-deploy --strict` from `main` at `0d04ed8`; both pages return 200 on `wildmatch.gmum.net`).
+  Hugging Face model card updated (Hub commit `5523a2dd`): the default and paper RDD-LightGlue sets, `--set
+  paper`, and a link to Beyond the paper.
+
 - 2026-10-09: Retrained RDD-LightGlue checkpoints become the default, and the project page gets Results > Beyond
   the paper (user decisions). Registry `checkpoints.custom.rdd-lightglue` of Hyena, Leopard, Sea star, Whale
   shark, Zindi, Salamander, CzechLynx open and unseen-eval now names the shared-recipe `*-relaxed` files (paper

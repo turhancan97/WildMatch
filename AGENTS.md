@@ -1011,8 +1011,8 @@ Whale shark, Zindi, Salamander, CzechLynx open with its protocol file) moved to 
 names the shared-recipe retrains, on the Hub as `<key>/rdd-lightglue-shared-recipe/...` (uploaded 2026-10-09,
 Hub commit `ac865965`; `SHA256SUMS.md` lists both sets; an anonymous download of both verified).
 `wildmatch weights list|verify|download|stage --set default|paper|all` (default `default`). The registry check
-in `tests/test_weights.py` covers the default set only. The Hub README update that links the page's
-"Beyond the paper" section waits for the page deploy.
+in `tests/test_weights.py` covers the default set only. The Hub model card explains both sets and links the
+page's "Beyond the paper" section (Hub commit `5523a2dd`, 2026-10-09, after the page deploy).
 `wildmatch prepare status` checks each registry entry (root, metadata, split values, a sample of
 images, the mask column when masks are applied at load) and prints its `registry.download`
 block (`raw` source, `derived` files, `reproducible`); all 17 entries are ready on the cluster.

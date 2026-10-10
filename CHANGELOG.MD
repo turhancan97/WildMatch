@@ -7,6 +7,21 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-10: Hugging Face Space public (user decision): `turhancan97/wildmatch`, linked from the README (badge, links
+  row, NEWS), the Home hero ("Live demo"), Paper & Code ("Live demo") and the Demo hub page; `tests/test_space.py`
+  reformatted with ruff (CI checks `src paper tests`, the earlier local check covered `space/` only).
+
+- 2026-10-10: Hugging Face Space: SAM 3 verified live after `facebook/sam3` access was granted (lynx pair 0.712 with
+  masks, first example query found); ZeroGPU durations lowered from 60/120 s to 30/45 s because ZeroGPU charges the
+  declared duration against each visitor's daily quota before a call runs.
+
+- 2026-10-10: Hugging Face Space (`space/`, user decisions): Gradio app with "Match two photos" (species dropdown,
+  LoMa or RDD-LightGlue, default vs fine-tuned, SAM 3 background removal) and "Find this lynx" (the CzechLynx
+  unseen-individual gallery, 160 photos of 44 lynx, or synthetic renders; whole-gallery matching by default),
+  `paper/tools/build_space_gallery.py`, `paper/tools/deploy_space.py`, a Space `requirements.txt` step in
+  `requirements/export.sh` (plain torch 2.8.0 pins, whose PyPI wheels are the CUDA 12.8 build that ZeroGPU's Blackwell GPUs need) and `tests/test_space.py`.
+  Smoke-tested on an H100; not deployed yet. Details in AGENTS.md ("Hugging Face Space").
+
 - 2026-10-10: New open task in AGENTS.md (future-work checklist): prepare a Hugging Face Space for the
   project (user request; scope still to be decided).
 

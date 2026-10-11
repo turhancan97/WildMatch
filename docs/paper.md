@@ -28,9 +28,17 @@ The preprint is released under CC BY 4.0.
 
 ## Acknowledgements
 
-!!! note "To be completed"
-    Funding sources, computing grants and data providers to be acknowledged will be
-    listed here by the authors.
+This research was supported by the flagship project "Artificial Intelligence Computing Center
+Core Facility" of the Priority Research Area DigiWorld under the Strategic Programme Excellence
+Initiative at the Jagiellonian University. We gratefully acknowledge Poland's high-performance
+computing infrastructure PLGrid (HPC Center: ACK Cyfronet AGH) for providing computer facilities
+and support within computational grant no. PLG/2026/019483.
+
+We thank the creators of the datasets used in this work: the CzechLynx team, the authors of
+WildlifeReID-10k and of the datasets it brings together, the organisers of AnimalCLEF2025, who
+allowed us to show some SalamanderID2025 photos, and the authors of the Kaggle Jaguar Re-ID
+competition, who allowed us to use its data for research. Background masks were computed with
+SAM 3 (Meta).
 
 ## Contact
 

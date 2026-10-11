@@ -327,7 +327,8 @@ class RegistryTests(unittest.TestCase):
                 },
                 "descriptor-fine-tuned": {
                     "loma": f"{closed}/loma-b-descriptor-finetuned-legacy/epoch_252/model.safetensors",
-                    "rdd-lightglue": f"{closed}/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors",
+                    # shared-recipe retrain since 2026-10-11 (the paper's: rdd-descriptor-finetuned-loma-mined-legacy/epoch_175)
+                    "rdd-lightglue": f"{closed}/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors",
                 },
                 "joint-fine-tuned": {
                     # the paper's joint rows use epoch 100 (the RDD joint run has no epoch 299)

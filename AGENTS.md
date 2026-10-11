@@ -356,7 +356,12 @@ their tasks are unchanged (`--list-tasks` checked). The CzechLynx closed descrip
 balanced Top-1 change at k = 10 / 50 / 100 / 250 / 500 / 1000: +0.3 / +2.5 / +2.7 / +3.6 / +4.5 / +5.5 and 0.0 /
 +0.9 / +1.8 / +2.2 / +3.3 / +4.7 (k = 250: 38.0 / 51.9 / 28.0 against 34.4 / 49.8 / 25.7). It still stays below
 the default RDD-LightGlue at every k from 50 on (k = 250: 47.6 / 56.0 / 33.4), as the paper's descriptor row
-does. The registry default stays `epoch_175` until the user decides. Two relaxed-score RDD runs from 2026-09-29 exist under
+does. A second, identical submission (array 529504, two minutes earlier, from a duplicate watcher) gave the same
+Top-1 / Top-5 / balanced Top-1 at every k. **Registry default switched (2026-10-11, user decision):**
+`checkpoints.descriptor-fine-tuned.rdd-lightglue` of CzechLynx closed now names
+`rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (the paper's `epoch_175` path kept in a comment), as
+planned on 2026-09-29; no packaged sweep reproduces the paper's descriptor rows from the registry, and descriptor
+checkpoints are not published, so `weights.yaml` is unchanged. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
 the paper snapshot's CzechLynx closed and NyalaData RDD-LightGlue rows come from them (found

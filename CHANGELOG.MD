@@ -13,7 +13,10 @@ kept under Unreleased until a project version is assigned.
   registry default is unchanged pending the user's decision. `paper/tools/compare_with_paper.py` now labels custom
   checkpoints by component (`descriptor fine-tuned`, `joint fine-tuned`) and reads the snapshot's descriptor and
   joint tables; before, descriptor and joint runs were compared with the matcher-only rows (the first comparison
-  of array 529505 was wrong that way).
+  of array 529505 was wrong that way). A duplicate submission (array 529504) gave identical metrics. User decision
+  the same day: the registry's CzechLynx closed `descriptor-fine-tuned` RDD-LightGlue default is now the retrained
+  `rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (was the paper's `epoch_175`, kept in a comment);
+  `weights.yaml` is unchanged (descriptor checkpoints are not published).
 
 - 2026-10-10: Project page deployed from `main` `ea87252` (`gh-pages` `11df4da`, user request): the "Live demo" links
   to the Hugging Face Space are live on Home, Paper & Code and Demo.

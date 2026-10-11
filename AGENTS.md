@@ -361,7 +361,9 @@ Top-1 / Top-5 / balanced Top-1 at every k. **Registry default switched (2026-10-
 `checkpoints.descriptor-fine-tuned.rdd-lightglue` of CzechLynx closed now names
 `rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (the paper's `epoch_175` path kept in a comment), as
 planned on 2026-09-29; no packaged sweep reproduces the paper's descriptor rows from the registry, and descriptor
-checkpoints are not published, so `weights.yaml` is unchanged. The retrain's worktree (`wildmatch-descr`, commit
+checkpoints are not published, so `weights.yaml` is unchanged. The project page shows it on Results > Beyond the
+paper (subsection "The RDD descriptor branch with the shared recipe", 2026-10-11, user request; `rdd_descriptor` in
+`docs/data/beyond.json`), as its own family next to the paper's descriptor row and the default matcher. The retrain's worktree (`wildmatch-descr`, commit
 `7e7d150`, on `main`) was removed; its training logs are in `logs/archive/wildmatch-descr-worktree/`. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
@@ -1453,7 +1455,7 @@ results: `notes/history.md`, "Project page: build history".
 | Demo hub cards | `build_demo_cards.py` | `docs/assets/demo/cards/` | `test_build_demo_cards` |
 | Explainer video | `video/explainer/build.py` (`wm-video`) | poster, `docs/data/explainer.json` | `test_project_page_numbers` |
 | Other matchers | `export_matcher_ablation.py` | `docs/data/matcher_ablation.json` | `test_export_matcher_ablation` |
-| Beyond the paper (RDD retrain, SAM 3 rerun, JaguarReID) | `export_beyond_paper.py` | `docs/data/beyond.json` | `test_export_beyond_paper` |
+| Beyond the paper (RDD retrain incl. the CzechLynx descriptor, SAM 3 rerun, JaguarReID) | `export_beyond_paper.py` | `docs/data/beyond.json` | `test_export_beyond_paper` |
 | Sea star mask figure | `export_seastar_masks.py` | `docs/assets/beyond/seastar_masks.*` | `test_export_beyond_paper` |
 | Jaguar match examples | `export_jaguar_examples.py` (GPU) | `docs/assets/beyond/jaguar_matches.*` | `test_export_beyond_paper` |
 | Other matchers (extension, 2026-10-09) | `export_matcher_ablation.py` (reads `docs/data/curves.json` and `experiments/matcher-ablation/`) | `docs/data/matcher_ablation.json` | `test_export_matcher_ablation` |

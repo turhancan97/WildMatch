@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-11: Project page, Results > Beyond the paper: new subsection "The RDD descriptor branch with the shared
+  recipe" (user request): Top-5 / balanced Top-1 at k = 10-1000 on CzechLynx closed for the default RDD-LightGlue,
+  the paper's descriptor-only checkpoint (epoch 175) and the shared-recipe retrain (epoch 299), reported separately
+  from the matching-module checkpoints, with the reproduce command. `paper/page/export_beyond_paper.py` writes it as
+  `rdd_descriptor` in `docs/data/beyond.json` (the other parts regenerate unchanged); `tests/test_export_beyond_paper.py`
+  checks every budget and that no descriptor run is shared with the matcher-only series. Not yet deployed.
+
 - 2026-10-11: CzechLynx closed RDD descriptor retrained with the shared recipe (epoch 299, job 528293) and evaluated
   (`rdd_relaxed_descriptor`, array 529505): Top-1 +0.3 to +5.5 and balanced Top-1 0.0 to +4.7 over the paper's
   descriptor-only row (`epoch_175`), gains growing with k; still below the default matcher from k = 50 on. The

@@ -1064,6 +1064,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="RDD-LightGlue with the shared recipe">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-rdd-descriptor-branch-with-the-shared-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The RDD descriptor branch with the shared recipe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1388,6 +1405,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="RDD-LightGlue with the shared recipe">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-rdd-descriptor-branch-with-the-shared-recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The RDD descriptor branch with the shared recipe
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1461,8 +1495,9 @@
 <div class="admonition note">
 <p class="admonition-title">Results after the paper</p>
 <p>Everything on this page was produced after the paper and is not part of it: RDD-LightGlue
-retrained with the paper's LoMa recipe, the paper's methods rerun on new SAM 3 masks, and a
-dataset outside the paper, JaguarReID. The paper's own numbers are on the other result pages.</p>
+retrained with the paper's LoMa recipe (the matching module on seven datasets and the descriptor
+branch on CzechLynx), the paper's methods rerun on new SAM 3 masks, and a dataset outside the
+paper, JaguarReID. The paper's own numbers are on the other result pages.</p>
 </div>
 <h2 id="rdd-lightglue-with-the-shared-recipe">RDD-LightGlue with the shared recipe<a class="headerlink" href="#rdd-lightglue-with-the-shared-recipe" title="Permanent link">&para;</a></h2>
 <p>The paper fine-tunes LoMa with one recipe: the relaxed pair score, a triplet margin objective,
@@ -1551,6 +1586,67 @@ paper's fine-tuned checkpoint (retrained minus paper).</p>
   individual; on Turtle it lets fewer.</li>
 <li>On Hyena, Leopard and Turtle the default RDD-LightGlue has a higher top-1 than both fine-tuned
   versions at <span class="arithmatex">\(k = 250\)</span>, so fine-tuning RDD-LightGlue does not raise top-1 on every dataset.</li>
+</ul>
+<h3 id="the-rdd-descriptor-branch-with-the-shared-recipe">The RDD descriptor branch with the shared recipe<a class="headerlink" href="#the-rdd-descriptor-branch-with-the-shared-recipe" title="Permanent link">&para;</a></h3>
+<p>The paper's <a href="../#what-to-adapt-in-the-matcher">part-adaptation comparison</a> fine-tunes the RDD
+descriptor branch alone on CzechLynx (closed split), with the earlier recipe and stopped at epoch
+175 by the cluster's time limit. We retrained it with the shared recipe for the full schedule
+(epoch 299); the detector and LightGlue keep their default weights, as in the paper. It is
+reported separately from the matching-module checkpoints above.</p>
+<div class="wm-numeric">
+<table>
+<thead>
+<tr>
+<th>Checkpoint</th>
+<th style="text-align: right;">10</th>
+<th style="text-align: right;">50</th>
+<th style="text-align: right;">100</th>
+<th style="text-align: right;">250</th>
+<th style="text-align: right;">500</th>
+<th style="text-align: right;">1000</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RDD-LightGlue (default)</td>
+<td style="text-align: right;">34.0 / 14.2</td>
+<td style="text-align: right;">44.3 / 22.6</td>
+<td style="text-align: right;">49.4 / 27.3</td>
+<td style="text-align: right;">56.0 / 33.4</td>
+<td style="text-align: right;">61.1 / 38.3</td>
+<td style="text-align: right;">65.6 / 43.5</td>
+</tr>
+<tr>
+<td>Descriptor, paper (epoch 175)</td>
+<td style="text-align: right;">35.1 / 13.5</td>
+<td style="text-align: right;">43.2 / 19.4</td>
+<td style="text-align: right;">46.5 / 22.4</td>
+<td style="text-align: right;">49.8 / 25.7</td>
+<td style="text-align: right;">52.3 / 28.6</td>
+<td style="text-align: right;">53.0 / 30.6</td>
+</tr>
+<tr>
+<td>Descriptor, shared recipe (epoch 299)</td>
+<td style="text-align: right;">34.7 / 13.5</td>
+<td style="text-align: right;">44.2 / 20.3</td>
+<td style="text-align: right;">47.7 / 24.2</td>
+<td style="text-align: right;">51.9 / 28.0</td>
+<td style="text-align: right;">54.6 / 32.0</td>
+<td style="text-align: right;">56.5 / 35.3</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Top-5 / balanced top-1 in % on CzechLynx (closed split); columns are the candidate budget <span class="arithmatex">\(k\)</span>.</p>
+<ul>
+<li>The retrained descriptor is better than the paper's at every <span class="arithmatex">\(k\)</span> from 50 on: at <span class="arithmatex">\(k = 250\)</span>
+  top-5 rises from 49.8 to 51.9 and balanced top-1 from 25.7 to 28.0 (top-1 34.4 to 38.0), and the
+  gain grows with <span class="arithmatex">\(k\)</span> (top-1 +5.5 points at <span class="arithmatex">\(k = 1000\)</span>).</li>
+<li>It still stays below the default RDD-LightGlue from <span class="arithmatex">\(k = 50\)</span> on (at <span class="arithmatex">\(k = 250\)</span>: 5.4 points
+  less balanced top-1), so the paper's conclusion holds: for RDD-LightGlue, adapt the matching
+  module, not the descriptor alone.</li>
+<li>The recipe and the training length both changed, so this comparison does not say which of the
+  two accounts for the gain.</li>
 </ul>
 <h2 id="sam-3-masks">SAM 3 masks<a class="headerlink" href="#sam-3-masks" title="Permanent link">&para;</a></h2>
 <p>The paper's WildlifeReID-10k inputs are background-removed photos made earlier in the project,
@@ -1762,6 +1858,7 @@ pipeline and recipe.</p>
 <h2 id="reproduce">Reproduce<a class="headerlink" href="#reproduce" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>wildmatch<span class="w"> </span>sweep<span class="w"> </span>rdd_relaxed<span class="w"> </span>--submit<span class="w">             </span><span class="c1"># retrained RDD-LightGlue, six datasets, k = 10-1000</span>
 wildmatch<span class="w"> </span>sweep<span class="w"> </span>rdd_relaxed_czechlynx<span class="w"> </span>--submit<span class="w">   </span><span class="c1"># unseen CzechLynx individuals, k = 10-160</span>
+wildmatch<span class="w"> </span>sweep<span class="w"> </span>rdd_relaxed_descriptor<span class="w"> </span>--submit<span class="w">  </span><span class="c1"># retrained RDD descriptor, CzechLynx closed, k = 10-1000</span>
 wildmatch<span class="w"> </span>sweep<span class="w"> </span>wildlife_sam3<span class="w"> </span>--submit<span class="w">           </span><span class="c1"># SAM 3 inputs, k = 250 (wildlife_sam3_grid: other budgets)</span>
 wildmatch<span class="w"> </span>sweep<span class="w"> </span>jaguar_grid<span class="w"> </span>--submit<span class="w">             </span><span class="c1"># JaguarReID, default weights</span>
 wildmatch<span class="w"> </span>sweep<span class="w"> </span>jaguar_finetuned<span class="w"> </span>--submit<span class="w">        </span><span class="c1"># JaguarReID, fine-tuned matchers</span>

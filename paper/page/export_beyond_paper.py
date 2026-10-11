@@ -8,6 +8,10 @@ Three parts, each read from completed run folders under ``experiments/`` (run id
     ``rdd_relaxed_czechlynx``) next to the paper's fine-tuned and default RDD-LightGlue. Paper values come from
     the paper runs' own ``metrics.json`` (found through the frozen results snapshot's ``manifest_path``), not
     from the snapshot's numbers, because the snapshot's six SalamanderID2025 fine-tuned rows were rounded.
+``rdd_descriptor``
+    CzechLynx closed: the RDD descriptor branch retrained with the shared recipe (epoch 299, sweep
+    ``rdd_relaxed_descriptor``) next to the paper's descriptor-only checkpoint (epoch 175) and the default
+    RDD-LightGlue. A separate family: never merged with the matcher-only series.
 ``sam3``
     The paper's methods rerun on the SAM 3 masks (``dataset.metadata_file`` under ``metadata_sam3/``; sweeps
     ``wildlife_sam3`` and ``wildlife_sam3_grid``), each paired with the paper run of the same identity.
@@ -131,6 +135,38 @@ def export_rdd(results: Path) -> Dict[str, Any]:
     }
 
 
+def export_rdd_descriptor(results: Path) -> Dict[str, Any]:
+    retrained = newest(completed_runs(REPO_ROOT / "experiments" / "rdd-relaxed" / "probe"))
+    series: Dict[str, Dict[str, Any]] = {"rdd_default": {}, "descriptor_paper": {}, "descriptor_retrained": {}}
+    for k in KS:
+        base = {
+            "animal": "CzechLynx",
+            "split": "split-time_closed",
+            "method": "Vismatch",
+            "matcher": "rdd-lightglue",
+            "backbone": "megadescriptor-l",
+            "class_weighting": "",
+            "candidate_k": str(k),
+        }
+        series["rdd_default"][str(k)] = paper_metrics(results, {**base, "checkpoint": "default"})
+        series["descriptor_paper"][str(k)] = paper_metrics(results, {**base, "checkpoint": "descriptor fine-tuned"})
+        run = retrained.get(identity_key({**base, "checkpoint": "descriptor fine-tuned"}))
+        if run is None:
+            raise ValueError(f"no retrained RDD descriptor run for k={k}")
+        series["descriptor_retrained"][str(k)] = {**metrics_of(run), "run_id": run.name}
+    return {
+        "label": "CzechLynx (closed split)",
+        "ks": KS,
+        "series_order": ["descriptor_retrained", "descriptor_paper", "rdd_default"],
+        "series_labels": {
+            "descriptor_retrained": "RDD descriptor, shared recipe (retrained, epoch 299)",
+            "descriptor_paper": "RDD descriptor, fine-tuned (paper, epoch 175)",
+            "rdd_default": "RDD-LightGlue (default)",
+        },
+        "series": series,
+    }
+
+
 def export_sam3(results: Path) -> Dict[str, Any]:
     root = REPO_ROOT / "experiments" / "probe" / "WildlifeReID-10k"
     runs = []
@@ -202,6 +238,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "metrics": METRICS,
         "metric_labels": {"top_1": "Top-1", "top_5": "Top-5", "balanced_top_1": "Balanced top-1"},
         "rdd": export_rdd(args.results),
+        "rdd_descriptor": export_rdd_descriptor(args.results),
         "sam3": export_sam3(args.results),
         "jaguar": export_jaguar(),
     }

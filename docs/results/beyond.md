@@ -2,8 +2,9 @@
 
 !!! note "Results after the paper"
     Everything on this page was produced after the paper and is not part of it: RDD-LightGlue
-    retrained with the paper's LoMa recipe, the paper's methods rerun on new SAM 3 masks, and a
-    dataset outside the paper, JaguarReID. The paper's own numbers are on the other result pages.
+    retrained with the paper's LoMa recipe (the matching module on seven datasets and the descriptor
+    branch on CzechLynx), the paper's methods rerun on new SAM 3 masks, and a dataset outside the
+    paper, JaguarReID. The paper's own numbers are on the other result pages.
 
 ## RDD-LightGlue with the shared recipe
 
@@ -44,6 +45,35 @@ paper's fine-tuned checkpoint (retrained minus paper).
   individual; on Turtle it lets fewer.
 - On Hyena, Leopard and Turtle the default RDD-LightGlue has a higher top-1 than both fine-tuned
   versions at \(k = 250\), so fine-tuning RDD-LightGlue does not raise top-1 on every dataset.
+
+### The RDD descriptor branch with the shared recipe
+
+The paper's [part-adaptation comparison](index.md#what-to-adapt-in-the-matcher) fine-tunes the RDD
+descriptor branch alone on CzechLynx (closed split), with the earlier recipe and stopped at epoch
+175 by the cluster's time limit. We retrained it with the shared recipe for the full schedule
+(epoch 299); the detector and LightGlue keep their default weights, as in the paper. It is
+reported separately from the matching-module checkpoints above.
+
+<div class="wm-numeric" markdown>
+
+| Checkpoint | 10 | 50 | 100 | 250 | 500 | 1000 |
+|---|---:|---:|---:|---:|---:|---:|
+| RDD-LightGlue (default) | 34.0 / 14.2 | 44.3 / 22.6 | 49.4 / 27.3 | 56.0 / 33.4 | 61.1 / 38.3 | 65.6 / 43.5 |
+| Descriptor, paper (epoch 175) | 35.1 / 13.5 | 43.2 / 19.4 | 46.5 / 22.4 | 49.8 / 25.7 | 52.3 / 28.6 | 53.0 / 30.6 |
+| Descriptor, shared recipe (epoch 299) | 34.7 / 13.5 | 44.2 / 20.3 | 47.7 / 24.2 | 51.9 / 28.0 | 54.6 / 32.0 | 56.5 / 35.3 |
+
+</div>
+
+Top-5 / balanced top-1 in % on CzechLynx (closed split); columns are the candidate budget \(k\).
+
+- The retrained descriptor is better than the paper's at every \(k\) from 50 on: at \(k = 250\)
+  top-5 rises from 49.8 to 51.9 and balanced top-1 from 25.7 to 28.0 (top-1 34.4 to 38.0), and the
+  gain grows with \(k\) (top-1 +5.5 points at \(k = 1000\)).
+- It still stays below the default RDD-LightGlue from \(k = 50\) on (at \(k = 250\): 5.4 points
+  less balanced top-1), so the paper's conclusion holds: for RDD-LightGlue, adapt the matching
+  module, not the descriptor alone.
+- The recipe and the training length both changed, so this comparison does not say which of the
+  two accounts for the gain.
 
 ## SAM 3 masks
 
@@ -137,6 +167,7 @@ Top-1 in %; columns are the candidate budget \(k\). Cosine and the classifier pr
 ```bash
 wildmatch sweep rdd_relaxed --submit             # retrained RDD-LightGlue, six datasets, k = 10-1000
 wildmatch sweep rdd_relaxed_czechlynx --submit   # unseen CzechLynx individuals, k = 10-160
+wildmatch sweep rdd_relaxed_descriptor --submit  # retrained RDD descriptor, CzechLynx closed, k = 10-1000
 wildmatch sweep wildlife_sam3 --submit           # SAM 3 inputs, k = 250 (wildlife_sam3_grid: other budgets)
 wildmatch sweep jaguar_grid --submit             # JaguarReID, default weights
 wildmatch sweep jaguar_finetuned --submit        # JaguarReID, fine-tuned matchers

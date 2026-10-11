@@ -26,6 +26,26 @@ class CommittedExportTests(unittest.TestCase):
                     for metric in bp.METRICS:
                         self.assertTrue(0.0 <= point[metric] <= 1.0)
 
+    def test_rdd_descriptor_is_a_separate_family_with_every_budget(self):
+        desc = self.data["rdd_descriptor"]
+        self.assertEqual(desc["ks"], bp.KS)
+        self.assertEqual(desc["series_order"], ["descriptor_retrained", "descriptor_paper", "rdd_default"])
+        for series in desc["series_order"]:
+            points = desc["series"][series]
+            self.assertEqual(sorted(points, key=int), [str(k) for k in bp.KS], series)
+            for point in points.values():
+                self.assertTrue(point["run_id"])
+                for metric in bp.METRICS:
+                    self.assertTrue(0.0 <= point[metric] <= 1.0)
+        matcher_runs = {
+            p["run_id"]
+            for ds in self.data["rdd"]["datasets"].values()
+            for s in ds["series"].values()
+            for p in s.values()
+        }
+        for series in ("descriptor_retrained", "descriptor_paper"):
+            self.assertFalse({p["run_id"] for p in desc["series"][series].values()} & matcher_runs, series)
+
     def test_sam3_pairs_every_rerun_with_a_paper_run(self):
         for key, ds in self.data["sam3"]["datasets"].items():
             self.assertTrue(ds["rows"], key)

@@ -16,7 +16,12 @@ kept under Unreleased until a project version is assigned.
   of array 529505 was wrong that way). A duplicate submission (array 529504) gave identical metrics. User decision
   the same day: the registry's CzechLynx closed `descriptor-fine-tuned` RDD-LightGlue default is now the retrained
   `rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (was the paper's `epoch_175`, kept in a comment);
-  `weights.yaml` is unchanged (descriptor checkpoints are not published).
+  `weights.yaml` is unchanged (descriptor checkpoints are not published). The `wildmatch-descr` worktree was removed
+  (training logs archived under `logs/archive/wildmatch-descr-worktree/`).
+
+- 2026-10-11: Hugging Face Space re-checked live after the ZeroGPU quota reset: 7 pair examples; Hyena, Whale shark
+  and Leopard example pairs and the first lynx search run within the 30 s / 45 s durations with scores close to
+  the cluster's. Checklist item closed; the Space build's scratch folder deleted.
 
 - 2026-10-10: Project page deployed from `main` `ea87252` (`gh-pages` `11df4da`, user request): the "Live demo" links
   to the Hugging Face Space are live on Home, Paper & Code and Demo.

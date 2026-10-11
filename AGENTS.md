@@ -361,7 +361,8 @@ Top-1 / Top-5 / balanced Top-1 at every k. **Registry default switched (2026-10-
 `checkpoints.descriptor-fine-tuned.rdd-lightglue` of CzechLynx closed now names
 `rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (the paper's `epoch_175` path kept in a comment), as
 planned on 2026-09-29; no packaged sweep reproduces the paper's descriptor rows from the registry, and descriptor
-checkpoints are not published, so `weights.yaml` is unchanged. Two relaxed-score RDD runs from 2026-09-29 exist under
+checkpoints are not published, so `weights.yaml` is unchanged. The retrain's worktree (`wildmatch-descr`, commit
+`7e7d150`, on `main`) was removed; its training logs are in `logs/archive/wildmatch-descr-worktree/`. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
 the paper snapshot's CzechLynx closed and NyalaData RDD-LightGlue rows come from them (found
@@ -1223,9 +1224,6 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 and linked from the deployed page (see
-  "Hugging Face Space"); open: a live re-check of the lowered ZeroGPU durations and the per-species examples once the
-  account's daily quota resets.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a
@@ -1616,7 +1614,11 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   lynx_059 at k = 160 (without SAM 3 it had picked another lynx). The next call failed on the ZeroGPU quota: ZeroGPU
   charges the declared `duration` (x1.5 on the large GPU, "180s requested" for 120 s) against the caller's daily
   quota before the call runs, so a free visitor could not run even two searches. Durations lowered to 30 s (pair)
-  and 45 s (search), still about twice the measured cost.
+  and 45 s (search), still about twice the measured cost. Live re-check (2026-10-11, after the quota reset, through
+  `gradio_client`): the pair tab lists 7 examples; fine-tuned with SAM 3, Hyena LoMa 0.723 (23 s, first call after
+  idle), Whale shark RDD-LightGlue 0.489 (6 s), Leopard LoMa 0.635 (9 s), and the first example search finds lynx_059
+  (18 s); all within the declared durations, scores close to the cluster's (0.722, 0.475, 0.619). The scratch folder
+  of the Space build (downloaded originals, smoke scripts, local Gradio) was deleted afterwards.
 - Per-species pair examples (2026-10-10, user decision: one example pair per species so visitors can try the
   checkpoints without their own photos). The WildlifeReID-10k files may not be re-uploaded, but the original releases
   allow redistribution with attribution (checked on the source pages 2026-10-10): Leopard ID 2022, Hyena ID 2022,

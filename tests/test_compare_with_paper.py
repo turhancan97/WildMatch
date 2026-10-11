@@ -86,3 +86,89 @@ class CompareWithPaperTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ComponentRowsTests(unittest.TestCase):
+    def test_descriptor_and_joint_runs_match_their_own_tables(self):
+        fields = [
+            "method",
+            "matcher",
+            "backbone",
+            "checkpoint",
+            "class_weighting",
+            "candidate_k",
+            "top_1",
+            "top_5",
+            "balanced_top_1",
+            "run_id",
+        ]
+        tables = {
+            "HyenaID2022_split_ablation.csv": [
+                [
+                    "Vismatch",
+                    "rdd-lightglue",
+                    "megadescriptor-l",
+                    "fine-tuned",
+                    "",
+                    "250",
+                    "0.6",
+                    "0.9",
+                    "0.8",
+                    "matcher",
+                ]
+            ],
+            "HyenaID2022_split_descriptor_rdd_ablation.csv": [
+                [
+                    "Vismatch",
+                    "rdd-lightglue",
+                    "megadescriptor-l",
+                    "descriptor fine-tuned",
+                    "",
+                    "250",
+                    "0.4",
+                    "0.9",
+                    "0.8",
+                    "descriptor",
+                ]
+            ],
+            "HyenaID2022_split_joint_rdd_ablation.csv": [
+                [
+                    "Vismatch",
+                    "rdd-lightglue",
+                    "megadescriptor-l",
+                    "joint fine-tuned",
+                    "",
+                    "250",
+                    "0.5",
+                    "0.9",
+                    "0.8",
+                    "joint",
+                ]
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            results = root / "results"
+            results.mkdir()
+            for name, rows in tables.items():
+                with (results / name).open("w", newline="") as handle:
+                    writer = csv.writer(handle)
+                    writer.writerow(fields)
+                    writer.writerows(rows)
+            runs = [
+                _run(
+                    root,
+                    f"r{k}",
+                    "vismatch",
+                    0.5,
+                    vismatch={
+                        "matcher": "rdd-lightglue",
+                        "checkpoint_source": "custom",
+                        "checkpoint_components": components,
+                    },
+                )
+                for k, components in enumerate(["matcher_only", "descriptor_only", "full"])
+            ]
+            table = C.compare(runs, results)
+            self.assertEqual([row["paper_run"] for row in table], ["matcher", "descriptor", "joint"])
+            self.assertEqual(table[1]["checkpoint"], "descriptor fine-tuned")

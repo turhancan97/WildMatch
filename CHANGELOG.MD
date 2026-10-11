@@ -7,6 +7,14 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-11: CzechLynx closed RDD descriptor retrained with the shared recipe (epoch 299, job 528293) and evaluated
+  (`rdd_relaxed_descriptor`, array 529505): Top-1 +0.3 to +5.5 and balanced Top-1 0.0 to +4.7 over the paper's
+  descriptor-only row (`epoch_175`), gains growing with k; still below the default matcher from k = 50 on. The
+  registry default is unchanged pending the user's decision. `paper/tools/compare_with_paper.py` now labels custom
+  checkpoints by component (`descriptor fine-tuned`, `joint fine-tuned`) and reads the snapshot's descriptor and
+  joint tables; before, descriptor and joint runs were compared with the matcher-only rows (the first comparison
+  of array 529505 was wrong that way).
+
 - 2026-10-10: Project page deployed from `main` `ea87252` (`gh-pages` `11df4da`, user request): the "Live demo" links
   to the Hugging Face Space are live on Home, Paper & Code and Demo.
 

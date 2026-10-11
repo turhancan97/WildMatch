@@ -128,7 +128,9 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 - paper/: paper and project-page tooling run from a checkout (not part of the package):
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
-  new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
+  new runs to the paper snapshot's rows by identity (descriptor-only and joint runs against the snapshot's
+  `_descriptor_*` / `_joint_*` tables since 2026-10-11; before, they matched the matcher-only rows) and prints
+  Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`;
   `profile_vismatch.py`, the Vismatch cost breakdown read from completed runs' `timings.json`). Run them as `python paper/<group>/<script>.py`.
 - space/: the Hugging Face Space (Gradio, ZeroGPU; 2026-10-10, see "Hugging Face Space"): `app.py`,
@@ -348,8 +350,13 @@ path in a comment), `weights.yaml` publishes them as the default set (see "Paper
 preparation"), and the project page shows them on Results > Beyond the paper. The sweeps that reproduce paper
 rows (`parity`, `wildlife_sam3`, `wildlife_sam3_grid`) pin the paper RDD files through `dataset_overrides`, so
 their tasks are unchanged (`--list-tasks` checked). The CzechLynx closed descriptor retrain (job 527423, into
-`czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix) and its
-`rdd_relaxed_descriptor` evaluation follow. Two relaxed-score RDD runs from 2026-09-29 exist under
+`czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix; finished as job
+528293 on 2026-10-10, epoch 299) was evaluated with `rdd_relaxed_descriptor` (array 529505, 6/6, 2026-10-11;
+`reports/rdd_relaxed_descriptor_vs_paper.csv`). Against the paper's descriptor-only row (`epoch_175`), Top-1 /
+balanced Top-1 change at k = 10 / 50 / 100 / 250 / 500 / 1000: +0.3 / +2.5 / +2.7 / +3.6 / +4.5 / +5.5 and 0.0 /
++0.9 / +1.8 / +2.2 / +3.3 / +4.7 (k = 250: 38.0 / 51.9 / 28.0 against 34.4 / 49.8 / 25.7). It still stays below
+the default RDD-LightGlue at every k from 50 on (k = 250: 47.6 / 56.0 / 33.4), as the paper's descriptor row
+does. The registry default stays `epoch_175` until the user decides. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
 the paper snapshot's CzechLynx closed and NyalaData RDD-LightGlue rows come from them (found

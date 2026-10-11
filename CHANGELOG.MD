@@ -12,7 +12,8 @@ kept under Unreleased until a project version is assigned.
   the paper's descriptor-only checkpoint (epoch 175) and the shared-recipe retrain (epoch 299), reported separately
   from the matching-module checkpoints, with the reproduce command. `paper/page/export_beyond_paper.py` writes it as
   `rdd_descriptor` in `docs/data/beyond.json` (the other parts regenerate unchanged); `tests/test_export_beyond_paper.py`
-  checks every budget and that no descriptor run is shared with the matcher-only series. Not yet deployed.
+  checks every budget and that no descriptor run is shared with the matcher-only series. Merged as pull
+  request #48 and deployed from `main` `dfd80e9` (`gh-pages` `f8e5428`, user request); checked live.
 
 - 2026-10-11: CzechLynx closed RDD descriptor retrained with the shared recipe (epoch 299, job 528293) and evaluated
   (`rdd_relaxed_descriptor`, array 529505): Top-1 +0.3 to +5.5 and balanced Top-1 0.0 to +4.7 over the paper's

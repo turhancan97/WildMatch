@@ -128,7 +128,9 @@ was built from the paper code (`paper-v1`) and how parity was verified.
 - paper/: paper and project-page tooling run from a checkout (not part of the package):
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
-  new runs to the paper snapshot's rows by identity and prints Top-1/Top-5/balanced Top-1 deltas:
+  new runs to the paper snapshot's rows by identity (descriptor-only and joint runs against the snapshot's
+  `_descriptor_*` / `_joint_*` tables since 2026-10-11; before, they matched the matcher-only rows) and prints
+  Top-1/Top-5/balanced Top-1 deltas:
   `python paper/tools/compare_with_paper.py --job <array id> [--output reports/<name>.csv]`;
   `profile_vismatch.py`, the Vismatch cost breakdown read from completed runs' `timings.json`). Run them as `python paper/<group>/<script>.py`.
 - space/: the Hugging Face Space (Gradio, ZeroGPU; 2026-10-10, see "Hugging Face Space"): `app.py`,
@@ -348,8 +350,19 @@ path in a comment), `weights.yaml` publishes them as the default set (see "Paper
 preparation"), and the project page shows them on Results > Beyond the paper. The sweeps that reproduce paper
 rows (`parity`, `wildlife_sam3`, `wildlife_sam3_grid`) pin the paper RDD files through `dataset_overrides`, so
 their tasks are unchanged (`--list-tasks` checked). The CzechLynx closed descriptor retrain (job 527423, into
-`czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix) and its
-`rdd_relaxed_descriptor` evaluation follow. Two relaxed-score RDD runs from 2026-09-29 exist under
+`czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/`, after the DDP fix; finished as job
+528293 on 2026-10-10, epoch 299) was evaluated with `rdd_relaxed_descriptor` (array 529505, 6/6, 2026-10-11;
+`reports/rdd_relaxed_descriptor_vs_paper.csv`). Against the paper's descriptor-only row (`epoch_175`), Top-1 /
+balanced Top-1 change at k = 10 / 50 / 100 / 250 / 500 / 1000: +0.3 / +2.5 / +2.7 / +3.6 / +4.5 / +5.5 and 0.0 /
++0.9 / +1.8 / +2.2 / +3.3 / +4.7 (k = 250: 38.0 / 51.9 / 28.0 against 34.4 / 49.8 / 25.7). It still stays below
+the default RDD-LightGlue at every k from 50 on (k = 250: 47.6 / 56.0 / 33.4), as the paper's descriptor row
+does. A second, identical submission (array 529504, two minutes earlier, from a duplicate watcher) gave the same
+Top-1 / Top-5 / balanced Top-1 at every k. **Registry default switched (2026-10-11, user decision):**
+`checkpoints.descriptor-fine-tuned.rdd-lightglue` of CzechLynx closed now names
+`rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (the paper's `epoch_175` path kept in a comment), as
+planned on 2026-09-29; no packaged sweep reproduces the paper's descriptor rows from the registry, and descriptor
+checkpoints are not published, so `weights.yaml` is unchanged. The retrain's worktree (`wildmatch-descr`, commit
+`7e7d150`, on `main`) was removed; its training logs are in `logs/archive/wildmatch-descr-worktree/`. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);
 the paper snapshot's CzechLynx closed and NyalaData RDD-LightGlue rows come from them (found
@@ -1211,9 +1224,6 @@ reproduction, and the measured impact so it can be picked up without re-investig
 Open items only; completed items are recorded in CHANGELOG.MD. Defects with a known
 reproduction live under "Known issues" instead.
 
-- [ ] Hugging Face Space (user request 2026-10-10): public since 2026-10-10 and linked from the deployed page (see
-  "Hugging Face Space"); open: a live re-check of the lowered ZeroGPU durations and the per-species examples once the
-  account's daily quota resets.
 - [ ] Evaluate masking and Vismatch matcher settings separately for each animal dataset.
 - [ ] Optimize Vismatch matching. Profile (2026-10-06, `python paper/tools/profile_vismatch.py --root
   experiments/probe`, 564 completed Vismatch runs, from their own `timings.json`): matching costs a
@@ -1604,7 +1614,11 @@ whose PyPI Linux wheels are the CUDA 12.8 build; models are placed on CUDA at mo
   lynx_059 at k = 160 (without SAM 3 it had picked another lynx). The next call failed on the ZeroGPU quota: ZeroGPU
   charges the declared `duration` (x1.5 on the large GPU, "180s requested" for 120 s) against the caller's daily
   quota before the call runs, so a free visitor could not run even two searches. Durations lowered to 30 s (pair)
-  and 45 s (search), still about twice the measured cost.
+  and 45 s (search), still about twice the measured cost. Live re-check (2026-10-11, after the quota reset, through
+  `gradio_client`): the pair tab lists 7 examples; fine-tuned with SAM 3, Hyena LoMa 0.723 (23 s, first call after
+  idle), Whale shark RDD-LightGlue 0.489 (6 s), Leopard LoMa 0.635 (9 s), and the first example search finds lynx_059
+  (18 s); all within the declared durations, scores close to the cluster's (0.722, 0.475, 0.619). The scratch folder
+  of the Space build (downloaded originals, smoke scripts, local Gradio) was deleted afterwards.
 - Per-species pair examples (2026-10-10, user decision: one example pair per species so visitors can try the
   checkpoints without their own photos). The WildlifeReID-10k files may not be re-uploaded, but the original releases
   allow redistribution with attribution (checked on the source pages 2026-10-10): Leopard ID 2022, Hyena ID 2022,

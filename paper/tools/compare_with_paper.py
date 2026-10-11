@@ -3,7 +3,8 @@
 
 For every completed run of a sweep (``--job <array id>``, read from ``logs/index.csv``) or of
 explicit run directories (``--run DIR``), find the paper row with the same identity in the paper
-repository's ``results/<animal>_<split>_ablation.csv``: method, matcher, backbone, checkpoint label,
+repository's ``results/<animal>_<split>_ablation.csv`` (and its ``_descriptor_*`` / ``_joint_*`` tables for
+descriptor-only and joint checkpoints): method, matcher, backbone, checkpoint label,
 classifier-probe mode and weighting, and candidate budget (shortlist methods only). Prints a
 table of Top-1, Top-5 and balanced Top-1 (percent) with the differences, and writes it as CSV
 with ``--output``. Rows without a paper counterpart are listed with empty paper values.
@@ -37,6 +38,10 @@ PROBE_METHODS = {"linear_probe", "efficient_probe"}
 TRAIN_MODE_LABELS = {"classifier": "frozen", "partial": "partial fine-tuned", "all": "full fine-tuned"}
 WEIGHTING_LABELS = {"inverse_frequency": "weighted", "none": "unweighted"}
 CHECKPOINT_LABELS = {"default": "default", "custom": "fine-tuned", "matcher-fine-tuned": "fine-tuned"}
+# Custom Vismatch checkpoints by loaded component, as the paper tables label them. Descriptor-only and joint rows
+# live in their own tables; before 2026-10-11 they were labelled "fine-tuned" here and so matched the matcher-only
+# rows (the rdd_relaxed_descriptor comparison of array 529505 came out wrong that way).
+COMPONENT_LABELS = {"descriptor_only": "descriptor fine-tuned", "full": "joint fine-tuned"}
 
 
 def run_identity(run_dir: Path) -> Dict[str, str]:
@@ -59,7 +64,7 @@ def run_identity(run_dir: Path) -> Dict[str, str]:
         settings = methods["vismatch"]
         identity["matcher"] = str(settings["matcher"])
         if str(settings.get("checkpoint_source", "default")) == "custom":
-            identity["checkpoint"] = "fine-tuned"
+            identity["checkpoint"] = COMPONENT_LABELS.get(str(settings.get("checkpoint_components")), "fine-tuned")
     if method in PROBE_METHODS:
         settings = methods[method]
         weighting = WEIGHTING_LABELS.get(str(settings.get("class_weighting")), "unknown")
@@ -69,11 +74,16 @@ def run_identity(run_dir: Path) -> Dict[str, str]:
 
 
 def paper_rows(results_dir: Path, animal: str, split: str) -> List[Dict[str, str]]:
-    path = results_dir / f"{animal}_{split}_ablation.csv"
-    if not path.is_file():
-        return []
-    with path.open(encoding="utf-8") as handle:
-        return list(csv.DictReader(handle))
+    """Rows of the main ablation table, then of the descriptor and joint tables (first match wins)."""
+    paths = [results_dir / f"{animal}_{split}_ablation.csv"]
+    for family in ("descriptor", "joint"):
+        paths += sorted(results_dir.glob(f"{animal}_{split}_{family}_*_ablation.csv"))
+    rows: List[Dict[str, str]] = []
+    for path in paths:
+        if path.is_file():
+            with path.open(encoding="utf-8") as handle:
+                rows += list(csv.DictReader(handle))
+    return rows
 
 
 def find_paper_row(rows: Iterable[Dict[str, str]], identity: Dict[str, str]) -> Optional[Dict[str, str]]:

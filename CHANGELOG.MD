@@ -7,6 +7,22 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-11: CzechLynx closed RDD descriptor retrained with the shared recipe (epoch 299, job 528293) and evaluated
+  (`rdd_relaxed_descriptor`, array 529505): Top-1 +0.3 to +5.5 and balanced Top-1 0.0 to +4.7 over the paper's
+  descriptor-only row (`epoch_175`), gains growing with k; still below the default matcher from k = 50 on. The
+  registry default is unchanged pending the user's decision. `paper/tools/compare_with_paper.py` now labels custom
+  checkpoints by component (`descriptor fine-tuned`, `joint fine-tuned`) and reads the snapshot's descriptor and
+  joint tables; before, descriptor and joint runs were compared with the matcher-only rows (the first comparison
+  of array 529505 was wrong that way). A duplicate submission (array 529504) gave identical metrics. User decision
+  the same day: the registry's CzechLynx closed `descriptor-fine-tuned` RDD-LightGlue default is now the retrained
+  `rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299` (was the paper's `epoch_175`, kept in a comment);
+  `weights.yaml` is unchanged (descriptor checkpoints are not published). The `wildmatch-descr` worktree was removed
+  (training logs archived under `logs/archive/wildmatch-descr-worktree/`).
+
+- 2026-10-11: Hugging Face Space re-checked live after the ZeroGPU quota reset: 7 pair examples; Hyena, Whale shark
+  and Leopard example pairs and the first lynx search run within the 30 s / 45 s durations with scores close to
+  the cluster's. Checklist item closed; the Space build's scratch folder deleted.
+
 - 2026-10-10: Project page deployed from `main` `ea87252` (`gh-pages` `11df4da`, user request): the "Live demo" links
   to the Hugging Face Space are live on Home, Paper & Code and Demo.
 

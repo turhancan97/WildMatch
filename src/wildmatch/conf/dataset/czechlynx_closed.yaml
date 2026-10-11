@@ -28,7 +28,8 @@ registry:
       rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed/epoch_299/model.safetensors"
     descriptor-fine-tuned:
       loma: "${paths.checkpoint_root}/czechlynx-time-closed/loma-b-descriptor-finetuned-legacy/epoch_252/model.safetensors"
-      rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy/epoch_175/model.safetensors"
+      # shared-recipe retrain since 2026-10-11 (the paper's: rdd-descriptor-finetuned-loma-mined-legacy/epoch_175)
+      rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-closed/rdd-descriptor-finetuned-loma-mined-legacy-relaxed/epoch_299/model.safetensors"
     joint-fine-tuned:
       loma: "${paths.checkpoint_root}/czechlynx-time-closed/loma-b-joint-finetuned-loma-mined-legacy/epoch_100/model.safetensors"
       rdd-lightglue: "${paths.checkpoint_root}/czechlynx-time-closed/rdd-joint-finetuned-loma-mined-legacy/epoch_100"

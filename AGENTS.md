@@ -363,7 +363,8 @@ Top-1 / Top-5 / balanced Top-1 at every k. **Registry default switched (2026-10-
 planned on 2026-09-29; no packaged sweep reproduces the paper's descriptor rows from the registry, and descriptor
 checkpoints are not published, so `weights.yaml` is unchanged. The project page shows it on Results > Beyond the
 paper (subsection "The RDD descriptor branch with the shared recipe", 2026-10-11, user request; `rdd_descriptor` in
-`docs/data/beyond.json`), as its own family next to the paper's descriptor row and the default matcher. The retrain's worktree (`wildmatch-descr`, commit
+`docs/data/beyond.json`; live since the deploy of `main` `dfd80e9` the same day), as its own family next to the
+paper's descriptor row and the default matcher. The retrain's worktree (`wildmatch-descr`, commit
 `7e7d150`, on `main`) was removed; its training logs are in `logs/archive/wildmatch-descr-worktree/`. Two relaxed-score RDD runs from 2026-09-29 exist under
 non-canonical names, both on RDD-mined pairs (`czechlynx-time-closed/rdd-finetuned-rdd-mined-legacy-relaxed`,
 `NyalaData/rdd-finetuned/legacy-rdd-mined-relaxed`, protocol `training_score: relaxed_v1`);

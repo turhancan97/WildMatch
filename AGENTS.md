@@ -1508,7 +1508,8 @@ Binding rules from that history:
   buttons, `kargin2026wildmatch`; an arXiv button in the Home hero too).
 - [x] Fill the Acknowledgements section on Paper & Code (done 2026-10-11: funding text from the user, the DigiWorld
   "Artificial Intelligence Computing Center Core Facility" project and PLGrid grant PLG/2026/019483, lightly edited; a
-  data-provider paragraph and the SAM 3 acknowledgement the SAM License asks for were added).
+  data-provider paragraph and the SAM 3 acknowledgement the SAM License asks for were added; pull request #50, deployed
+  from `main` `e0e2a92` to `gh-pages` `abc39fe` and checked live).
 - [x] Point `wildmatch.gmum.net` at GitHub Pages (done 2026-10-07: CNAME record by the GMUM admin,
   custom domain and HTTPS set on GitHub).
 - [x] Web display of dataset photos (decided 2026-10-06 by the user: keep all photos, with

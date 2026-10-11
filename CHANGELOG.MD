@@ -7,6 +7,11 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-11: Paper & Code: the Acknowledgements section is filled (user's funding text, lightly edited: the
+  Jagiellonian University DigiWorld "Artificial Intelligence Computing Center Core Facility" project and PLGrid / ACK
+  Cyfronet AGH grant PLG/2026/019483), plus thanks to the dataset providers and the SAM 3 acknowledgement; the "To be
+  completed" note is gone. Publication checklist item closed.
+
 - 2026-10-11: Project page, Results > Beyond the paper: new subsection "The RDD descriptor branch with the shared
   recipe" (user request): Top-5 / balanced Top-1 at k = 10-1000 on CzechLynx closed for the default RDD-LightGlue,
   the paper's descriptor-only checkpoint (epoch 175) and the shared-recipe retrain (epoch 299), reported separately

@@ -1311,7 +1311,7 @@ pill says "Preprint available online"; the draft banner, the Home "Draft page" w
 draft `copyright` line are gone (`copyright: © 2026 The WildMatch Authors`); `site_url` is
 `https://wildmatch.gmum.net/` with `docs/CNAME`. The Hugging Face model card links the preprint and
 the project page and carries the BibTeX (Hub commit `ad3c6491`, 2026-10-07, licence text unchanged).
-Open: Acknowledgements (authors, left as a to-do). The rest of the embargo below still holds.
+Acknowledgements filled on 2026-10-11 (see the checklist). The rest of the embargo below still holds.
 
 **Public since 2026-10-07 (user decision; supersedes the deploy and visibility parts of the embargo
 below).** The user made the GitHub repository public and asked for the deploy: the page is live at
@@ -1506,7 +1506,9 @@ Binding rules from that history:
   and change the status pill to "Preprint available online" (done 2026-10-07, preprint online).
 - [x] Add the preprint link and the BibTeX entry on Paper & Code (done 2026-10-07: arXiv and PDF
   buttons, `kargin2026wildmatch`; an arXiv button in the Home hero too).
-- [ ] Fill the Acknowledgements section on Paper & Code (authors).
+- [x] Fill the Acknowledgements section on Paper & Code (done 2026-10-11: funding text from the user, the DigiWorld
+  "Artificial Intelligence Computing Center Core Facility" project and PLGrid grant PLG/2026/019483, lightly edited; a
+  data-provider paragraph and the SAM 3 acknowledgement the SAM License asks for were added).
 - [x] Point `wildmatch.gmum.net` at GitHub Pages (done 2026-10-07: CNAME record by the GMUM admin,
   custom domain and HTTPS set on GitHub).
 - [x] Web display of dataset photos (decided 2026-10-06 by the user: keep all photos, with

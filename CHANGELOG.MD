@@ -7,6 +7,13 @@ kept under Unreleased until a project version is assigned.
 
 ### Changed
 
+- 2026-10-14: Shared-disk cleanup (user request after the server admin's warning): about 600 GB of WildMatch files
+  deleted under the shared results disk. Vismatch feature-cache files written before 2026-10-05 (unreadable since the
+  cache key includes the GPU type) in every dataset's cache, plus the whole CzechLynx `vismatch_epoch_curve` cache,
+  the old `rdd` lynx runs, `parity_v2`, `experiments/profile` and the leftover `wildmatch-integration` folder.
+  Checkpoints, newer cache files, the rest of `experiments/` and `logs/` are untouched; no reported number depends on
+  the deleted files. AGENTS.md records the details and notes that the profile outputs and the epoch-curve cache are gone.
+
 - 2026-10-11: Paper & Code: the Acknowledgements section is filled (user's funding text, lightly edited: the
   Jagiellonian University DigiWorld "Artificial Intelligence Computing Center Core Facility" project and PLGrid / ACK
   Cyfronet AGH grant PLG/2026/019483), plus thanks to the dataset providers and the SAM 3 acknowledgement; the "To be

@@ -124,7 +124,8 @@ was built from the paper code (`paper-v1`) and how parity was verified.
   parity ladder L0-L6, L6 (every `weights.yaml` checkpoint evaluates unchanged) mandatory.
 - slurm/: `sweep_task.sbatch` (one sweep array element), `evaluate.sbatch`,
   `finetune_backbone.sbatch`, `eval_loma_epoch_curve.sh` (training-cost ablation) and
-  `profile_vismatch.sbatch` (Vismatch cold/warm cost profile into `experiments/profile/`).
+  `profile_vismatch.sbatch` (Vismatch cold/warm cost profile into `experiments/profile/`; the 2026-10-07 outputs
+  were deleted in the 2026-10-13 disk cleanup, their numbers are under "Future-work checklist").
 - paper/: paper and project-page tooling run from a checkout (not part of the package):
   `paper/page/` page exporters and `build_demo_cards.py`, `paper/figures/` hand-made paper
   figures and analyses, `paper/tools/` (`parity_check.py`; `compare_with_paper.py`, which matches
@@ -479,7 +480,22 @@ seven branch worktrees under `/shared/results/common/kargin/projects/wildmatch-*
 branches and the trial merge) were removed after their branches were merged and pushed;
 `wildmatch-dev`'s probe-fix parity run moved to
 `experiments/parity-probefix/` and its logs to `logs/archive/wildmatch-dev-worktree/`
-(checksum-verified); its task records still point at the removed worktree. Legacy
+(checksum-verified); its task records still point at the removed worktree.
+**Shared-disk cleanup (2026-10-13/14, user request after a warning from the server admin; `/shared/results` was 98 %
+full).** About 600 GB (estimated from sampled file sizes) of WildMatch files under `/shared/results/common/kargin/`
+were deleted. Vismatch feature caches under `lynx/results/<dataset>/.../cache/vismatch/`: every file last written
+before 2026-10-05 00:00, i.e. before the cache key gained the GPU type (see "Known issues"), so no current run
+could read them; files written since were kept, and caches refill on use. Ten WildlifeReID-10k caches were
+emptied entirely (ATRW, BelugaID, CowDataset, Giraffes, GiraffeZebraID, StripeSpotter, all old), the others
+kept their newer files (CzechLynx closed 121,521 kept / 93,628 deleted in the last pass, Zindi 38,409 / 77,904).
+Removed whole: `CzechLynx/cache/vismatch_epoch_curve/` (the training-cost curve's cache; it rebuilds if
+`slurm/eval_loma_epoch_curve.sh` reruns), `lynx/results/rdd/` (June-July lynx sanity runs, read by no code),
+`lynx/results/parity_v2/` (the refactor's parity cache), `experiments/profile/` (the Vismatch cost-profile outputs;
+their numbers are recorded below) and the removed integration worktree's leftover folder
+`projects/wildmatch-integration/`. Kept: checkpoints, `rdd-parallel-benchmark/` (possible provenance of mined pairs),
+`experiments/` otherwise, `logs/` and the uv environment. Free space afterwards: 1.1 TB of 30 TB (97 %; the disk is
+shared). Deleting on this NFS disk is bound by per-file round trips: `find ... | xargs -P 8 rm` managed about 18
+files/s because `find` checks dates one at a time; a threaded stat-and-unlink (64 threads) about 90 files/s. Legacy
 `benchmark_runs/benchmark_results.csv` and `results/.../train_metrics.csv` remain
 populated for compatibility. Historical generated artifacts are never migrated or
 rewritten automatically.
@@ -680,7 +696,7 @@ not as harmful noise; the 5 blurry queries score 0.02 vs 0.33 (small n). Rows 12
 only: fine-tuned LoMa (matcher only) against the class-weighted classifier probes, with
 cumulative *training* GPU-hours on RTX 4090 on the x axis (mining, feature caches and
 inference excluded). `slurm/eval_loma_epoch_curve.sh` evaluates intermediate LoMa
-checkpoints into `experiments/compute-efficiency/`, never `experiments/probe/`, because the
+checkpoints (its feature cache `vismatch_epoch_curve/` was deleted on 2026-10-13 and rebuilds on a rerun) into `experiments/compute-efficiency/`, never `experiments/probe/`, because the
 table exporter keys runs by checkpoint label and k only, so an intermediate epoch there
 would replace epoch 299. `paper/figures/plot_training_cost.py` writes
 `reports/figures/training_cost*.{pdf,png,csv,json}`. The final figures are at k=250 from
@@ -1235,7 +1251,7 @@ reproduction live under "Known issues" instead.
   cache; a cache hit costs 4.3-4.6 ms to load; model setup about 6 s (LoMa) and 1.3 s (RDD). These
   runs mix GPU types (none records `vismatch_device`, which started 2026-10-05). Single-GPU profile
   (job 525920, `sbatch slurm/profile_vismatch.sbatch`, 2026-10-07, RTX 4090, SalamanderID2025, k=50,
-  12,300 pairs, default weights, outputs only under `experiments/profile/job-525920/`): matching
+  12,300 pairs, default weights, outputs were under `experiments/profile/job-525920/`, deleted 2026-10-13): matching
   1.85 ms per pair for LoMa (22.8 s) and 3.4 ms for RDD-LightGlue (42.0 s); warm runs take 41 s and
   55 s, of which matching is 56 % and 76 %, cache loading 5.8 s (4.2 ms per image) and setup 7 s /
   1.3 s. Cold runs take 218 s and 181 s: extraction wall time is 141 s / 133 s, of which the timed
